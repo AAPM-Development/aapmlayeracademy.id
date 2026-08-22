@@ -1,0 +1,69 @@
+{
+  "name": "FarmData",
+  "type": "object",
+  "properties": {
+    "week": {
+      "type": "number",
+      "description": "Umur ayam (minggu)"
+    },
+    "henDayProduction": {
+      "type": "number",
+      "description": "HDP %"
+    },
+    "feedIntake": {
+      "type": "number",
+      "description": "gram/ekor/hari"
+    },
+    "eggWeight": {
+      "type": "number",
+      "description": "gram"
+    },
+    "mortality": {
+      "type": "number",
+      "description": "% per minggu"
+    },
+    "waterIntake": {
+      "type": "number",
+      "description": "ml/ekor/hari"
+    },
+    "temperature": {
+      "type": "number",
+      "description": "\u00b0C"
+    },
+    "humidity": {
+      "type": "number",
+      "description": "% RH"
+    },
+    "revenue": {
+      "type": "number",
+      "description": "Rp"
+    },
+    "cost": {
+      "type": "number",
+      "description": "Rp"
+    },
+    "fcr": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "week"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

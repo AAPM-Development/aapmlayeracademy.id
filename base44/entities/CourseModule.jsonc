@@ -1,0 +1,86 @@
+{
+  "name": "CourseModule",
+  "type": "object",
+  "properties": {
+    "level": {
+      "type": "number",
+      "description": "Level e-course (1-14)"
+    },
+    "levelName": {
+      "type": "string",
+      "description": "Nama level"
+    },
+    "moduleNumber": {
+      "type": "number",
+      "description": "Nomor modul (1-22)"
+    },
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "description": "Kategori modul"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string",
+      "description": "Konten materi (markdown)"
+    },
+    "videoScript": {
+      "type": "string",
+      "description": "Script instruktur video lesson"
+    },
+    "learningObjectives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keyTakeaways": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "checklist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "practicalAssignment": {
+      "type": "string"
+    },
+    "order": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "level",
+    "moduleNumber",
+    "title",
+    "category",
+    "summary",
+    "content"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

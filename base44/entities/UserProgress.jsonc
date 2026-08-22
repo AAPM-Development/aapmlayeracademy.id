@@ -1,0 +1,42 @@
+{
+  "name": "UserProgress",
+  "type": "object",
+  "properties": {
+    "moduleNumber": {
+      "type": "number"
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "quizScore": {
+      "type": "number"
+    },
+    "quizTotal": {
+      "type": "number"
+    },
+    "practicalDone": {
+      "type": "boolean"
+    },
+    "timeSpentMinutes": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "moduleNumber",
+    "completed"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

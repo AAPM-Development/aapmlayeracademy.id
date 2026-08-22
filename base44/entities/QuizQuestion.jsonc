@@ -1,0 +1,73 @@
+{
+  "name": "QuizQuestion",
+  "type": "object",
+  "properties": {
+    "moduleNumber": {
+      "type": "number",
+      "description": "Modul terkait (0 = final exam)"
+    },
+    "question": {
+      "type": "string"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "correctIndex": {
+      "type": "number",
+      "description": "Index jawaban benar (0-3)"
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard",
+        "expert"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "mcq",
+        "truefalse",
+        "scenario",
+        "calculation"
+      ]
+    },
+    "learningObjective": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "moduleNumber",
+    "question",
+    "options",
+    "correctIndex",
+    "difficulty",
+    "type"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
