@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roadmap Belajar | Layer Farm Academy</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --paper:#EDE6D6; --paper-shade:#E3DAC5; --card:#F6F2E7;
+  --ink:#23201A; --ink-soft:#57503F; --ink-faint:#8A8270;
+  --rust:#A8462E; --rust-dark:#7E331F;
+  --sage:#5C6E4C; --sage-dark:#465538;
+  --yolk:#D9A441; --yolk-dark:#B5822B;
+  --line:#C9BFA6; --line-strong:#9E9377;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;}
+@media (prefers-reduced-motion: reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
+
+.topbar{background:var(--ink);color:var(--paper);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;}
+.topbar .brand{font-family:'Roboto Slab',serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:13px;display:flex;align-items:center;gap:8px;}
+.topbar .brand .egg{width:11px;height:14px;border-radius:60% 60% 55% 55%/65% 65% 45% 45%;background:var(--yolk);display:inline-block;}
+.topbar .crumb{color:var(--ink-faint);}
+
+.hero{max-width:1080px;margin:0 auto;padding:60px 24px 40px;border-bottom:1px solid var(--line);}
+.hero-eyebrow{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--rust-dark);font-weight:600;margin-bottom:16px;}
+.hero h1{font-family:'Roboto Slab',serif;font-weight:900;font-size:clamp(30px,4.5vw,48px);line-height:1.08;margin:0 0 16px;max-width:760px;}
+.hero p{max-width:640px;font-size:16.5px;color:var(--ink-soft);margin:0 0 26px;}
+
+.legend{display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-soft);}
+.legend span{display:flex;align-items:center;gap:7px;}
+.legend .dot{width:9px;height:9px;border-radius:50%;}
+
+.progress-track{margin-top:30px;height:8px;background:var(--paper-shade);border:1px solid var(--line);}
+.progress-fill{height:100%;background:var(--rust);width:4.5%;}
+.progress-label{margin-top:8px;font-size:12px;color:var(--ink-faint); font-family:'JetBrains Mono',monospace;}
+
+.levels{max-width:1080px;margin:0 auto;padding:10px 24px 80px;}
+.level{padding:36px 0;border-bottom:1px solid var(--line);}
+.level:last-child{border-bottom:none;}
+.level-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap;}
+.level-head .lv-num{font-family:'JetBrains Mono',monospace;color:var(--rust);font-weight:700;font-size:13px;}
+.level-head h2{font-family:'Roboto Slab',serif;font-size:21px;margin:0;font-weight:700;}
+.level-sub{font-size:13px;color:var(--ink-faint);margin:0 0 20px;}
+
+.modgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+@media (max-width:720px){ .modgrid{grid-template-columns:1fr;} }
+
+.modcard{
+  border:1px solid var(--line); background:var(--card); padding:16px 18px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.modcard.available{border-color:var(--sage); box-shadow: 0 0 0 1px var(--sage) inset;}
+.mod-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+.mod-num{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--rust-dark); font-weight:700;}
+.mod-title{font-family:'Roboto Slab',serif; font-size:15px; margin:4px 0 0; color:var(--ink); font-weight:700;}
+.status-chip{
+  font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; font-weight:700;
+  padding:3px 8px; border-radius:20px; flex:none; white-space:nowrap;
+}
+.status-chip.ready{background:#DDE6D2; color:var(--sage-dark);}
+.status-chip.soon{background:var(--paper-shade); color:var(--ink-faint);}
+
+.mod-assets{display:flex; gap:8px; flex-wrap:wrap; margin-top:2px;}
+.asset-link{
+  font-size:11.5px; padding:5px 10px; border:1px solid var(--line-strong); text-decoration:none;
+  color:var(--ink-soft); font-family:'Inter',sans-serif; font-weight:600;
+}
+.modcard.available .asset-link{color:var(--rust-dark); border-color:var(--rust);}
+.asset-link:hover{background:var(--paper-shade);}
+.asset-link.disabled{color:var(--ink-faint); border-color:var(--line); pointer-events:none; opacity:.6;}
+
+footer{max-width:1080px;margin:0 auto;padding:20px 24px 60px;font-size:12px;color:var(--ink-faint);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="egg"></span> Layer Farm Academy</div>
+  <div class="crumb">Roadmap Belajar — 14 Level · 22 Modul</div>
+</div>
+
+<header class="hero">
+  <div class="hero-eyebrow">Peta Jalan Belajar</div>
+  <h1>Dari Pemula hingga Layer Farm Expert</h1>
+  <p>Setiap modul dilengkapi tiga aset: <strong>halaman e-learning interaktif</strong>, <strong>slide presentasi (PPT)</strong> untuk sesi kelas atau training, dan <strong>skrip video</strong> untuk produksi konten. Modul dirilis bertahap — mulai dari Modul 1 dan ikuti urutan level untuk hasil belajar terbaik.</p>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#5C6E4C"></span> Tersedia lengkap (Web + PPT + Video + Kuis)</span>
+    <span><span class="dot" style="background:#C9BFA6"></span> Segera dirilis</span>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill"></div></div>
+  <div class="progress-label">1 / 22 MODUL SELESAI DIPRODUKSI</div>
+</header>
+
+<div class="levels" id="levels"></div>
+
+<footer>Layer Farm Academy — Program Sertifikasi Layer Poultry Farm Management</footer>
+
+<script>
+const LEVELS = [
+  { lv:1, title:"Foundation", sub:"Pengantar bisnis, biologi dasar, dan peta siklus produksi layer.",
+    mods:[
+      {n:1, t:"Introduction to Layer Poultry Farming", ready:true},
+      {n:2, t:"Understanding Layer Chicken"},
+      {n:3, t:"Layer Production Cycle"},
+    ]},
+  { lv:2, title:"Brooding & Rearing Management", sub:"Fondasi pertumbuhan sejak DOC hingga siap bertelur.",
+    mods:[
+      {n:4, t:"Brooding Management"},
+      {n:5, t:"Growing & Developer Management"},
+    ]},
+  { lv:3, title:"Layer Management", sub:"Mengelola tiga fase inti masa produksi.",
+    mods:[
+      {n:6, t:"Pre-Lay Management"},
+      {n:7, t:"Peak Production Management"},
+      {n:8, t:"Post-Peak Management"},
+    ]},
+  { lv:4, title:"Nutrition", sub:"Nutrisi sebagai penggerak utama performa produksi.",
+    mods:[
+      {n:9, t:"Layer Nutrition"},
+      {n:10, t:"Feed Management"},
+    ]},
+  { lv:5, title:"Water Management", sub:"Air sebagai nutrien yang paling sering diabaikan.",
+    mods:[ {n:11, t:"Water Management"} ]},
+  { lv:6, title:"Environment & Closed House", sub:"Ventilasi, iklim mikro, dan kontrol lingkungan kandang.",
+    mods:[
+      {n:12, t:"Closed House Management"},
+      {n:13, t:"Climate & Environmental Control"},
+    ]},
+  { lv:7, title:"Health & Veterinary Management", sub:"Pencegahan penyakit dan prinsip kesehatan flock.",
+    mods:[ {n:14, t:"Layer Health Management"} ]},
+  { lv:8, title:"Biosecurity", sub:"Garis pertahanan pertama farm terhadap wabah penyakit.",
+    mods:[ {n:15, t:"Farm Biosecurity"} ]},
+  { lv:9, title:"Egg Management", sub:"Dari pembentukan telur hingga siap dipasarkan.",
+    mods:[
+      {n:16, t:"Egg Production & Egg Quality"},
+      {n:17, t:"Egg Handling & Grading"},
+    ]},
+  { lv:10, title:"Farm Data & KPI", sub:"Bahasa angka yang menyatukan semua modul sebelumnya.",
+    mods:[ {n:18, t:"Farm KPI"} ]},
+  { lv:11, title:"Farm Economics", sub:"Mengubah performa teknis menjadi keputusan bisnis.",
+    mods:[ {n:19, t:"Layer Farm Economics"} ]},
+  { lv:12, title:"Farm Management", sub:"Kepemimpinan operasional harian hingga bulanan.",
+    mods:[ {n:20, t:"Farm Manager Excellence"} ]},
+  { lv:13, title:"Advanced Management", sub:"Berpikir seperti konsultan lewat studi kasus nyata.",
+    mods:[ {n:21, t:"Troubleshooting Layer Farm"} ]},
+  { lv:14, title:"Expert Level", sub:"Analitik lanjutan untuk optimasi farm berkelanjutan.",
+    mods:[ {n:22, t:"Advanced Layer Farm Analytics"} ]},
+];
+
+const container = document.getElementById('levels');
+LEVELS.forEach(level=>{
+  const sec = document.createElement('section');
+  sec.className = 'level';
+  sec.innerHTML = `
+    <div class="level-head">
+      <span class="lv-num">LEVEL ${String(level.lv).padStart(2,'0')}</span>
+      <h2>${level.title}</h2>
+    </div>
+    <p class="level-sub">${level.sub}</p>
+    <div class="modgrid">
+      ${level.mods.map(m=>`
+        <div class="modcard ${m.ready ? 'available' : ''}">
+          <div class="mod-top">
+            <div>
+              <div class="mod-num">MOD.${String(m.n).padStart(2,'0')}</div>
+              <div class="mod-title">${m.t}</div>
+            </div>
+            <span class="status-chip ${m.ready ? 'ready' : 'soon'}">${m.ready ? 'Tersedia' : 'Segera'}</span>
+          </div>
+          <div class="mod-assets">
+            <a class="asset-link ${m.ready ? '' : 'disabled'}" href="${m.ready ? 'module-'+m.n+'-intro.html' : '#'}">Halaman Web</a>
+            <a class="asset-link ${m.ready ? '' : 'disabled'}" href="${m.ready ? 'module-'+m.n+'.pptx' : '#'}">Slide PPT</a>
+            <a class="asset-link ${m.ready ? '' : 'disabled'}" href="${m.ready ? 'module-'+m.n+'-video-script.md' : '#'}">Skrip Video</a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  container.appendChild(sec);
+});
+</script>
+
+</body>
+</html>
