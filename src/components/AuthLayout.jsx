@@ -55,7 +55,7 @@ function AcademyVideoPanel() {
         aria-hidden="true"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-brand-foreground/80 via-brand-foreground/25 to-transparent" />
-      <div className="absolute inset-x-0 top-[30%] flex justify-center px-10">
+      <div className="absolute inset-x-0 top-[30%] flex justify-center px-10 [@media(max-height:900px)]:top-[25%] [@media(max-height:720px)]:top-[20%]">
         <div
           className="pointer-events-none absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-foreground/50 blur-3xl"
           aria-hidden="true"
