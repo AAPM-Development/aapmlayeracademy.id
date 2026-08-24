@@ -47,23 +47,33 @@ const json = (body) => ({ method: 'POST', body: JSON.stringify(body) });
 
 export const nativeApi = {
   auth: {
+    async csrf() {
+      return request('/auth/csrf');
+    },
+    async providers() {
+      return request('/auth/providers');
+    },
     async me() {
       const result = await request('/auth/me');
       return result.user;
     },
     async login(email, password) {
+      await this.csrf();
       return request('/auth/login', json({ email, password }));
     },
     async register(data) {
+      await this.csrf();
       return request('/auth/register', json(data));
     },
     async logout() {
       return request('/auth/logout', json({}));
     },
     async requestPasswordReset(email) {
+      await this.csrf();
       return request('/auth/forgot-password', json({ email }));
     },
     async resetPassword(token, newPassword) {
+      await this.csrf();
       return request('/auth/reset-password', json({ token, newPassword }));
     },
   },

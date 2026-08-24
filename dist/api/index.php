@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
+apply_security_headers();
 start_app_session();
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $rawPath = isset($_GET['path']) ? (string) $_GET['path'] : (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
@@ -15,6 +16,99 @@ try {
     if ($path === 'health' && $method === 'GET') {
         db();
         json_response(['ok' => true, 'app' => 'aapm-layer-academy-native', 'environment' => app_config()['app_env']]);
+    }
+
+    if ($path === 'auth/csrf' && $method === 'GET') {
+        json_response(['csrfToken' => csrf_token()]);
+    }
+
+    if ($path === 'auth/providers' && $method === 'GET') {
+        json_response(['google' => google_oauth_configured()]);
+    }
+
+    if ($path === 'auth/google' && $method === 'GET') {
+        if (!google_oauth_configured()) {
+            error_response('Google login belum dikonfigurasi.', 503, 'provider_unavailable');
+        }
+
+        $state = bin2hex(random_bytes(32));
+        $_SESSION['google_oauth_state'] = $state;
+        $_SESSION['google_return_to'] = safe_return_path($_GET['returnTo'] ?? '/');
+        $query = http_build_query([
+            'client_id' => app_config()['google_client_id'],
+            'redirect_uri' => google_redirect_uri(),
+            'response_type' => 'code',
+            'scope' => 'openid email profile',
+            'state' => $state,
+            'access_type' => 'online',
+            'prompt' => 'select_account',
+        ]);
+        redirect_response('https://accounts.google.com/o/oauth2/v2/auth?' . $query);
+    }
+
+    if ($path === 'auth/google/callback' && $method === 'GET') {
+        $returnTo = safe_return_path($_SESSION['google_return_to'] ?? '/');
+        $baseUrl = app_base_url();
+        $expectedState = (string) ($_SESSION['google_oauth_state'] ?? '');
+        unset($_SESSION['google_oauth_state'], $_SESSION['google_return_to']);
+
+        if (!google_oauth_configured() || isset($_GET['error'])) {
+            redirect_response($baseUrl . '/login?oauth=cancelled');
+        }
+
+        $state = (string) ($_GET['state'] ?? '');
+        if ($state === '' || $expectedState === '' || !hash_equals($expectedState, $state)) {
+            redirect_response($baseUrl . '/login?oauth=error');
+        }
+
+        $code = trim((string) ($_GET['code'] ?? ''));
+        if ($code === '') {
+            redirect_response($baseUrl . '/login?oauth=error');
+        }
+
+        $tokenResponse = google_exchange_code($code);
+        $accessToken = (string) ($tokenResponse['access_token'] ?? '');
+        if ($accessToken === '') {
+            redirect_response($baseUrl . '/login?oauth=error');
+        }
+
+        $profile = google_user_profile($accessToken);
+        $email = normalize_email($profile['email'] ?? '');
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($profile['email_verified'])) {
+            redirect_response($baseUrl . '/login?oauth=unverified');
+        }
+
+        $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            $fullName = trim(substr(preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? '')), 0, 160));
+            if ($fullName === '') {
+                $fullName = ucfirst((string) strtok($email, '@'));
+            }
+            try {
+                $insert = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
+                $insert->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $fullName, 'user']);
+                $userId = (int) db()->lastInsertId();
+            } catch (PDOException $exception) {
+                if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
+                    throw $exception;
+                }
+                $retry = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+                $retry->execute([$email]);
+                $userId = (int) ($retry->fetch()['id'] ?? 0);
+            }
+        } else {
+            $userId = (int) $user['id'];
+        }
+
+        if ($userId < 1) {
+            redirect_response($baseUrl . '/login?oauth=error');
+        }
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $userId;
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        redirect_response($baseUrl . $returnTo);
     }
 
     if ($path === 'auth/me' && $method === 'GET') {
@@ -32,12 +126,23 @@ try {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
             error_response('Email dan password wajib diisi.', 422, 'validation_error');
         }
+        require_csrf();
+        rate_limit_guard('login-ip', '', 60, 900, 900);
+        rate_limit_guard('login-user', $email, 8, 900, 900);
 
         $stmt = db()->prepare('SELECT id, email, password_hash, full_name, role, created_at FROM users WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password_hash'])) {
+            rate_limit_failure('login-ip', '', 60, 900, 900);
+            rate_limit_failure('login-user', $email, 8, 900, 900);
             error_response('Email atau password tidak sesuai.', 401, 'invalid_credentials');
+        }
+
+        rate_limit_clear('login-ip');
+        rate_limit_clear('login-user', $email);
+        if (password_needs_rehash($user['password_hash'], password_algorithm())) {
+            db()->prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), (int) $user['id']]);
         }
 
         session_regenerate_id(true);
@@ -52,15 +157,19 @@ try {
         $email = normalize_email($input['email'] ?? '');
         $password = (string) ($input['password'] ?? '');
         $fullName = trim((string) ($input['fullName'] ?? $input['full_name'] ?? ''));
+        require_csrf();
+        rate_limit_guard('register-ip', '', 10, 3600, 3600);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             error_response('Masukkan alamat email yang valid.', 422, 'validation_error');
         }
-        if (strlen($password) < 8) {
-            error_response('Password minimal 8 karakter.', 422, 'validation_error');
+        $passwordError = password_validation_error($password);
+        if ($passwordError !== '') {
+            error_response($passwordError, 422, 'validation_error');
         }
         if ($fullName === '') {
             $fullName = ucfirst((string) strtok($email, '@'));
         }
+        $fullName = substr(preg_replace('/[\x00-\x1F\x7F]/', '', $fullName), 0, 160);
 
         $existing = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
         $existing->execute([$email]);
@@ -68,8 +177,16 @@ try {
             error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
         }
 
-        $stmt = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$email, password_hash($password, PASSWORD_DEFAULT), $fullName, 'user']);
+        try {
+            $stmt = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$email, app_password_hash($password), $fullName, 'user']);
+        } catch (PDOException $exception) {
+            if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
+                error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+            }
+            throw $exception;
+        }
+        rate_limit_clear('register-ip');
         $userId = (int) db()->lastInsertId();
         session_regenerate_id(true);
         $_SESSION['user_id'] = $userId;
@@ -92,6 +209,11 @@ try {
     if ($path === 'auth/forgot-password' && $method === 'POST') {
         $input = request_json();
         $email = normalize_email($input['email'] ?? '');
+        require_csrf();
+        rate_limit_guard('forgot-ip', '', 10, 3600, 3600);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            rate_limit_guard('forgot-user', $email, 3, 3600, 3600);
+        }
         $result = ['message' => 'Jika akun tersebut ada, instruksi reset password telah dibuat.'];
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
@@ -102,10 +224,15 @@ try {
                 $expires = date('Y-m-d H:i:s', time() + 3600);
                 $update = db()->prepare('UPDATE users SET reset_token_hash = ?, reset_token_expires_at = ? WHERE id = ?');
                 $update->execute([hash('sha256', $token), $expires, (int) $user['id']]);
+                send_password_reset_email($email, $token);
                 if (app_config()['app_env'] === 'local' && app_config()['expose_dev_reset_token']) {
                     $result['devResetToken'] = $token;
                 }
             }
+        }
+        rate_limit_failure('forgot-ip', '', 10, 3600, 3600);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            rate_limit_failure('forgot-user', $email, 3, 3600, 3600);
         }
         json_response($result);
     }
@@ -114,17 +241,26 @@ try {
         $input = request_json();
         $token = trim((string) ($input['token'] ?? $input['resetToken'] ?? ''));
         $password = (string) ($input['newPassword'] ?? $input['password'] ?? '');
-        if (strlen($password) < 8 || $token === '') {
-            error_response('Token reset dan password minimal 8 karakter wajib diisi.', 422, 'validation_error');
+        require_csrf();
+        rate_limit_guard('reset-ip', '', 10, 3600, 3600);
+        $passwordError = password_validation_error($password);
+        if ($passwordError !== '' || $token === '') {
+            rate_limit_failure('reset-ip', '', 10, 3600, 3600);
+            error_response($token === '' ? 'Token reset wajib diisi.' : $passwordError, 422, 'validation_error');
         }
         $stmt = db()->prepare('SELECT id FROM users WHERE reset_token_hash = ? AND reset_token_expires_at > ? LIMIT 1');
         $stmt->execute([hash('sha256', $token), date('Y-m-d H:i:s')]);
         $user = $stmt->fetch();
         if (!$user) {
+            rate_limit_failure('reset-ip', '', 10, 3600, 3600);
             error_response('Link reset password sudah tidak berlaku.', 400, 'invalid_reset_token');
         }
         $update = db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL WHERE id = ?');
-        $update->execute([password_hash($password, PASSWORD_DEFAULT), (int) $user['id']]);
+        $update->execute([app_password_hash($password), (int) $user['id']]);
+        rate_limit_clear('reset-ip');
+        unset($_SESSION['user_id']);
+        session_regenerate_id(true);
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         json_response(['ok' => true]);
     }
 
@@ -293,6 +429,94 @@ try {
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');
+}
+
+function redirect_response(string $url, int $status = 302): void
+{
+    if (preg_match('/[\r\n]/', $url)) {
+        error_response('Redirect tidak valid.', 500, 'invalid_redirect');
+    }
+
+    http_response_code($status);
+    header('Cache-Control: no-store');
+    header('Location: ' . $url);
+    exit;
+}
+
+function google_oauth_configured(): bool
+{
+    $config = app_config();
+    return trim((string) ($config['google_client_id'] ?? '')) !== ''
+        && trim((string) ($config['google_client_secret'] ?? '')) !== ''
+        && google_redirect_uri() !== '';
+}
+
+function google_redirect_uri(): string
+{
+    $configured = trim((string) (app_config()['google_redirect_uri'] ?? ''));
+    if ($configured !== '') {
+        return $configured;
+    }
+
+    $baseUrl = app_base_url();
+    return $baseUrl === '' ? '' : $baseUrl . '/api/auth/google/callback';
+}
+
+function google_http_request(string $url, array $headers = [], string $postFields = ''): array
+{
+    if (!function_exists('curl_init')) {
+        return [];
+    }
+
+    $handle = curl_init($url);
+    curl_setopt_array($handle, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_USERAGENT => 'AAPM-Layer-Academy/1.0',
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+    if ($postFields !== '') {
+        curl_setopt($handle, CURLOPT_POST, true);
+        curl_setopt($handle, CURLOPT_POSTFIELDS, $postFields);
+    }
+
+    $body = curl_exec($handle);
+    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    curl_close($handle);
+    if (!is_string($body) || $status < 200 || $status >= 300) {
+        return [];
+    }
+
+    $decoded = json_decode($body, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function google_exchange_code(string $code): array
+{
+    $config = app_config();
+    return google_http_request(
+        'https://oauth2.googleapis.com/token',
+        ['Accept: application/json', 'Content-Type: application/x-www-form-urlencoded'],
+        http_build_query([
+            'code' => $code,
+            'client_id' => $config['google_client_id'],
+            'client_secret' => $config['google_client_secret'],
+            'redirect_uri' => google_redirect_uri(),
+            'grant_type' => 'authorization_code',
+        ])
+    );
+}
+
+function google_user_profile(string $accessToken): array
+{
+    return google_http_request(
+        'https://openidconnect.googleapis.com/v1/userinfo',
+        ['Accept: application/json', 'Authorization: Bearer ' . $accessToken]
+    );
 }
 
 function native_ai_reply(string $message, $farmContext): string

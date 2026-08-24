@@ -11,6 +11,7 @@ cPanel.
 - PHP 7.4+ compatible REST API (`public/api/`)
 - SQLite for local development; MySQL/MariaDB for cPanel
 - PHP sessions and `password_hash`/`password_verify` for authentication
+- CSRF protection, strict session cookies, password policy, and auth rate limits
 - Local rule-based Farm Assistant fallback; no Base44 runtime dependency
 
 PHP 8.3 is recommended for cPanel, although the API remains compatible with
@@ -60,6 +61,12 @@ All mutating authenticated requests use the session's CSRF token. PHP creates
 the table structure automatically on first request; `database/schema.sql` is
 provided for explicit MySQL setup and `database/seed.php` loads demo content.
 
+New accounts and password resets require at least 12 characters containing a
+letter and a number. Login and reset attempts are throttled per IP/account,
+and reset links are single-use with a 60-minute expiry. Configure `app_url`
+and `mail_from` in the private cPanel config so forgot-password messages can
+be delivered by the server's mail transport.
+
 ## cPanel staging
 
 The `develop` branch deploys the Vite artifact in `dist/` to
@@ -70,7 +77,9 @@ The `develop` branch deploys the Vite artifact in `dist/` to
 2. Configure `/home/aapp8359/aapmlayeracademy-config.php` outside
    `public_html` using `config.native.example.php` as the template.
 3. Set the staging domain to PHP 8.3 and enable `pdo_mysql`.
-4. Build and include the static artifact:
+4. Set `app_url` to the staging URL and `mail_from` to an address on the
+   verified application domain for forgot-password email delivery.
+5. Build and include the static artifact:
 
 ```powershell
 npm run build
@@ -79,10 +88,10 @@ git commit -m "build: update native staging artifact"
 git push origin develop
 ```
 
-5. In cPanel Git Version Control for the staging repository, choose `Update
+6. In cPanel Git Version Control for the staging repository, choose `Update
    from Remote`, then `Deploy HEAD Commit`.
-6. Run the seed from the checked-out repository with `php database/seed.php`.
-7. Verify `https://staging.aapmlayeracademy.id/api/health` and log in with the
+7. Run the seed from the checked-out repository with `php database/seed.php`.
+8. Verify `https://staging.aapmlayeracademy.id/api/health` and log in with the
    demo account.
 
 Production remains connected to `main` and is not changed by staging deploys.
@@ -99,7 +108,11 @@ is available.
 
 ## Google login
 
-Google OAuth is intentionally not enabled in this native baseline because no
-Google Cloud OAuth client ID/secret was supplied. Email/password login is
-fully local. Google login can be added later as a separate OAuth adapter
-without changing the course data model.
+Google OAuth is implemented as an optional server-side adapter. It is shown in
+the login/register screen only when the private config contains
+`google_client_id`, `google_client_secret`, and `google_redirect_uri`. Register
+the callback URL as:
+
+`https://staging.aapmlayeracademy.id/api/auth/google/callback`
+
+Never commit those values. Email/password remains available as the fallback.

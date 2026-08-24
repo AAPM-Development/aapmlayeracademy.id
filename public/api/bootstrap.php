@@ -26,7 +26,12 @@ function app_config(): array
         'db_password' => getenv('AAPLAYERACADEMY_DB_PASSWORD') ?: '',
         'db_path' => getenv('AAPLAYERACADEMY_DB_PATH') ?: '',
         'session_name' => getenv('AAPLAYERACADEMY_SESSION_NAME') ?: 'aapm_layer_session',
-        'expose_dev_reset_token' => true,
+        'app_url' => getenv('AAPLAYERACADEMY_APP_URL') ?: '',
+        'mail_from' => getenv('AAPLAYERACADEMY_MAIL_FROM') ?: '',
+        'google_client_id' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_ID') ?: '',
+        'google_client_secret' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_SECRET') ?: '',
+        'google_redirect_uri' => getenv('AAPLAYERACADEMY_GOOGLE_REDIRECT_URI') ?: '',
+        'expose_dev_reset_token' => false,
     ];
 
     $configuredPath = getenv('AAPLAYERACADEMY_CONFIG');
@@ -112,6 +117,13 @@ function ensure_schema(PDO $pdo, string $driver): void
                 reset_token_expires_at TEXT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )',
+            'CREATE TABLE IF NOT EXISTS auth_rate_limits (
+                bucket_key TEXT PRIMARY KEY,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                window_started_at INTEGER NOT NULL,
+                blocked_until INTEGER NULL,
+                updated_at INTEGER NOT NULL
             )',
             'CREATE TABLE IF NOT EXISTS course_modules (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -204,6 +216,14 @@ function ensure_schema(PDO $pdo, string $driver): void
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (id),
                 UNIQUE KEY users_email_unique (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS auth_rate_limits (
+                bucket_key VARCHAR(190) NOT NULL,
+                attempts INT UNSIGNED NOT NULL DEFAULT 0,
+                window_started_at BIGINT UNSIGNED NOT NULL,
+                blocked_until BIGINT UNSIGNED NULL,
+                updated_at BIGINT UNSIGNED NOT NULL,
+                PRIMARY KEY (bucket_key)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             'CREATE TABLE IF NOT EXISTS course_modules (
                 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -306,6 +326,11 @@ function start_app_session(): void
 
     $config = app_config();
     $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.cookie_httponly', '1');
+    ini_set('session.cookie_secure', $isSecure ? '1' : '0');
+    ini_set('session.cookie_samesite', 'Lax');
     session_name((string) $config['session_name']);
     session_set_cookie_params([
         'lifetime' => 0,
@@ -315,6 +340,21 @@ function start_app_session(): void
         'samesite' => 'Lax',
     ]);
     session_start();
+}
+
+function apply_security_headers(): void
+{
+    if (headers_sent()) {
+        return;
+    }
+
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
 }
 
 function json_response($data, int $status = 200): void
@@ -393,6 +433,153 @@ function require_user(): array
 function normalize_email($email): string
 {
     return strtolower(trim((string) $email));
+}
+
+function password_algorithm()
+{
+    if (defined('PASSWORD_ARGON2ID') && in_array('argon2id', password_algos(), true)) {
+        return PASSWORD_ARGON2ID;
+    }
+
+    return PASSWORD_DEFAULT;
+}
+
+function app_password_hash(string $password): string
+{
+    return password_hash($password, password_algorithm());
+}
+
+function password_validation_error(string $password): string
+{
+    if (strlen($password) < 12) {
+        return 'Password minimal 12 karakter.';
+    }
+    if (strlen($password) > 128) {
+        return 'Password maksimal 128 karakter.';
+    }
+    if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        return 'Password harus memuat minimal satu huruf dan satu angka.';
+    }
+
+    return '';
+}
+
+function client_ip(): string
+{
+    $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    return $ip !== '' ? substr($ip, 0, 64) : 'unknown';
+}
+
+function rate_limit_bucket(string $scope, string $identity = ''): string
+{
+    return $scope . ':' . hash('sha256', client_ip() . '|' . normalize_email($identity));
+}
+
+function rate_limit_guard(string $scope, string $identity, int $maxAttempts, int $windowSeconds, int $blockSeconds): void
+{
+    $key = rate_limit_bucket($scope, $identity);
+    $row = db()->prepare('SELECT attempts, window_started_at, blocked_until FROM auth_rate_limits WHERE bucket_key = ? LIMIT 1');
+    $row->execute([$key]);
+    $record = $row->fetch();
+    if (!$record) {
+        return;
+    }
+
+    $now = time();
+    if ((int) ($record['window_started_at'] ?? 0) + $windowSeconds <= $now) {
+        db()->prepare('DELETE FROM auth_rate_limits WHERE bucket_key = ?')->execute([$key]);
+        return;
+    }
+
+    $blockedUntil = (int) ($record['blocked_until'] ?? 0);
+    if ($blockedUntil > $now || (int) $record['attempts'] >= $maxAttempts) {
+        if ($blockedUntil <= $now) {
+            $blockedUntil = $now + $blockSeconds;
+            db()->prepare('UPDATE auth_rate_limits SET blocked_until = ?, updated_at = ? WHERE bucket_key = ?')->execute([$blockedUntil, $now, $key]);
+        }
+        header('Retry-After: ' . max(1, $blockedUntil - $now));
+        error_response('Terlalu banyak percobaan. Silakan coba lagi beberapa menit lagi.', 429, 'rate_limited');
+    }
+}
+
+function rate_limit_failure(string $scope, string $identity, int $maxAttempts, int $windowSeconds, int $blockSeconds): void
+{
+    $key = rate_limit_bucket($scope, $identity);
+    $now = time();
+    $row = db()->prepare('SELECT attempts, window_started_at FROM auth_rate_limits WHERE bucket_key = ? LIMIT 1');
+    $row->execute([$key]);
+    $record = $row->fetch();
+
+    if (!$record || (int) $record['window_started_at'] + $windowSeconds <= $now) {
+        $insert = db()->prepare('INSERT INTO auth_rate_limits (bucket_key, attempts, window_started_at, blocked_until, updated_at) VALUES (?, ?, ?, ?, ?)');
+        $insert->execute([$key, 1, $now, 1 >= $maxAttempts ? $now + $blockSeconds : null, $now]);
+        return;
+    }
+
+    $attempts = (int) $record['attempts'] + 1;
+    $blockedUntil = $attempts >= $maxAttempts ? $now + $blockSeconds : null;
+    db()->prepare('UPDATE auth_rate_limits SET attempts = ?, blocked_until = ?, updated_at = ? WHERE bucket_key = ?')->execute([$attempts, $blockedUntil, $now, $key]);
+}
+
+function rate_limit_clear(string $scope, string $identity = ''): void
+{
+    db()->prepare('DELETE FROM auth_rate_limits WHERE bucket_key = ?')->execute([rate_limit_bucket($scope, $identity)]);
+}
+
+function app_base_url(): string
+{
+    $configured = rtrim(trim((string) (app_config()['app_url'] ?? '')), '/');
+    if ($configured !== '') {
+        return $configured;
+    }
+
+    $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    if (!preg_match('/\A[a-z0-9.-]+(?::[0-9]+)?\z/i', $host)) {
+        return '';
+    }
+
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    return $scheme . '://' . $host;
+}
+
+function safe_return_path($value): string
+{
+    $path = trim((string) $value);
+    if ($path === '' || $path[0] !== '/' || substr($path, 0, 2) === '//' || strpos($path, '://') !== false) {
+        return '/';
+    }
+
+    return substr($path, 0, 500);
+}
+
+function password_reset_url(string $token): string
+{
+    $baseUrl = app_base_url();
+    return $baseUrl . '/reset-password?token=' . rawurlencode($token);
+}
+
+function send_password_reset_email(string $email, string $token): bool
+{
+    $from = trim((string) (app_config()['mail_from'] ?? ''));
+    if ($from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL) || !function_exists('mail')) {
+        return false;
+    }
+
+    $link = password_reset_url($token);
+    if (strpos($link, '://') === false) {
+        return false;
+    }
+
+    $subject = 'Reset password AAPM Layer Academy';
+    $body = "Halo,\n\nKami menerima permintaan untuk mengganti password akun AAPM Layer Academy Anda.\n\nBuka link berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
+    $headers = implode("\r\n", [
+        'From: ' . $from,
+        'Reply-To: ' . $from,
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+    ]);
+
+    return @mail($email, $subject, $body, $headers);
 }
 
 function nullable_number(array $data, string $key)

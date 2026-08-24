@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Calculator, BarChart3,
-  Sparkles, Award, GraduationCap, Menu, X, Egg
+  Sparkles, Award, GraduationCap, Menu, X
 } from 'lucide-react';
 import { useUserProgress } from '@/lib/useCourseData';
 import { useAuth } from '@/lib/AuthContext';
+import AppBrand from '@/components/AppBrand';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,13 +31,7 @@ export default function Layout() {
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-sidebar-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
-          <Egg className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="font-semibold text-sm leading-tight text-sidebar-foreground">Layer Farm Academy</div>
-          <div className="text-[11px] text-muted-foreground">E-Course Manajemen Peternakan</div>
-        </div>
+        <AppBrand className="h-12 w-auto max-w-[190px]" />
       </div>
 
       <div className="px-4 py-4">
@@ -117,10 +112,7 @@ export default function Layout() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white">
-              <Egg className="h-4 w-4" />
-            </div>
-            <span className="font-semibold text-sm">Layer Farm Academy</span>
+            <AppBrand className="h-8 w-auto max-w-[170px]" />
           </div>
         </header>
 
