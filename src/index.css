@@ -31,7 +31,7 @@
     --aapm-orange-700: 17 76% 48%;
     --aapm-orange-100: 25 100% 93%;
     --aapm-ink: 145 38% 13%;
-    --aapm-paper: 108 28% 98%;
+    --aapm-paper: 0 0% 100%;
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 0.75rem;
@@ -54,16 +54,16 @@
     --popover-foreground: var(--aapm-ink);
     --primary: var(--aapm-green-700);
     --primary-foreground: 0 0% 100%;
-    --secondary: 139 28% 95%;
+    --secondary: 0 0% 96%;
     --secondary-foreground: 145 29% 18%;
-    --muted: 135 18% 95%;
+    --muted: 0 0% 96%;
     --muted-foreground: 145 8% 43%;
-    --accent: 139 28% 93%;
+    --accent: 0 0% 95%;
     --accent-foreground: var(--aapm-ink);
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 140 16% 87%;
-    --input: 140 15% 82%;
+    --border: 0 0% 88%;
+    --input: 0 0% 84%;
     --ring: var(--aapm-green-700);
     --chart-1: var(--aapm-green-700);
     --chart-2: 190 65% 42%;
@@ -78,12 +78,12 @@
     --brand-foreground-muted: 145 8% 43%;
     --surface: 0 0% 100%;
     --surface-default: 0 0% 100%;
-    --surface-subtle: 135 22% 97%;
-    --surface-muted: 135 18% 95%;
+    --surface-subtle: 0 0% 98%;
+    --surface-muted: 0 0% 96%;
     --surface-elevated: 0 0% 100%;
-    --surface-hover: 135 25% 93%;
-    --surface-inset: 135 16% 93%;
-    --surface-border: 140 16% 85%;
+    --surface-hover: 0 0% 96%;
+    --surface-inset: 0 0% 94%;
+    --surface-border: 0 0% 86%;
     --surface-accent: var(--aapm-green-100);
     --surface-accent-border: 141 42% 77%;
     --tint-green: 141 43% 93%;
@@ -120,7 +120,7 @@
     --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    --sidebar-background: 135 22% 97%;
+    --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 145 14% 26%;
     --sidebar-primary: var(--aapm-green-700);
     --sidebar-primary-foreground: 0 0% 100%;
@@ -268,23 +268,10 @@
     }
   }
 
-  .academy-shell {
-    background:
-      radial-gradient(circle at 100% 0%, hsl(var(--aapm-lime-500) / 0.07), transparent 24rem),
-      hsl(var(--background));
-  }
-
-  .auth-ambient {
-    background:
-      radial-gradient(circle at 15% 8%, hsl(var(--aapm-lime-500) / 0.13), transparent 22rem),
-      radial-gradient(circle at 88% 92%, hsl(var(--aapm-green-700) / 0.08), transparent 20rem),
-      hsl(var(--background));
-  }
-
+  .academy-shell,
+  .auth-ambient,
   .auth-pane {
-    background:
-      radial-gradient(circle at 12% 16%, hsl(var(--aapm-lime-500) / 0.1), transparent 19rem),
-      hsl(var(--background));
+    background: hsl(var(--background));
   }
 
   .aapm-hero {
@@ -321,6 +308,14 @@
   .aapm-field:focus-within {
     border-color: hsl(var(--aapm-green-700) / 0.68);
     box-shadow: 0 0 0 3px hsl(var(--aapm-lime-500) / 0.2);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--surface-elevated)) inset;
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
   }
 
   .academy-enter {

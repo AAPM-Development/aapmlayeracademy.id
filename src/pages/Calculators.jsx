@@ -3,12 +3,12 @@ import AapmIcon from '@/components/icons/AapmIcon';
 
 const tools = [
   { id: 'fcr', name: 'FCR', icon: 'solar:chart-square-outline' },
-  { id: 'eggmass', name: 'Egg Mass', icon: 'solar:egg-bold-duotone' },
+  { id: 'eggmass', name: 'Egg Mass', icon: 'solar:chart-2-bold-duotone' },
   { id: 'uniformity', name: 'Uniformity', icon: 'solar:ruler-bold-duotone' },
   { id: 'mortality', name: 'Mortality', icon: 'solar:graph-down-bold-duotone' },
   { id: 'waterfeed', name: 'Water/Feed Ratio', icon: 'solar:waterdrops-bold-duotone' },
   { id: 'ventilation', name: 'Ventilasi', icon: 'solar:wind-bold-duotone' },
-  { id: 'roi', name: 'ROI & Break Even', icon: 'solar:wad-of-money-bold' },
+  { id: 'roi', name: 'ROI & Break Even', icon: 'solar:money-bag-bold-duotone' },
 ];
 
 export default function Calculators() {

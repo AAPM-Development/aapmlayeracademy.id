@@ -55,7 +55,7 @@ export default function KpiDashboard() {
   };
 
   const stats = [
-    { label: "Avg HDP", value: `${avg("henDayProduction")}%`, detail: "Hen day production", icon: "egg", tone: "lime" },
+    { label: "Avg HDP", value: `${avg("henDayProduction")}%`, detail: "Hen day production", icon: "egg", tone: "orange" },
     { label: "Avg FCR", value: avg("fcr") || "—", detail: "Feed conversion", icon: "trend", tone: "green" },
     { label: "Total profit", value: `Rp ${(profit / 1000000).toFixed(1)}jt`, detail: profit >= 0 ? "Margin positif" : "Perlu review biaya", icon: "finance", tone: profit >= 0 ? "green" : "orange" },
     { label: "Avg egg weight", value: `${avg("eggWeight")} g`, detail: "Berat telur", icon: "analytics", tone: "blue" },
@@ -70,7 +70,7 @@ export default function KpiDashboard() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,2fr)]">
-        <Card className="h-fit border-tint-green-border bg-card xl:sticky xl:top-5">
+        <Card className="h-fit border-border bg-card xl:sticky xl:top-5">
           <CardHeader className="p-5 pb-3"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base">{editing ? "Edit data mingguan" : "Input data mingguan"}</CardTitle><CardDescription className="mt-1">Angka yang rapi membuat tren lebih mudah dibaca.</CardDescription></div><IconTile icon={editing ? "edit" : "finance"} tone={editing ? "orange" : "lime"} size="sm" /></div></CardHeader>
           <CardContent className="p-5 pt-2">
             <form onSubmit={submit} className="space-y-4">
@@ -106,7 +106,12 @@ function MetricInput({ label, value, required = false, onChange }) {
 }
 
 function KpiStat({ label, value, detail, icon, tone, index }) {
-  return <Card className={cn("academy-enter aapm-interactive-card shadow-none", tone === "lime" && "border-tint-lime-border bg-tint-lime", tone === "green" && "border-tint-green-border bg-tint-green", tone === "orange" && "border-tint-orange-border bg-tint-orange", tone === "blue" && "border-tint-blue-border bg-tint-blue")} style={{ animationDelay: `${index * 60}ms` }}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><IconTile icon={icon} tone={tone} size="sm" /><span className="text-[10px] font-medium text-muted-foreground">KPI farm</span></div><div className="mt-4 truncate text-xl font-semibold tracking-[-0.04em] tabular-nums">{value}</div><div className="mt-1 text-xs font-medium text-foreground/80">{label}</div><div className="mt-1 text-[11px] text-muted-foreground">{detail}</div></CardContent></Card>;
+  const accent = {
+    green: { border: "border-t-brand-green", icon: "text-brand-green" },
+    orange: { border: "border-t-brand-orange", icon: "text-brand-orange" },
+    blue: { border: "border-t-info", icon: "text-info" },
+  }[tone] || { border: "border-t-brand-orange", icon: "text-brand-orange" };
+  return <Card className={cn("academy-enter aapm-interactive-card border border-border border-t-[3px] bg-card shadow-none", accent.border)} style={{ animationDelay: `${index * 60}ms` }}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><AapmIcon name={icon} className={cn("h-5 w-5", accent.icon)} /><span className="text-[10px] font-medium text-muted-foreground">KPI farm</span></div><div className="mt-4 truncate text-xl font-semibold tracking-[-0.04em] tabular-nums">{value}</div><div className="mt-1 text-xs font-medium text-foreground/80">{label}</div><div className="mt-1 text-[11px] text-muted-foreground">{detail}</div></CardContent></Card>;
 }
 
 function ChartCard({ title, description, children }) {

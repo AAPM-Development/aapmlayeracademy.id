@@ -76,20 +76,20 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
       ? learningLevels[learningLevels.length - 1]
       : learningLevels[0];
   const metrics = [
-    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: "check", tone: "green", surface: "border-tint-green-border bg-tint-green" },
-    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: "progress", tone: "lime", surface: "border-tint-lime-border bg-tint-lime" },
-    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: "solar:target-bold-duotone", tone: "blue", surface: "border-tint-blue-border bg-tint-blue" },
-    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: "solar:cup-star-bold", tone: "orange", surface: "border-tint-orange-border bg-tint-orange" },
+    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: "check", accent: "border-t-brand-green", iconClass: "text-brand-green" },
+    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: "progress", accent: "border-t-brand-orange", iconClass: "text-brand-orange" },
+    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: "solar:target-bold-duotone", accent: "border-t-info", iconClass: "text-info" },
+    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: "solar:cup-star-bold", accent: "border-t-brand-orange", iconClass: "text-brand-orange" },
   ];
 
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric, index) => {
         return (
-          <div key={metric.label} className={cn("academy-enter aapm-interactive-card rounded-[var(--card-radius)] border p-4", metric.surface)} style={{ animationDelay: `${index * 70}ms` }}>
+          <div key={metric.label} className={cn("academy-enter aapm-interactive-card rounded-[var(--card-radius)] border border-border border-t-[3px] bg-card p-4", metric.accent)} style={{ animationDelay: `${index * 70}ms` }}>
             <div className="flex items-start justify-between gap-3">
-              <IconTile icon={metric.icon} tone={metric.tone} size="sm" />
-              <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">{metric.detail}</span>
+              <AapmIcon name={metric.icon} className={cn("h-5 w-5", metric.iconClass)} />
+              <span className="text-[10px] font-medium text-muted-foreground">{metric.detail}</span>
             </div>
             <div className="mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">{metric.value}</div>
             <div className="mt-1 text-xs font-medium text-foreground/80">{metric.label}</div>
@@ -263,11 +263,11 @@ export function DashboardWelcome({ user = null } = {}) {
         <div className="mt-3 text-right text-[10px] text-white/65">6 fase utama</div>
       </div>
       <div className="relative max-w-4xl">
-        <Badge variant="soft" className="border border-brand-lime/35 bg-brand-lime/15 text-xs font-semibold text-brand-lime shadow-sm backdrop-blur-sm"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
+        <Badge variant="soft" className="border border-brand-orange/80 bg-brand-orange text-xs font-semibold text-white shadow-sm"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
         <h1 className="mt-5 max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-[2.35rem]">Layer Poultry <span className="text-brand-lime">Farm Management</span></h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/85 sm:text-[0.95rem]">Dari pemula hingga expert — pelajari seluruh siklus produksi ayam petelur komersial: DOC → Brooding → Growing → Pre-lay → Peak → Post-peak → Molting → Spent Hen, dengan kombinasi video, materi baca, simulasi interaktif, kuis, case study, dan sertifikasi.</p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button asChild className="bg-brand-lime text-brand-foreground shadow-sm hover:bg-brand-lime/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
+          <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
           <Button asChild variant="ghost" className="border border-white/20 bg-white/10 text-white shadow-none hover:bg-white/20 hover:text-white"><Link to="/ai-assistant"><AapmIcon name="solar:stars-minimalistic-bold-duotone" /> AI Farm Assistant</Link></Button>
         </div>
         <div className="mt-5 flex items-center gap-2 text-xs text-white/75"><span className="h-1.5 w-1.5 rounded-full bg-white/80" /> Selamat datang, {name}. Satu keputusan lebih baik setiap sesi.</div>

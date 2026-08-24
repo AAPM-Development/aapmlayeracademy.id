@@ -101,7 +101,7 @@ export default function AiAssistant() {
           className="flex-1 bg-transparent text-sm outline-none py-1.5"
         />
         <button onClick={() => send()} disabled={ai.isPending || !input.trim()} className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-600 text-white disabled:opacity-40 hover:bg-amber-700">
-          <AapmIcon name="solar:plain-2-bold" className="h-4 w-4" />
+          <AapmIcon name="solar:plane-2-bold-duotone" className="h-4 w-4" />
         </button>
       </div>
 
