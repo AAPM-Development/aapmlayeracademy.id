@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
+import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import { Button, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useUserProgress } from "@/lib/useCourseData";
@@ -160,19 +161,13 @@ function AssistantMessage({ message, retryPrompt, onRetry }) {
   const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
-    <article className="min-w-0 max-w-2xl">
+    <article className="w-full min-w-0 max-w-2xl overflow-hidden">
       <div className="mb-2 flex items-center gap-2">
         <AapmIcon
           name="ai"
           className="h-4 w-4 text-brand-orange"
         />
         <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
-        {message.streaming && (
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-brand-orange">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" />{" "}
-            Menjawab
-          </span>
-        )}
       </div>
       {message.content && (
         <>
@@ -245,14 +240,17 @@ function AssistantMessage({ message, retryPrompt, onRetry }) {
 
 function ConversationList({
   conversations,
+  activity,
   activeConversationId,
   loading,
+  activityLoading,
   disabled,
   onSelect,
   onDelete,
   onNew,
 }) {
   const [query, setQuery] = useState("");
+  const [view, setView] = useState("chats");
   const visibleConversations = filterConversations(conversations, query);
 
   return (
@@ -279,7 +277,8 @@ function ConversationList({
           />
         </Button>
       </div>
-      <label className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 focus-within:border-brand-orange/45">
+      <AiHistoryTabs value={view} onChange={setView} />
+      {view === "chats" && <label className="mx-4 mb-2 mt-2 flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 focus-within:border-brand-orange/45">
         <AapmIcon
           name="solar:magnifer-bold-duotone"
           className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -291,9 +290,13 @@ function ConversationList({
           className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
           aria-label="Cari riwayat percakapan"
         />
-      </label>
+      </label>}
       <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
-        <div className="space-y-1">
+        {view === "activity" ? (
+          <div className="px-2 pt-3">
+            <AiActivityList activity={activity} loading={activityLoading} />
+          </div>
+        ) : <div className="space-y-1">
           {loading && (
             <p className="px-2 py-3 text-xs text-muted-foreground">
               Memuat percakapan…
@@ -351,7 +354,7 @@ function ConversationList({
               </Button>
             </div>
           ))}
-        </div>
+        </div>}
       </ScrollArea>
       <div className="border-t border-border p-3">
         <p className="mb-2 px-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
@@ -380,8 +383,10 @@ function ConversationList({
 function MobileConversationSheet({
   open,
   conversations,
+  activity,
   activeConversationId,
   loading,
+  activityLoading,
   disabled,
   onClose,
   onSelect,
@@ -389,6 +394,7 @@ function MobileConversationSheet({
   onNew,
 }) {
   const [query, setQuery] = useState("");
+  const [view, setView] = useState("chats");
   const visibleConversations = filterConversations(conversations, query);
 
   if (!open) return null;
@@ -441,7 +447,10 @@ function MobileConversationSheet({
             </Button>
           </div>
         </header>
-        <label className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
+        <div className="mt-3">
+          <AiHistoryTabs value={view} onChange={setView} />
+        </div>
+        {view === "chats" && <label className="mx-3 mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
           <AapmIcon
             name="solar:magnifer-bold-duotone"
             className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -453,9 +462,11 @@ function MobileConversationSheet({
             className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
             aria-label="Cari riwayat percakapan"
           />
-        </label>
+        </label>}
         <ScrollArea className="min-h-0 flex-1 px-3 py-3">
-          <div className="space-y-1.5">
+          {view === "activity" ? (
+            <AiActivityList activity={activity} loading={activityLoading} />
+          ) : <div className="space-y-1.5">
             {loading && (
               <p className="px-2 py-4 text-xs text-muted-foreground">
                 Memuat percakapan…
@@ -514,7 +525,7 @@ function MobileConversationSheet({
                 </Button>
               </div>
             ))}
-          </div>
+          </div>}
         </ScrollArea>
       </aside>
     </>
@@ -536,6 +547,8 @@ export default function AiAssistant() {
   const {
     conversations,
     conversationsLoading,
+    activity,
+    activityLoading,
     activeConversationId,
     messages,
     isDraft,
@@ -543,6 +556,7 @@ export default function AiAssistant() {
     isStreaming,
     streamStatus,
     streamSteps,
+    streamPhase,
     selectConversation,
     startNewConversation,
     deleteConversation,
@@ -598,17 +612,19 @@ export default function AiAssistant() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
+        activity={activity}
         activeConversationId={activeConversationId}
         loading={conversationsLoading}
+        activityLoading={activityLoading}
         disabled={isStreaming}
         onSelect={selectConversation}
         onDelete={deleteConversation}
         onNew={startNewConversation}
       />
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
@@ -682,9 +698,9 @@ export default function AiAssistant() {
             </Button>
           </div>
         </header>
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="mx-auto flex w-full max-w-3xl flex-col px-5 pb-28 pt-6 sm:px-8 sm:pb-32 sm:pt-9">
+        <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+          <ScrollArea className="aapm-chat-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-hidden">
+            <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-28 pt-6 sm:px-8 sm:pb-32 sm:pt-9">
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
                   Memuat percakapan…
@@ -719,11 +735,11 @@ export default function AiAssistant() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-7 sm:gap-9">
+                <div className="flex min-w-0 max-w-full flex-col gap-7 sm:gap-9">
                   {messages.map((message, index) =>
                     message.role === "user" ? (
-                      <div key={message.id} className="flex justify-end">
-                        <div className="max-w-[84%] rounded-2xl rounded-br-md bg-brand-green px-3.5 py-2.5 text-sm leading-6 text-white shadow-sm sm:max-w-[88%]">
+                      <div key={message.id} className="flex min-w-0 max-w-full justify-end">
+                        <div className="min-w-0 max-w-[84%] break-words rounded-2xl rounded-br-md bg-brand-green px-3.5 py-2.5 text-sm leading-6 text-white shadow-sm [overflow-wrap:anywhere] sm:max-w-[88%]">
                           {message.image?.dataUrl && (
                             <img
                               src={message.image.dataUrl}
@@ -752,13 +768,13 @@ export default function AiAssistant() {
           </ScrollArea>
           <AiCompanionDock
             streaming={isStreaming}
-            state={messages[messages.length - 1]?.content ? "responding" : "thinking"}
+            state={streamPhase}
             label={streamStatus}
             steps={streamSteps}
           />
         </div>
-        <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
-          <div className="mx-auto max-w-3xl">
+        <div className="min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
+          <div className="mx-auto min-w-0 max-w-3xl">
             <div className="min-w-0">
               <input
                 ref={imageInputRef}
@@ -818,7 +834,7 @@ export default function AiAssistant() {
                   }}
                   rows={1}
                   placeholder="Tanyakan situasi yang sedang terjadi di farm…"
-                  className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
+                  className="max-h-32 min-h-[2.5rem] min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
                 />
                 <Button
                   type="button"
@@ -881,8 +897,10 @@ export default function AiAssistant() {
       <MobileConversationSheet
         open={historyOpen}
         conversations={conversations}
+        activity={activity}
         activeConversationId={activeConversationId}
         loading={conversationsLoading}
+        activityLoading={activityLoading}
         disabled={isStreaming}
         onClose={() => setHistoryOpen(false)}
         onSelect={(id) => {

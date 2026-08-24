@@ -70,7 +70,7 @@ export default function AiAvatar({
     const timer = window.setTimeout(() => {
       setVisibleState(state);
       setLeavingState(null);
-    }, 170);
+    }, 190);
     return () => window.clearTimeout(timer);
   }, [state, visibleState]);
 

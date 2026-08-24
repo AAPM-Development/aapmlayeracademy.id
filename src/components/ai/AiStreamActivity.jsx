@@ -26,10 +26,6 @@ export default function AiStreamActivity({
             {activeLabel}
           </span>
         </div>
-        <div className="aapm-ai-stream-skeleton mt-2.5 space-y-1.5" aria-hidden="true">
-          <span />
-          <span />
-        </div>
         {timeline.length > 0 && (
           <ol className="mt-2.5 space-y-1.5 border-l border-border pl-3.5 text-[11px] text-muted-foreground">
             {timeline.map((step, index) => (

@@ -38,7 +38,13 @@ export function AiChatProvider({ children }) {
     queryFn: () => nativeApi.ai.conversations.list(),
     staleTime: 20_000,
   });
+  const activityQuery = useQuery({
+    queryKey: ["aiActivity"],
+    queryFn: () => nativeApi.ai.activity.list(),
+    staleTime: 15_000,
+  });
   const conversations = conversationsQuery.data ?? [];
+  const activity = activityQuery.data ?? [];
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isDraft, setIsDraft] = useState(false);
@@ -46,7 +52,23 @@ export function AiChatProvider({ children }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState("");
   const [streamSteps, setStreamSteps] = useState([]);
+  const [streamPhase, setStreamPhase] = useState("idle");
   const activeRef = useRef(null);
+  const phaseTimerRef = useRef(null);
+
+  const settleStreamPhase = useCallback((phase, delay = 1100) => {
+    window.clearTimeout(phaseTimerRef.current);
+    setStreamPhase(phase);
+    phaseTimerRef.current = window.setTimeout(
+      () => setStreamPhase("idle"),
+      delay,
+    );
+  }, []);
+
+  useEffect(
+    () => () => window.clearTimeout(phaseTimerRef.current),
+    [],
+  );
 
   useEffect(() => {
     activeRef.current = activeConversationId;
@@ -83,8 +105,9 @@ export function AiChatProvider({ children }) {
     setIsDraft(true);
     setActiveConversationId(null);
     setMessages([]);
-    setStreamStatus("");
-    setStreamSteps([]);
+      setStreamStatus("");
+      setStreamSteps([]);
+      setStreamPhase("idle");
   }, [isStreaming]);
 
   const ensureConversation = useCallback(
@@ -126,6 +149,8 @@ export function AiChatProvider({ children }) {
         }),
       ]);
       setIsStreaming(true);
+      window.clearTimeout(phaseTimerRef.current);
+      setStreamPhase("thinking");
       const startLabel = "APPI menyiapkan konteks percakapan";
       setStreamStatus(startLabel);
       setStreamSteps([startLabel]);
@@ -155,6 +180,7 @@ export function AiChatProvider({ children }) {
           onEvent: ({ event, data }) => {
             if (event === "status") reportStep(data.label);
             if (event === "delta" && data.text) {
+              setStreamPhase("responding");
               setMessages((current) =>
                 current.map((item) =>
                   item.id === assistantId
@@ -175,20 +201,23 @@ export function AiChatProvider({ children }) {
           },
         });
         updateAssistant({ streaming: false });
+        settleStreamPhase("complete");
       } catch (error) {
         updateAssistant({
           streaming: false,
           content: error?.message || "Koneksi ke asisten belum tersedia.",
           error: true,
         });
+        settleStreamPhase("alert", 1500);
       } finally {
         setIsStreaming(false);
         setStreamStatus("");
         setStreamSteps([]);
         queryClient.invalidateQueries({ queryKey: ["aiConversations"] });
+        queryClient.invalidateQueries({ queryKey: ["aiActivity"] });
       }
     },
-    [ensureConversation, farm, isStreaming, queryClient],
+    [ensureConversation, farm, isStreaming, queryClient, settleStreamPhase],
   );
 
   const deleteConversation = useCallback(
@@ -196,6 +225,7 @@ export function AiChatProvider({ children }) {
       if (!id || isStreaming) return;
       await nativeApi.ai.conversations.delete(id);
       queryClient.invalidateQueries({ queryKey: ["aiConversations"] });
+      queryClient.invalidateQueries({ queryKey: ["aiActivity"] });
       if (activeConversationId === id) {
         setActiveConversationId(null);
         setMessages([]);
@@ -209,6 +239,8 @@ export function AiChatProvider({ children }) {
     () => ({
       conversations,
       conversationsLoading: conversationsQuery.isLoading,
+      activity,
+      activityLoading: activityQuery.isLoading,
       activeConversationId,
       messages,
       isDraft,
@@ -216,6 +248,7 @@ export function AiChatProvider({ children }) {
       isStreaming,
       streamStatus,
       streamSteps,
+      streamPhase,
       selectConversation,
       startNewConversation,
       deleteConversation,
@@ -225,6 +258,8 @@ export function AiChatProvider({ children }) {
       activeConversationId,
       conversations,
       conversationsQuery.isLoading,
+      activity,
+      activityQuery.isLoading,
       deleteConversation,
       isDraft,
       isLoadingConversation,
@@ -235,6 +270,7 @@ export function AiChatProvider({ children }) {
       startNewConversation,
       streamStatus,
       streamSteps,
+      streamPhase,
     ],
   );
 

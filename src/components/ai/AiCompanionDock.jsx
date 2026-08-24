@@ -24,7 +24,7 @@ export default function AiCompanionDock({
       <div className="aapm-ai-companion-dock__inner">
         <AiAvatar
           size={compact ? "sm" : "md"}
-          state={streaming ? state : "idle"}
+          state={state}
           decorative
           className="aapm-ai-companion-dock__avatar"
         />

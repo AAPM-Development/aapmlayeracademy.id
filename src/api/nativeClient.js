@@ -210,6 +210,9 @@ export const nativeApi = {
           onEvent,
         ),
     },
+    activity: {
+      list: () => request("/ai/activity"),
+    },
   },
   admin: {
     overview: () => request("/admin/overview"),

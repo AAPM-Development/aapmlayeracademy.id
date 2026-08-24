@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
+import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import { Button, Switch } from "@/components/primitives";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
@@ -150,6 +151,7 @@ export default function FloatingAiAssistant() {
   const [input, setInput] = useState("");
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyView, setHistoryView] = useState("chats");
   const [historyQuery, setHistoryQuery] = useState("");
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
@@ -161,10 +163,13 @@ export default function FloatingAiAssistant() {
   const {
     activeConversationId,
     conversations,
+    activity,
+    activityLoading,
     messages,
     isStreaming,
     streamStatus,
     streamSteps,
+    streamPhase,
     startNewConversation,
     selectConversation,
     deleteConversation,
@@ -213,7 +218,7 @@ export default function FloatingAiAssistant() {
         ? "Tolong analisis foto farm ini dan sebutkan observasi yang perlu saya verifikasi di lapangan."
         : "");
     if (!message || isStreaming) return;
-    const image = imageAttachment?.dataUrl || null;
+    const image = imageAttachment;
     setInput("");
     setImageAttachment(null);
     setAttachmentError("");
@@ -264,7 +269,7 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
-          className={`aapm-ai-panel fixed inset-x-4 bottom-[calc(max(0.875rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`aapm-ai-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -327,8 +332,8 @@ export default function FloatingAiAssistant() {
             </div>
           </header>
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
-            <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4">
-              <div className="flex min-h-full min-w-0 flex-col gap-4">
+            <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4">
+              <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
                   <p className="text-sm font-semibold tracking-[-0.015em]">
@@ -373,7 +378,7 @@ export default function FloatingAiAssistant() {
                   message.role === "user" ? (
                     <div
                   key={message.id}
-                  className="ml-auto max-w-[86%] rounded-2xl rounded-br-md bg-brand-green px-3 py-2 text-xs leading-5 text-white"
+                  className="ml-auto min-w-0 max-w-[86%] break-words rounded-2xl rounded-br-md bg-brand-green px-3 py-2 text-xs leading-5 text-white [overflow-wrap:anywhere]"
                 >
                       {message.image?.dataUrl && (
                         <img
@@ -437,7 +442,7 @@ export default function FloatingAiAssistant() {
             <AiCompanionDock
               compact
               streaming={isStreaming}
-              state={messages[messages.length - 1]?.content ? "responding" : "thinking"}
+              state={streamPhase}
               label={streamStatus}
               steps={streamSteps}
             />
@@ -467,7 +472,10 @@ export default function FloatingAiAssistant() {
                     />
                   </Button>
                 </div>
-                <label className="m-3 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
+                <div className="mt-3">
+                  <AiHistoryTabs value={historyView} onChange={setHistoryView} />
+                </div>
+                {historyView === "chats" && <label className="mx-3 mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
                   <AapmIcon
                     name="solar:magnifer-bold-duotone"
                     className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -479,9 +487,13 @@ export default function FloatingAiAssistant() {
                     className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
                     aria-label="Cari riwayat percakapan"
                   />
-                </label>
+                </label>}
                 <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-                  <div className="space-y-1.5">
+                  {historyView === "activity" ? (
+                    <div className="pt-3">
+                      <AiActivityList activity={activity} loading={activityLoading} />
+                    </div>
+                  ) : <div className="space-y-1.5 pt-3">
                     {visibleConversations.length === 0 && (
                       <p className="px-2 py-5 text-xs leading-5 text-muted-foreground">
                         {historyQuery
@@ -534,7 +546,7 @@ export default function FloatingAiAssistant() {
                         </Button>
                       </div>
                     ))}
-                  </div>
+                  </div>}
                 </div>
               </aside>
             )}
@@ -618,7 +630,7 @@ export default function FloatingAiAssistant() {
                 }}
                 rows={1}
                 placeholder="Tanyakan kondisi farm…"
-                className="max-h-24 min-h-[2.25rem] flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-5 outline-none"
+                className="max-h-24 min-h-[2.25rem] min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-5 outline-none"
               />
               <Button
                 type="button"
@@ -640,18 +652,7 @@ export default function FloatingAiAssistant() {
                 {attachmentError}
               </p>
             )}
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setHistoryOpen(true)}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-              >
-                <AapmIcon
-                  name="solar:history-2-bold-duotone"
-                  className="h-3 w-3 text-brand-orange"
-                />
-                Riwayat
-              </button>
+            <div className="mt-2 flex items-center justify-end gap-2">
               <Link
                 to="/ai-assistant"
                 onClick={closePanel}
@@ -671,7 +672,7 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.5rem)] right-4 z-[75] inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-background/95 p-1 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-transform hover:-translate-y-0.5 hover:border-brand-orange/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:w-auto sm:justify-start sm:gap-2 sm:rounded-full sm:py-1.5 sm:pl-2 sm:pr-2.5 lg:bottom-5 lg:right-5"
+          className="fixed bottom-5 right-5 z-[75] hidden h-12 items-center justify-start gap-2 rounded-full border border-border bg-background/95 py-1.5 pl-2 pr-2.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-transform hover:-translate-y-0.5 hover:border-brand-orange/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 lg:inline-flex"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >
