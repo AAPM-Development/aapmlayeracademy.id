@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Filename kept for compatible deployments. This implements the generic provider layer.
 const AAPM_AI_DEFAULT_PROVIDER = 'openrouter';
-const AAPM_AI_DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
+const AAPM_AI_DEFAULT_MODEL = 'nvidia/nemotron-3.5-lightning:free';
 const AAPM_AI_MAX_TOKENS = 700;
 
 function app_setting_get(string $key, string $default = ''): string

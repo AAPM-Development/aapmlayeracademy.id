@@ -6,6 +6,7 @@ import { useUserProgress } from "@/lib/useCourseData";
 import { useThemeMode } from "@/lib/useThemeMode";
 import AcademyHeader from "./AcademyHeader";
 import AcademySidebar from "./AcademySidebar";
+import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
 
 export default function AcademyShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -53,6 +54,7 @@ export default function AcademyShell() {
           <Outlet />
         </main>
       </div>
+      <FloatingAiAssistant />
     </div>
   );
 }

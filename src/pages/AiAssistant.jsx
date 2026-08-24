@@ -3,16 +3,10 @@ import ReactMarkdown from 'react-markdown';
 import AapmIcon from '@/components/icons/AapmIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Button, ScrollArea, Switch } from '@/components/primitives';
 import { nativeApi } from '@/api/nativeClient';
-import { useFarmData } from '@/lib/useCourseData';
+import { useAuth } from '@/lib/AuthContext';
+import { useFarmData, useUserProgress } from '@/lib/useCourseData';
 
 const welcomeMessage = 'Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.';
-
-const suggestions = [
-  'HDP turun dari 92% ke 85% dalam seminggu. Apa yang harus saya cek?',
-  'Jelaskan hubungan feed intake, produksi telur, FCR, dan profit.',
-  'Buatkan checklist biosecurity harian untuk closed house layer.',
-  'Konsumsi air naik drastis hari ini. Apa kemungkinan penyebabnya?',
-];
 
 function makeDeliberation(message, farmCount, includeFarm) {
   const lower = message.toLowerCase();
@@ -29,6 +23,36 @@ function makeDeliberation(message, farmCount, includeFarm) {
     { label: includeFarm ? 'Membaca konteks KPI' : 'Menjaga analisis netral', detail: includeFarm ? `${farmCount} catatan KPI terbaru disertakan bila tersedia.` : 'Jawaban tidak memakai data Dashboard.' },
     { label: 'Menyusun prioritas', detail: focus },
   ];
+}
+
+function personalizedSuggestions({ farm, progress, user }) {
+  const name = (user?.fullName || user?.full_name || user?.email || 'saya').split(' ')[0];
+  const latest = farm.at(-1);
+  const previous = farm.at(-2);
+  const completed = progress.filter((item) => item.completed).length;
+
+  if (!latest) {
+    return [
+      `${name}, saya belum punya data KPI farm. Bantu saya menentukan lima data baseline yang perlu dicatat minggu ini.`,
+      `Buatkan format catatan harian sederhana untuk HDP, pakan, air, mortalitas, dan berat telur.`,
+      completed ? `Saya sudah menyelesaikan ${completed} modul. Topik operasional apa yang paling tepat saya lanjutkan?` : 'Saya baru mulai belajar. Urutkan fokus pertama yang paling penting untuk memahami performa layer farm.',
+      'Buatkan checklist biosecurity harian yang praktis untuk closed house layer.',
+    ];
+  }
+
+  const hdp = Number(latest.henDayProduction);
+  const previousHdp = Number(previous?.henDayProduction);
+  const hdpPrompt = Number.isFinite(hdp)
+    ? `HDP minggu ${latest.week} tercatat ${hdp}%${Number.isFinite(previousHdp) ? `, dari ${previousHdp}% minggu sebelumnya` : ''}. Bantu saya menentukan pemeriksaan prioritas.`
+    : `Bantu saya membaca data operasional minggu ${latest.week} dan menentukan sinyal yang perlu diperiksa lebih dulu.`;
+  const waterPrompt = Number.isFinite(Number(latest.waterIntake))
+    ? `Konsumsi air minggu ${latest.week} adalah ${latest.waterIntake}. Faktor apa yang perlu saya bandingkan sebelum menyimpulkan penyebabnya?`
+    : 'Data air belum lengkap. Buatkan cara mencatat konsumsi air yang dapat dibandingkan dengan suhu dan feed intake.';
+  const fcrPrompt = Number.isFinite(Number(latest.fcr))
+    ? `FCR terakhir saya ${latest.fcr}. Jelaskan data pendamping apa yang perlu dibaca agar evaluasinya tidak keliru.`
+    : 'Buatkan urutan analisis hubungan feed intake, egg mass, dan FCR untuk data farm saya.';
+
+  return [hdpPrompt, waterPrompt, fcrPrompt, completed ? `Dengan ${completed} modul selesai, materi mana yang relevan untuk mendukung evaluasi KPI saya saat ini?` : 'Hubungkan evaluasi KPI awal saya dengan jalur belajar Academy yang paling relevan.'];
 }
 
 function ThinkingIndicator({ label }) {
@@ -79,7 +103,7 @@ function AssistantMessage({ message }) {
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-4 w-4" /></div>
       <div className="min-w-0 max-w-2xl flex-1 pt-0.5">
         <div className="mb-2 flex items-center gap-2"><span className="text-sm font-semibold tracking-[-0.015em]">AI Layer Farm Assistant</span>{message.streaming && <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-brand-orange"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" /> Live</span>}</div>
-        <DeliberationPanel id={message.id} steps={message.deliberation} streaming={message.streaming && !message.content} label={message.streamStatus} />
+        {!message.content && <DeliberationPanel id={message.id} steps={message.deliberation} streaming={message.streaming} label={message.streamStatus} />}
         {message.content && <>
           <div className={`relative text-sm leading-6 text-foreground ${canCollapse && !expanded ? 'max-h-56 overflow-hidden' : ''}`}>
             <MarkdownAnswer content={message.content} />
@@ -103,12 +127,15 @@ export default function AiAssistant() {
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef(null);
   const { data: farm = [] } = useFarmData();
+  const { data: progress = [] } = useUserProgress();
+  const { user } = useAuth();
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isStreaming]);
 
   const contextLabel = useMemo(() => includeFarm ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif` : 'Tanpa konteks KPI', [farm.length, includeFarm]);
+  const suggestions = useMemo(() => personalizedSuggestions({ farm, progress, user }), [farm, progress, user]);
 
   const send = async (text) => {
     const message = (text || input).trim();
