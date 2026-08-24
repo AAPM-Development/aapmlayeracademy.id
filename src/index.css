@@ -605,6 +605,34 @@
     padding: 0.15rem 0;
   }
 
+  .aapm-ai-stream-skeleton span {
+    display: block;
+    height: 0.35rem;
+    width: min(13rem, 72%);
+    border-radius: 999px;
+    background: hsl(var(--muted));
+    animation: aapm-ai-skeleton 1.5s ease-in-out infinite;
+  }
+
+  .aapm-ai-stream-skeleton span + span {
+    width: min(9rem, 54%);
+    animation-delay: 180ms;
+  }
+
+  @keyframes aapm-ai-skeleton {
+    0%,
+    100% {
+      opacity: 0.42;
+      transform: scaleX(0.96);
+      transform-origin: left;
+    }
+    50% {
+      opacity: 0.9;
+      transform: scaleX(1);
+      transform-origin: left;
+    }
+  }
+
   @keyframes aapm-ai-activity-in {
     from {
       opacity: 0;
@@ -614,30 +642,6 @@
       opacity: 1;
       transform: translateY(0);
     }
-  }
-
-  @keyframes aapm-ai-presence-rail-in {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    70% {
-      opacity: 1;
-      transform: translateY(-1px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .aapm-ai-presence-rail {
-    isolation: isolate;
-    animation: aapm-ai-presence-rail-in 440ms cubic-bezier(0.16, 1.2, 0.3, 1) both;
-  }
-
-  .aapm-ai-presence-rail--compact {
-    animation-duration: 340ms;
   }
 
   @keyframes aapm-ai-response-in {
@@ -769,8 +773,8 @@
     .aapm-ai-panel--enter,
     .aapm-ai-panel--exit,
     .aapm-ai-history-sheet,
-    .aapm-ai-presence-rail,
     .aapm-ai-activity,
+    .aapm-ai-stream-skeleton span,
     .aapm-ai-response,
     .aapm-ai-response--streaming::after {
       animation: none;

@@ -18,7 +18,7 @@ export const academyNavigation = [
       {
         to: "/ai-assistant",
         label: "APPI",
-        icon: "solar:stars-minimalistic-bold-duotone",
+        icon: "ai",
       },
     ],
   },

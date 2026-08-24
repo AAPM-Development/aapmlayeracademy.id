@@ -12,7 +12,7 @@ import MobileBottomNav from "./MobileBottomNav";
 function AdminSidebar({ onNavigate = () => {} }) {
   return (
     <aside className="flex h-full w-[264px] flex-col border-r border-[hsl(var(--surface-border))] bg-surface-subtle">
-      <Link to="/admin" onClick={onNavigate} className="flex h-[84px] flex-col justify-center gap-1.5 border-b border-[hsl(var(--surface-border))] px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Link to="/admin" onClick={onNavigate} className="flex h-[73px] flex-col justify-center gap-1 border-b border-[hsl(var(--surface-border))] px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <AppBrand product="aapm" variant="logo" className="h-auto w-[150px] max-w-full" />
         <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Admin workspace</span>
       </Link>
@@ -36,7 +36,7 @@ export default function AdminShell() {
         <SheetContent side="left" className="w-[min(86vw,330px)] p-0 sm:max-w-none"><SheetTitle className="sr-only">Admin navigation</SheetTitle><AdminSidebar onNavigate={() => setMobileOpen(false)} /></SheetContent>
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] px-4 sm:px-6 lg:px-8">
+        <header className="flex h-[73px] shrink-0 items-center justify-between border-b border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Administration</div><div className="truncate text-sm font-semibold">{location.pathname === "/admin" ? "Overview" : "Academy management"}</div></div></div>
           <div className="flex items-center gap-1.5"><Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/">Buka Academy</Link></Button><IconButton variant="ghost" onClick={toggleTheme} label={mode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}><AapmIcon name={mode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" /></IconButton><Button type="button" variant="outline" className="hidden text-xs sm:inline-flex" onClick={() => logout()}><AapmIcon name="logout" /> {displayName} · Keluar</Button></div>
         </header>

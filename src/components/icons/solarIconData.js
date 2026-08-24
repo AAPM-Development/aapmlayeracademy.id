@@ -34,6 +34,7 @@ import solarHistory from '@iconify-icons/solar/history-2-bold-duotone.js';
 import solar26 from '@iconify-icons/solar/home-angle-bold-duotone.js';
 import solar27 from '@iconify-icons/solar/info-circle-bold.js';
 import solar28 from '@iconify-icons/solar/letter-bold.js';
+import solarLetterBoldDuotone from '@iconify-icons/solar/letter-bold-duotone.js';
 import solar29 from '@iconify-icons/solar/lightbulb-bolt-bold-duotone.js';
 import solarLeaf from '@iconify-icons/solar/leaf-bold-duotone.js';
 import solar30 from '@iconify-icons/solar/list-bold.js';
@@ -115,6 +116,7 @@ export const solarIconData = Object.freeze({
   'solar:home-angle-bold-duotone': solar26,
   'solar:info-circle-bold': solar27,
   'solar:letter-bold': solar28,
+  'solar:letter-bold-duotone': solarLetterBoldDuotone,
   'solar:lightbulb-bolt-bold-duotone': solar29,
   'solar:leaf-bold-duotone': solarLeaf,
   'solar:list-bold': solar30,

@@ -14,8 +14,8 @@ try {
     $pdo->beginTransaction();
 
     $moduleFind = $pdo->prepare('SELECT id FROM course_modules WHERE module_number = ? LIMIT 1');
-    $moduleUpdate = $pdo->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, title = ?, category = ?, summary = ?, content = ?, video_script = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    $moduleInsert = $pdo->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $moduleUpdate = $pdo->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, title = ?, category = ?, summary = ?, content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    $moduleInsert = $pdo->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, video_url, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
     foreach ($seed['modules'] as $module) {
         $moduleFind->execute([$module['module_number']]);
@@ -28,13 +28,13 @@ try {
         if ($existing) {
             $moduleUpdate->execute([
                 $module['level_number'], $module['level_name'], $module['title'], $module['category'], $module['summary'],
-                $module['content'], $module['video_script'], $encoded[0], $encoded[1], $encoded[2],
+                $module['content'], $module['video_script'], $module['video_url'] ?? '', $encoded[0], $encoded[1], $encoded[2],
                 $module['practical_assignment'], $module['sort_order'], (int) $existing['id'],
             ]);
         } else {
             $moduleInsert->execute([
                 $module['level_number'], $module['level_name'], $module['module_number'], $module['title'], $module['category'],
-                $module['summary'], $module['content'], $module['video_script'], $encoded[0], $encoded[1], $encoded[2],
+                $module['summary'], $module['content'], $module['video_script'], $module['video_url'] ?? '', $encoded[0], $encoded[1], $encoded[2],
                 $module['practical_assignment'], $module['sort_order'],
             ]);
         }

@@ -198,19 +198,6 @@ export default function FloatingAiAssistant() {
   if (location.pathname === "/ai-assistant") return null;
 
   const visibleConversations = filterConversations(conversations, historyQuery);
-  const lastAssistantMessage = [...messages]
-    .reverse()
-    .find((message) => message.role !== "user");
-  const panelAvatarState = isStreaming
-    ? lastAssistantMessage?.content
-      ? "responding"
-      : "thinking"
-    : lastAssistantMessage?.error
-      ? "alert"
-      : lastAssistantMessage?.provider
-        ? "complete"
-        : "idle";
-
   const openPanel = () => {
     setClosing(false);
     setOpen(true);
@@ -283,7 +270,7 @@ export default function FloatingAiAssistant() {
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
                 <AapmIcon
-                  name="solar:cpu-bolt-bold-duotone"
+                  name="ai"
                   className="h-4 w-4"
                 />
               </span>
@@ -404,7 +391,7 @@ export default function FloatingAiAssistant() {
                     >
                       <div className="mb-1.5 flex items-center gap-1.5 font-semibold">
                         <AapmIcon
-                          name="solar:stars-minimalistic-bold-duotone"
+                          name="ai"
                           className="h-3.5 w-3.5 text-brand-orange"
                         />{" "}
                         APPI
@@ -420,6 +407,7 @@ export default function FloatingAiAssistant() {
                           label={streamStatus}
                           steps={streamSteps}
                           compact
+                          avatarState={message.content ? "responding" : "thinking"}
                         />
                       )}
                       {message.content && (
@@ -454,12 +442,6 @@ export default function FloatingAiAssistant() {
               <div ref={endRef} />
               </div>
             </div>
-            {!historyOpen && (
-              <div className="aapm-ai-presence-rail aapm-ai-presence-rail--compact relative z-10 flex h-11 shrink-0 items-end border-t border-border/50 px-4 pb-1" data-state={panelAvatarState} aria-label="Status APPI">
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/0" aria-hidden="true" />
-                <AiAvatar size="sm" state={panelAvatarState} decorative className="relative z-10 shrink-0" />
-              </div>
-            )}
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"

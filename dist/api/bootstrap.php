@@ -152,6 +152,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 summary TEXT NOT NULL DEFAULT \'\',
                 content TEXT NOT NULL,
                 video_script TEXT NOT NULL DEFAULT \'\',
+                video_url TEXT NOT NULL DEFAULT \'\',
                 learning_objectives TEXT NOT NULL DEFAULT \'[]\',
                 key_takeaways TEXT NOT NULL DEFAULT \'[]\',
                 checklist TEXT NOT NULL DEFAULT \'[]\',
@@ -286,6 +287,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 summary TEXT NOT NULL,
                 content MEDIUMTEXT NOT NULL,
                 video_script TEXT NOT NULL,
+                video_url TEXT NULL,
                 learning_objectives LONGTEXT NOT NULL,
                 key_takeaways LONGTEXT NOT NULL,
                 checklist LONGTEXT NOT NULL,
@@ -397,6 +399,81 @@ function ensure_schema(PDO $pdo, string $driver): void
 
     foreach ($statements as $statement) {
         $pdo->exec($statement);
+    }
+
+    ensure_course_module_video_url($pdo, $driver);
+    ensure_default_course_module_videos($pdo);
+}
+
+function ensure_course_module_video_url(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $columns = $pdo->query('PRAGMA table_info(course_modules)')->fetchAll();
+        foreach ($columns as $column) {
+            if (($column['name'] ?? '') === 'video_url') {
+                return;
+            }
+        }
+        $pdo->exec("ALTER TABLE course_modules ADD COLUMN video_url TEXT NOT NULL DEFAULT ''");
+        return;
+    }
+
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['course_modules', 'video_url']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE course_modules ADD COLUMN video_url TEXT NULL AFTER video_script');
+    }
+}
+
+function default_course_module_video_urls(): array
+{
+    return [
+        1 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        2 => 'https://www.youtube.com/watch?v=WDTqNVn7tes',
+        3 => 'https://www.youtube.com/watch?v=M779w9jCmZA',
+        4 => 'https://www.youtube.com/watch?v=M779w9jCmZA',
+        5 => 'https://www.youtube.com/watch?v=WDTqNVn7tes',
+        6 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        7 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        8 => 'https://www.youtube.com/watch?v=V_EellDKgRs',
+        9 => 'https://www.youtube.com/watch?v=Q1lDTpEXmIc',
+        10 => 'https://www.youtube.com/watch?v=Q1lDTpEXmIc',
+        11 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        12 => 'https://www.youtube.com/watch?v=aUckv3knhms',
+        13 => 'https://www.youtube.com/watch?v=WDTqNVn7tes',
+        14 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        15 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        16 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        17 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        18 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        19 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        20 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        21 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        22 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+    ];
+}
+
+function ensure_default_course_module_videos(PDO $pdo): void
+{
+    $migrationKey = 'course_module_video_defaults_20260825';
+    $existing = $pdo->prepare('SELECT 1 FROM app_settings WHERE setting_key = ? LIMIT 1');
+    $existing->execute([$migrationKey]);
+    if ($existing->fetchColumn()) {
+        return;
+    }
+
+    $update = $pdo->prepare("UPDATE course_modules SET video_url = ? WHERE module_number = ? AND (video_url IS NULL OR TRIM(video_url) = '')");
+    foreach (default_course_module_video_urls() as $moduleNumber => $videoUrl) {
+        $update->execute([$videoUrl, $moduleNumber]);
+    }
+
+    $marker = $pdo->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)');
+    try {
+        $marker->execute([$migrationKey, 'complete']);
+    } catch (PDOException $exception) {
+        if ((string) $exception->getCode() !== '23000') {
+            throw $exception;
+        }
     }
 }
 
@@ -811,6 +888,7 @@ function present_module(array $row): array
         'summary' => $row['summary'],
         'content' => $row['content'],
         'videoScript' => $row['video_script'],
+        'videoUrl' => $row['video_url'] ?? '',
         'learningObjectives' => decode_json_field($row['learning_objectives']),
         'keyTakeaways' => decode_json_field($row['key_takeaways']),
         'checklist' => decode_json_field($row['checklist']),
@@ -1290,6 +1368,51 @@ function admin_module_from_id(int $moduleId): ?array
     return $row ?: null;
 }
 
+function normalise_lesson_video_url($value): string
+{
+    $url = trim((string) $value);
+    if ($url === '') {
+        return '';
+    }
+    if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+        return $url;
+    }
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        error_response('URL video harus berupa tautan HTTPS/HTTP yang valid atau path media internal.', 422, 'invalid_video_url');
+    }
+
+    $parts = parse_url($url);
+    $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+        error_response('URL video harus menggunakan HTTPS atau HTTP.', 422, 'invalid_video_url');
+    }
+    $host = preg_replace('/^www\./', '', $host) ?: $host;
+    $path = (string) ($parts['path'] ?? '');
+    $query = [];
+    parse_str((string) ($parts['query'] ?? ''), $query);
+
+    $youtubeId = '';
+    if ($host === 'youtu.be') {
+        $youtubeId = trim(explode('/', trim($path, '/'))[0] ?? '');
+    } elseif (in_array($host, ['youtube.com', 'm.youtube.com', 'youtube-nocookie.com'], true)) {
+        if (isset($query['v'])) {
+            $youtubeId = (string) $query['v'];
+        } elseif (preg_match('#/(?:embed|shorts)/([^/?]+)#', $path, $matches)) {
+            $youtubeId = $matches[1];
+        }
+    }
+    if ($youtubeId !== '' && preg_match('/^[A-Za-z0-9_-]{6,}$/', $youtubeId)) {
+        return 'https://www.youtube-nocookie.com/embed/' . $youtubeId . '?rel=0';
+    }
+
+    if ($host === 'vimeo.com' && preg_match('#/(\d+)(?:/|$)#', $path, $matches)) {
+        return 'https://player.vimeo.com/video/' . $matches[1];
+    }
+
+    return $url;
+}
+
 function admin_module_input(array $input, ?array $existing = null): array
 {
     $levelNumber = (int) ($input['levelNumber'] ?? $input['level_number'] ?? $existing['level_number'] ?? 0);
@@ -1300,6 +1423,7 @@ function admin_module_input(array $input, ?array $existing = null): array
     $summary = profile_text($input['summary'] ?? $existing['summary'] ?? '', 2000);
     $content = trim((string) ($input['content'] ?? $existing['content'] ?? ''));
     $videoScript = profile_text($input['videoScript'] ?? $input['video_script'] ?? $existing['video_script'] ?? '', 12000);
+    $videoUrl = normalise_lesson_video_url($input['videoUrl'] ?? $input['video_url'] ?? $existing['video_url'] ?? '');
     $practicalAssignment = profile_text($input['practicalAssignment'] ?? $input['practical_assignment'] ?? $existing['practical_assignment'] ?? '', 3000);
     $objectives = admin_string_list($input['learningObjectives'] ?? $input['learning_objectives'] ?? decode_json_field($existing['learning_objectives'] ?? '[]'));
     $takeaways = admin_string_list($input['keyTakeaways'] ?? $input['key_takeaways'] ?? decode_json_field($existing['key_takeaways'] ?? '[]'));
@@ -1323,6 +1447,7 @@ function admin_module_input(array $input, ?array $existing = null): array
         'summary' => $summary,
         'content' => $content,
         'videoScript' => $videoScript,
+        'videoUrl' => $videoUrl,
         'learningObjectives' => json_encode($objectives, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         'keyTakeaways' => json_encode($takeaways, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         'checklist' => json_encode($checklist, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -1342,8 +1467,8 @@ function admin_create_module(array $input): array
     if ($data['sortOrder'] === 0) {
         $data['sortOrder'] = ((int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM course_modules')->fetchColumn()) + 1;
     }
-    $insert = db()->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $insert->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder']]);
+    $insert = db()->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, video_url, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $insert->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder']]);
     return present_module(admin_module_from_id((int) db()->lastInsertId()) ?: []);
 }
 
@@ -1366,8 +1491,8 @@ function admin_update_module(int $moduleId, array $input): array
             error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
         }
     }
-    $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, video_script = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
+    $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
     return present_module(admin_module_from_id($moduleId) ?: []);
 }
 

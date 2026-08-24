@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS course_modules (
   summary TEXT NOT NULL,
   content MEDIUMTEXT NOT NULL,
   video_script TEXT NOT NULL,
+  video_url TEXT NULL,
   learning_objectives LONGTEXT NOT NULL,
   key_takeaways LONGTEXT NOT NULL,
   checklist LONGTEXT NOT NULL,

@@ -76,7 +76,7 @@ export default function AcademyShell() {
               {
                 to: "/ai-assistant",
                 label: "APPI",
-                icon: "solar:stars-minimalistic-bold-duotone",
+                icon: "ai",
                 accent: "orange",
               },
             ]}

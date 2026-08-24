@@ -1,5 +1,35 @@
 <?php
 
+function native_seed_video_url(int $moduleNumber): string
+{
+    static $videos = [
+        1 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        2 => 'https://www.youtube.com/watch?v=WDTqNVn7tes',
+        3 => 'https://www.youtube.com/watch?v=M779w9jCmZA',
+        4 => 'https://www.youtube.com/watch?v=M779w9jCmZA',
+        5 => 'https://www.youtube.com/watch?v=WDTqNVn7tes',
+        6 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        7 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        8 => 'https://www.youtube.com/watch?v=V_EellDKgRs',
+        9 => 'https://www.youtube.com/watch?v=Q1lDTpEXmIc',
+        10 => 'https://www.youtube.com/watch?v=Q1lDTpEXmIc',
+        11 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        12 => 'https://www.youtube.com/watch?v=aUckv3knhms',
+        13 => 'https://www.youtube.com/watch?v=WDTqNVn7tes',
+        14 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        15 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        16 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        17 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        18 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        19 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        20 => 'https://www.youtube.com/watch?v=lIHkrDIh4O8',
+        21 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+        22 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
+    ];
+
+    return $videos[$moduleNumber] ?? '';
+}
+
 function native_seed_module(
     int $level,
     string $levelName,
@@ -22,6 +52,7 @@ function native_seed_module(
         'summary' => $summary,
         'content' => $content,
         'video_script' => "Pada lesson ini kita membahas {$title}. Fokuskan pengamatan pada proses, angka KPI, dan tindakan koreksi yang bisa diterapkan di farm.",
+        'video_url' => native_seed_video_url($moduleNumber),
         'learning_objectives' => $objectives,
         'key_takeaways' => $takeaways,
         'checklist' => $checklist,

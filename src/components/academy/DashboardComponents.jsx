@@ -582,7 +582,7 @@ export function QuickToolGrid() {
       to: "/ai-assistant",
       label: "APPI",
       description: "Tanya dengan konteks farm.",
-      icon: "solar:stars-minimalistic-bold-duotone",
+      icon: "ai",
       tone: "orange",
     },
   ];
@@ -640,7 +640,7 @@ export function DashboardWelcome({ user = null } = {}) {
             className="border border-white/20 bg-white/10 text-xs font-semibold text-white shadow-none"
           >
             <AapmIcon
-              name="solar:stars-minimalistic-bold-duotone"
+              name="ai"
               className="h-3.5 w-3.5"
             />{" "}
             E-Course Professional

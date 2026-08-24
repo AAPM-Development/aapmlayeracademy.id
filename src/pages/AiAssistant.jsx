@@ -3,7 +3,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import AiAvatar from "@/components/ai/AiAvatar";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import { Button, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
@@ -157,14 +156,14 @@ function MarkdownAnswer({ content }) {
   );
 }
 
-function AssistantMessage({ message, retryPrompt, onRetry, streamSteps }) {
+function AssistantMessage({ message, retryPrompt, onRetry, streamSteps, avatarState }) {
   const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
     <article className="min-w-0 max-w-2xl">
       <div className="mb-2 flex items-center gap-2">
         <AapmIcon
-          name="solar:stars-minimalistic-bold-duotone"
+          name="ai"
           className="h-4 w-4 text-brand-orange"
         />
         <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
@@ -176,7 +175,7 @@ function AssistantMessage({ message, retryPrompt, onRetry, streamSteps }) {
         )}
       </div>
       {message.streaming && (
-        <AiStreamActivity label={message.streamStatus} steps={streamSteps} />
+        <AiStreamActivity label={message.streamStatus} steps={streamSteps} avatarState={avatarState} />
       )}
       {message.content && (
         <>
@@ -559,19 +558,6 @@ export default function AiAssistant() {
   const contextLabel = includeFarm
     ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif`
     : "Tanpa konteks KPI";
-  const lastAssistantMessage = [...messages]
-    .reverse()
-    .find((message) => message.role !== "user");
-  const shellAvatarState = isStreaming
-    ? lastAssistantMessage?.content
-      ? "responding"
-      : "thinking"
-    : lastAssistantMessage?.error
-      ? "alert"
-      : lastAssistantMessage?.provider
-        ? "complete"
-        : "idle";
-
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isStreaming]);
@@ -630,7 +616,7 @@ export default function AiAssistant() {
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
               <AapmIcon
-                name="solar:cpu-bolt-bold-duotone"
+                name="ai"
                 className="h-4 w-4"
               />
             </span>
@@ -756,6 +742,7 @@ export default function AiAssistant() {
                         key={message.id}
                         message={{ ...message, streamStatus }}
                         streamSteps={streamSteps}
+                        avatarState={message.content ? "responding" : "thinking"}
                         retryPrompt={
                           message.fallback ? messages[index - 1]?.content : ""
                         }
@@ -768,12 +755,6 @@ export default function AiAssistant() {
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
-          <div key={activeConversationId || "draft"} className="aapm-ai-presence-rail relative z-10 flex h-14 shrink-0 items-end border-t border-border/50 px-5 pb-1.5 sm:h-16 sm:px-8 sm:pb-2" data-state={shellAvatarState} aria-label="Status APPI">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/0" aria-hidden="true" />
-            <div className="relative z-10 mx-auto flex w-full max-w-3xl">
-              <AiAvatar size="md" state={shellAvatarState} decorative className="shrink-0" />
-            </div>
-          </div>
         </div>
         <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto max-w-3xl">
