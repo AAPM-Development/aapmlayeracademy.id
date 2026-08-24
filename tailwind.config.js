@@ -9,7 +9,7 @@ module.exports = {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
-  		colors: {
+		colors: {
 			brand: {
 				green: 'var(--brand-aapm-green)',
 				orange: 'var(--brand-aapm-orange)',
@@ -21,7 +21,26 @@ module.exports = {
 			surface: {
 				DEFAULT: 'hsl(var(--surface))',
 				subtle: 'hsl(var(--surface-subtle))',
-				elevated: 'hsl(var(--surface-elevated))'
+				elevated: 'hsl(var(--surface-elevated))',
+				hover: 'hsl(var(--surface-hover))',
+				inset: 'hsl(var(--surface-inset))'
+			},
+			tint: {
+				green: 'hsl(var(--tint-green))',
+				'green-foreground': 'hsl(var(--tint-green-foreground))',
+				'green-border': 'hsl(var(--tint-green-border))',
+				orange: 'hsl(var(--tint-orange))',
+				'orange-foreground': 'hsl(var(--tint-orange-foreground))',
+				'orange-border': 'hsl(var(--tint-orange-border))',
+				blue: 'hsl(var(--tint-blue))',
+				'blue-foreground': 'hsl(var(--tint-blue-foreground))',
+				'blue-border': 'hsl(var(--tint-blue-border))',
+				violet: 'hsl(var(--tint-violet))',
+				'violet-foreground': 'hsl(var(--tint-violet-foreground))',
+				'violet-border': 'hsl(var(--tint-violet-border))',
+				slate: 'hsl(var(--tint-slate))',
+				'slate-foreground': 'hsl(var(--tint-slate-foreground))',
+				'slate-border': 'hsl(var(--tint-slate-border))'
 			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',

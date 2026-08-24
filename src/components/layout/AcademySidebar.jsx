@@ -1,7 +1,9 @@
 import React from "react";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, TrendingUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
+import { Badge } from "@/components/ui/badge";
+import { IconTile } from "@/components/ui/icon-tile";
 import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
 import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
@@ -33,8 +35,9 @@ export default function AcademySidebar({
         </button>
       </div>
 
-      <div className={cn("shrink-0 border-b border-border", collapsed ? "px-3 py-4" : "px-4 py-5")}>
-        <div className={cn("rounded-xl border border-border bg-surface-elevated", collapsed ? "p-2" : "p-3")}>
+      <div className={cn("shrink-0", collapsed ? "px-3 py-4" : "px-4 py-5")}>
+        <div className={cn("relative overflow-hidden rounded-2xl border border-tint-green-border bg-gradient-to-br from-tint-green via-surface-elevated to-tint-orange/35", collapsed ? "p-2" : "p-3")}>
+          <div className="pointer-events-none absolute -right-5 -top-5 h-16 w-16 rounded-full border-8 border-white/40" />
           {collapsed ? (
             <div className="text-center">
               <div className="text-sm font-semibold text-brand-orange">{percent}%</div>
@@ -44,14 +47,19 @@ export default function AcademySidebar({
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="font-medium text-muted-foreground">Learning progress</span>
-                <span className="font-semibold text-brand-orange">{percent}%</span>
+              <div className="relative flex items-start gap-2.5">
+                <IconTile icon={TrendingUp} tone="orange" size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="font-semibold text-foreground">Learning progress</span>
+                    <Badge variant="soft" className="bg-card/70 px-2 py-0.5 text-[10px] tabular-nums text-brand-orange">{percent}%</Badge>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{completed} dari {TOTAL_MODULES} modul selesai</div>
+                </div>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-foreground/10">
                 <div className="h-full rounded-full bg-brand-orange transition-[width]" style={{ width: `${percent}%` }} />
               </div>
-              <div className="mt-2 text-[11px] text-muted-foreground">{completed} dari {TOTAL_MODULES} modul selesai</div>
             </>
           )}
         </div>
@@ -74,7 +82,7 @@ export default function AcademySidebar({
                     className={({ isActive }) => cn(
                       "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       collapsed && "justify-center px-0",
-                      isActive ? "bg-brand-green/10 font-semibold text-brand-green" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      isActive ? "bg-brand-green/10 font-semibold text-brand-green shadow-sm ring-1 ring-brand-green/10" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
@@ -88,7 +96,7 @@ export default function AcademySidebar({
         ))}
       </nav>
 
-      <div className={cn("shrink-0 border-t border-border", collapsed ? "p-3" : "p-4")}>
+      <div className={cn("shrink-0", collapsed ? "p-3" : "p-4")}>
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-semibold text-brand-green">
             {displayName.slice(0, 1).toUpperCase()}

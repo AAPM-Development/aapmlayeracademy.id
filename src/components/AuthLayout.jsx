@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import AppBrand from "@/components/AppBrand";
+import { IconTile } from "@/components/ui/icon-tile";
 
 const academyInsights = [
   "Di balik hasil yang konsisten, ada keputusan kecil yang diamati, dicatat, dan dijalankan dengan disiplin.",
@@ -80,23 +81,22 @@ function AcademyVideoPanel() {
 
 /** @param {any} props */
 function DefaultAuthLayout(props) {
-  const { title, subtitle, footer, children } = props;
+  const { title, subtitle, footer, children, icon: PageIcon = null } = props;
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="auth-ambient flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <div className="mb-6 flex justify-center">
-            <AppBrand className="h-16 w-auto max-w-[260px]" />
+        <div className="mb-8 text-center">
+          <div className="mb-7 flex justify-center">
+            <AppBrand className="h-12 w-auto max-w-[220px]" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">{title}</h1>
-          {subtitle && <p className="text-muted-foreground mt-2">{subtitle}</p>}
+          {PageIcon && <div className="mb-5 flex justify-center"><IconTile icon={PageIcon} tone="green" size="lg" /></div>}
+          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground">{title}</h1>
+          {subtitle && <p className="mt-3 text-sm leading-6 text-muted-foreground">{subtitle}</p>}
         </div>
-        <div className="bg-card rounded-2xl shadow-sm border border-border p-8">
+        <div className="rounded-[1.5rem] border border-border/70 bg-card/95 p-6 shadow-[var(--card-shadow)] sm:p-8">
           {children}
         </div>
-        {footer && (
-          <p className="text-center text-sm text-muted-foreground mt-6">{footer}</p>
-        )}
+        {footer && <p className="mt-6 text-center text-sm text-muted-foreground">{footer}</p>}
       </div>
     </div>
   );
@@ -107,22 +107,14 @@ function LoginAuthLayout(props) {
   const { title, subtitle, footer, children } = props;
   return (
     <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
-      <main className="flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
-        <div className="w-full max-w-[420px]">
-          <div className="mb-10 text-center">
-            <div className="flex justify-center">
-              <AppBrand className="h-12 w-auto max-w-[260px]" />
-            </div>
-            <div className="mt-12">
-              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mx-auto mt-3 max-w-sm text-base leading-7 text-muted-foreground">
-                  {subtitle}
-                </p>
-              )}
-            </div>
+      <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
+        <div className="absolute inset-x-6 top-7 flex justify-center sm:top-8 lg:inset-x-auto lg:left-12 lg:justify-start xl:left-16">
+          <AppBrand className="h-10 w-auto max-w-[220px]" />
+        </div>
+        <div className="w-full max-w-[420px] pt-10 lg:pt-0">
+          <div className="mb-9">
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl">{title}</h1>
+            {subtitle && <p className="mt-3 max-w-sm text-base leading-7 text-muted-foreground">{subtitle}</p>}
           </div>
 
           {children}

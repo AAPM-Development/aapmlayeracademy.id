@@ -18,7 +18,7 @@ export default function PasswordField({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="text-xs font-semibold text-foreground">{label}</Label>
       <div className="relative">
         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
         <Input
@@ -29,7 +29,7 @@ export default function PasswordField({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className="pl-10 pr-11 h-12"
+          className="h-12 rounded-xl border-border/80 bg-surface-subtle pl-10 pr-11 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
           minLength={minLength}
           required={required}
         />

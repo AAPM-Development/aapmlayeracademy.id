@@ -72,7 +72,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <LoginLabel htmlFor="email" className="text-sm text-foreground">Email address</LoginLabel>
+          <LoginLabel htmlFor="email" className="text-xs font-semibold text-foreground">Email address</LoginLabel>
           <LoginInput
             id="email"
             type="email"
@@ -81,7 +81,7 @@ export default function Login() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-12 rounded-lg bg-background px-3"
+            className="h-12 rounded-xl border-border/80 bg-surface-subtle px-3 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
             required
           />
         </div>
@@ -106,7 +106,7 @@ export default function Login() {
 
         <Button
           type="submit"
-          className="h-12 w-full rounded-lg bg-[var(--brand-aapm-green)] font-semibold text-white shadow-sm hover:bg-[#286b2f]"
+          className="h-12 w-full rounded-xl bg-[var(--brand-aapm-green)] font-semibold text-white shadow-[var(--card-shadow)] hover:-translate-y-0.5 hover:bg-[#286b2f]"
           disabled={loading}
         >
           {loading ? (
@@ -129,7 +129,7 @@ export default function Login() {
           <Button
             type="button"
             variant="outline"
-            className="h-12 w-full rounded-lg bg-background font-medium"
+            className="h-12 w-full rounded-xl bg-surface-subtle font-medium shadow-none hover:bg-surface-hover"
             onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`; }}
           >
             <GoogleIcon />

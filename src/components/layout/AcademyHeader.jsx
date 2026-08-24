@@ -1,6 +1,7 @@
 import React from "react";
 import { Menu, Moon, PanelLeft, Sun } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,7 +28,7 @@ export default function AcademyHeader({
   const displayName = user?.full_name || user?.email || "Peserta";
 
   return (
-    <header className="sticky top-0 z-30 flex h-[73px] shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-[73px] shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
@@ -52,10 +53,10 @@ export default function AcademyHeader({
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2">
-        <div className="hidden items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-1.5 text-xs text-muted-foreground lg:flex">
+        <Badge variant="soft" className="hidden gap-2 bg-surface-subtle text-xs font-medium text-muted-foreground lg:inline-flex">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
           Academy workspace
-        </div>
+        </Badge>
         <Button type="button" variant="ghost" size="icon" onClick={onToggleTheme} aria-label={themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}>
           {themeMode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>

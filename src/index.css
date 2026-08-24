@@ -52,6 +52,23 @@
     --surface: 0 0% 100%;
     --surface-subtle: 150 18% 97%;
     --surface-elevated: 0 0% 100%;
+    --surface-hover: 150 18% 95%;
+    --surface-inset: 150 14% 94%;
+    --tint-green: 145 51% 93%;
+    --tint-green-foreground: 153 93% 29%;
+    --tint-green-border: 145 64% 82%;
+    --tint-orange: 39 100% 94%;
+    --tint-orange-foreground: 34 100% 42%;
+    --tint-orange-border: 39 100% 82%;
+    --tint-blue: 201 100% 95%;
+    --tint-blue-foreground: 198 100% 40%;
+    --tint-blue-border: 201 82% 84%;
+    --tint-violet: 252 100% 96%;
+    --tint-violet-foreground: 258 72% 56%;
+    --tint-violet-border: 254 100% 89%;
+    --tint-slate: 214 33% 95%;
+    --tint-slate-foreground: 214 34% 33%;
+    --tint-slate-border: 214 30% 86%;
     --success: 142 71% 45%;
     --warning: 38 92% 50%;
     --danger: 0 72% 51%;
@@ -77,6 +94,8 @@
     --sidebar-border: 150 13% 89%;
     --sidebar-ring: 145 45% 36%;
     --card-shadow: 0 16px 38px -30px rgba(26, 58, 37, 0.55);
+    --card-shadow-hover: 0 26px 52px -34px rgba(26, 58, 37, 0.65);
+    --hero-shadow: 0 24px 46px -28px rgba(231, 84, 34, 0.62);
   }
 
   .dark {
@@ -107,6 +126,23 @@
     --surface: 0 0% 3.9%;
     --surface-subtle: 0 0% 14.9%;
     --surface-elevated: 0 0% 7%;
+    --surface-hover: 0 0% 16%;
+    --surface-inset: 0 0% 12%;
+    --tint-green: 145 35% 18%;
+    --tint-green-foreground: 145 70% 72%;
+    --tint-green-border: 145 35% 28%;
+    --tint-orange: 29 45% 20%;
+    --tint-orange-foreground: 34 100% 72%;
+    --tint-orange-border: 29 45% 32%;
+    --tint-blue: 201 45% 19%;
+    --tint-blue-foreground: 198 100% 72%;
+    --tint-blue-border: 201 42% 30%;
+    --tint-violet: 252 35% 20%;
+    --tint-violet-foreground: 258 100% 80%;
+    --tint-violet-border: 254 35% 32%;
+    --tint-slate: 214 24% 19%;
+    --tint-slate-foreground: 214 44% 76%;
+    --tint-slate-border: 214 24% 30%;
     --success: 142 55% 38%;
     --warning: 38 82% 45%;
     --danger: 0 62% 40%;
@@ -127,6 +163,9 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --card-shadow: 0 18px 42px -30px rgba(0, 0, 0, 0.7);
+    --card-shadow-hover: 0 28px 54px -34px rgba(0, 0, 0, 0.85);
+    --hero-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.75);
   }
 }
 
@@ -169,6 +208,19 @@
     background:
       radial-gradient(circle at 8% -8%, rgba(47, 125, 66, 0.08), transparent 28rem),
       radial-gradient(circle at 100% 8%, rgba(217, 85, 29, 0.06), transparent 24rem),
+      hsl(var(--background));
+  }
+
+  .auth-ambient {
+    background:
+      radial-gradient(circle at 15% 8%, rgba(47, 125, 66, 0.08), transparent 22rem),
+      radial-gradient(circle at 88% 92%, rgba(217, 85, 29, 0.06), transparent 20rem),
+      hsl(var(--background));
+  }
+
+  .auth-pane {
+    background:
+      radial-gradient(circle at 12% 16%, rgba(47, 125, 66, 0.07), transparent 19rem),
       hsl(var(--background));
   }
 
