@@ -334,11 +334,17 @@ function ai_anthropic_completion(array $settings, string $apiKey, string $system
 
 function ai_provider_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
 {
-    return match ($settings['adapter']) {
-        'gemini' => ai_gemini_completion($settings, $apiKey, $systemPrompt, $userPrompt),
-        'anthropic' => ai_anthropic_completion($settings, $apiKey, $systemPrompt, $userPrompt),
-        default => ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt),
-    };
+    // cPanel runs PHP 7.4. `match` requires PHP 8.0 and would prevent every
+    // API route from loading because this file is required by the API router.
+    if ($settings['adapter'] === 'gemini') {
+        return ai_gemini_completion($settings, $apiKey, $systemPrompt, $userPrompt);
+    }
+
+    if ($settings['adapter'] === 'anthropic') {
+        return ai_anthropic_completion($settings, $apiKey, $systemPrompt, $userPrompt);
+    }
+
+    return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt);
 }
 
 function ai_assistant_reply(string $message, array $farmContext): array
