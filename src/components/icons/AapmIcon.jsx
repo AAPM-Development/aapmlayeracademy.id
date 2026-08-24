@@ -27,7 +27,7 @@ export const aapmIconSources = Object.freeze({
   progress: "solar:chart-square-bold-duotone",
   themeLight: "solar:sun-2-bold-duotone",
   themeDark: "solar:moon-bold-duotone",
-  lock: "solar:lock-password-outline",
+  lock: "solar:lock-keyhole-minimalistic-bold-duotone",
   mail: "solar:letter-bold",
   eye: "solar:eye-bold",
   eyeOff: "solar:eye-closed-bold",

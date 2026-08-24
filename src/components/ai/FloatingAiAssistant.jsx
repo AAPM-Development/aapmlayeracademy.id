@@ -283,7 +283,7 @@ export default function FloatingAiAssistant() {
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
                 <AapmIcon
-                  name="solar:stars-minimalistic-bold-duotone"
+                  name="solar:cpu-bolt-bold-duotone"
                   className="h-4 w-4"
                 />
               </span>
@@ -339,8 +339,8 @@ export default function FloatingAiAssistant() {
               </Button>
             </div>
           </header>
-          <div className="relative min-h-0 flex-1">
-            <div className="h-full overflow-y-auto px-4 py-4">
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="flex min-h-full flex-col gap-4">
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
@@ -451,22 +451,15 @@ export default function FloatingAiAssistant() {
                   ),
                 )
               )}
-              {!historyOpen && (
-                <div
-                  className="flex items-end pt-1"
-                  aria-label="Status APPI"
-                >
-                  <AiAvatar
-                    size="sm"
-                    state={panelAvatarState}
-                    decorative
-                    className="shrink-0"
-                  />
-                </div>
-              )}
               <div ref={endRef} />
               </div>
             </div>
+            {!historyOpen && (
+              <div className="aapm-ai-presence-rail aapm-ai-presence-rail--compact relative z-10 flex h-11 shrink-0 items-end border-t border-border/50 px-4 pb-1" data-state={panelAvatarState} aria-label="Status APPI">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/0" aria-hidden="true" />
+                <AiAvatar size="sm" state={panelAvatarState} decorative className="relative z-10 shrink-0" />
+              </div>
+            )}
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
@@ -540,7 +533,15 @@ export default function FloatingAiAssistant() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteConversation(conversation.id)}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Hapus percakapan \"${conversation.title}\"? Riwayat ini tidak dapat dipulihkan.`,
+                              )
+                            ) {
+                              deleteConversation(conversation.id);
+                            }
+                          }}
                           disabled={isStreaming}
                           className="h-8 w-8 shrink-0 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
                           aria-label={`Hapus percakapan ${conversation.title}`}
@@ -640,14 +641,15 @@ export default function FloatingAiAssistant() {
               />
               <Button
                 type="button"
+                variant="ghost"
                 size="icon"
                 onClick={() => submit()}
                 disabled={(!input.trim() && !imageAttachment) || isStreaming}
-                className="h-8 w-8 shrink-0 rounded-lg bg-brand-orange text-white hover:bg-brand-orange/90"
+                className="h-8 w-8 shrink-0 rounded-lg text-brand-orange hover:bg-tint-orange hover:text-brand-orange"
               >
                 <AapmIcon
-                  name="solar:plane-2-bold-duotone"
-                  className="h-3.5 w-3.5"
+                  name="solar:plain-2-bold"
+                  className="h-4 w-4"
                 />
                 <span className="sr-only">Kirim</span>
               </Button>
@@ -688,7 +690,7 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.5rem)] right-4 z-[75] inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand-orange/30 bg-background p-1 text-foreground shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] transition-transform hover:-translate-y-0.5 hover:border-brand-orange/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:h-12 sm:w-auto sm:justify-start sm:gap-2 sm:py-1.5 sm:pl-2 sm:pr-2.5 lg:bottom-5 lg:right-5"
+          className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.5rem)] right-4 z-[75] inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-background/95 p-1 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-transform hover:-translate-y-0.5 hover:border-brand-orange/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:w-auto sm:justify-start sm:gap-2 sm:rounded-full sm:py-1.5 sm:pl-2 sm:pr-2.5 lg:bottom-5 lg:right-5"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >

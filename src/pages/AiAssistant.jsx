@@ -335,9 +335,17 @@ function ConversationList({
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => onDelete(conversation.id)}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Hapus percakapan \"${conversation.title}\"? Riwayat ini tidak dapat dipulihkan.`,
+                    )
+                  ) {
+                    onDelete(conversation.id);
+                  }
+                }}
                 disabled={disabled}
-                className="mr-1 h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="mr-1 h-7 w-7 shrink-0 border border-border bg-background text-muted-foreground transition-colors hover:border-danger/30 hover:text-danger"
                 aria-label={`Hapus percakapan ${conversation.title}`}
               >
                 <AapmIcon
@@ -401,7 +409,7 @@ function MobileConversationSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Riwayat percakapan APPI"
-        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[85] flex max-h-[min(76dvh,38rem)] min-h-[20rem] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.2)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] flex-col overflow-hidden rounded-t-[1.5rem] border-x border-t border-border bg-background shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
       >
         <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div>
@@ -486,13 +494,21 @@ function MobileConversationSheet({
                     {conversation.lastMessagePreview || "Belum ada pesan"}
                   </span>
                 </button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(conversation.id)}
-                  disabled={disabled}
-                  className="mr-0.5 h-8 w-8 shrink-0"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Hapus percakapan \"${conversation.title}\"? Riwayat ini tidak dapat dipulihkan.`,
+                    )
+                  ) {
+                    onDelete(conversation.id);
+                  }
+                }}
+                disabled={disabled}
+                className="mr-0.5 h-8 w-8 shrink-0 border border-border bg-background text-muted-foreground hover:border-danger/30 hover:text-danger"
                   aria-label={`Hapus percakapan ${conversation.title}`}
                 >
                   <AapmIcon
@@ -599,7 +615,7 @@ export default function AiAssistant() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] min-h-[31rem] overflow-hidden bg-background sm:h-[calc(100dvh-73px)] sm:min-h-[33rem]">
+    <div className="flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -614,7 +630,7 @@ export default function AiAssistant() {
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
               <AapmIcon
-                name="solar:stars-minimalistic-bold-duotone"
+                name="solar:cpu-bolt-bold-duotone"
                 className="h-4 w-4"
               />
             </span>
@@ -683,8 +699,8 @@ export default function AiAssistant() {
             </Button>
           </div>
         </header>
-        <div className="relative min-h-0 flex-1">
-          <ScrollArea className="h-full">
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="mx-auto flex w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-9">
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
@@ -749,17 +765,15 @@ export default function AiAssistant() {
                   )}
                 </div>
               )}
-              <div className="flex items-end pt-5" aria-label="Status APPI">
-                <AiAvatar
-                  size="md"
-                  state={shellAvatarState}
-                  decorative
-                  className="shrink-0"
-                />
-              </div>
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
+          <div key={activeConversationId || "draft"} className="aapm-ai-presence-rail relative z-10 flex h-14 shrink-0 items-end border-t border-border/50 px-5 pb-1.5 sm:h-16 sm:px-8 sm:pb-2" data-state={shellAvatarState} aria-label="Status APPI">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/0" aria-hidden="true" />
+            <div className="relative z-10 mx-auto flex w-full max-w-3xl">
+              <AiAvatar size="md" state={shellAvatarState} decorative className="shrink-0" />
+            </div>
+          </div>
         </div>
         <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto max-w-3xl">
@@ -826,14 +840,15 @@ export default function AiAssistant() {
                 />
                 <Button
                   type="button"
+                  variant="ghost"
                   size="icon"
                   onClick={() => submit()}
                   disabled={isStreaming || (!input.trim() && !imageAttachment)}
-                  className="h-9 w-9 shrink-0 rounded-xl bg-brand-orange text-white hover:bg-brand-orange/90"
+                  className="h-9 w-9 shrink-0 rounded-xl text-brand-orange hover:bg-tint-orange hover:text-brand-orange"
                 >
                   <AapmIcon
-                    name="solar:plane-2-bold-duotone"
-                    className="h-4 w-4"
+                    name="solar:plain-2-bold"
+                    className="h-[18px] w-[18px]"
                   />
                   <span className="sr-only">Kirim pertanyaan</span>
                 </Button>

@@ -17,6 +17,7 @@ import Calculators from '@/pages/Calculators';
 import KpiDashboard from '@/pages/KpiDashboard';
 import AiAssistant from '@/pages/AiAssistant';
 import Certification from '@/pages/Certification';
+import Profile from '@/pages/Profile';
 import FinalExam from '@/pages/FinalExam';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -27,6 +28,8 @@ import AdminCourses from '@/pages/admin/AdminCourses';
 import AdminCourseDetail from '@/pages/admin/AdminCourseDetail';
 import AdminLearners from '@/pages/admin/AdminLearners';
 import AdminLearnerDetail from '@/pages/admin/AdminLearnerDetail';
+import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminModuleEditor from '@/pages/admin/AdminModuleEditor';
 import AdminAiSettings from '@/pages/admin/AdminAiSettings';
 import AdminWorkspaceStatus from '@/pages/admin/AdminWorkspaceStatus';
 import { Navigate } from 'react-router-dom';
@@ -67,14 +70,17 @@ const AuthenticatedApp = () => {
           <Route path="/kpi" element={<KpiDashboard />} />
           <Route path="/ai-assistant" element={<AiAssistant />} />
           <Route path="/certification" element={<Certification />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
         <Route element={<AdminRoute />}>
           <Route element={<AdminShell />}>
             <Route path="/admin" element={<AdminOverview />} />
             <Route path="/admin/courses" element={<AdminCourses />} />
+            <Route path="/admin/courses/:courseId/modules/:moduleId" element={<AdminModuleEditor />} />
             <Route path="/admin/courses/:courseId" element={<AdminCourseDetail />} />
           <Route path="/admin/learners" element={<AdminLearners />} />
           <Route path="/admin/learners/:learnerId" element={<AdminLearnerDetail />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/ai-settings" element={<AdminAiSettings />} />
           <Route path="/admin/workspace-status" element={<AdminWorkspaceStatus />} />
           </Route>

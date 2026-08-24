@@ -23,7 +23,7 @@ export default function AdminOverview() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {(data?.metrics || []).map((metric) => {
             const appearance = metricAppearance[metric.key] || metricAppearance.analytics;
-            return <Surface key={metric.key} tone={appearance.tone} className="p-4 shadow-none"><div className="flex items-start justify-between gap-3"><div className="rounded-xl bg-white/70 p-2"><Icon name={appearance.icon} className="h-5 w-5" /></div><span className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">Live data</span></div><div className="mt-5 text-3xl font-semibold tracking-[-0.05em] tabular-nums">{metric.value}{metric.suffix || ""}</div><div className="mt-1 text-sm font-semibold">{metric.label}</div><div className="mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</div></Surface>;
+            return <Surface key={metric.key} tone={appearance.tone} className="p-4 shadow-none"><div className="flex items-start justify-between gap-3"><div className="rounded-xl bg-background/80 p-2"><Icon name={appearance.icon} className="h-5 w-5" /></div><span className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">Live data</span></div><div className="mt-5 text-3xl font-semibold tracking-[-0.05em] tabular-nums">{metric.value}{metric.suffix || ""}</div><div className="mt-1 text-sm font-semibold">{metric.label}</div><div className="mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</div></Surface>;
           })}
         </div>
 

@@ -38,6 +38,127 @@ export function useAdminLearner(learnerId) {
   });
 }
 
+export function useAdminUsers(search = "") {
+  return useQuery({
+    queryKey: ["admin", "users", search],
+    queryFn: () => nativeApi.admin.users.list(search),
+  });
+}
+
+export function useCreateAdminUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => nativeApi.admin.users.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "learners"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+    },
+  });
+}
+
+export function useUpdateAdminUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, data }) => nativeApi.admin.users.update(userId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "learners"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+    },
+  });
+}
+
+export function useResetAdminUserPassword() {
+  return useMutation({
+    mutationFn: ({ userId, password }) =>
+      nativeApi.admin.users.resetPassword(userId, password),
+  });
+}
+
+export function useAdminModule(moduleId) {
+  return useQuery({
+    queryKey: ["admin", "modules", moduleId],
+    queryFn: () => nativeApi.admin.modules.detail(moduleId),
+    enabled: Boolean(moduleId),
+  });
+}
+
+export function useAdminModuleQuestions(moduleId) {
+  return useQuery({
+    queryKey: ["admin", "modules", moduleId, "questions"],
+    queryFn: () => nativeApi.admin.modules.questions(moduleId),
+    enabled: Boolean(moduleId),
+  });
+}
+
+function invalidateCourseData(queryClient) {
+  queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+  queryClient.invalidateQueries({ queryKey: ["courseModules"] });
+  queryClient.invalidateQueries({ queryKey: ["quizQuestions"] });
+}
+
+export function useCreateAdminModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => nativeApi.admin.modules.create(data),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
+export function useUpdateAdminModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ moduleId, data }) => nativeApi.admin.modules.update(moduleId, data),
+    onSuccess: (_, variables) => {
+      invalidateCourseData(queryClient);
+      queryClient.invalidateQueries({ queryKey: ["admin", "modules", variables.moduleId] });
+    },
+  });
+}
+
+export function useDeleteAdminModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (moduleId) => nativeApi.admin.modules.delete(moduleId),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
+export function useReorderAdminModules() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (items) => nativeApi.admin.modules.reorder(items),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
+export function useSaveAdminQuestion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ moduleId, questionId, data }) =>
+      questionId
+        ? nativeApi.admin.modules.updateQuestion(moduleId, questionId, data)
+        : nativeApi.admin.modules.createQuestion(moduleId, data),
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "modules", variables.moduleId, "questions"],
+      }),
+  });
+}
+
+export function useDeleteAdminQuestion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ moduleId, questionId }) =>
+      nativeApi.admin.modules.deleteQuestion(moduleId, questionId),
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "modules", variables.moduleId, "questions"],
+      }),
+  });
+}
+
 export function useAdminAiSettings() {
   return useQuery({
     queryKey: ["admin", "ai-settings"],

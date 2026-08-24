@@ -64,7 +64,7 @@ export default function AcademyShell() {
             onLogout={handleLogout}
             user={user}
           />
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          <main className="min-h-0 flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
             <Outlet />
           </main>
           <MobileBottomNav

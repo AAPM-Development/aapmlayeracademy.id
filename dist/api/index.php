@@ -264,6 +264,21 @@ try {
         json_response(['ok' => true]);
     }
 
+    if ($path === 'profile' && $method === 'GET') {
+        json_response(profile_data(require_user()));
+    }
+
+    if ($path === 'profile' && $method === 'PUT') {
+        $user = require_user();
+        require_csrf();
+        json_response(update_profile_data($user, request_json()));
+    }
+
+    if ($path === 'hall-of-fame' && $method === 'GET') {
+        require_user();
+        json_response(hall_of_fame_data());
+    }
+
     if ($path === 'admin/overview' && $method === 'GET') {
         require_admin();
         json_response(admin_overview_data());
@@ -295,6 +310,90 @@ try {
             error_response('Learner tidak ditemukan.', 404, 'not_found');
         }
         json_response($learner);
+    }
+
+    if ($path === 'admin/users' && $method === 'GET') {
+        require_admin();
+        json_response(['users' => admin_user_list((string) ($_GET['search'] ?? ''))]);
+    }
+
+    if ($path === 'admin/users' && $method === 'POST') {
+        require_admin();
+        require_csrf();
+        json_response(['user' => admin_create_user(request_json())], 201);
+    }
+
+    if (preg_match('#^admin/users/(\\d+)$#', $path, $matches) && $method === 'PUT') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(['user' => admin_update_user($actor, (int) $matches[1], request_json())]);
+    }
+
+    if (preg_match('#^admin/users/(\\d+)/password$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        $input = request_json();
+        admin_reset_user_password((int) $matches[1], (string) ($input['password'] ?? ''));
+        json_response(['ok' => true]);
+    }
+
+    if ($path === 'admin/modules' && $method === 'POST') {
+        require_admin();
+        require_csrf();
+        json_response(['module' => admin_create_module(request_json())], 201);
+    }
+
+    if ($path === 'admin/modules/reorder' && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['course' => admin_reorder_modules($input['items'] ?? [])]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        $module = admin_module_from_id((int) $matches[1]);
+        if (!$module) {
+            error_response('Modul tidak ditemukan.', 404, 'not_found');
+        }
+        json_response(['module' => present_module($module)]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        json_response(['module' => admin_update_module((int) $matches[1], request_json())]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
+        require_admin();
+        require_csrf();
+        admin_delete_module((int) $matches[1]);
+        json_response(['ok' => true]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(['questions' => admin_module_questions((int) $matches[1])]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'POST') {
+        require_admin();
+        require_csrf();
+        json_response(['question' => admin_create_question((int) $matches[1], request_json())], 201);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/questions/(\\d+)$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        json_response(['question' => admin_update_question((int) $matches[1], (int) $matches[2], request_json())]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/questions/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
+        require_admin();
+        require_csrf();
+        admin_delete_question((int) $matches[1], (int) $matches[2]);
+        json_response(['ok' => true]);
     }
 
     if ($path === 'admin/ai-settings' && $method === 'GET') {

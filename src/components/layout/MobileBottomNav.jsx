@@ -7,7 +7,7 @@ export default function MobileBottomNav({ items = [], onOpenMenu = () => {} }) {
   return (
     <nav
       aria-label="Navigasi cepat"
-      className="flex h-[calc(4rem+env(safe-area-inset-bottom))] shrink-0 items-start border-t border-border/80 bg-background/95 px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] items-start border-t border-border/80 bg-background/95 px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-[0_-10px_26px_hsl(var(--foreground)/0.07)] backdrop-blur-xl lg:hidden"
     >
       {items.map((item) => (
         <NavLink

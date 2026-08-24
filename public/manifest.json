@@ -7,16 +7,22 @@
   "theme_color": "#318139",
   "icons": [
     {
-      "src": "/brand/aapm/app-icon.svg",
+      "src": "/brand/aapm/app-icon-16.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/brand/aapm/app-icon.svg",
+      "src": "/brand/aapm/app-icon-15.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
+    },
+    {
+      "src": "/brand/aapm/app-icon-17.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

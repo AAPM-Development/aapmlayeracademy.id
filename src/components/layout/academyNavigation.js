@@ -25,6 +25,7 @@ export const academyNavigation = [
   {
     label: "Achievement",
     items: [
+      { to: "/profile", label: "Profile & Prestasi", icon: "solar:user-circle-bold-duotone" },
       { to: "/certification", label: "Certification", icon: "certificate" },
       { to: "/final-exam", label: "Final Exam", icon: "solar:cup-star-bold" },
     ],

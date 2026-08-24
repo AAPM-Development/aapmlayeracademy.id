@@ -40,13 +40,13 @@ export default function AdminShell() {
           <div className="flex min-w-0 items-center gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Administration</div><div className="truncate text-sm font-semibold">{location.pathname === "/admin" ? "Overview" : "Academy management"}</div></div></div>
           <div className="flex items-center gap-1.5"><Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/">Buka Academy</Link></Button><IconButton variant="ghost" onClick={toggleTheme} label={mode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}><AapmIcon name={mode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" /></IconButton><Button type="button" variant="outline" className="hidden text-xs sm:inline-flex" onClick={() => logout()}><AapmIcon name="logout" /> {displayName} · Keluar</Button></div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto"><Outlet /></main>
+        <main className="min-h-0 flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"><Outlet /></main>
         <MobileBottomNav
           onOpenMenu={() => setMobileOpen(true)}
           items={[
             { to: "/admin", label: "Overview", icon: "dashboard", end: true },
             { to: "/admin/courses", label: "Course", icon: "course" },
-            { to: "/admin/learners", label: "Learners", icon: "users" },
+            { to: "/admin/users", label: "Users", icon: "users" },
             { to: "/admin/ai-settings", label: "AI", icon: "ai", accent: "orange" },
           ]}
         />

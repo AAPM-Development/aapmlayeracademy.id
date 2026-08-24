@@ -1,7 +1,7 @@
 export const adminPrimaryNavigation = [
   { to: "/admin", label: "Overview", icon: "dashboard", end: true },
   { to: "/admin/courses", label: "Course Management", icon: "course" },
-  { to: "/admin/learners", label: "Learners", icon: "users" },
+  { to: "/admin/users", label: "User management", icon: "users" },
   { to: "/admin/ai-settings", label: "AI Settings", icon: "ai" },
 ];
 
@@ -14,16 +14,6 @@ export const adminSecondaryNavigation = [
 ];
 
 export const adminPlannedCapabilities = [
-  {
-    label: "Course CMS",
-    detail: "Editor, publish, dan urutan modul memerlukan endpoint pengelolaan konten native.",
-    icon: "modules",
-  },
-  {
-    label: "Assessment",
-    detail: "Bank soal dan penilaian terpusat belum diekspos oleh API native.",
-    icon: "assessment",
-  },
   {
     label: "Certificates",
     detail: "Data sertifikat sudah dapat dibaca per learner; penerbitan global memerlukan endpoint baru.",

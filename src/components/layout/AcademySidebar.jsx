@@ -19,6 +19,7 @@ export default function AcademySidebar({
   const completed = getCompletedModuleSet(progress).size;
   const percent = Math.round((completed / TOTAL_MODULES) * 100);
   const displayName = user?.full_name || user?.email || "Peserta";
+  const isAdmin = user?.role === "admin";
 
   return (
     <aside
@@ -30,10 +31,10 @@ export default function AcademySidebar({
     >
       <div
         className={cn(
-          "flex h-[84px] shrink-0 items-center border-b border-[hsl(var(--surface-border))]",
+          "flex h-[73px] shrink-0 items-center border-b border-[hsl(var(--surface-border))]",
           collapsed
-            ? "flex-col justify-center gap-1 px-3"
-            : "justify-between px-5",
+            ? "justify-center gap-1 px-2"
+            : "justify-between gap-3 px-5",
         )}
       >
         <Link
@@ -47,10 +48,10 @@ export default function AcademySidebar({
         >
           <AppBrand
             variant={collapsed ? "icon" : "logo"}
-            className={collapsed ? "h-9 w-9" : "h-11 w-auto max-w-[182px]"}
+            className={collapsed ? "h-8 w-8" : "h-10 w-auto max-w-[176px]"}
           />
           {!collapsed && (
-            <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Learning workspace
             </span>
           )}
@@ -59,7 +60,7 @@ export default function AcademySidebar({
           <IconButton
             onClick={onToggle}
             size="sm"
-            className={cn("shrink-0", collapsed && "h-7 w-7")}
+            className={cn("h-8 w-8 shrink-0 rounded-lg border border-border/70 bg-background/80 text-muted-foreground hover:bg-surface-hover hover:text-foreground", collapsed && "h-7 w-7")}
             label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
           >
             <AapmIcon
@@ -184,6 +185,20 @@ export default function AcademySidebar({
       </nav>
 
       <div className={cn("shrink-0", collapsed ? "p-3" : "p-4")}>
+        {isAdmin && (
+          <Link
+            to="/admin"
+            onClick={onNavigate}
+            title={collapsed ? "Panel Admin" : undefined}
+            className={cn(
+              "mb-3 flex items-center gap-2 rounded-xl border border-tint-orange-border bg-tint-orange text-tint-orange-foreground transition-colors hover:bg-brand-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              collapsed ? "h-10 justify-center" : "px-3 py-2.5 text-xs font-semibold",
+            )}
+          >
+            <AapmIcon name="dashboard" className="h-4 w-4" />
+            {!collapsed && <span>Panel Admin</span>}
+          </Link>
+        )}
         <div
           className={cn(
             "flex items-center gap-3",
@@ -194,14 +209,14 @@ export default function AcademySidebar({
             {displayName.slice(0, 1).toUpperCase()}
           </div>
           {!collapsed && (
-            <div className="min-w-0 flex-1">
+            <Link to="/profile" onClick={onNavigate} className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div className="truncate text-xs font-semibold text-foreground">
                 {displayName}
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Layer Farm learner
+                Lihat profil & prestasi
               </div>
-            </div>
+            </Link>
           )}
           <IconButton
             onClick={onLogout}

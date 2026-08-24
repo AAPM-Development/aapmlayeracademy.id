@@ -168,6 +168,12 @@ export const nativeApi = {
     list: () => request("/certificates"),
     create: (data) => request("/certificates", json(data)),
   },
+  profile: {
+    get: () => request("/profile"),
+    update: (data) =>
+      request("/profile", { method: "PUT", body: JSON.stringify(data) }),
+    hallOfFame: () => request("/hall-of-fame"),
+  },
   farmData: {
     list: () => request("/farm-data"),
     create: (data) => request("/farm-data", json(data)),
@@ -219,6 +225,56 @@ export const nativeApi = {
         ),
       detail: (learnerId) =>
         request(`/admin/learners/${encodeURIComponent(learnerId)}`),
+    },
+    users: {
+      list: (search = "") =>
+        request(
+          `/admin/users${search ? `?search=${encodeURIComponent(search)}` : ""}`,
+        ),
+      create: (data) => request("/admin/users", json(data)),
+      update: (userId, data) =>
+        request(`/admin/users/${encodeURIComponent(userId)}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        }),
+      resetPassword: (userId, password) =>
+        request(`/admin/users/${encodeURIComponent(userId)}/password`, {
+          method: "PUT",
+          body: JSON.stringify({ password }),
+        }),
+    },
+    modules: {
+      detail: (moduleId) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}`),
+      create: (data) => request("/admin/modules", json(data)),
+      update: (moduleId, data) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        }),
+      delete: (moduleId) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
+          method: "DELETE",
+        }),
+      reorder: (items) =>
+        request("/admin/modules/reorder", {
+          method: "PUT",
+          body: JSON.stringify({ items }),
+        }),
+      questions: (moduleId) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`),
+      createQuestion: (moduleId, data) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`, json(data)),
+      updateQuestion: (moduleId, questionId, data) =>
+        request(
+          `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
+          { method: "PUT", body: JSON.stringify(data) },
+        ),
+      deleteQuestion: (moduleId, questionId) =>
+        request(
+          `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
+          { method: "DELETE" },
+        ),
     },
     aiSettings: {
       get: () => request("/admin/ai-settings"),

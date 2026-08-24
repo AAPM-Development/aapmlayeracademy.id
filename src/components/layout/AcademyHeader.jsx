@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, IconButton } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { getNavigationMeta } from "./academyNavigation";
@@ -54,6 +54,7 @@ export default function AcademyHeader({
               <div className="truncate text-sm font-semibold">{displayName}</div>
               <div className="mt-1 truncate text-xs text-muted-foreground">Layer Farm learner</div>
             </DropdownMenuLabel>
+            {user?.role === "admin" && <><DropdownMenuSeparator /><DropdownMenuItem asChild><Link to="/admin"><AapmIcon name="dashboard" className="mr-2 h-4 w-4" /> Panel Admin</Link></DropdownMenuItem></>}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout}><AapmIcon name="logout" className="mr-2 h-4 w-4" /> Keluar dari Academy</DropdownMenuItem>
           </DropdownMenuContent>

@@ -9,8 +9,14 @@ const activeAreas = [
   {
     to: "/admin/courses",
     label: "Course management",
-    detail: "Membaca katalog dan struktur course aktif.",
+    detail: "Mengelola modul, urutan kurikulum, konten, dan bank soal.",
     icon: "course",
+  },
+  {
+    to: "/admin/users",
+    label: "User management",
+    detail: "Membuat akun, menetapkan admin, dan mengganti password pengguna.",
+    icon: "users",
   },
   {
     to: "/admin/learners",

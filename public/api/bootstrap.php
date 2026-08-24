@@ -128,6 +128,13 @@ function ensure_schema(PDO $pdo, string $driver): void
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )',
+            'CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id INTEGER PRIMARY KEY,
+                bio TEXT NOT NULL DEFAULT \'\',
+                hall_of_fame_opt_in INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )',
             'CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key TEXT PRIMARY KEY,
                 attempts INTEGER NOT NULL DEFAULT 0,
@@ -252,6 +259,14 @@ function ensure_schema(PDO $pdo, string $driver): void
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (id),
                 UNIQUE KEY users_email_unique (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id BIGINT UNSIGNED NOT NULL,
+                bio TEXT NOT NULL,
+                hall_of_fame_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id),
+                CONSTRAINT user_profiles_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             'CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key VARCHAR(190) NOT NULL,
@@ -862,12 +877,12 @@ function admin_course_data(): array
         'learnerCount' => $learnerCount,
         'updatedAt' => $latestUpdate,
         'capabilities' => [
-            'create' => false,
-            'edit' => false,
-            'publish' => false,
-            'reorder' => false,
+            'create' => true,
+            'edit' => true,
+            'publish' => true,
+            'reorder' => true,
         ],
-        'availabilityNote' => 'Course saat ini berasal dari katalog modul native. Pembuatan, publish, dan re-order belum tersedia pada API.',
+        'availabilityNote' => 'Kurikulum Academy dikelola langsung dari katalog modul native. Perubahan modul dan bank soal tersedia untuk admin; nomor modul tidak dapat diganti setelah learner menyimpan progres agar riwayat tetap konsisten.',
     ];
 }
 
@@ -1015,6 +1030,481 @@ function admin_learner_detail(int $learnerId): ?array
         'certificates' => array_map('present_certificate', $certificates),
         'availabilityNote' => 'Riwayat ditampilkan dari progres dan sertifikat yang tersimpan. Aktivitas tanpa data progres belum tersedia di API native.',
     ];
+}
+
+function profile_text($value, int $limit): string
+{
+    $text = trim((string) $value);
+    $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text) ?? '';
+    return substr($text, 0, $limit);
+}
+
+function profile_row(int $userId): array
+{
+    $statement = db()->prepare('SELECT bio, hall_of_fame_opt_in, updated_at FROM user_profiles WHERE user_id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    $row = $statement->fetch();
+    return $row ?: ['bio' => '', 'hall_of_fame_opt_in' => 0, 'updated_at' => null];
+}
+
+function profile_learning_summary(int $userId): array
+{
+    $moduleTotal = max(1, count(admin_module_rows()));
+    $progressStatement = db()->prepare('SELECT COUNT(*) AS entries, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) AS completed_modules, SUM(CASE WHEN practical_done = 1 THEN 1 ELSE 0 END) AS practical_modules, SUM(CASE WHEN quiz_total IS NOT NULL AND quiz_total > 0 THEN quiz_score ELSE 0 END) AS quiz_score_sum, SUM(CASE WHEN quiz_total IS NOT NULL AND quiz_total > 0 THEN quiz_total ELSE 0 END) AS quiz_total_sum, SUM(COALESCE(time_spent_minutes, 0)) AS minutes, MAX(updated_at) AS last_activity FROM user_progress WHERE user_id = ?');
+    $progressStatement->execute([$userId]);
+    $progress = $progressStatement->fetch() ?: [];
+    $certificateStatement = db()->prepare('SELECT COUNT(*) FROM certificates WHERE user_id = ?');
+    $certificateStatement->execute([$userId]);
+    $farmStatement = db()->prepare('SELECT COUNT(*) FROM farm_data WHERE user_id = ?');
+    $farmStatement->execute([$userId]);
+
+    $entries = (int) ($progress['entries'] ?? 0);
+    $completed = (int) ($progress['completed_modules'] ?? 0);
+    $practical = (int) ($progress['practical_modules'] ?? 0);
+    $quizScore = (float) ($progress['quiz_score_sum'] ?? 0);
+    $quizTotal = (float) ($progress['quiz_total_sum'] ?? 0);
+    $quizAverage = $quizTotal > 0 ? (int) round(($quizScore / $quizTotal) * 100) : null;
+    $minutes = (int) ($progress['minutes'] ?? 0);
+    $certificates = (int) $certificateStatement->fetchColumn();
+    $farmEntries = (int) $farmStatement->fetchColumn();
+    $points = ($completed * 100) + ($practical * 35) + ($certificates * 150) + min(100, $quizAverage ?? 0) + (min(12, $farmEntries) * 10) + min(60, intdiv($minutes, 10));
+
+    $level = $points >= 900 ? ['name' => 'Layer Leader', 'nextAt' => null] : ($points >= 450 ? ['name' => 'Farm Analyst', 'nextAt' => 900] : ($points >= 160 ? ['name' => 'Field Builder', 'nextAt' => 450] : ['name' => 'Foundation', 'nextAt' => 160]));
+    $achievements = [
+        ['id' => 'first-step', 'title' => 'Langkah pertama', 'description' => 'Simpan aktivitas pada modul pertama.', 'icon' => 'solar:flag-2-bold-duotone', 'current' => $entries, 'target' => 1],
+        ['id' => 'module-finisher', 'title' => 'Modul tuntas', 'description' => 'Selesaikan minimal satu modul pembelajaran.', 'icon' => 'solar:check-read-bold-duotone', 'current' => $completed, 'target' => 1],
+        ['id' => 'field-practice', 'title' => 'Praktik lapangan', 'description' => 'Tandai sedikitnya satu praktik sebagai selesai.', 'icon' => 'solar:leaf-bold-duotone', 'current' => $practical, 'target' => 1],
+        ['id' => 'quiz-ready', 'title' => 'Siap evaluasi', 'description' => 'Kumpulkan nilai kuis rata-rata minimal 80%.', 'icon' => 'solar:cup-star-bold-duotone', 'current' => $quizAverage ?? 0, 'target' => 80],
+        ['id' => 'farm-journal', 'title' => 'Catatan farm konsisten', 'description' => 'Simpan empat catatan KPI untuk analisis yang lebih bermakna.', 'icon' => 'solar:chart-2-bold-duotone', 'current' => $farmEntries, 'target' => 4],
+        ['id' => 'certified', 'title' => 'Tersertifikasi', 'description' => 'Peroleh sertifikat dari alur pembelajaran.', 'icon' => 'solar:diploma-verified-bold-duotone', 'current' => $certificates, 'target' => 1],
+    ];
+    foreach ($achievements as &$achievement) {
+        $achievement['unlocked'] = $achievement['current'] >= $achievement['target'];
+    }
+    unset($achievement);
+
+    return [
+        'points' => $points,
+        'level' => $level['name'],
+        'nextLevelAt' => $level['nextAt'],
+        'progressPercent' => (int) round(($completed / $moduleTotal) * 100),
+        'completedModules' => $completed,
+        'moduleTotal' => $moduleTotal,
+        'practicalModules' => $practical,
+        'quizAverage' => $quizAverage,
+        'timeSpentMinutes' => $minutes,
+        'certificateCount' => $certificates,
+        'farmEntryCount' => $farmEntries,
+        'lastActivity' => $progress['last_activity'] ?? null,
+        'achievements' => $achievements,
+    ];
+}
+
+function profile_data(array $user): array
+{
+    $profile = profile_row((int) $user['id']);
+    return [
+        'user' => $user,
+        'profile' => [
+            'bio' => (string) ($profile['bio'] ?? ''),
+            'hallOfFameOptIn' => (bool) ($profile['hall_of_fame_opt_in'] ?? false),
+            'updatedAt' => $profile['updated_at'] ?? null,
+        ],
+        'learning' => profile_learning_summary((int) $user['id']),
+        'achievementNote' => 'Prestasi dan level dihitung dari aktivitas belajar serta data farm yang benar-benar tersimpan.',
+    ];
+}
+
+function update_profile_data(array $user, array $input): array
+{
+    $fullName = profile_text($input['fullName'] ?? $input['full_name'] ?? $user['full_name'] ?? '', 160);
+    if ($fullName === '') {
+        error_response('Nama profil wajib diisi.', 422, 'validation_error');
+    }
+    $bio = profile_text($input['bio'] ?? '', 600);
+    $optIn = bool_value($input['hallOfFameOptIn'] ?? $input['hall_of_fame_opt_in'] ?? false) ? 1 : 0;
+    db()->prepare('UPDATE users SET full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$fullName, (int) $user['id']]);
+    $existing = db()->prepare('SELECT user_id FROM user_profiles WHERE user_id = ? LIMIT 1');
+    $existing->execute([(int) $user['id']]);
+    if ($existing->fetch()) {
+        db()->prepare('UPDATE user_profiles SET bio = ?, hall_of_fame_opt_in = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')->execute([$bio, $optIn, (int) $user['id']]);
+    } else {
+        db()->prepare('INSERT INTO user_profiles (user_id, bio, hall_of_fame_opt_in) VALUES (?, ?, ?)')->execute([(int) $user['id'], $bio, $optIn]);
+    }
+    return profile_data(current_user() ?? $user);
+}
+
+function hall_of_fame_data(): array
+{
+    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
+    $entries = [];
+    foreach ($rows as $row) {
+        $user = present_authenticated_user($row);
+        if ($user['role'] === 'admin' || trim($user['full_name']) === '') {
+            continue;
+        }
+        $learning = profile_learning_summary((int) $user['id']);
+        if ($learning['points'] < 1) {
+            continue;
+        }
+        $entries[] = [
+            'userId' => $user['id'],
+            'name' => $user['full_name'],
+            'level' => $learning['level'],
+            'points' => $learning['points'],
+            'completedModules' => $learning['completedModules'],
+            'certificateCount' => $learning['certificateCount'],
+        ];
+    }
+    usort($entries, static function (array $left, array $right): int {
+        return [$right['points'], $right['certificateCount'], $right['completedModules'], $left['name']] <=> [$left['points'], $left['certificateCount'], $left['completedModules'], $right['name']];
+    });
+    foreach ($entries as $index => &$entry) {
+        $entry['rank'] = $index + 1;
+    }
+    unset($entry);
+    return [
+        'entries' => array_slice($entries, 0, 10),
+        'criteria' => 'Peringkat menggunakan poin pembelajaran: modul selesai, praktik, sertifikat, nilai kuis, catatan KPI, dan waktu belajar. Hanya peserta yang opt-in yang ditampilkan.',
+    ];
+}
+
+function admin_user_list(string $search = ''): array
+{
+    return admin_learner_list($search);
+}
+
+function admin_effective_admin_count(): int
+{
+    $rows = db()->query('SELECT id, email, full_name, role, created_at FROM users')->fetchAll();
+    return count(array_filter($rows, static function (array $row): bool {
+        return effective_user_role($row) === 'admin';
+    }));
+}
+
+function admin_create_user(array $input): array
+{
+    $email = normalize_email($input['email'] ?? '');
+    $password = (string) ($input['password'] ?? '');
+    $fullName = profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160);
+    $requestedRole = strtolower(trim((string) ($input['role'] ?? 'learner')));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        error_response('Masukkan email pengguna yang valid.', 422, 'validation_error');
+    }
+    if ($fullName === '') {
+        error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
+    }
+    if (!in_array($requestedRole, ['learner', 'admin'], true)) {
+        error_response('Role pengguna tidak valid.', 422, 'validation_error');
+    }
+    $passwordError = password_validation_error($password);
+    if ($passwordError !== '') {
+        error_response($passwordError, 422, 'validation_error');
+    }
+    $existing = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+    $existing->execute([$email]);
+    if ($existing->fetch()) {
+        error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+    }
+    db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)')->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user']);
+    $id = (int) db()->lastInsertId();
+    $created = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $created->execute([$id]);
+    return present_authenticated_user($created->fetch() ?: []);
+}
+
+function admin_update_user(array $actor, int $userId, array $input): array
+{
+    $statement = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    $target = $statement->fetch();
+    if (!$target) {
+        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+    }
+    $fullName = array_key_exists('fullName', $input) || array_key_exists('full_name', $input) ? profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160) : (string) $target['full_name'];
+    if ($fullName === '') {
+        error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
+    }
+    $newRole = effective_user_role($target);
+    if (array_key_exists('role', $input)) {
+        $newRole = strtolower(trim((string) $input['role']));
+        if (!in_array($newRole, ['learner', 'admin'], true)) {
+            error_response('Role pengguna tidak valid.', 422, 'validation_error');
+        }
+        if ($newRole !== 'admin' && in_array(normalize_email($target['email']), configured_admin_emails(), true)) {
+            error_response('Role admin untuk email ini diatur melalui konfigurasi server.', 422, 'role_managed_by_config');
+        }
+        if ($newRole !== 'admin' && effective_user_role($target) === 'admin' && admin_effective_admin_count() <= 1) {
+            error_response('Minimal satu admin harus tetap tersedia.', 422, 'last_admin');
+        }
+        if ((int) $actor['id'] === $userId && $newRole !== 'admin') {
+            error_response('Anda tidak dapat menurunkan role admin pada akun sendiri.', 422, 'self_demotion');
+        }
+    }
+    db()->prepare('UPDATE users SET full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$fullName, $newRole === 'admin' ? 'admin' : 'user', $userId]);
+    $fresh = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $fresh->execute([$userId]);
+    return present_authenticated_user($fresh->fetch() ?: []);
+}
+
+function admin_reset_user_password(int $userId, string $password): void
+{
+    $passwordError = password_validation_error($password);
+    if ($passwordError !== '') {
+        error_response($passwordError, 422, 'validation_error');
+    }
+    $exists = db()->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
+    $exists->execute([$userId]);
+    if (!$exists->fetch()) {
+        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+    }
+    db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), $userId]);
+}
+
+function admin_string_list($value, int $maxItems = 20, int $maxLength = 320): array
+{
+    if (is_string($value)) {
+        $value = preg_split('/\r?\n/', $value);
+    }
+    if (!is_array($value)) {
+        return [];
+    }
+    $items = [];
+    foreach ($value as $item) {
+        $text = profile_text($item, $maxLength);
+        if ($text !== '') {
+            $items[] = $text;
+        }
+        if (count($items) >= $maxItems) {
+            break;
+        }
+    }
+    return $items;
+}
+
+function admin_module_from_id(int $moduleId): ?array
+{
+    $statement = db()->prepare('SELECT * FROM course_modules WHERE id = ? LIMIT 1');
+    $statement->execute([$moduleId]);
+    $row = $statement->fetch();
+    return $row ?: null;
+}
+
+function admin_module_input(array $input, ?array $existing = null): array
+{
+    $levelNumber = (int) ($input['levelNumber'] ?? $input['level_number'] ?? $existing['level_number'] ?? 0);
+    $moduleNumber = (int) ($input['moduleNumber'] ?? $input['module_number'] ?? $existing['module_number'] ?? 0);
+    $levelName = profile_text($input['levelName'] ?? $input['level_name'] ?? $existing['level_name'] ?? '', 160);
+    $title = profile_text($input['title'] ?? $existing['title'] ?? '', 255);
+    $category = profile_text($input['category'] ?? $existing['category'] ?? '', 160);
+    $summary = profile_text($input['summary'] ?? $existing['summary'] ?? '', 2000);
+    $content = trim((string) ($input['content'] ?? $existing['content'] ?? ''));
+    $videoScript = profile_text($input['videoScript'] ?? $input['video_script'] ?? $existing['video_script'] ?? '', 12000);
+    $practicalAssignment = profile_text($input['practicalAssignment'] ?? $input['practical_assignment'] ?? $existing['practical_assignment'] ?? '', 3000);
+    $objectives = admin_string_list($input['learningObjectives'] ?? $input['learning_objectives'] ?? decode_json_field($existing['learning_objectives'] ?? '[]'));
+    $takeaways = admin_string_list($input['keyTakeaways'] ?? $input['key_takeaways'] ?? decode_json_field($existing['key_takeaways'] ?? '[]'));
+    $checklist = admin_string_list($input['checklist'] ?? decode_json_field($existing['checklist'] ?? '[]'));
+    $sortOrder = (int) ($input['order'] ?? $input['sortOrder'] ?? $input['sort_order'] ?? $existing['sort_order'] ?? 0);
+    if ($levelNumber < 1 || $levelNumber > 20 || $moduleNumber < 1 || $moduleNumber > 999) {
+        error_response('Level dan nomor modul tidak valid.', 422, 'validation_error');
+    }
+    if ($levelName === '' || $title === '' || $content === '') {
+        error_response('Level, judul, dan isi modul wajib diisi.', 422, 'validation_error');
+    }
+    if (strlen($content) > 100000) {
+        error_response('Isi modul terlalu panjang.', 422, 'validation_error');
+    }
+    return [
+        'levelNumber' => $levelNumber,
+        'moduleNumber' => $moduleNumber,
+        'levelName' => $levelName,
+        'title' => $title,
+        'category' => $category,
+        'summary' => $summary,
+        'content' => $content,
+        'videoScript' => $videoScript,
+        'learningObjectives' => json_encode($objectives, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'keyTakeaways' => json_encode($takeaways, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'checklist' => json_encode($checklist, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'practicalAssignment' => $practicalAssignment,
+        'sortOrder' => max(0, $sortOrder),
+    ];
+}
+
+function admin_create_module(array $input): array
+{
+    $data = admin_module_input($input);
+    $duplicate = db()->prepare('SELECT id FROM course_modules WHERE module_number = ? LIMIT 1');
+    $duplicate->execute([$data['moduleNumber']]);
+    if ($duplicate->fetch()) {
+        error_response('Nomor modul sudah digunakan.', 409, 'module_number_exists');
+    }
+    if ($data['sortOrder'] === 0) {
+        $data['sortOrder'] = ((int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM course_modules')->fetchColumn()) + 1;
+    }
+    $insert = db()->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $insert->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder']]);
+    return present_module(admin_module_from_id((int) db()->lastInsertId()) ?: []);
+}
+
+function admin_update_module(int $moduleId, array $input): array
+{
+    $existing = admin_module_from_id($moduleId);
+    if (!$existing) {
+        error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    $data = admin_module_input($input, $existing);
+    if ($data['moduleNumber'] !== (int) $existing['module_number']) {
+        $duplicate = db()->prepare('SELECT id FROM course_modules WHERE module_number = ? AND id != ? LIMIT 1');
+        $duplicate->execute([$data['moduleNumber'], $moduleId]);
+        if ($duplicate->fetch()) {
+            error_response('Nomor modul sudah digunakan.', 409, 'module_number_exists');
+        }
+        $progress = db()->prepare('SELECT COUNT(*) FROM user_progress WHERE module_number = ?');
+        $progress->execute([(int) $existing['module_number']]);
+        if ((int) $progress->fetchColumn() > 0) {
+            error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
+        }
+    }
+    $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, video_script = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
+    return present_module(admin_module_from_id($moduleId) ?: []);
+}
+
+function admin_delete_module(int $moduleId): void
+{
+    $module = admin_module_from_id($moduleId);
+    if (!$module) {
+        error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    $progress = db()->prepare('SELECT COUNT(*) FROM user_progress WHERE module_number = ?');
+    $progress->execute([(int) $module['module_number']]);
+    if ((int) $progress->fetchColumn() > 0) {
+        error_response('Modul tidak dapat dihapus karena sudah memiliki progres learner.', 422, 'module_has_progress');
+    }
+    db()->beginTransaction();
+    try {
+        db()->prepare('DELETE FROM quiz_questions WHERE module_number = ?')->execute([(int) $module['module_number']]);
+        db()->prepare('DELETE FROM course_modules WHERE id = ?')->execute([$moduleId]);
+        db()->commit();
+    } catch (Throwable $exception) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        throw $exception;
+    }
+}
+
+function admin_reorder_modules(array $items): array
+{
+    if (!is_array($items) || count($items) < 1 || count($items) > 999) {
+        error_response('Urutan modul tidak valid.', 422, 'validation_error');
+    }
+    $moduleIds = [];
+    foreach ($items as $item) {
+        $moduleId = (int) (is_array($item) ? ($item['id'] ?? 0) : $item);
+        if ($moduleId < 1 || isset($moduleIds[$moduleId])) {
+            error_response('Data modul tidak valid.', 422, 'validation_error');
+        }
+        $moduleIds[$moduleId] = true;
+    }
+    $existing = db()->prepare('SELECT COUNT(*) FROM course_modules WHERE id = ?');
+    foreach (array_keys($moduleIds) as $moduleId) {
+        $existing->execute([$moduleId]);
+        if ((int) $existing->fetchColumn() !== 1) {
+            error_response('Salah satu modul tidak ditemukan.', 404, 'not_found');
+        }
+    }
+    db()->beginTransaction();
+    try {
+        $update = db()->prepare('UPDATE course_modules SET sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+        foreach (array_keys($moduleIds) as $index => $moduleId) {
+            $update->execute([$index + 1, $moduleId]);
+        }
+        db()->commit();
+    } catch (Throwable $exception) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        throw $exception;
+    }
+    return admin_course_detail_data();
+}
+
+function admin_module_questions(int $moduleId): array
+{
+    $module = admin_module_from_id($moduleId);
+    if (!$module) {
+        error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    $statement = db()->prepare('SELECT * FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
+    $statement->execute([(int) $module['module_number']]);
+    return array_map('present_question', $statement->fetchAll());
+}
+
+function admin_question_input(array $input, int $moduleNumber): array
+{
+    $question = profile_text($input['question'] ?? '', 5000);
+    $options = admin_string_list($input['options'] ?? [], 6, 1000);
+    $correctIndex = (int) ($input['correctIndex'] ?? $input['correct_index'] ?? -1);
+    $explanation = profile_text($input['explanation'] ?? '', 5000);
+    $difficulty = strtolower(profile_text($input['difficulty'] ?? 'medium', 20));
+    $type = strtolower(profile_text($input['type'] ?? 'mcq', 20));
+    $learningObjective = profile_text($input['learningObjective'] ?? $input['learning_objective'] ?? '', 1000);
+    if ($question === '' || count($options) < 2 || $correctIndex < 0 || $correctIndex >= count($options)) {
+        error_response('Pertanyaan, minimal dua opsi, dan jawaban benar wajib valid.', 422, 'validation_error');
+    }
+    if (!in_array($difficulty, ['easy', 'medium', 'hard'], true)) {
+        $difficulty = 'medium';
+    }
+    if ($type !== 'mcq') {
+        error_response('Tipe soal yang didukung saat ini adalah pilihan ganda.', 422, 'validation_error');
+    }
+    return [$moduleNumber, $question, json_encode($options, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $correctIndex, $explanation, $difficulty, $type, $learningObjective];
+}
+
+function admin_create_question(int $moduleId, array $input): array
+{
+    $module = admin_module_from_id($moduleId);
+    if (!$module) {
+        error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    $data = admin_question_input($input, (int) $module['module_number']);
+    db()->prepare('INSERT INTO quiz_questions (module_number, question, options, correct_index, explanation, difficulty, type, learning_objective) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')->execute($data);
+    $statement = db()->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
+    $statement->execute([(int) db()->lastInsertId()]);
+    return present_question($statement->fetch() ?: []);
+}
+
+function admin_update_question(int $moduleId, int $questionId, array $input): array
+{
+    $module = admin_module_from_id($moduleId);
+    if (!$module) {
+        error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    $existing = db()->prepare('SELECT id FROM quiz_questions WHERE id = ? AND module_number = ? LIMIT 1');
+    $existing->execute([$questionId, (int) $module['module_number']]);
+    if (!$existing->fetch()) {
+        error_response('Soal tidak ditemukan.', 404, 'not_found');
+    }
+    $data = admin_question_input($input, (int) $module['module_number']);
+    db()->prepare('UPDATE quiz_questions SET module_number = ?, question = ?, options = ?, correct_index = ?, explanation = ?, difficulty = ?, type = ?, learning_objective = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute(array_merge($data, [$questionId]));
+    $statement = db()->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
+    $statement->execute([$questionId]);
+    return present_question($statement->fetch() ?: []);
+}
+
+function admin_delete_question(int $moduleId, int $questionId): void
+{
+    $module = admin_module_from_id($moduleId);
+    if (!$module) {
+        error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    $delete = db()->prepare('DELETE FROM quiz_questions WHERE id = ? AND module_number = ?');
+    $delete->execute([$questionId, (int) $module['module_number']]);
+    if ($delete->rowCount() < 1) {
+        error_response('Soal tidak ditemukan.', 404, 'not_found');
+    }
 }
 
 function present_certificate(array $row): array
