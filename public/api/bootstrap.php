@@ -34,6 +34,8 @@ function app_config(): array
         'google_client_secret' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_SECRET') ?: '',
         'google_redirect_uri' => getenv('AAPLAYERACADEMY_GOOGLE_REDIRECT_URI') ?: '',
         'admin_emails' => getenv('AAPLAYERACADEMY_ADMIN_EMAILS') ?: '',
+        'openrouter_api_key' => getenv('AAPLAYERACADEMY_OPENROUTER_API_KEY') ?: '',
+        'ai_settings_encryption_key' => getenv('AAPLAYERACADEMY_AI_SETTINGS_ENCRYPTION_KEY') ?: '',
         'expose_dev_reset_token' => false,
     ];
 
@@ -204,6 +206,11 @@ function ensure_schema(PDO $pdo, string $driver): void
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )',
+            'CREATE TABLE IF NOT EXISTS app_settings (
+                setting_key TEXT PRIMARY KEY,
+                setting_value TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )',
         ];
     } else {
         $statements = [
@@ -312,6 +319,12 @@ function ensure_schema(PDO $pdo, string $driver): void
                 PRIMARY KEY (id),
                 KEY farm_data_user_week_idx (user_id, week),
                 CONSTRAINT farm_data_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS app_settings (
+                setting_key VARCHAR(100) NOT NULL,
+                setting_value LONGTEXT NOT NULL,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (setting_key)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
         ];
     }

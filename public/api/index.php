@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/openrouter.php';
 
 apply_security_headers();
 start_app_session();
@@ -296,6 +297,23 @@ try {
         json_response($learner);
     }
 
+    if ($path === 'admin/ai-settings' && $method === 'GET') {
+        require_admin();
+        json_response(openrouter_settings_status());
+    }
+
+    if ($path === 'admin/ai-settings' && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        json_response(openrouter_save_settings(request_json()));
+    }
+
+    if ($path === 'admin/ai-settings/test' && $method === 'POST') {
+        require_admin();
+        require_csrf();
+        json_response(openrouter_test_connection());
+    }
+
     if ($path === 'modules' && $method === 'GET') {
         require_user();
         $rows = db()->query('SELECT * FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();
@@ -454,7 +472,14 @@ try {
         if ($message === '') {
             error_response('Pertanyaan wajib diisi.', 422, 'validation_error');
         }
-        json_response(['reply' => native_ai_reply($message, $input['farmContext'] ?? null)]);
+        if (strlen($message) > 3000) {
+            error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
+        }
+        rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
+        $farmContext = is_array($input['farmContext'] ?? null) ? openrouter_context_for_user((int) $user['id']) : [];
+        $response = openrouter_assistant_reply($message, $farmContext);
+        rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
+        json_response($response);
     }
 
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');

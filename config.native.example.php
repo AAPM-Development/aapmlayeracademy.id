@@ -20,6 +20,12 @@ return [
     'google_client_id' => '',
     'google_client_secret' => '',
     'google_redirect_uri' => '',
+    // Optional direct server secret. Prefer the encrypted Admin → AI Settings
+    // flow below for a configurable key. This value always stays outside git.
+    'openrouter_api_key' => '',
+    // Required only when managing the OpenRouter key from Admin → AI Settings.
+    // Generate with: bin2hex(random_bytes(32)) and keep it in this private file.
+    'ai_settings_encryption_key' => '',
     // Comma-separated emergency/bootstrap allow-list. Keep real values only in
     // the private config file; a database role of `admin` remains canonical.
     'admin_emails' => '',

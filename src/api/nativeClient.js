@@ -110,6 +110,11 @@ export const nativeApi = {
       list: (search = '') => request(`/admin/learners${search ? `?search=${encodeURIComponent(search)}` : ''}`),
       detail: (learnerId) => request(`/admin/learners/${encodeURIComponent(learnerId)}`),
     },
+    aiSettings: {
+      get: () => request('/admin/ai-settings'),
+      update: (data) => request('/admin/ai-settings', { method: 'PUT', body: JSON.stringify(data) }),
+      test: () => request('/admin/ai-settings/test', json({})),
+    },
   },
 };
 
