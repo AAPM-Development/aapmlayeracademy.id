@@ -35,6 +35,11 @@ function app_config(): array
         'google_redirect_uri' => getenv('AAPLAYERACADEMY_GOOGLE_REDIRECT_URI') ?: '',
         'admin_emails' => getenv('AAPLAYERACADEMY_ADMIN_EMAILS') ?: '',
         'openrouter_api_key' => getenv('AAPLAYERACADEMY_OPENROUTER_API_KEY') ?: '',
+        'ai_provider' => getenv('AAPLAYERACADEMY_AI_PROVIDER') ?: '',
+        'ai_api_key' => getenv('AAPLAYERACADEMY_AI_API_KEY') ?: '',
+        'ai_model' => getenv('AAPLAYERACADEMY_AI_MODEL') ?: '',
+        'ai_base_url' => getenv('AAPLAYERACADEMY_AI_BASE_URL') ?: '',
+        'ai_allow_local' => getenv('AAPLAYERACADEMY_AI_ALLOW_LOCAL') ?: '',
         'ai_settings_encryption_key' => getenv('AAPLAYERACADEMY_AI_SETTINGS_ENCRYPTION_KEY') ?: '',
         'expose_dev_reset_token' => false,
     ];

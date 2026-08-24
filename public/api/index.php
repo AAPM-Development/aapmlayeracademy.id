@@ -299,19 +299,19 @@ try {
 
     if ($path === 'admin/ai-settings' && $method === 'GET') {
         require_admin();
-        json_response(openrouter_settings_status());
+        json_response(ai_settings_status());
     }
 
     if ($path === 'admin/ai-settings' && $method === 'PUT') {
         require_admin();
         require_csrf();
-        json_response(openrouter_save_settings(request_json()));
+        json_response(ai_save_settings(request_json()));
     }
 
     if ($path === 'admin/ai-settings/test' && $method === 'POST') {
         require_admin();
         require_csrf();
-        json_response(openrouter_test_connection());
+        json_response(ai_test_connection());
     }
 
     if ($path === 'modules' && $method === 'GET') {
@@ -476,8 +476,8 @@ try {
             error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
-        $farmContext = is_array($input['farmContext'] ?? null) ? openrouter_context_for_user((int) $user['id']) : [];
-        $response = openrouter_assistant_reply($message, $farmContext);
+        $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        $response = ai_assistant_reply($message, $farmContext);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         json_response($response);
     }

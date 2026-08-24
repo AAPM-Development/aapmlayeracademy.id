@@ -20,10 +20,18 @@ return [
     'google_client_id' => '',
     'google_client_secret' => '',
     'google_redirect_uri' => '',
-    // Optional direct server secret. Prefer the encrypted Admin → AI Settings
-    // flow below for a configurable key. This value always stays outside git.
+    // Legacy direct OpenRouter secret. Prefer the provider-agnostic encrypted
+    // Admin → AI Settings flow below for a configurable key.
     'openrouter_api_key' => '',
-    // Required only when managing the OpenRouter key from Admin → AI Settings.
+    // Optional provider-agnostic private configuration. This overrides Admin
+    // settings and always stays outside git. Provider: openrouter,
+    // openai-compatible, gemini, or anthropic.
+    'ai_provider' => '',
+    'ai_api_key' => '',
+    'ai_model' => '',
+    'ai_base_url' => '',
+    'ai_allow_local' => false,
+    // Required only when managing provider keys from Admin → AI Settings.
     // Generate with: bin2hex(random_bytes(32)) and keep it in this private file.
     'ai_settings_encryption_key' => '',
     // Comma-separated emergency/bootstrap allow-list. Keep real values only in
