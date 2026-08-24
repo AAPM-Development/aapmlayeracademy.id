@@ -4,11 +4,16 @@ import { nativeApi } from "@/api/nativeClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
+
+/** @type {any} */
+const LoginInput = Input;
+/** @type {any} */
+const LoginLabel = Label;
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -40,50 +45,48 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Log in to your account"
+      variant="login"
+      title="Sign in"
+      subtitle="Continue your learning journey."
       footer={
         <>
-          Don't have an account?{" "}
+          New to the Academy?{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="text-primary font-medium hover:underline"
+            className="font-medium text-[var(--brand-aapm-green)] underline-offset-4 hover:underline"
           >
-            Create one
+            Create an account
           </Link>
         </>
       }
     >
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div
+          className="mb-6 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          role="alert"
+          aria-live="polite"
+        >
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
-          </div>
+          <LoginLabel htmlFor="email" className="text-sm text-foreground">Email address</LoginLabel>
+          <LoginInput
+            id="email"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-12 rounded-lg bg-background px-3"
+            required
+          />
         </div>
+
         <div className="space-y-2">
-          <div className="flex items-center justify-end">
-            <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-              Forgot password?
-            </Link>
-          </div>
           <PasswordField
             id="password"
             label="Password"
@@ -91,29 +94,42 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <div className="flex justify-end pt-1">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-[var(--brand-aapm-green)] underline-offset-4 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+
+        <Button
+          type="submit"
+          className="h-12 w-full rounded-lg bg-[var(--brand-aapm-green)] font-semibold text-white shadow-sm hover:bg-[#286b2f]"
+          disabled={loading}
+        >
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Logging in...
+              Signing in…
             </>
           ) : (
-            "Log in"
+            "Sign in"
           )}
         </Button>
       </form>
       {googleAvailable && (
         <>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="my-7 flex items-center gap-3 text-xs text-muted-foreground">
             <div className="h-px flex-1 bg-border" />
-            <span>atau</span>
+            <span>or continue with</span>
             <div className="h-px flex-1 bg-border" />
           </div>
           <Button
             type="button"
             variant="outline"
-            className="w-full h-12 font-medium"
+            className="h-12 w-full rounded-lg bg-background font-medium"
             onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`; }}
           >
             <GoogleIcon />

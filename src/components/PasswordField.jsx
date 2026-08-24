@@ -10,7 +10,7 @@ export default function PasswordField({
   onChange,
   autoComplete,
   placeholder = "••••••••",
-  minLength,
+  minLength = undefined,
   required = true,
   autoFocus = false,
 }) {
