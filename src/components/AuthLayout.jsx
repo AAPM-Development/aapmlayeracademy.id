@@ -36,7 +36,7 @@ function AcademyVideoPanel() {
 
     const interval = window.setInterval(() => {
       setInsightIndex((current) => (current + 1) % academyInsights.length);
-    }, 9000);
+    }, 10000);
 
     return () => window.clearInterval(interval);
   }, [prefersReducedMotion]);
@@ -55,25 +55,28 @@ function AcademyVideoPanel() {
         aria-hidden="true"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-brand-foreground/80 via-brand-foreground/25 to-transparent" />
-      <div className="absolute inset-x-0 top-0 flex justify-center px-10 pt-6 xl:pt-8">
+      <div className="absolute inset-x-0 top-[27%] flex justify-center px-10">
         <div
-          className="pointer-events-none absolute inset-x-0 -top-1 h-28 bg-[radial-gradient(ellipse_at_top,hsl(var(--aapm-green-950)_/_0.68),hsl(var(--aapm-green-950)_/_0.22)_48%,transparent_78%)]"
+          className="pointer-events-none absolute -top-10 h-28 w-36 rounded-full bg-brand-foreground/45 blur-2xl"
           aria-hidden="true"
         />
         <AppBrand
+          product="aapm"
+          variant="icon"
           mode="dark"
-          className="relative z-10 h-12 w-auto max-w-[180px] drop-shadow-[0_4px_18px_rgba(0,0,0,0.7)]"
-          alt="AAPM Layer Academy"
+          className="relative z-10 h-10 w-10 drop-shadow-[0_4px_18px_rgba(0,0,0,0.7)] xl:h-11 xl:w-11"
+          alt="AAPM"
         />
       </div>
-      <div className="absolute inset-x-0 bottom-0 flex justify-center px-8 pb-12 xl:pb-16">
-        <p
+      <div className="absolute inset-x-0 bottom-0 flex justify-center px-8 pb-10 xl:pb-12">
+        <div
           key={insightIndex}
-          className="academy-insight max-w-2xl text-center font-serif text-xl font-medium italic leading-7 text-white/95 drop-shadow-[0_3px_24px_rgba(0,0,0,0.55)] sm:text-2xl sm:leading-8 xl:text-[1.7rem] xl:leading-9"
+          className="academy-insight flex max-w-xl flex-col items-center text-center"
           aria-live="polite"
         >
-          “{academyInsights[insightIndex]}”
-        </p>
+          <p className="font-serif text-lg font-medium italic leading-7 text-white/95 drop-shadow-[0_3px_24px_rgba(0,0,0,0.55)] sm:text-xl sm:leading-8 xl:text-[1.35rem] xl:leading-8">“{academyInsights[insightIndex]}”</p>
+          <AppBrand mode="dark" className="mt-5 h-7 w-auto max-w-[156px] opacity-90 drop-shadow-[0_3px_12px_rgba(0,0,0,0.56)]" alt="AAPM Layer Academy" />
+        </div>
       </div>
     </aside>
   );
