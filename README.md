@@ -61,7 +61,7 @@ All mutating authenticated requests use the session's CSRF token. PHP creates
 the table structure automatically on first request; `database/schema.sql` is
 provided for explicit MySQL setup and `database/seed.php` loads demo content.
 
-New accounts and password resets require at least 12 characters containing a
+New accounts and password resets require at least 8 characters containing a
 letter and a number. Login and reset attempts are throttled per IP/account,
 and reset links are single-use with a 60-minute expiry. Configure `app_url`
 and `mail_from` in the private cPanel config so forgot-password messages can

@@ -54,10 +54,6 @@ export default function Login() {
         </>
       }
     >
-      <div className="mb-6 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-        Login native Layer Farm Academy — gunakan email dan password akun Anda.
-      </div>
-
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
           {error}

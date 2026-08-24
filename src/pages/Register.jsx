@@ -58,10 +58,6 @@ export default function Register() {
         </>
       }
     >
-      <div className="mb-6 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-        Akun dibuat langsung di database native aplikasi ini.
-      </div>
-
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
           {error}
@@ -92,16 +88,16 @@ export default function Register() {
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          minLength={12}
+          minLength={8}
         />
-        <p className="-mt-2 text-xs text-muted-foreground">Minimal 12 karakter dan harus memuat huruf serta angka.</p>
+        <p className="-mt-2 text-xs text-muted-foreground">Minimal 8 karakter dan harus memuat huruf serta angka.</p>
         <PasswordField
           id="confirm"
           label="Confirm Password"
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          minLength={12}
+          minLength={8}
         />
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (

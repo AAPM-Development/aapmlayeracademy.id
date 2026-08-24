@@ -65,16 +65,16 @@ export default function ResetPassword() {
           autoFocus
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          minLength={12}
+          minLength={8}
         />
-        <p className="-mt-2 text-xs text-muted-foreground">Minimal 12 karakter dan harus memuat huruf serta angka.</p>
+        <p className="-mt-2 text-xs text-muted-foreground">Minimal 8 karakter dan harus memuat huruf serta angka.</p>
         <PasswordField
           id="confirm"
           label="Confirm Password"
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          minLength={12}
+          minLength={8}
         />
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (

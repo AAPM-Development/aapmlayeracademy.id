@@ -453,8 +453,8 @@ function app_password_hash(string $password): string
 
 function password_validation_error(string $password): string
 {
-    if (strlen($password) < 12) {
-        return 'Password minimal 12 karakter.';
+    if (strlen($password) < 8) {
+        return 'Password minimal 8 karakter.';
     }
     if (strlen($password) > 128) {
         return 'Password maksimal 128 karakter.';
