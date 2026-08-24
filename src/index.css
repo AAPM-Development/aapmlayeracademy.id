@@ -369,6 +369,53 @@
   .aapm-ai-orbit span:nth-child(2) { animation-delay: 0.13s; }
   .aapm-ai-orbit span:nth-child(3) { animation-delay: 0.26s; }
 
+  @keyframes aapm-ai-avatar-float {
+    0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); }
+    50% { transform: translateY(-2px) rotate(1deg) scale(1.03); }
+  }
+
+  @keyframes aapm-ai-avatar-listening {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--aapm-orange-500) / 0.28); }
+    55% { box-shadow: 0 0 0 8px hsl(var(--aapm-orange-500) / 0); }
+  }
+
+  .aapm-ai-avatar {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    border-radius: 999px;
+    background: #fff7f3;
+    isolation: isolate;
+  }
+
+  .aapm-ai-avatar__halo {
+    position: absolute;
+    inset: 8%;
+    z-index: -1;
+    border-radius: inherit;
+    background: hsl(var(--aapm-orange-500) / 0.13);
+  }
+
+  .aapm-ai-avatar__image {
+    width: 128%;
+    max-width: none;
+    height: 128%;
+    object-fit: contain;
+    object-position: 50% 54%;
+    animation: aapm-ai-avatar-float 4.8s ease-in-out infinite;
+  }
+
+  .aapm-ai-avatar--active {
+    animation: aapm-ai-avatar-listening 1.75s ease-out infinite;
+  }
+
+  .aapm-ai-avatar--active .aapm-ai-avatar__image {
+    animation-duration: 1.5s;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -378,7 +425,9 @@
 
     .academy-enter,
     .academy-insight,
-    .aapm-ai-orbit span {
+    .aapm-ai-orbit span,
+    .aapm-ai-avatar,
+    .aapm-ai-avatar__image {
       animation: none;
     }
 

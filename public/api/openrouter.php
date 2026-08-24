@@ -375,7 +375,7 @@ function ai_sse_emit(string $event, array $payload = []): void
     flush();
 }
 
-function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): void
+function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
 {
     $headers = ['Authorization: Bearer ' . $apiKey, 'X-OpenRouter-Title: AAPM Layer Academy'];
     $origin = app_base_url();
@@ -397,6 +397,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
 
     $lineBuffer = '';
     $receivedText = false;
+    $responseText = '';
     $streamError = '';
     $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions');
     curl_setopt_array($handle, [
@@ -410,7 +411,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         CURLOPT_HTTPHEADER => array_merge(['Accept: text/event-stream', 'Content-Type: application/json'], $headers),
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$streamError): int {
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$responseText, &$streamError): int {
             $lineBuffer .= str_replace("\r\n", "\n", $chunk);
             while (($lineEnd = strpos($lineBuffer, "\n")) !== false) {
                 $line = trim(substr($lineBuffer, 0, $lineEnd));
@@ -438,6 +439,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                 $content = (string) $content;
                 if ($content !== '') {
                     $receivedText = true;
+                    $responseText .= $content;
                     ai_sse_emit('delta', ['text' => $content]);
                 }
             }
@@ -452,9 +454,11 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         $detail = $streamError !== '' ? $streamError : ($curlError !== '' ? $curlError : 'provider tidak mengirim jawaban streaming');
         throw new RuntimeException('OpenRouter: ' . substr($detail, 0, 220));
     }
+
+    return $responseText;
 }
 
-function ai_assistant_stream(string $message, array $farmContext): void
+function ai_assistant_stream(string $message, array $farmContext): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
@@ -469,14 +473,27 @@ function ai_assistant_stream(string $message, array $farmContext): void
             ai_sse_emit('delta', ['text' => $reply]);
         } else {
             ai_sse_emit('status', ['label' => 'Menyusun jawaban']);
-            ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+            try {
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+            } catch (RuntimeException $exception) {
+                // Free providers may occasionally reject a single request while
+                // remaining healthy. Retry once before showing a local fallback.
+                error_log('[aapm-ai-provider-retry] ' . $exception->getMessage());
+                ai_sse_emit('status', ['label' => 'Menghubungkan ulang provider']);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+            }
         }
-        ai_sse_emit('done', ['provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false]);
+        $result = ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null];
+        ai_sse_emit('done', ['provider' => $result['provider'], 'model' => $result['model'], 'fallback' => false]);
+        return $result;
     } catch (RuntimeException $exception) {
         error_log('[aapm-ai-provider] ' . $exception->getMessage());
-        ai_sse_emit('notice', ['text' => ai_provider_fallback_notice()]);
-        ai_sse_emit('delta', ['text' => native_ai_reply($message, $farmContext)]);
+        $reply = native_ai_reply($message, $farmContext);
+        $notice = ai_provider_fallback_notice();
+        ai_sse_emit('notice', ['text' => $notice]);
+        ai_sse_emit('delta', ['text' => $reply]);
         ai_sse_emit('done', ['provider' => 'local', 'model' => null, 'fallback' => true]);
+        return ['reply' => $reply, 'provider' => 'local', 'model' => null, 'fallback' => true, 'notice' => $notice];
     }
 }
 

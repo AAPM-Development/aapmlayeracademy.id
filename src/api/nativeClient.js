@@ -146,6 +146,13 @@ export const nativeApi = {
   ai: {
     assistant: ({ message, farmContext }) => request('/ai-assistant', json({ message, farmContext })),
     stream: ({ message, farmContext, onEvent }) => stream('/ai-assistant/stream', { message, farmContext }, onEvent),
+    conversations: {
+      list: () => request('/ai/conversations'),
+      create: (title = '') => request('/ai/conversations', json({ title })),
+      detail: (id) => request(`/ai/conversations/${encodeURIComponent(id)}`),
+      delete: (id) => request(`/ai/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+      stream: ({ id, message, farmContext, onEvent }) => stream(`/ai/conversations/${encodeURIComponent(id)}/stream`, { message, farmContext }, onEvent),
+    },
   },
   admin: {
     overview: () => request('/admin/overview'),

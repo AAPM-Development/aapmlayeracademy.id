@@ -211,6 +211,27 @@ function ensure_schema(PDO $pdo, string $driver): void
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )',
+            'CREATE TABLE IF NOT EXISTS ai_conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT NOT NULL DEFAULT \'Percakapan baru\',
+                last_message_preview TEXT NOT NULL DEFAULT \'\',
+                message_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )',
+            'CREATE TABLE IF NOT EXISTS ai_chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                provider TEXT NULL,
+                model TEXT NULL,
+                used_fallback INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
+            )',
             'CREATE TABLE IF NOT EXISTS app_settings (
                 setting_key TEXT PRIMARY KEY,
                 setting_value TEXT NOT NULL,
@@ -324,6 +345,31 @@ function ensure_schema(PDO $pdo, string $driver): void
                 PRIMARY KEY (id),
                 KEY farm_data_user_week_idx (user_id, week),
                 CONSTRAINT farm_data_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS ai_conversations (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id BIGINT UNSIGNED NOT NULL,
+                title VARCHAR(180) NOT NULL DEFAULT \'Percakapan baru\',
+                last_message_preview VARCHAR(280) NOT NULL DEFAULT \'\',
+                message_count INT UNSIGNED NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY ai_conversations_user_updated_idx (user_id, updated_at),
+                CONSTRAINT ai_conversations_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS ai_chat_messages (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                conversation_id BIGINT UNSIGNED NOT NULL,
+                role VARCHAR(16) NOT NULL,
+                content MEDIUMTEXT NOT NULL,
+                provider VARCHAR(80) NULL,
+                model VARCHAR(190) NULL,
+                used_fallback TINYINT(1) NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY ai_chat_messages_conversation_idx (conversation_id, id),
+                CONSTRAINT ai_chat_messages_conversation_fk FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             'CREATE TABLE IF NOT EXISTS app_settings (
                 setting_key VARCHAR(100) NOT NULL,
@@ -1011,4 +1057,29 @@ function present_farm_data(array $row): array
     }
 
     return $data;
+}
+
+function present_ai_conversation(array $row): array
+{
+    return [
+        'id' => (int) $row['id'],
+        'title' => (string) $row['title'],
+        'lastMessagePreview' => (string) ($row['last_message_preview'] ?? ''),
+        'messageCount' => (int) ($row['message_count'] ?? 0),
+        'createdAt' => $row['created_at'] ?? null,
+        'updatedAt' => $row['updated_at'] ?? null,
+    ];
+}
+
+function present_ai_chat_message(array $row): array
+{
+    return [
+        'id' => (int) $row['id'],
+        'role' => (string) $row['role'],
+        'content' => (string) $row['content'],
+        'provider' => $row['provider'] ?? null,
+        'model' => $row['model'] ?? null,
+        'fallback' => (bool) ($row['used_fallback'] ?? false),
+        'createdAt' => $row['created_at'] ?? null,
+    ];
 }

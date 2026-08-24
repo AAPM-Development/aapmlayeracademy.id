@@ -464,6 +464,78 @@ try {
         json_response(['ok' => true]);
     }
 
+    if ($path === 'ai/conversations' && $method === 'GET') {
+        $user = require_user();
+        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 40');
+        $stmt->execute([(int) $user['id']]);
+        json_response(array_map('present_ai_conversation', $stmt->fetchAll()));
+    }
+
+    if ($path === 'ai/conversations' && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $input = request_json();
+        $title = ai_conversation_title((string) ($input['title'] ?? ''));
+        $insert = db()->prepare('INSERT INTO ai_conversations (user_id, title) VALUES (?, ?)');
+        $insert->execute([(int) $user['id'], $title]);
+        $id = (int) db()->lastInsertId();
+        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
+        $stmt->execute([$id, (int) $user['id']]);
+        json_response(present_ai_conversation($stmt->fetch()), 201);
+    }
+
+    if (preg_match('#^ai/conversations/(\d+)/stream$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $conversation = ai_conversation_for_user((int) $matches[1], (int) $user['id']);
+        if (!$conversation) {
+            error_response('Percakapan tidak ditemukan.', 404, 'not_found');
+        }
+        $input = request_json();
+        $message = trim((string) ($input['message'] ?? ''));
+        if ($message === '') {
+            error_response('Pertanyaan wajib diisi.', 422, 'validation_error');
+        }
+        if (strlen($message) > 3000) {
+            error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
+        }
+        rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
+        $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        ai_record_chat_message((int) $conversation['id'], 'user', $message);
+        ai_touch_conversation((int) $conversation['id'], (string) $conversation['title'], $message, (int) $conversation['message_count'] === 0);
+        ai_sse_start();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        $response = ai_assistant_stream($message, $farmContext);
+        ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
+        ai_touch_conversation((int) $conversation['id'], ai_conversation_title($message), (string) $response['reply'], false);
+        rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
+        exit;
+    }
+
+    if (preg_match('#^ai/conversations/(\d+)$#', $path, $matches) && $method === 'GET') {
+        $user = require_user();
+        $conversation = ai_conversation_for_user((int) $matches[1], (int) $user['id']);
+        if (!$conversation) {
+            error_response('Percakapan tidak ditemukan.', 404, 'not_found');
+        }
+        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 240');
+        $messageStmt->execute([(int) $conversation['id']]);
+        json_response(['conversation' => present_ai_conversation($conversation), 'messages' => array_map('present_ai_chat_message', $messageStmt->fetchAll())]);
+    }
+
+    if (preg_match('#^ai/conversations/(\d+)$#', $path, $matches) && $method === 'DELETE') {
+        $user = require_user();
+        require_csrf();
+        $delete = db()->prepare('DELETE FROM ai_conversations WHERE id = ? AND user_id = ?');
+        $delete->execute([(int) $matches[1], (int) $user['id']]);
+        if ($delete->rowCount() < 1) {
+            error_response('Percakapan tidak ditemukan.', 404, 'not_found');
+        }
+        json_response(['ok' => true]);
+    }
+
     if ($path === 'ai-assistant/stream' && $method === 'POST') {
         $user = require_user();
         require_csrf();
@@ -508,6 +580,48 @@ try {
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');
+}
+
+function ai_conversation_title(string $value): string
+{
+    $value = trim((string) preg_replace('/\s+/u', ' ', $value));
+    if ($value === '') {
+        return 'Percakapan baru';
+    }
+    $value = function_exists('mb_substr') ? mb_substr($value, 0, 180, 'UTF-8') : substr($value, 0, 180);
+    return $value;
+}
+
+function ai_conversation_preview(string $value): string
+{
+    $value = trim((string) preg_replace('/\s+/u', ' ', $value));
+    $value = function_exists('mb_substr') ? mb_substr($value, 0, 280, 'UTF-8') : substr($value, 0, 280);
+    return $value;
+}
+
+function ai_conversation_for_user(int $conversationId, int $userId): ?array
+{
+    $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
+    $stmt->execute([$conversationId, $userId]);
+    $conversation = $stmt->fetch();
+    return $conversation ?: null;
+}
+
+function ai_record_chat_message(int $conversationId, string $role, string $content, ?string $provider = null, ?string $model = null, bool $fallback = false): void
+{
+    $insert = db()->prepare('INSERT INTO ai_chat_messages (conversation_id, role, content, provider, model, used_fallback) VALUES (?, ?, ?, ?, ?, ?)');
+    $insert->execute([$conversationId, $role, $content, $provider, $model, $fallback ? 1 : 0]);
+}
+
+function ai_touch_conversation(int $conversationId, string $title, string $preview, bool $setTitle): void
+{
+    $sql = $setTitle
+        ? 'UPDATE ai_conversations SET title = ?, last_message_preview = ?, message_count = message_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        : 'UPDATE ai_conversations SET last_message_preview = ?, message_count = message_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+    $stmt = db()->prepare($sql);
+    $setTitle
+        ? $stmt->execute([ai_conversation_title($title), ai_conversation_preview($preview), $conversationId])
+        : $stmt->execute([ai_conversation_preview($preview), $conversationId]);
 }
 
 function redirect_response(string $url, int $status = 302): void

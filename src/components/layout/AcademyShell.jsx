@@ -7,6 +7,7 @@ import { useThemeMode } from "@/lib/useThemeMode";
 import AcademyHeader from "./AcademyHeader";
 import AcademySidebar from "./AcademySidebar";
 import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
+import { AiChatProvider } from "@/components/ai/AiChatProvider";
 
 export default function AcademyShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -18,6 +19,7 @@ export default function AcademyShell() {
   const handleLogout = () => logout();
 
   return (
+    <AiChatProvider>
     <div className="academy-shell flex h-screen overflow-hidden bg-background text-foreground">
       <div className="hidden shrink-0 lg:flex">
         <AcademySidebar
@@ -56,5 +58,6 @@ export default function AcademyShell() {
       </div>
       <FloatingAiAssistant />
     </div>
+    </AiChatProvider>
   );
 }
