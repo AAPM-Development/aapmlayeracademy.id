@@ -44,6 +44,7 @@ export function getNextModule(modules = [], progress = []) {
 export function getModuleState(module, modules = [], completedSet = new Set()) {
   if (!module) return "locked";
   if (completedSet.has(module.moduleNumber)) return "completed";
+  if (module.available === true || module.state === "available") return "available";
 
   const firstIncomplete = sortModules(modules).find((item) => !completedSet.has(item.moduleNumber));
   return firstIncomplete?.moduleNumber === module.moduleNumber ? "current" : "locked";

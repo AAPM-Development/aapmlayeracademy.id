@@ -1,8 +1,8 @@
 import React from "react";
-import { CheckCircle2, ChevronRight, Circle, LockKeyhole } from "lucide-react";
+import { CheckCircle2, ChevronRight, Circle, LockKeyhole, Unlock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/primitives";
+import { LearningEmptyState } from "@/components/academy/LearningStates";
 import { cn } from "@/lib/utils";
 import { getLevelProgress, getModuleState, learningLevels } from "@/lib/academyData";
 
@@ -10,28 +10,29 @@ function ModuleStatus({ state = "locked" } = {}) {
   const config = {
     completed: { label: "Completed", icon: CheckCircle2, className: "bg-success/10 text-success" },
     current: { label: "Current", icon: Circle, className: "bg-brand-orange/10 text-brand-orange" },
+    available: { label: "Available", icon: Unlock, className: "bg-tint-blue text-tint-blue-foreground" },
     locked: { label: "Locked", icon: LockKeyhole, className: "bg-muted text-muted-foreground" },
   }[state] || { label: "Locked", icon: LockKeyhole, className: "bg-muted text-muted-foreground" };
   const Icon = config.icon;
-  return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold", config.className)}><Icon className="h-3 w-3" /> {config.label}</span>;
+  return <span role="status" aria-label={`Status: ${config.label}`} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold", config.className)}><Icon className="h-3 w-3" aria-hidden="true" /> {config.label}</span>;
 }
 
 function ModuleRow({ module = null, state = "locked" } = {}) {
   if (!module) return null;
   const content = (
-    <div className={cn("flex items-start gap-3 rounded-xl border p-3 transition-colors sm:items-center", state === "current" ? "border-brand-orange/35 bg-brand-orange/5" : "border-border bg-surface-elevated", state !== "locked" && "hover:border-brand-green/35 hover:bg-brand-green/5")}>
-      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", state === "completed" ? "bg-success/10 text-success" : state === "current" ? "bg-brand-orange/10 text-brand-orange" : "bg-muted text-muted-foreground")}>
+    <div className={cn("flex items-start gap-3 rounded-xl border p-3 transition-colors sm:items-center", state === "current" ? "border-brand-orange/35 bg-brand-orange/5" : state === "available" ? "border-tint-blue-border bg-tint-blue/45" : state === "locked" ? "cursor-not-allowed border-border bg-surface-subtle" : "border-border bg-surface-elevated", state !== "locked" && "hover:border-brand-green/35 hover:bg-brand-green/5")}>
+      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", state === "completed" ? "bg-success/10 text-success" : state === "current" ? "bg-brand-orange/10 text-brand-orange" : state === "available" ? "bg-tint-blue text-tint-blue-foreground" : "bg-muted text-muted-foreground")}>
         {state === "completed" ? <CheckCircle2 className="h-4 w-4" /> : state === "locked" ? <LockKeyhole className="h-4 w-4" /> : module.moduleNumber}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2"><div className="truncate text-sm font-medium">{module.title}</div><ModuleStatus state={state} /></div>
+        <div className="flex flex-wrap items-center gap-2"><div className="line-clamp-2 break-words text-sm font-medium">{module.title}</div><ModuleStatus state={state} /></div>
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{module.summary}</p>
         <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground"><span>Modul {module.moduleNumber}</span><span>·</span><span>{module.category}</span></div>
       </div>
       {state !== "locked" && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />}
     </div>
   );
-  return state === "locked" ? <div>{content}</div> : <Link to={`/modules/${module.moduleNumber}`}>{content}</Link>;
+  return state === "locked" ? <div aria-disabled="true" title="Selesaikan modul sebelumnya untuk membuka lesson ini.">{content}</div> : <Link to={`/modules/${module.moduleNumber}`} aria-current={state === "current" ? "step" : undefined} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{content}</Link>;
 }
 
 export default function LearningRoadmap({ modules = [], progress = [] } = {}) {
@@ -54,7 +55,7 @@ export default function LearningRoadmap({ modules = [], progress = [] } = {}) {
                 </div>
                 <Badge variant="outline" className="w-fit border-border text-muted-foreground">{stats.completed}/{stats.total} selesai</Badge>
               </div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-brand-green transition-[width]" style={{ width: `${stats.percent}%` }} /></div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`Progress ${level.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.percent}><div className="h-full rounded-full bg-brand-green transition-[width]" style={{ width: `${stats.percent}%` }} /></div>
             </CardHeader>
             <CardContent className="space-y-2 p-4 sm:p-5">
               {levelModules.map((module) => <ModuleRow key={module.id || module.moduleNumber} module={module} state={getModuleState(module, sortedModules, completedSet)} />)}
@@ -62,7 +63,7 @@ export default function LearningRoadmap({ modules = [], progress = [] } = {}) {
           </Card>
         );
       })}
-      {!modules.length && <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">Learning roadmap belum memiliki modul.</div>}
+      {!modules.length && <LearningEmptyState title="Learning roadmap belum memiliki modul" description="Modul akan muncul di sini saat materi sudah tersedia untuk akun Anda." actionLabel={null} actionTo={null} />}
     </div>
   );
 }

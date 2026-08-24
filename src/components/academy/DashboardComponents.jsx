@@ -1,11 +1,7 @@
 import React from "react";
 import { ArrowRight, ArrowUpRight, BarChart3, BookOpen, Calculator, CheckCircle2, ChevronRight, Clock3, Gauge, LineChart, PlayCircle, ShieldCheck, Sparkles, Target, Trophy, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { IconTile } from "@/components/ui/icon-tile";
-import { Progress } from "@/components/ui/progress";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, IconTile, Progress, Skeleton } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { getLevelProgress, learningLevels, TOTAL_MODULES } from "@/lib/academyData";
 
@@ -53,7 +49,22 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
   );
 }
 
-export function DashboardMetricStrip({ modules = [], progress = [], nextModule = null } = {}) {
+export function DashboardMetricStrip({ modules = [], progress = [], nextModule = null, isLoading = false } = {}) {
+  if (isLoading) {
+    return (
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Memuat ringkasan progress...</span>
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--card-shadow)]">
+            <div className="flex items-start justify-between gap-3"><Skeleton className="h-9 w-9 rounded-xl" /><Skeleton className="h-5 w-20 rounded-full" /></div>
+            <Skeleton className="mt-4 h-8 w-20" />
+            <Skeleton className="mt-2 h-4 w-28" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const completed = progress.filter((item) => item?.completed).length;
   const total = modules.length || TOTAL_MODULES;
   const coursePercent = total ? Math.round((completed / total) * 100) : 0;
@@ -151,6 +162,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
   const percent = modules.length ? Math.round((completed / modules.length) * 100) : Math.round((completed / TOTAL_MODULES) * 100);
   const scored = progress.filter((item) => item?.quizTotal);
   const average = scored.length ? Math.round(scored.reduce((total, item) => total + ((item.quizScore || 0) / item.quizTotal) * 100, 0) / scored.length) : 0;
+  const hasProgress = progress.length > 0;
 
   return (
     <Card className="bg-card/95">
@@ -164,10 +176,10 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
-        <div className="flex items-end justify-between gap-3">
+        {hasProgress ? <div className="flex items-end justify-between gap-3">
           <div className="text-3xl font-semibold tracking-tight">{percent}%</div>
           <div className="text-right text-xs text-muted-foreground">{completed}/{modules.length || TOTAL_MODULES} modul selesai</div>
-        </div>
+        </div> : <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4"><div className="text-sm font-medium text-foreground">Mulai dari lesson pertama</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Progress Anda akan muncul setelah menyelesaikan satu modul.</p><Link to="/modules" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka Learning Path <ArrowRight className="h-3.5 w-3.5" /></Link></div>}
         <Progress value={percent} className="mt-3 h-2 bg-muted [&>div]:bg-brand-green" />
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
           <div><div className="text-lg font-semibold">{average}%</div><div className="text-xs text-muted-foreground">Rata-rata kuis</div></div>
@@ -193,7 +205,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
-        <div className="grid gap-2 sm:grid-cols-2">
+        {!modules.length ? <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4 text-sm text-muted-foreground">Learning journey akan terisi setelah roadmap tersedia. <Link to="/modules" className="font-semibold text-brand-green hover:underline">Buka path</Link>.</div> : <div className="grid gap-2 sm:grid-cols-2">
           {learningLevels.slice(0, 6).map((level) => {
             const stats = getLevelProgress(level.number, modules, completedSet);
             const active = stats.completed > 0 && stats.completed < stats.total;
@@ -212,7 +224,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
               </Link>
             );
           })}
-        </div>
+        </div>}
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-brand-orange" /> Progress detail tersedia di Learning Path.</div>
       </CardContent>
     </Card>

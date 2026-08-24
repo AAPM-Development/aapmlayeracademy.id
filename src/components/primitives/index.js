@@ -23,4 +23,4 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 export { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from "@/components/ui/table";
-
+export { useToast } from "@/components/ui/use-toast";

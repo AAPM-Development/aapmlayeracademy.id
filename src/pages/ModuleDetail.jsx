@@ -1,31 +1,43 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { FileText, Lightbulb, PlayCircle, Target } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, useToast } from "@/components/primitives";
 import LearningFocusShell from "@/components/layout/LearningFocusShell";
 import {
   LessonChecklist,
   LessonHeader,
   LessonInsightList,
+  LessonMedia,
   LessonNavigation,
   LessonSection,
   LessonSidebar,
+  lessonSections,
 } from "@/components/academy/LessonWorkspace";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
 import { sortModules } from "@/lib/academyData";
-import { Link, useParams } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useParams } from "react-router-dom";
 
 export default function ModuleDetail() {
   const { moduleNumber } = useParams();
   const number = Number.parseInt(moduleNumber, 10);
   const { toast } = useToast();
-  const { data: modules = [], isLoading } = useModules();
-  const { data: progress = [] } = useUserProgress();
+  const {
+    data: modules = [],
+    isLoading: modulesLoading,
+    isError: modulesError,
+    refetch: refetchModules,
+  } = useModules();
+  const {
+    data: progress = [],
+    isLoading: progressLoading,
+    isError: progressError,
+    refetch: refetchProgress,
+  } = useUserProgress();
   const saveProgress = useSaveProgress();
   const save = /** @type {any} */ (saveProgress.mutateAsync);
   const [activeSection, setActiveSection] = useState("content");
+  const isLoading = modulesLoading || progressLoading;
 
   const sortedModules = useMemo(() => sortModules(modules), [modules]);
   const module = sortedModules.find((item) => item.moduleNumber === number);
@@ -34,10 +46,28 @@ export default function ModuleDetail() {
   const previous = index > 0 ? sortedModules[index - 1] : null;
   const next = index >= 0 ? sortedModules[index + 1] || null : null;
 
+  useEffect(() => {
+    if (!module) return undefined;
+    const sectionElements = lessonSections.map((section) => document.getElementById(section.id)).filter(Boolean);
+    if (!sectionElements.length) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (visible?.target?.id) setActiveSection(visible.target.id);
+    }, { rootMargin: "-18% 0px -62%", threshold: [0, 0.2] });
+
+    sectionElements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [module?.moduleNumber]);
+
   const markComplete = async () => {
     if (!module || moduleProgress?.completed) return;
-    await save({ moduleNumber: number, data: { moduleNumber: number, completed: true } });
-    toast({ title: "Modul diselesaikan", description: "Progress Anda sudah tersimpan." });
+    try {
+      await save({ moduleNumber: number, data: { moduleNumber: number, completed: true } });
+      toast({ title: "Modul diselesaikan", description: "Progress Anda sudah tersimpan." });
+    } catch {
+      toast({ title: "Progress belum tersimpan", description: "Coba lagi setelah koneksi kembali normal.", variant: "destructive" });
+    }
   };
 
   const jumpToSection = (section) => {
@@ -45,14 +75,15 @@ export default function ModuleDetail() {
     document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  if (isLoading) return <div className="mx-auto max-w-7xl space-y-4 px-4 py-8 sm:px-6 lg:px-8"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-2/3" /><Skeleton className="h-5 w-full max-w-2xl" /><Skeleton className="h-48 w-full" /></div>;
-  if (!module) return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-muted-foreground sm:px-6">Modul belum tersedia. Kembali ke <Link className="font-semibold text-brand-green hover:underline" to="/modules">Learning Path</Link>.</div>;
+  if (modulesError || progressError) return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><LearningErrorState title="Lesson belum dapat dimuat" description="Materi atau progress Anda belum berhasil diambil. Coba lagi untuk membuka lesson ini." onRetry={() => { refetchModules(); refetchProgress(); }} /></div>;
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><LearningLoading label="Memuat lesson..." lines={1} /></div>;
+  if (!module) return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><LearningEmptyState title="Modul belum tersedia" description="Lesson ini belum tersedia atau tautannya sudah berubah. Kembali ke Learning Path untuk memilih materi lain." actionLabel="Kembali ke Learning Path" actionTo="/modules" /></div>;
 
   return (
     <LearningFocusShell
       header={<LessonHeader module={module} completed={moduleProgress?.completed} />}
       sidebar={<LessonSidebar module={module} activeSection={activeSection} onSectionChange={jumpToSection} />}
-      footer={<div className="mt-8 lg:pr-[292px]"><LessonNavigation previous={previous} next={next} onComplete={markComplete} completeDisabled={moduleProgress?.completed || saveProgress.isPending} /></div>}
+      footer={<div className="mt-8 lg:pr-[292px]">{saveProgress.isError && <div className="mb-4 rounded-xl border border-danger/25 bg-danger/5 p-4 text-sm text-danger" role="alert">Progress belum tersimpan. Silakan coba tombol selesai lagi.</div>}<LessonNavigation previous={previous} next={next} onComplete={markComplete} completed={Boolean(moduleProgress?.completed)} saving={saveProgress.isPending} /></div>}
     >
       <div className="space-y-10">
         <LessonSection id="content" title="Materi" icon={FileText}>
@@ -60,9 +91,7 @@ export default function ModuleDetail() {
         </LessonSection>
 
         <LessonSection id="video" title="Video lesson" icon={PlayCircle}>
-          <div className="overflow-hidden rounded-2xl border border-border bg-foreground text-background">
-            <div className="flex aspect-[16/7] items-center justify-center"><div className="text-center"><PlayCircle className="mx-auto h-12 w-12 text-brand-orange" /><div className="mt-3 text-sm font-semibold">Video lesson</div><div className="mt-1 text-xs text-background/60">Gunakan script sebagai panduan observasi di farm.</div></div></div>
-          </div>
+          <LessonMedia module={module} />
           <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Script instruktur</div>{module.videoScript || "Script video sedang disiapkan."}</CardContent></Card>
         </LessonSection>
 
