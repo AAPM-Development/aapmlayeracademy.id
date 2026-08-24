@@ -1,173 +1,79 @@
-import React, { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import React, { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { FileText, Lightbulb, PlayCircle, Target } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import LearningFocusShell from "@/components/layout/LearningFocusShell";
 import {
-  ArrowLeft, PlayCircle, Target, CheckSquare, ClipboardList,
-  Lightbulb, CheckCircle2, ArrowRight, FileText
-} from 'lucide-react';
-import { useModules, useUserProgress, useSaveProgress } from '@/lib/useCourseData';
-import { useToast } from '@/components/ui/use-toast';
+  LessonChecklist,
+  LessonHeader,
+  LessonInsightList,
+  LessonNavigation,
+  LessonSection,
+  LessonSidebar,
+} from "@/components/academy/LessonWorkspace";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useModules, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
+import { sortModules } from "@/lib/academyData";
+import { Link, useParams } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function ModuleDetail() {
   const { moduleNumber } = useParams();
-  const num = parseInt(moduleNumber, 10);
-  const navigate = useNavigate();
+  const number = Number.parseInt(moduleNumber, 10);
   const { toast } = useToast();
   const { data: modules = [], isLoading } = useModules();
   const { data: progress = [] } = useUserProgress();
   const saveProgress = useSaveProgress();
+  const save = /** @type {any} */ (saveProgress.mutateAsync);
+  const [activeSection, setActiveSection] = useState("content");
 
-  const mod = modules.find(m => m.moduleNumber === num);
-  const prog = progress.find(p => p.moduleNumber === num);
-  const [tab, setTab] = useState('content');
+  const sortedModules = useMemo(() => sortModules(modules), [modules]);
+  const module = sortedModules.find((item) => item.moduleNumber === number);
+  const moduleProgress = progress.find((item) => item.moduleNumber === number);
+  const index = sortedModules.findIndex((item) => item.moduleNumber === number);
+  const previous = index > 0 ? sortedModules[index - 1] : null;
+  const next = index >= 0 ? sortedModules[index + 1] || null : null;
 
   const markComplete = async () => {
-    await saveProgress.mutateAsync({ moduleNumber: num, data: { moduleNumber: num, completed: true } });
-    toast({ title: 'Modul diselesaikan', description: 'Lanjut ke kuis untuk menguji pemahaman.' });
+    if (!module || moduleProgress?.completed) return;
+    await save({ moduleNumber: number, data: { moduleNumber: number, completed: true } });
+    toast({ title: "Modul diselesaikan", description: "Progress Anda sudah tersimpan." });
   };
 
-  if (isLoading) {
-    return <div className="mx-auto max-w-3xl px-6 py-12 text-center text-sm text-muted-foreground">Memuat modul…</div>;
-  }
-  if (!mod) {
-    return (
-      <div className="mx-auto max-w-3xl px-6 py-16 text-center">
-        <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-sm text-muted-foreground">Modul belum tersedia. Konten sedang disiapkan oleh admin.</p>
-        <Link to="/modules" className="inline-flex items-center gap-1.5 mt-4 text-sm text-amber-600">
-          <ArrowLeft className="h-4 w-4" /> Kembali ke daftar modul
-        </Link>
-      </div>
-    );
-  }
+  const jumpToSection = (section) => {
+    setActiveSection(section);
+    document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
-  const tabs = [
-    { id: 'content', label: 'Materi', icon: FileText },
-    { id: 'video', label: 'Video Lesson', icon: PlayCircle },
-    { id: 'objectives', label: 'Tujuan & Insight', icon: Target },
-    { id: 'practical', label: 'Praktik', icon: ClipboardList },
-  ];
+  if (isLoading) return <div className="mx-auto max-w-7xl space-y-4 px-4 py-8 sm:px-6 lg:px-8"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-2/3" /><Skeleton className="h-5 w-full max-w-2xl" /><Skeleton className="h-48 w-full" /></div>;
+  if (!module) return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-muted-foreground sm:px-6">Modul belum tersedia. Kembali ke <Link className="font-semibold text-brand-green hover:underline" to="/modules">Learning Path</Link>.</div>;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
-      <Link to="/modules" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="h-4 w-4" /> Semua Modul
-      </Link>
+    <LearningFocusShell
+      header={<LessonHeader module={module} completed={moduleProgress?.completed} />}
+      sidebar={<LessonSidebar module={module} activeSection={activeSection} onSectionChange={jumpToSection} />}
+      footer={<div className="mt-8 lg:pr-[292px]"><LessonNavigation previous={previous} next={next} onComplete={markComplete} completeDisabled={moduleProgress?.completed || saveProgress.isPending} /></div>}
+    >
+      <div className="space-y-10">
+        <LessonSection id="content" title="Materi" icon={FileText}>
+          <div className="markdown-body"><ReactMarkdown>{module.content || "Konten modul sedang disiapkan."}</ReactMarkdown></div>
+        </LessonSection>
 
-      <div className="flex items-center gap-2 mb-2">
-        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-700">Level {mod.level}</span>
-        <span className="text-xs text-muted-foreground">Modul {mod.moduleNumber} · {mod.category}</span>
+        <LessonSection id="video" title="Video lesson" icon={PlayCircle}>
+          <div className="overflow-hidden rounded-2xl border border-border bg-foreground text-background">
+            <div className="flex aspect-[16/7] items-center justify-center"><div className="text-center"><PlayCircle className="mx-auto h-12 w-12 text-brand-orange" /><div className="mt-3 text-sm font-semibold">Video lesson</div><div className="mt-1 text-xs text-background/60">Gunakan script sebagai panduan observasi di farm.</div></div></div>
+          </div>
+          <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Script instruktur</div>{module.videoScript || "Script video sedang disiapkan."}</CardContent></Card>
+        </LessonSection>
+
+        <LessonSection id="objectives" title="Tujuan & insight" icon={Target}>
+          <div className="grid gap-6 sm:grid-cols-2"><div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon={Target} /></div><div><div className="mb-3 text-sm font-semibold"><Lightbulb className="mr-1 inline h-4 w-4 text-brand-orange" /> Key takeaways</div><LessonInsightList items={module.keyTakeaways || []} /></div></div>
+        </LessonSection>
+
+        <LessonSection id="practical" title="Praktik" icon={Target}>
+          <Card className="border-brand-green/20 bg-brand-green/5 shadow-none"><CardContent className="p-5"><div className="mb-3 text-sm font-semibold">Practical assignment</div><p className="text-sm leading-6 text-muted-foreground">{module.practicalAssignment || "Tugas praktik untuk modul ini akan ditampilkan di sini."}</p>{module.checklist?.length > 0 && <div className="mt-5 border-t border-brand-green/15 pt-5"><div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-green">Checklist observasi</div><LessonChecklist items={module.checklist} /></div>}</CardContent></Card>
+        </LessonSection>
       </div>
-      <h1 className="text-2xl font-bold mb-2">{mod.title}</h1>
-      <p className="text-sm text-muted-foreground mb-5">{mod.summary}</p>
-
-      {/* Tabs */}
-      <div className="flex gap-1 border-b mb-5 overflow-x-auto">
-        {tabs.map(t => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${
-                tab === t.id ? 'border-amber-500 text-amber-700 font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" /> {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {tab === 'content' && (
-        <div className="markdown-body">
-          <ReactMarkdown>{mod.content || 'Konten modul sedang disiapkan.'}</ReactMarkdown>
-        </div>
-      )}
-
-      {tab === 'video' && (
-        <div className="space-y-4">
-          <div className="aspect-video rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white">
-            <div className="text-center">
-              <PlayCircle className="h-14 w-14 mx-auto mb-2 opacity-80" />
-              <div className="text-sm font-medium">Video Lesson</div>
-              <div className="text-xs text-white/60 mt-1">Durasi 5–15 menit</div>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Script Instruktur</h3>
-            <div className="rounded-xl border bg-muted/40 p-4 text-sm leading-relaxed whitespace-pre-line">
-              {mod.videoScript || 'Script video sedang disiapkan.'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === 'objectives' && (
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-sm font-semibold"><Target className="h-4 w-4 text-amber-600" /> Tujuan Pembelajaran</div>
-            <ul className="space-y-1.5">
-              {(mod.learningObjectives || []).map((o, i) => (
-                <li key={i} className="flex gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-                  <span>{o}</span>
-                </li>
-              ))}
-              {(!mod.learningObjectives || mod.learningObjectives.length === 0) && <li className="text-sm text-muted-foreground">Daftar tujuan pembelajaran akan ditampilkan di sini.</li>}
-            </ul>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-sm font-semibold"><Lightbulb className="h-4 w-4 text-amber-500" /> Key Takeaways</div>
-            <ul className="space-y-1.5">
-              {(mod.keyTakeaways || []).map((k, i) => (
-                <li key={i} className="flex gap-2 text-sm">
-                  <span className="text-amber-500 font-bold">•</span>
-                  <span>{k}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          {mod.checklist && mod.checklist.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2 text-sm font-semibold"><CheckSquare className="h-4 w-4 text-emerald-600" /> Checklist</div>
-              <ul className="space-y-1.5">
-                {mod.checklist.map((c, i) => (
-                  <li key={i} className="flex gap-2 text-sm">
-                    <input type="checkbox" className="mt-1 h-3.5 w-3.5 rounded" />
-                    <span>{c}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'practical' && (
-        <div className="rounded-xl border bg-muted/40 p-5">
-          <div className="flex items-center gap-2 mb-2 text-sm font-semibold"><ClipboardList className="h-4 w-4 text-amber-600" /> Practical Assignment</div>
-          <p className="text-sm leading-relaxed whitespace-pre-line">{mod.practicalAssignment || 'Tugas praktik untuk modul ini akan ditampilkan di sini.'}</p>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="mt-8 flex flex-col sm:flex-row gap-3 pt-5 border-t">
-        <button
-          onClick={markComplete}
-          disabled={prog?.completed || saveProgress.isPending}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white px-5 py-2.5 text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          {prog?.completed ? 'Modul Selesai' : 'Tandai Selesai'}
-        </button>
-        <button
-          onClick={() => navigate(`/quiz/${num}`)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 text-white px-5 py-2.5 text-sm font-semibold hover:bg-amber-700 transition-colors"
-        >
-          Kerjakan Kuis <ArrowRight className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
+    </LearningFocusShell>
   );
 }

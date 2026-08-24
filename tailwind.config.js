@@ -10,8 +10,19 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
+			brand: {
+				green: 'var(--brand-aapm-green)',
+				orange: 'var(--brand-aapm-orange)',
+				foreground: 'var(--brand-foreground)',
+				'foreground-muted': 'var(--brand-foreground-muted)'
+			},
+			background: 'hsl(var(--background))',
+			foreground: 'hsl(var(--foreground))',
+			surface: {
+				DEFAULT: 'hsl(var(--surface))',
+				subtle: 'hsl(var(--surface-subtle))',
+				elevated: 'hsl(var(--surface-elevated))'
+			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
@@ -41,8 +52,26 @@ module.exports = {
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
   			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
+			input: 'hsl(var(--input))',
+			ring: 'hsl(var(--ring))',
+			success: 'hsl(var(--success))',
+			warning: 'hsl(var(--warning))',
+			danger: 'hsl(var(--danger))',
+			info: 'hsl(var(--info))',
+			ai: {
+				DEFAULT: 'hsl(var(--ai))',
+				foreground: 'hsl(var(--ai-foreground))'
+			},
+			learning: {
+				active: 'hsl(var(--learning-active))',
+				complete: 'hsl(var(--learning-complete))',
+				locked: 'hsl(var(--learning-locked))'
+			},
+			metric: {
+				positive: 'hsl(var(--metric-positive))',
+				negative: 'hsl(var(--metric-negative))',
+				neutral: 'hsl(var(--metric-neutral))'
+			},
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',

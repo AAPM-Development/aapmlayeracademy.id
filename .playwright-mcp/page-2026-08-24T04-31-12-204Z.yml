@@ -1,0 +1,119 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - banner:
+          - generic:
+            - button
+            - generic: Final Exam
+          - generic:
+            - button
+            - button:
+              - generic: D
+        - main:
+          - generic:
+            - link:
+              - /url: /certification
+              - text: Certification
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: Assessment focus mode
+                    - heading [level=1]: Final Exam · Professional progression
+                    - paragraph: 6 soal dari source of truth saat ini · Passing grade 80%
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Exam progress
+                      - generic: 1 / 6
+                    - progressbar
+                  - generic: 17%
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: medium
+                        - generic: mcq
+                      - heading [level=2]: Dalam membaca performa layer, kombinasi yang paling informatif adalah...
+                      - generic:
+                        - button:
+                          - generic: A
+                          - generic: HDP, egg weight, egg mass, feed intake, dan FCR
+                        - button:
+                          - generic: B
+                          - generic: Warna kandang saja
+                        - button:
+                          - generic: C
+                          - generic: Jumlah rapat saja
+                        - button:
+                          - generic: D
+                          - generic: Harga satu bahan saja
+                - generic:
+                  - button [disabled]: Sebelumnya
+                  - button [disabled]: Save & next
+                - generic: Semua jawaban harus terisi sebelum submit. Question count mengikuti data yang dikembalikan API.
+              - complementary:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Question map
+                      - generic: 0/6
+                    - generic:
+                      - button:
+                        - generic: "1"
+                      - button:
+                        - generic: "2"
+                      - button:
+                        - generic: "3"
+                      - button:
+                        - generic: "4"
+                      - button:
+                        - generic: "5"
+                      - button:
+                        - generic: "6"
+                    - button: Tandai untuk review
+    - list
+  - dialog [ref=f6e144]:
+    - button "Close" [active] [ref=f6e145] [cursor=pointer]
+    - complementary [ref=f6e150]:
+      - generic [ref=f6e151]:
+        - img "AAPM Layer Academy" [ref=f6e152]
+        - button "Ciutkan sidebar" [ref=f6e153] [cursor=pointer]
+      - generic [ref=f6e157]:
+        - generic [ref=f6e158]:
+          - generic [ref=f6e159]: Learning progress
+          - generic [ref=f6e160]: 5%
+        - generic [ref=f6e163]: 1 dari 22 modul selesai
+      - navigation "Navigasi utama" [ref=f6e164]:
+        - generic [ref=f6e165]:
+          - generic [ref=f6e166]: Learn
+          - generic [ref=f6e167]:
+            - link "Dashboard" [ref=f6e168] [cursor=pointer]:
+              - /url: /
+            - link "Learning Path" [ref=f6e175] [cursor=pointer]:
+              - /url: /modules
+        - generic [ref=f6e180]:
+          - generic [ref=f6e181]: Tools
+          - generic [ref=f6e182]:
+            - link "Farm Calculators" [ref=f6e183] [cursor=pointer]:
+              - /url: /calculators
+            - link "Farm KPI" [ref=f6e187] [cursor=pointer]:
+              - /url: /kpi
+            - link "AI Farm Assistant" [ref=f6e191] [cursor=pointer]:
+              - /url: /ai-assistant
+        - generic [ref=f6e195]:
+          - generic [ref=f6e196]: Achievement
+          - generic [ref=f6e197]:
+            - link "Certification" [ref=f6e198] [cursor=pointer]:
+              - /url: /certification
+            - link "Final Exam" [ref=f6e203] [cursor=pointer]:
+              - /url: /final-exam
+      - generic [ref=f6e209]:
+        - generic [ref=f6e210]: D
+        - generic [ref=f6e211]:
+          - generic [ref=f6e212]: Demo AAPM
+          - generic [ref=f6e213]: Layer Farm learner
+        - button "Keluar" [ref=f6e214] [cursor=pointer]

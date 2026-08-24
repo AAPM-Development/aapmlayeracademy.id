@@ -1,0 +1,153 @@
+- generic [ref=f8e2]:
+  - generic [ref=f8e4]:
+    - banner [ref=f8e5]:
+      - generic [ref=f8e6]:
+        - button "Buka navigasi" [ref=f8e7] [cursor=pointer]
+        - generic [ref=f8e9]: Dashboard
+      - generic [ref=f8e11]:
+        - button "Gunakan mode terang" [active] [ref=f8e224] [cursor=pointer]
+        - button "D" [ref=f8e13] [cursor=pointer]
+    - main [ref=f8e15]:
+      - generic [ref=f8e16]:
+        - generic [ref=f8e18]:
+          - generic [ref=f8e19]: Layer Farm Academy
+          - heading "Selamat datang, Demo AAPM." [level=1] [ref=f8e20]
+          - paragraph [ref=f8e21]: Pilih satu langkah berikutnya. Academy menjaga progres Anda tetap terlihat dan dapat ditindaklanjuti.
+        - generic [ref=f8e166]:
+          - generic [ref=f8e167]:
+            - generic [ref=f8e168]: Continue learning
+            - generic [ref=f8e169]: Modul 2 · Level 1
+          - heading "Siklus Hidup Ayam Petelur" [level=2] [ref=f8e170]
+          - paragraph [ref=f8e171]: Memahami fase brooding, growing, pre-lay, produksi, post-peak, dan afkir.
+          - generic [ref=f8e172]:
+            - link "Resume lesson" [ref=f8e173] [cursor=pointer]:
+              - /url: /modules/2
+            - generic [ref=f8e174]: Fokus berikutnya di roadmap
+        - generic [ref=f8e28]:
+          - generic [ref=f8e29]:
+            - generic [ref=f8e30]:
+              - generic [ref=f8e33]:
+                - generic [ref=f8e34]: Learning progress
+                - generic [ref=f8e35]: Ritme belajar Anda di Academy.
+              - generic [ref=f8e39]:
+                - generic [ref=f8e40]:
+                  - generic [ref=f8e41]: 5%
+                  - generic [ref=f8e42]: 1/22 modul selesai
+                - progressbar [ref=f8e43]
+                - generic [ref=f8e45]:
+                  - generic [ref=f8e46]:
+                    - generic [ref=f8e47]: 100%
+                    - generic [ref=f8e48]: Rata-rata kuis
+                  - generic [ref=f8e49]:
+                    - generic [ref=f8e50]: "1"
+                    - generic [ref=f8e51]: Kuis tersimpan
+            - generic [ref=f8e52]:
+              - generic [ref=f8e54]:
+                - generic [ref=f8e55]:
+                  - generic [ref=f8e56]: Learning journey
+                  - generic [ref=f8e57]: 14 level yang membentuk jalur kompetensi Anda.
+                - link "Lihat path" [ref=f8e58] [cursor=pointer]:
+                  - /url: /modules
+              - generic [ref=f8e61]:
+                - generic [ref=f8e62]:
+                  - link "1 Foundation 1/2" [ref=f8e178] [cursor=pointer]:
+                    - /url: /modules
+                    - generic [ref=f8e64]:
+                      - generic [ref=f8e65]: "1"
+                      - generic [ref=f8e67]:
+                        - generic [ref=f8e68]: Foundation
+                        - generic [ref=f8e69]: 1/2
+                  - link "2 Brooding & Rearing 0/2" [ref=f8e180] [cursor=pointer]:
+                    - /url: /modules
+                    - generic [ref=f8e72]:
+                      - generic [ref=f8e73]: "2"
+                      - generic [ref=f8e75]:
+                        - generic [ref=f8e76]: Brooding & Rearing
+                        - generic [ref=f8e77]: 0/2
+                  - link "3 Layer Management 0/2" [ref=f8e181] [cursor=pointer]:
+                    - /url: /modules
+                    - generic [ref=f8e80]:
+                      - generic [ref=f8e81]: "3"
+                      - generic [ref=f8e83]:
+                        - generic [ref=f8e84]: Layer Management
+                        - generic [ref=f8e85]: 0/2
+                  - link "4 Nutrition 0/1" [ref=f8e182] [cursor=pointer]:
+                    - /url: /modules
+                    - generic [ref=f8e88]:
+                      - generic [ref=f8e89]: "4"
+                      - generic [ref=f8e91]:
+                        - generic [ref=f8e92]: Nutrition
+                        - generic [ref=f8e93]: 0/1
+                  - link "5 Water Management 0/1" [ref=f8e183] [cursor=pointer]:
+                    - /url: /modules
+                    - generic [ref=f8e96]:
+                      - generic [ref=f8e97]: "5"
+                      - generic [ref=f8e99]:
+                        - generic [ref=f8e100]: Water Management
+                        - generic [ref=f8e101]: 0/1
+                  - link "6 Environment & Closed House 0/2" [ref=f8e184] [cursor=pointer]:
+                    - /url: /modules
+                    - generic [ref=f8e104]:
+                      - generic [ref=f8e105]: "6"
+                      - generic [ref=f8e107]:
+                        - generic [ref=f8e108]: Environment & Closed House
+                        - generic [ref=f8e109]: 0/2
+                - generic [ref=f8e111]: Progress detail tersedia di Learning Path.
+            - generic [ref=f8e113]:
+              - generic [ref=f8e114]: Up next
+              - generic [ref=f8e116]:
+                - 'link "3 Brooding: DOC sampai 6 Minggu Brooding · Lesson" [ref=f8e185] [cursor=pointer]':
+                  - /url: /modules/3
+                  - generic [ref=f8e186]: "3"
+                  - generic [ref=f8e187]:
+                    - generic [ref=f8e188]: "Brooding: DOC sampai 6 Minggu"
+                    - generic [ref=f8e189]:
+                      - generic [ref=f8e190]: Brooding
+                      - generic [ref=f8e191]: ·
+                      - generic [ref=f8e192]: Lesson
+                - 'link "4 Growing & Rearing: 7–17 Minggu Growing · Lesson" [ref=f8e198] [cursor=pointer]':
+                  - /url: /modules/4
+                  - generic [ref=f8e199]: "4"
+                  - generic [ref=f8e200]:
+                    - generic [ref=f8e201]: "Growing & Rearing: 7–17 Minggu"
+                    - generic [ref=f8e202]:
+                      - generic [ref=f8e203]: Growing
+                      - generic [ref=f8e204]: ·
+                      - generic [ref=f8e205]: Lesson
+                - link "5 Persiapan Pre-Lay dan Transfer Pre-Lay · Lesson" [ref=f8e211] [cursor=pointer]:
+                  - /url: /modules/5
+                  - generic [ref=f8e212]: "5"
+                  - generic [ref=f8e213]:
+                    - generic [ref=f8e214]: Persiapan Pre-Lay dan Transfer
+                    - generic [ref=f8e215]:
+                      - generic [ref=f8e216]: Pre-Lay
+                      - generic [ref=f8e217]: ·
+                      - generic [ref=f8e218]: Lesson
+                - link "Buka seluruh roadmap" [ref=f8e118] [cursor=pointer]:
+                  - /url: /modules
+          - complementary [ref=f8e123]:
+            - generic [ref=f8e124]:
+              - generic [ref=f8e125]:
+                - generic [ref=f8e126]: Quick tools
+                - generic [ref=f8e127]: Alat bantu saat Anda belajar.
+              - generic [ref=f8e128]:
+                - link "Farm Calculators Hitung indikator operasional." [ref=f8e129] [cursor=pointer]:
+                  - /url: /calculators
+                  - generic [ref=f8e133]:
+                    - generic [ref=f8e134]: Farm Calculators
+                    - generic [ref=f8e135]: Hitung indikator operasional.
+                - link "Farm KPI Review data produksi." [ref=f8e138] [cursor=pointer]:
+                  - /url: /kpi
+                  - generic [ref=f8e144]:
+                    - generic [ref=f8e145]: Farm KPI
+                    - generic [ref=f8e146]: Review data produksi.
+                - link "AI Farm Assistant Tanya dengan konteks farm." [ref=f8e149] [cursor=pointer]:
+                  - /url: /ai-assistant
+                  - generic [ref=f8e153]:
+                    - generic [ref=f8e154]: AI Farm Assistant
+                    - generic [ref=f8e155]: Tanya dengan konteks farm.
+            - generic [ref=f8e159]:
+              - generic [ref=f8e160]: Study note
+              - paragraph [ref=f8e161]: Gunakan satu sesi untuk satu keputusan operasional. Catat insight yang bisa Anda bawa kembali ke farm.
+  - region "Notifications (F8)":
+    - list

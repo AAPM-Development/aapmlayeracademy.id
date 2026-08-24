@@ -1,122 +1,37 @@
-import React from 'react';
-import { Award, Lock, Star, Download, ChevronRight, GraduationCap } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useUserProgress, useCertificates, useIssueCertificate } from '@/lib/useCourseData';
-import { useToast } from '@/components/ui/use-toast';
-
-const certLevels = [
-  { level: 1, name: 'Layer Poultry Farm Foundation', modules: [1, 2, 3], color: 'from-amber-400 to-amber-500' },
-  { level: 2, name: 'Layer Farm Operator', modules: [4, 5], color: 'from-orange-400 to-orange-500' },
-  { level: 3, name: 'Layer Farm Supervisor', modules: [6, 7, 8, 11, 12, 13, 15, 16, 17], color: 'from-rose-400 to-rose-500' },
-  { level: 4, name: 'Layer Farm Manager', modules: [9, 10, 14, 18], color: 'from-violet-400 to-violet-500' },
-  { level: 5, name: 'Advanced Layer Farm Management', modules: [19, 20, 21], color: 'from-indigo-400 to-indigo-500' },
-  { level: 6, name: 'Layer Poultry Farm Expert', modules: [22], requiresFinal: true, color: 'from-slate-600 to-slate-800' },
-];
+import React from "react";
+import { Award, ArrowRight, Download, GraduationCap } from "lucide-react";
+import { Link } from "react-router-dom";
+import ContentContainer from "@/components/layout/ContentContainer";
+import PageHeader from "@/components/layout/PageHeader";
+import CertificationPath from "@/components/academy/CertificationPath";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { useCertificates, useIssueCertificate, useUserProgress } from "@/lib/useCourseData";
 
 export default function Certification() {
   const { data: progress = [] } = useUserProgress();
-  const { data: certs = [] } = useCertificates();
+  const { data: certificates = [] } = useCertificates();
   const issue = useIssueCertificate();
+  const issueCertificate = /** @type {any} */ (issue.mutateAsync);
   const { toast } = useToast();
 
-  const completedSet = new Set(progress.filter(p => p.completed).map(p => p.moduleNumber));
-  const finalPassed = progress.some(p => p.moduleNumber === 0 && p.completed);
-
-  const eligible = (c) => c.modules.every(m => completedSet.has(m)) && (!c.requiresFinal || finalPassed);
-
-  const claim = async (c) => {
-    if (!eligible(c)) return;
-    await issue.mutateAsync({ levelNumber: c.level, levelName: c.name, score: 100, examType: 'level', holderName: 'Peserta Layer Farm Academy' });
-    toast({ title: 'Sertifikat diterbitkan!', description: c.name });
+  const claim = async (tier) => {
+    await issueCertificate({ levelNumber: tier.number, levelName: tier.name, score: 100, examType: "level", holderName: "Peserta Layer Farm Academy" });
+    toast({ title: "Sertifikat diterbitkan", description: tier.name });
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Award className="h-6 w-6 text-amber-600" /> Sertifikasi</h1>
-        <p className="text-sm text-muted-foreground mt-1">Selesaikan modul & ujian untuk membuka sertifikat setiap level.</p>
-      </div>
+    <ContentContainer>
+      <PageHeader eyebrow="Achievement" title="Professional certification" description="Learning levels mengukur perjalanan belajar. Certification tiers merangkum progres profesional Anda." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><Award className="h-3.5 w-3.5 text-brand-orange" /> 6 tiers</div>} />
 
-      <Link to="/final-exam" className="mb-6 flex items-center justify-between rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 p-5 text-white hover:opacity-95 transition-opacity">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15"><GraduationCap className="h-6 w-6" /></div>
-          <div>
-            <div className="text-xs text-amber-300 font-medium">FINAL EXAMINATION</div>
-            <div className="font-semibold">Ujian Akhir — Layer Poultry Farm Expert</div>
-            <div className="text-xs text-white/60 mt-0.5">50 soal · Passing grade 80% · Sertifikat Expert</div>
-          </div>
-        </div>
-        <ChevronRight className="h-5 w-5 text-white/70" />
-      </Link>
+      <div className="mb-6 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-border bg-surface-elevated p-4"><div className="text-2xl font-semibold">14</div><div className="mt-1 text-xs text-muted-foreground">Learning levels</div></div><div className="rounded-xl border border-border bg-surface-elevated p-4"><div className="text-2xl font-semibold">22</div><div className="mt-1 text-xs text-muted-foreground">Core modules</div></div><div className="rounded-xl border border-border bg-surface-elevated p-4"><div className="text-2xl font-semibold text-brand-orange">6</div><div className="mt-1 text-xs text-muted-foreground">Professional tiers</div></div></div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        {certLevels.map(c => {
-          const owned = certs.find(x => x.levelNumber === c.level);
-          const done = c.modules.filter(m => completedSet.has(m)).length;
-          const canClaim = eligible(c) && !owned;
-          const locked = !eligible(c);
-          return (
-            <div key={c.level} className="rounded-2xl border bg-card overflow-hidden shadow-sm">
-              <div className={`h-2 bg-gradient-to-r ${c.color}`} />
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-0.5">Level {c.level}</div>
-                    <h3 className="font-semibold leading-tight">{c.name}</h3>
-                  </div>
-                  {owned ? (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><Star className="h-5 w-5 fill-emerald-500" /></div>
-                  ) : locked ? (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground"><Lock className="h-4 w-4" /></div>
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-600"><Award className="h-4 w-4" /></div>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground mb-3">
-                  {c.requiresFinal ? 'Lulus seluruh modul + Final Exam' : `Selesaikan ${c.modules.length} modul`}
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-3">
-                  <div className="h-full bg-amber-500 transition-all" style={{ width: `${(done / c.modules.length) * 100}%` }} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{done}/{c.modules.length} modul{c.requiresFinal ? ` · Final ${finalPassed ? '✓' : '✗'}` : ''}</span>
-                  {owned ? (
-                    <button className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600"><Download className="h-3.5 w-3.5" /> Unduh</button>
-                  ) : canClaim ? (
-                    <button onClick={() => claim(c)} className="rounded-lg bg-amber-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-amber-700">Klaim</button>
-                  ) : (
-                    <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Terkunci</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <Card className="mb-6 overflow-hidden border-foreground/15 bg-foreground text-background shadow-none"><CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange"><GraduationCap className="h-5 w-5" /></div><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Final assessment</div><div className="mt-1 font-semibold">Final Exam untuk Tier 6</div><p className="mt-1 text-xs leading-5 text-background/60">Jumlah soal mengikuti data API saat ini. Passing grade ditetapkan oleh runtime exam.</p></div></div><Button asChild variant="outline" className="border-background/20 bg-transparent text-background hover:bg-background/10 hover:text-background"><Link to="/final-exam">Buka Final Exam <ArrowRight /></Link></Button></CardContent></Card>
 
-      {/* Owned certificates */}
-      {certs.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold mb-3">Sertifikat Saya</h2>
-          <div className="space-y-3">
-            {certs.map(cert => (
-              <div key={cert.id} className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-white"><Award className="h-6 w-6" /></div>
-                  <div>
-                    <div className="text-xs text-amber-700 font-medium">LEVEL {cert.levelNumber} CERTIFICATE</div>
-                    <div className="font-semibold">{cert.levelName}</div>
-                    <div className="text-xs text-muted-foreground">{cert.holderName}</div>
-                  </div>
-                </div>
-                <button className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 text-white px-4 py-2 text-sm font-medium hover:bg-amber-700">
-                  <Download className="h-4 w-4" /> Unduh PDF
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+      <CertificationPath progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} />
+
+      {certificates.length > 0 && <section className="mt-8"><h2 className="mb-3 text-lg font-semibold">Sertifikat saya</h2><div className="space-y-3">{certificates.map((certificate) => <Card key={certificate.id} className="shadow-none"><CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success"><Award className="h-5 w-5" /></div><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-success">Tier {certificate.levelNumber}</div><div className="mt-1 text-sm font-semibold">{certificate.levelName}</div><div className="mt-1 text-xs text-muted-foreground">{certificate.holderName} · Score {certificate.score}%</div></div></div><Button type="button" variant="outline" size="sm" disabled><Download /> Unduh PDF</Button></CardContent></Card>)}</div></section>}
+    </ContentContainer>
   );
 }

@@ -1,0 +1,118 @@
+- generic [ref=f9e4]:
+  - generic [ref=f9e5]:
+    - complementary [ref=f9e7]:
+      - generic [ref=f9e8]:
+        - img "AAPM Layer Academy" [ref=f9e9]
+        - button "Ciutkan sidebar" [ref=f9e10] [cursor=pointer]
+      - generic [ref=f9e14]:
+        - generic [ref=f9e15]:
+          - generic [ref=f9e16]: Learning progress
+          - generic [ref=f9e17]: 5%
+        - generic [ref=f9e20]: 1 dari 22 modul selesai
+      - navigation "Navigasi utama" [ref=f9e21]:
+        - generic [ref=f9e22]:
+          - generic [ref=f9e23]: Learn
+          - generic [ref=f9e24]:
+            - link "Dashboard" [ref=f9e25] [cursor=pointer]:
+              - /url: /
+            - link "Learning Path" [ref=f9e32] [cursor=pointer]:
+              - /url: /modules
+        - generic [ref=f9e37]:
+          - generic [ref=f9e38]: Tools
+          - generic [ref=f9e39]:
+            - link "Farm Calculators" [ref=f9e40] [cursor=pointer]:
+              - /url: /calculators
+            - link "Farm KPI" [ref=f9e44] [cursor=pointer]:
+              - /url: /kpi
+            - link "AI Farm Assistant" [ref=f9e48] [cursor=pointer]:
+              - /url: /ai-assistant
+        - generic [ref=f9e52]:
+          - generic [ref=f9e53]: Achievement
+          - generic [ref=f9e54]:
+            - link "Certification" [ref=f9e55] [cursor=pointer]:
+              - /url: /certification
+            - link "Final Exam" [ref=f9e60] [cursor=pointer]:
+              - /url: /final-exam
+      - generic [ref=f9e66]:
+        - generic [ref=f9e67]: D
+        - generic [ref=f9e68]:
+          - generic [ref=f9e69]: Demo AAPM
+          - generic [ref=f9e70]: Layer Farm learner
+        - button "Keluar" [ref=f9e71] [cursor=pointer]
+    - generic [ref=f9e75]:
+      - banner [ref=f9e76]:
+        - generic [ref=f9e77]:
+          - button "Ciutkan sidebar" [ref=f9e78] [cursor=pointer]
+          - generic [ref=f9e81]:
+            - generic [ref=f9e82]: Achievement
+            - generic [ref=f9e83]: Final Exam
+        - generic [ref=f9e84]:
+          - generic [ref=f9e85]: Academy workspace
+          - button "Gunakan mode gelap" [ref=f9e87] [cursor=pointer]
+          - button "D Demo AAPM" [ref=f9e88] [cursor=pointer]:
+            - generic [ref=f9e89]: D
+            - generic [ref=f9e90]: Demo AAPM
+      - main [ref=f9e91]:
+        - generic [ref=f9e92]:
+          - link "Certification" [ref=f9e93] [cursor=pointer]:
+            - /url: /certification
+          - generic [ref=f9e97]:
+            - generic [ref=f9e98]:
+              - img "AAPM Layer Academy" [ref=f9e99]
+              - generic [ref=f9e100]:
+                - generic [ref=f9e101]: Assessment focus mode
+                - heading "Final Exam · Professional progression" [level=1] [ref=f9e102]
+                - paragraph [ref=f9e103]: 6 soal dari source of truth saat ini · Passing grade 80%
+            - generic [ref=f9e104]: Tier 6
+          - generic [ref=f9e108]:
+            - generic [ref=f9e109]:
+              - generic [ref=f9e110]:
+                - generic [ref=f9e111]:
+                  - generic [ref=f9e112]:
+                    - generic [ref=f9e113]: Exam progress
+                    - generic [ref=f9e114]: 1 / 6
+                  - progressbar [ref=f9e115]
+                - generic [ref=f9e117]: 17%
+              - generic [ref=f9e120]:
+                - generic [ref=f9e121]:
+                  - generic [ref=f9e122]: medium
+                  - generic [ref=f9e123]: mcq
+                - heading "Dalam membaca performa layer, kombinasi yang paling informatif adalah..." [level=2] [ref=f9e124]
+                - generic [ref=f9e125]:
+                  - button "A HDP, egg weight, egg mass, feed intake, dan FCR" [active] [ref=f9e126] [cursor=pointer]:
+                    - generic [ref=f9e127]: A
+                    - generic [ref=f9e128]: HDP, egg weight, egg mass, feed intake, dan FCR
+                  - button "B Warna kandang saja" [ref=f9e129] [cursor=pointer]:
+                    - generic [ref=f9e130]: B
+                    - generic [ref=f9e131]: Warna kandang saja
+                  - button "C Jumlah rapat saja" [ref=f9e132] [cursor=pointer]:
+                    - generic [ref=f9e133]: C
+                    - generic [ref=f9e134]: Jumlah rapat saja
+                  - button "D Harga satu bahan saja" [ref=f9e135] [cursor=pointer]:
+                    - generic [ref=f9e136]: D
+                    - generic [ref=f9e137]: Harga satu bahan saja
+              - generic [ref=f9e138]:
+                - button "Sebelumnya" [disabled]
+                - button "Save & next" [ref=f9e160] [cursor=pointer]
+              - generic [ref=f9e139]: Semua jawaban harus terisi sebelum submit. Question count mengikuti data yang dikembalikan API.
+            - complementary [ref=f9e140]:
+              - generic [ref=f9e142]:
+                - generic [ref=f9e143]:
+                  - generic [ref=f9e144]: Question map
+                  - generic [ref=f9e145]: 1/6
+                - generic [ref=f9e146]:
+                  - button "Question 1" [ref=f9e147] [cursor=pointer]:
+                    - generic [ref=f9e148]: "1"
+                  - button "Question 2" [ref=f9e149] [cursor=pointer]:
+                    - generic [ref=f9e150]: "2"
+                  - button "Question 3" [ref=f9e151] [cursor=pointer]:
+                    - generic [ref=f9e152]: "3"
+                  - button "Question 4" [ref=f9e153] [cursor=pointer]:
+                    - generic [ref=f9e154]: "4"
+                  - button "Question 5" [ref=f9e155] [cursor=pointer]:
+                    - generic [ref=f9e156]: "5"
+                  - button "Question 6" [ref=f9e157] [cursor=pointer]:
+                    - generic [ref=f9e158]: "6"
+                - button "Tandai untuk review" [ref=f9e159] [cursor=pointer]
+  - region "Notifications (F8)":
+    - list

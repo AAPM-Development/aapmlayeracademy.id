@@ -1,12 +1,14 @@
+// @ts-nocheck
 import { cn } from "@/lib/utils"
 
+/** @param {{ className?: string, [key: string]: any }} props */
 function Skeleton({
-  className,
+  className = "",
   ...props
-}) {
+} = {}) {
   return (
     (<div
-      className={cn("animate-pulse rounded-md bg-primary/10", className)}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
       {...props} />)
   );
 }

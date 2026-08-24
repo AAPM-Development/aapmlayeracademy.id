@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as React from "react"
 import { cva } from "class-variance-authority";
 
@@ -23,11 +24,12 @@ const badgeVariants = cva(
   }
 )
 
+/** @param {{ className?: string, variant?: string, [key: string]: any }} props */
 function Badge({
-  className,
-  variant,
+  className = "",
+  variant = "default",
   ...props
-}) {
+} = {}) {
   return (<div className={cn(badgeVariants({ variant }), className)} {...props} />);
 }
 
