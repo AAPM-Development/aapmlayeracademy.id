@@ -37,8 +37,7 @@ export default function AcademySidebar({
       </div>
 
       <div className={cn("shrink-0", collapsed ? "px-3 py-4" : "px-4 py-5")}>
-        <div className={cn("relative overflow-hidden rounded-2xl border border-tint-green-border bg-gradient-to-br from-tint-green via-surface-elevated to-tint-orange/35", collapsed ? "p-2" : "p-3")}>
-          <div className="pointer-events-none absolute -right-5 -top-5 h-16 w-16 rounded-full border-8 border-white/40" />
+        <div className={cn("overflow-hidden rounded-2xl border border-tint-green-border bg-tint-green", collapsed ? "p-2" : "p-3")}>
           {collapsed ? (
             <div className="text-center">
               <div className="text-sm font-semibold text-brand-orange">{percent}%</div>

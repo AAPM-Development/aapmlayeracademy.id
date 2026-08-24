@@ -20,5 +20,8 @@ return [
     'google_client_id' => '',
     'google_client_secret' => '',
     'google_redirect_uri' => '',
+    // Comma-separated emergency/bootstrap allow-list. Keep real values only in
+    // the private config file; a database role of `admin` remains canonical.
+    'admin_emails' => '',
     'expose_dev_reset_token' => true,
 ];

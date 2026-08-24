@@ -50,10 +50,15 @@
     --brand-foreground: #1c2b21;
     --brand-foreground-muted: #78867c;
     --surface: 0 0% 100%;
+    --surface-default: 0 0% 100%;
     --surface-subtle: 150 18% 97%;
+    --surface-muted: 150 18% 97%;
     --surface-elevated: 0 0% 100%;
     --surface-hover: 150 18% 95%;
     --surface-inset: 150 14% 94%;
+    --surface-border: 150 13% 84%;
+    --surface-accent: 145 51% 93%;
+    --surface-accent-border: 145 64% 78%;
     --tint-green: 145 51% 93%;
     --tint-green-foreground: 153 93% 29%;
     --tint-green-border: 145 64% 82%;
@@ -93,8 +98,10 @@
     --sidebar-accent-foreground: 145 45% 25%;
     --sidebar-border: 150 13% 89%;
     --sidebar-ring: 145 45% 36%;
-    --card-shadow: 0 16px 38px -30px rgba(26, 58, 37, 0.55);
-    --card-shadow-hover: 0 26px 52px -34px rgba(26, 58, 37, 0.65);
+    --surface-shadow: 0 1px 2px rgba(26, 58, 37, 0.06);
+    --surface-shadow-hover: 0 8px 18px -14px rgba(26, 58, 37, 0.24);
+    --card-shadow: var(--surface-shadow);
+    --card-shadow-hover: var(--surface-shadow-hover);
     --hero-shadow: 0 24px 46px -28px rgba(231, 84, 34, 0.62);
   }
 
@@ -124,10 +131,15 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     --surface: 0 0% 3.9%;
+    --surface-default: 0 0% 7%;
     --surface-subtle: 0 0% 14.9%;
+    --surface-muted: 0 0% 12%;
     --surface-elevated: 0 0% 7%;
     --surface-hover: 0 0% 16%;
     --surface-inset: 0 0% 12%;
+    --surface-border: 0 0% 20%;
+    --surface-accent: 145 35% 18%;
+    --surface-accent-border: 145 35% 28%;
     --tint-green: 145 35% 18%;
     --tint-green-foreground: 145 70% 72%;
     --tint-green-border: 145 35% 28%;
@@ -163,8 +175,10 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-    --card-shadow: 0 18px 42px -30px rgba(0, 0, 0, 0.7);
-    --card-shadow-hover: 0 28px 54px -34px rgba(0, 0, 0, 0.85);
+    --surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
+    --surface-shadow-hover: 0 10px 24px -16px rgba(0, 0, 0, 0.62);
+    --card-shadow: var(--surface-shadow);
+    --card-shadow-hover: var(--surface-shadow-hover);
     --hero-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.75);
   }
 }
@@ -205,10 +219,7 @@
   }
 
   .academy-shell {
-    background:
-      radial-gradient(circle at 8% -8%, rgba(47, 125, 66, 0.08), transparent 28rem),
-      radial-gradient(circle at 100% 8%, rgba(217, 85, 29, 0.06), transparent 24rem),
-      hsl(var(--background));
+    background: hsl(var(--background));
   }
 
   .auth-ambient {

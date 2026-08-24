@@ -148,8 +148,7 @@ try {
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        unset($user['password_hash']);
-        json_response(['user' => $user, 'csrfToken' => csrf_token()]);
+        json_response(['user' => present_authenticated_user($user), 'csrfToken' => csrf_token()]);
     }
 
     if ($path === 'auth/register' && $method === 'POST') {
@@ -262,6 +261,39 @@ try {
         session_regenerate_id(true);
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         json_response(['ok' => true]);
+    }
+
+    if ($path === 'admin/overview' && $method === 'GET') {
+        require_admin();
+        json_response(admin_overview_data());
+    }
+
+    if ($path === 'admin/courses' && $method === 'GET') {
+        require_admin();
+        json_response(['courses' => [admin_course_data()]]);
+    }
+
+    if (preg_match('#^admin/courses/([^/]+)$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        $courseId = rawurldecode($matches[1]);
+        if ($courseId !== admin_course_id()) {
+            error_response('Course tidak ditemukan.', 404, 'not_found');
+        }
+        json_response(admin_course_detail_data());
+    }
+
+    if ($path === 'admin/learners' && $method === 'GET') {
+        require_admin();
+        json_response(['learners' => admin_learner_list((string) ($_GET['search'] ?? ''))]);
+    }
+
+    if (preg_match('#^admin/learners/(\\d+)$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        $learner = admin_learner_detail((int) $matches[1]);
+        if (!$learner) {
+            error_response('Learner tidak ditemukan.', 404, 'not_found');
+        }
+        json_response($learner);
     }
 
     if ($path === 'modules' && $method === 'GET') {

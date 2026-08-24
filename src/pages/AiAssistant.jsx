@@ -42,7 +42,7 @@ export default function AiAssistant() {
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 flex flex-col h-[calc(100vh-1px)] lg:h-screen">
       <div className="flex items-center gap-2.5 mb-1">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange text-white">
           <Sparkles className="h-5 w-5" />
         </div>
         <div>
@@ -61,7 +61,7 @@ export default function AiAssistant() {
       <div className="flex-1 overflow-y-auto rounded-2xl border bg-card p-4 space-y-4 mb-3">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${m.role === 'user' ? 'bg-sky-100 text-sky-700' : 'bg-gradient-to-br from-amber-500 to-orange-500 text-white'}`}>
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${m.role === 'user' ? 'bg-sky-100 text-sky-700' : 'bg-brand-orange text-white'}`}>
               {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
             </div>
             <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-line ${m.role === 'user' ? 'bg-amber-600 text-white' : 'bg-muted/50'}`}>
@@ -71,7 +71,7 @@ export default function AiAssistant() {
         ))}
         {ai.isPending && (
           <div className="flex gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange text-white">
               <Bot className="h-4 w-4" />
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-2xl px-4 py-2.5">

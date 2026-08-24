@@ -9,7 +9,7 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
   if (!module) {
     return (
       <Card className="relative overflow-hidden border-brand-green/20 bg-brand-green/5 shadow-[var(--card-shadow)]">
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-green to-tint-green-foreground" />
+        <div className="absolute inset-x-0 top-0 h-1 bg-brand-green" />
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-green">Learning path selesai</div>
@@ -24,7 +24,7 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
 
   return (
     <Card className="group relative overflow-hidden border-border/80 bg-card shadow-[var(--card-shadow)] transition-shadow duration-300 hover:shadow-[var(--card-shadow-hover)]">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-orange via-tint-orange-foreground to-brand-green" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-brand-orange" />
       <CardContent className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -76,24 +76,23 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
       ? learningLevels[learningLevels.length - 1]
       : learningLevels[0];
   const metrics = [
-    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: CheckCircle2, tone: "green" },
-    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: TrendingUp, tone: "orange" },
-    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: Target, tone: "blue" },
-    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: Trophy, tone: "violet" },
+    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: CheckCircle2, tone: "green", surface: "border-tint-green-border bg-tint-green" },
+    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: TrendingUp, tone: "orange", surface: "border-tint-orange-border bg-tint-orange" },
+    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: Target, tone: "blue", surface: "border-tint-blue-border bg-tint-blue" },
+    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: Trophy, tone: "violet", surface: "border-tint-violet-border bg-tint-violet" },
   ];
 
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric, index) => {
         return (
-          <div key={metric.label} className="academy-enter group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--card-shadow)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[var(--card-shadow-hover)]" style={{ animationDelay: `${index * 70}ms` }}>
-            <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-surface-inset opacity-70 transition-transform duration-300 group-hover:scale-125" />
-            <div className="relative flex items-start justify-between gap-3">
+          <div key={metric.label} className={cn("academy-enter rounded-2xl border p-4 shadow-none transition-[border-color,box-shadow] duration-300 hover:shadow-[var(--surface-shadow-hover)]", metric.surface)} style={{ animationDelay: `${index * 70}ms` }}>
+            <div className="flex items-start justify-between gap-3">
               <IconTile icon={metric.icon} tone={metric.tone} size="sm" />
-              <span className="rounded-full bg-surface-inset px-2 py-1 text-[10px] font-medium text-muted-foreground">{metric.detail}</span>
+              <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">{metric.detail}</span>
             </div>
-            <div className="relative mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">{metric.value}</div>
-            <div className="relative mt-1 text-xs font-medium text-foreground/80">{metric.label}</div>
+            <div className="mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">{metric.value}</div>
+            <div className="mt-1 text-xs font-medium text-foreground/80">{metric.label}</div>
           </div>
         );
       })}
@@ -111,10 +110,10 @@ const dashboardTracks = [
 export function LearningTracks({ modules = [], progress = [] } = {}) {
   const completedSet = new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
   const tones = {
-    green: { card: "border-tint-green-border from-tint-green via-card to-tint-green/70", bar: "bg-tint-green-foreground", label: "text-tint-green-foreground" },
-    blue: { card: "border-tint-blue-border from-tint-blue via-card to-tint-blue/70", bar: "bg-tint-blue-foreground", label: "text-tint-blue-foreground" },
-    violet: { card: "border-tint-violet-border from-tint-violet via-card to-tint-violet/70", bar: "bg-tint-violet-foreground", label: "text-tint-violet-foreground" },
-    slate: { card: "border-tint-slate-border from-tint-slate via-card to-tint-slate/70", bar: "bg-tint-slate-foreground", label: "text-tint-slate-foreground" },
+    green: { card: "border-tint-green-border bg-tint-green", bar: "bg-tint-green-foreground", label: "text-tint-green-foreground" },
+    blue: { card: "border-tint-blue-border bg-tint-blue", bar: "bg-tint-blue-foreground", label: "text-tint-blue-foreground" },
+    violet: { card: "border-tint-violet-border bg-tint-violet", bar: "bg-tint-violet-foreground", label: "text-tint-violet-foreground" },
+    slate: { card: "border-tint-slate-border bg-tint-slate", bar: "bg-tint-slate-foreground", label: "text-tint-slate-foreground" },
   };
 
   return (
@@ -137,18 +136,17 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
           const levelNames = track.levels.map((levelNumber) => learningLevels.find((level) => level.number === levelNumber)?.name).filter(Boolean);
 
           return (
-            <Link key={track.name} to="/modules" className={cn("group relative overflow-hidden rounded-[1.25rem] border bg-gradient-to-br p-5 shadow-[var(--card-shadow)] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[var(--card-shadow-hover)]", tone.card)}>
-              <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full border-[14px] border-card/70 opacity-70 transition-transform duration-500 group-hover:scale-125" />
-              <div className="relative flex items-start gap-3">
+            <Link key={track.name} to="/modules" className={cn("group overflow-hidden rounded-[1.25rem] border p-5 shadow-none transition-[border-color,box-shadow] duration-300 hover:shadow-[var(--surface-shadow-hover)]", tone.card)}>
+              <div className="flex items-start gap-3">
                 <IconTile icon={track.icon} tone={track.tone} size="md" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3"><h3 className={cn("text-base font-semibold", tone.label)}>{track.name}</h3><ArrowRight className={cn("h-4 w-4 transition-transform duration-300 group-hover:translate-x-1", tone.label)} /></div>
                   <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">{track.description}</p>
                 </div>
               </div>
-              <div className="relative mt-5 flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="tabular-nums">{stats.completed}/{stats.total || "—"} modul selesai</span><Badge variant="soft" className="bg-card/70 text-[10px] text-muted-foreground">{track.levels.length} level</Badge></div>
-              <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10"><div className={cn("h-full rounded-full transition-[width] duration-500", tone.bar)} style={{ width: `${percent}%` }} /></div>
-              <div className="relative mt-3 truncate text-[11px] text-muted-foreground/80">{levelNames.slice(0, 4).join(" · ")}{levelNames.length > 4 ? " · …" : ""}</div>
+              <div className="mt-5 flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="tabular-nums">{stats.completed}/{stats.total || "—"} modul selesai</span><Badge variant="soft" className="bg-white/70 text-[10px] text-muted-foreground">{track.levels.length} level</Badge></div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10"><div className={cn("h-full rounded-full transition-[width] duration-500", tone.bar)} style={{ width: `${percent}%` }} /></div>
+              <div className="mt-3 truncate text-[11px] text-muted-foreground/80">{levelNames.slice(0, 4).join(" · ")}{levelNames.length > 4 ? " · …" : ""}</div>
             </Link>
           );
         })}

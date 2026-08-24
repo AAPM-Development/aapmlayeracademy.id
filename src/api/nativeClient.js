@@ -100,6 +100,17 @@ export const nativeApi = {
   ai: {
     assistant: ({ message, farmContext }) => request('/ai-assistant', json({ message, farmContext })),
   },
+  admin: {
+    overview: () => request('/admin/overview'),
+    courses: {
+      list: () => request('/admin/courses'),
+      detail: (courseId) => request(`/admin/courses/${encodeURIComponent(courseId)}`),
+    },
+    learners: {
+      list: (search = '') => request(`/admin/learners${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+      detail: (learnerId) => request(`/admin/learners/${encodeURIComponent(learnerId)}`),
+    },
+  },
 };
 
 export { ApiError };

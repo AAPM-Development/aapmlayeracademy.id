@@ -33,6 +33,7 @@ function app_config(): array
         'google_client_id' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_ID') ?: '',
         'google_client_secret' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_SECRET') ?: '',
         'google_redirect_uri' => getenv('AAPLAYERACADEMY_GOOGLE_REDIRECT_URI') ?: '',
+        'admin_emails' => getenv('AAPLAYERACADEMY_ADMIN_EMAILS') ?: '',
         'expose_dev_reset_token' => false,
     ];
 
@@ -420,7 +421,7 @@ function current_user(): ?array
     $stmt = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
     $stmt->execute([(int) $_SESSION['user_id']]);
     $user = $stmt->fetch();
-    return $user ?: null;
+    return $user ? present_authenticated_user($user) : null;
 }
 
 function require_user(): array
@@ -428,6 +429,49 @@ function require_user(): array
     $user = current_user();
     if (!$user) {
         error_response('Silakan login terlebih dahulu.', 401, 'auth_required');
+    }
+    return $user;
+}
+
+/**
+ * The original app used `user` as its database default. The public API now
+ * exposes only the bounded learner/admin role contract while preserving every
+ * existing account and schema value.
+ */
+function configured_admin_emails(): array
+{
+    $value = (string) (app_config()['admin_emails'] ?? '');
+    $emails = array_filter(array_map('normalize_email', explode(',', $value)));
+    return array_values(array_unique($emails));
+}
+
+function effective_user_role(array $user): string
+{
+    if (strtolower(trim((string) ($user['role'] ?? ''))) === 'admin') {
+        return 'admin';
+    }
+
+    return in_array(normalize_email($user['email'] ?? ''), configured_admin_emails(), true)
+        ? 'admin'
+        : 'learner';
+}
+
+function present_authenticated_user(array $user): array
+{
+    return [
+        'id' => (int) ($user['id'] ?? 0),
+        'email' => (string) ($user['email'] ?? ''),
+        'full_name' => (string) ($user['full_name'] ?? ''),
+        'role' => effective_user_role($user),
+        'created_at' => $user['created_at'] ?? null,
+    ];
+}
+
+function require_admin(): array
+{
+    $user = require_user();
+    if (($user['role'] ?? 'learner') !== 'admin') {
+        error_response('Akses admin diperlukan.', 403, 'admin_required');
     }
     return $user;
 }
@@ -721,6 +765,191 @@ function present_progress(array $row): array
         'quizTotal' => $row['quiz_total'] === null ? null : (int) $row['quiz_total'],
         'practicalDone' => (bool) $row['practical_done'],
         'timeSpentMinutes' => $row['time_spent_minutes'] === null ? null : (int) $row['time_spent_minutes'],
+    ];
+}
+
+function admin_course_id(): string
+{
+    return 'layer-farm-management';
+}
+
+function admin_module_rows(): array
+{
+    return db()->query('SELECT id, level_number, level_name, module_number, title, category, summary, sort_order, created_at, updated_at FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();
+}
+
+function admin_course_data(): array
+{
+    $modules = admin_module_rows();
+    $learnerCount = (int) db()->query('SELECT COUNT(DISTINCT user_id) FROM user_progress')->fetchColumn();
+    $latestUpdate = null;
+    foreach ($modules as $module) {
+        $updatedAt = $module['updated_at'] ?? null;
+        if ($updatedAt && ($latestUpdate === null || strcmp((string) $updatedAt, (string) $latestUpdate) > 0)) {
+            $latestUpdate = $updatedAt;
+        }
+    }
+
+    return [
+        'id' => admin_course_id(),
+        'title' => 'Layer Poultry Farm Management',
+        'status' => count($modules) ? 'published' : 'unavailable',
+        'moduleCount' => count($modules),
+        'learnerCount' => $learnerCount,
+        'updatedAt' => $latestUpdate,
+        'capabilities' => [
+            'create' => false,
+            'edit' => false,
+            'publish' => false,
+            'reorder' => false,
+        ],
+        'availabilityNote' => 'Course saat ini berasal dari katalog modul native. Pembuatan, publish, dan re-order belum tersedia pada API.',
+    ];
+}
+
+function admin_overview_data(): array
+{
+    $modules = admin_module_rows();
+    $totalModules = count($modules);
+    $totalLearners = (int) db()->query("SELECT COUNT(*) FROM users WHERE LOWER(role) <> 'admin'")->fetchColumn();
+    $learnersWithProgress = (int) db()->query('SELECT COUNT(DISTINCT user_id) FROM user_progress')->fetchColumn();
+
+    $progressRows = db()->query('SELECT user_id, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) AS completed_count FROM user_progress GROUP BY user_id')->fetchAll();
+    $completionTotal = 0.0;
+    foreach ($progressRows as $row) {
+        $completionTotal += $totalModules ? ((int) $row['completed_count'] / $totalModules) * 100 : 0;
+    }
+    $averageCompletion = count($progressRows) ? (int) round($completionTotal / count($progressRows)) : 0;
+
+    $recentRegistrations = db()->query("SELECT id, email, full_name, role, created_at FROM users WHERE LOWER(role) <> 'admin' ORDER BY created_at DESC, id DESC LIMIT 5")->fetchAll();
+    $recentCompletions = db()->query('SELECT p.user_id, u.full_name, u.email, p.module_number, m.title AS module_title, p.updated_at FROM user_progress p INNER JOIN users u ON u.id = p.user_id LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.completed = 1 ORDER BY p.updated_at DESC, p.id DESC LIMIT 5')->fetchAll();
+
+    return [
+        'metrics' => [
+            ['key' => 'learners', 'label' => 'Total learner', 'value' => $totalLearners, 'detail' => 'Akun non-admin yang terdaftar'],
+            ['key' => 'active', 'label' => 'Learner dengan progres', 'value' => $learnersWithProgress, 'detail' => 'Memiliki progres tersimpan'],
+            ['key' => 'courses', 'label' => 'Course tersedia', 'value' => count($modules) ? 1 : 0, 'detail' => 'Katalog native saat ini'],
+            ['key' => 'completion', 'label' => 'Rata-rata penyelesaian', 'value' => $averageCompletion, 'suffix' => '%', 'detail' => 'Dari learner dengan progres'],
+        ],
+        'recentRegistrations' => array_map('present_authenticated_user', $recentRegistrations),
+        'recentCompletions' => array_map(static function (array $row): array {
+            return [
+                'userId' => (int) $row['user_id'],
+                'fullName' => (string) $row['full_name'],
+                'email' => (string) $row['email'],
+                'moduleNumber' => (int) $row['module_number'],
+                'moduleTitle' => (string) ($row['module_title'] ?? ''),
+                'completedAt' => $row['updated_at'] ?? null,
+            ];
+        }, $recentCompletions),
+        'dataNote' => 'Ringkasan dihitung langsung dari akun, progres, dan modul native yang tersedia.',
+    ];
+}
+
+function admin_course_detail_data(): array
+{
+    $course = admin_course_data();
+    $modules = admin_module_rows();
+    $levels = [];
+    foreach ($modules as $module) {
+        $levelNumber = (int) $module['level_number'];
+        if (!isset($levels[$levelNumber])) {
+            $levels[$levelNumber] = [
+                'levelNumber' => $levelNumber,
+                'levelName' => (string) $module['level_name'],
+                'modules' => [],
+            ];
+        }
+        $levels[$levelNumber]['modules'][] = [
+            'id' => (int) $module['id'],
+            'moduleNumber' => (int) $module['module_number'],
+            'title' => (string) $module['title'],
+            'category' => (string) $module['category'],
+            'summary' => (string) $module['summary'],
+            'order' => (int) $module['sort_order'],
+            'updatedAt' => $module['updated_at'] ?? null,
+        ];
+    }
+
+    $course['curriculum'] = array_values($levels);
+    $course['moduleCount'] = count($modules);
+    return $course;
+}
+
+function admin_learner_list(string $search = ''): array
+{
+    $search = trim($search);
+    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, COUNT(DISTINCT p.module_number) AS progress_entries, SUM(CASE WHEN p.completed = 1 THEN 1 ELSE 0 END) AS completed_modules, MAX(p.updated_at) AS last_activity, COUNT(DISTINCT c.id) AS certificate_count FROM users u LEFT JOIN user_progress p ON p.user_id = u.id LEFT JOIN certificates c ON c.user_id = u.id';
+    $params = [];
+    if ($search !== '') {
+        $sql .= ' WHERE LOWER(u.email) LIKE ? OR LOWER(u.full_name) LIKE ?';
+        $needle = '%' . strtolower($search) . '%';
+        $params = [$needle, $needle];
+    }
+    $sql .= ' GROUP BY u.id, u.email, u.full_name, u.role, u.created_at ORDER BY u.created_at DESC, u.id DESC LIMIT 200';
+    $statement = db()->prepare($sql);
+    $statement->execute($params);
+    $totalModules = count(admin_module_rows());
+
+    return array_map(static function (array $row) use ($totalModules): array {
+        $user = present_authenticated_user($row);
+        $completed = (int) ($row['completed_modules'] ?? 0);
+        return array_merge($user, [
+            'completedModules' => $completed,
+            'progressPercent' => $totalModules ? (int) round(($completed / $totalModules) * 100) : 0,
+            'progressEntries' => (int) ($row['progress_entries'] ?? 0),
+            'lastActivity' => $row['last_activity'] ?? null,
+            'certificateCount' => (int) ($row['certificate_count'] ?? 0),
+        ]);
+    }, $statement->fetchAll());
+}
+
+function admin_learner_detail(int $learnerId): ?array
+{
+    $statement = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$learnerId]);
+    $row = $statement->fetch();
+    if (!$row) {
+        return null;
+    }
+
+    $moduleRows = admin_module_rows();
+    $progressStatement = db()->prepare('SELECT p.module_number, p.completed, p.quiz_score, p.quiz_total, p.practical_done, p.time_spent_minutes, p.created_at, p.updated_at, m.title AS module_title, m.level_number, m.level_name FROM user_progress p LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? ORDER BY p.updated_at DESC, p.module_number ASC');
+    $progressStatement->execute([$learnerId]);
+    $progressRows = $progressStatement->fetchAll();
+    $certificateStatement = db()->prepare('SELECT id, level_number, level_name, score, exam_type, holder_name, issued_at FROM certificates WHERE user_id = ? ORDER BY issued_at DESC, id DESC');
+    $certificateStatement->execute([$learnerId]);
+    $certificates = $certificateStatement->fetchAll();
+
+    $completedModules = 0;
+    $minutes = 0;
+    foreach ($progressRows as $progress) {
+        $completedModules += (int) $progress['completed'] === 1 ? 1 : 0;
+        $minutes += (int) ($progress['time_spent_minutes'] ?? 0);
+    }
+
+    return [
+        'learner' => array_merge(present_authenticated_user($row), [
+            'completedModules' => $completedModules,
+            'progressPercent' => count($moduleRows) ? (int) round(($completedModules / count($moduleRows)) * 100) : 0,
+            'timeSpentMinutes' => $minutes,
+        ]),
+        'progress' => array_map(static function (array $progress): array {
+            return [
+                'moduleNumber' => (int) $progress['module_number'],
+                'moduleTitle' => (string) ($progress['module_title'] ?? 'Modul tidak tersedia'),
+                'levelNumber' => $progress['level_number'] === null ? null : (int) $progress['level_number'],
+                'levelName' => $progress['level_name'] ?? null,
+                'completed' => (bool) $progress['completed'],
+                'quizScore' => $progress['quiz_score'] === null ? null : (int) $progress['quiz_score'],
+                'quizTotal' => $progress['quiz_total'] === null ? null : (int) $progress['quiz_total'],
+                'practicalDone' => (bool) $progress['practical_done'],
+                'timeSpentMinutes' => $progress['time_spent_minutes'] === null ? null : (int) $progress['time_spent_minutes'],
+                'updatedAt' => $progress['updated_at'] ?? null,
+            ];
+        }, $progressRows),
+        'certificates' => array_map('present_certificate', $certificates),
+        'availabilityNote' => 'Riwayat ditampilkan dari progres dan sertifikat yang tersimpan. Aktivitas tanpa data progres belum tersedia di API native.',
     ];
 }
 

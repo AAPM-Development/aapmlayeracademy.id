@@ -6,7 +6,9 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AdminRoute from '@/components/AdminRoute';
 import Layout from '@/components/Layout';
+import AdminShell from '@/components/layout/AdminShell';
 import Home from '@/pages/Home';
 import Modules from '@/pages/Modules';
 import ModuleDetail from '@/pages/ModuleDetail';
@@ -20,6 +22,11 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import AdminOverview from '@/pages/admin/AdminOverview';
+import AdminCourses from '@/pages/admin/AdminCourses';
+import AdminCourseDetail from '@/pages/admin/AdminCourseDetail';
+import AdminLearners from '@/pages/admin/AdminLearners';
+import AdminLearnerDetail from '@/pages/admin/AdminLearnerDetail';
 import { Navigate } from 'react-router-dom';
 // Add page imports here
 
@@ -58,6 +65,15 @@ const AuthenticatedApp = () => {
           <Route path="/kpi" element={<KpiDashboard />} />
           <Route path="/ai-assistant" element={<AiAssistant />} />
           <Route path="/certification" element={<Certification />} />
+        </Route>
+        <Route element={<AdminRoute />}>
+          <Route element={<AdminShell />}>
+            <Route path="/admin" element={<AdminOverview />} />
+            <Route path="/admin/courses" element={<AdminCourses />} />
+            <Route path="/admin/courses/:courseId" element={<AdminCourseDetail />} />
+            <Route path="/admin/learners" element={<AdminLearners />} />
+            <Route path="/admin/learners/:learnerId" element={<AdminLearnerDetail />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
