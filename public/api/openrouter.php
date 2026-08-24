@@ -334,8 +334,8 @@ function ai_anthropic_completion(array $settings, string $apiKey, string $system
 
 function ai_provider_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
 {
-    // cPanel runs PHP 7.4. `match` requires PHP 8.0 and would prevent every
-    // API route from loading because this file is required by the API router.
+    // Keep the provider dispatch explicit. This file is loaded by the central
+    // API router, so a parser incompatibility here would break every API route.
     if ($settings['adapter'] === 'gemini') {
         return ai_gemini_completion($settings, $apiKey, $systemPrompt, $userPrompt);
     }

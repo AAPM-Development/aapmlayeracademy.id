@@ -14,8 +14,9 @@ cPanel.
 - CSRF protection, strict session cookies, password policy, and auth rate limits
 - Local rule-based Farm Assistant fallback; no Base44 runtime dependency
 
-PHP 8.3 is recommended for cPanel, although the API remains compatible with
-the currently available PHP 7.4.33 fallback.
+PHP 8.4 is the configured cPanel runtime for both staging and production.
+Keep the two domains on the same PHP version and run the staging smoke test
+before changing the production runtime again.
 
 ## Local development
 
@@ -76,7 +77,7 @@ The `develop` branch deploys the Vite artifact in `dist/` to
 1. Create a MySQL database and user in cPanel.
 2. Configure `/home/aapp8359/aapmlayeracademy-config.php` outside
    `public_html` using `config.native.example.php` as the template.
-3. Set the staging domain to PHP 8.3 and enable `pdo_mysql`.
+3. Set the staging domain to PHP 8.4 and enable `pdo_mysql`.
 4. Set `app_url` to the staging URL and `mail_from` to an address on the
    verified application domain for forgot-password email delivery.
 5. Build and include the static artifact:
