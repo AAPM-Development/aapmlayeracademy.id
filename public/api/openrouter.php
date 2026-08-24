@@ -233,7 +233,7 @@ function ai_save_settings(array $input): array
 
 function ai_system_prompt(): string
 {
-    return "Anda adalah AI Layer Farm Assistant untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Gunakan heading dan poin bila membantu. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal.";
+    return "Anda adalah AI Layer Farm Assistant untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Gunakan heading dan poin bila membantu. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
 }
 
 function ai_context_for_user(int $userId): array
@@ -299,11 +299,17 @@ function ai_openai_compatible_completion(array $settings, string $apiKey, string
         $origin = app_base_url();
         if ($origin !== '') $headers[] = 'HTTP-Referer: ' . $origin;
     }
-    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions', $headers, [
+    $body = [
         'model' => $settings['model'],
         'messages' => [['role' => 'system', 'content' => $systemPrompt], ['role' => 'user', 'content' => $userPrompt]],
         'temperature' => 0.3, 'max_tokens' => AAPM_AI_MAX_TOKENS,
-    ], (string) $settings['providerLabel']);
+    ];
+    if ($settings['provider'] === 'openrouter') {
+        // Reasoning-capable free models may expose an intermediate trace.
+        // OpenRouter suppresses that trace while retaining the final answer.
+        $body['reasoning'] = ['exclude' => true];
+    }
+    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions', $headers, $body, (string) $settings['providerLabel']);
     return ai_openai_content($decoded, (string) $settings['providerLabel']);
 }
 
