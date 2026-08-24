@@ -6,6 +6,7 @@ import { useUserProgress } from "@/lib/useCourseData";
 import { useThemeMode } from "@/lib/useThemeMode";
 import AcademyHeader from "./AcademyHeader";
 import AcademySidebar from "./AcademySidebar";
+import MobileBottomNav from "./MobileBottomNav";
 import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
 import { AiChatProvider } from "@/components/ai/AiChatProvider";
 
@@ -57,6 +58,7 @@ export default function AcademyShell() {
         <div className="flex min-w-0 flex-1 flex-col">
           <AcademyHeader
             onOpenMobile={() => setMobileOpen(true)}
+            showMobileMenu={false}
             themeMode={themeMode}
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
@@ -65,6 +67,20 @@ export default function AcademyShell() {
           <main className="min-h-0 flex-1 overflow-y-auto">
             <Outlet />
           </main>
+          <MobileBottomNav
+            onOpenMenu={() => setMobileOpen(true)}
+            items={[
+              { to: "/", label: "Beranda", icon: "dashboard", end: true },
+              { to: "/modules", label: "Belajar", icon: "course" },
+              { to: "/kpi", label: "KPI", icon: "kpi" },
+              {
+                to: "/ai-assistant",
+                label: "APPI",
+                icon: "solar:stars-minimalistic-bold-duotone",
+                accent: "orange",
+              },
+            ]}
+          />
         </div>
         <FloatingAiAssistant />
       </div>

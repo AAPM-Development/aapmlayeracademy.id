@@ -6,6 +6,7 @@ import { getNavigationMeta } from "./academyNavigation";
 
 export default function AcademyHeader({
   onOpenMobile = () => {},
+  showMobileMenu = true,
   themeMode = "light",
   onToggleTheme = () => {},
   onLogout = () => {},
@@ -18,13 +19,15 @@ export default function AcademyHeader({
   return (
     <header className="sticky top-0 z-30 flex h-[73px] shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
-        <IconButton
-          onClick={onOpenMobile}
-          className="lg:hidden"
-          label="Buka navigasi"
-        >
-          <AapmIcon name="menu" className="h-5 w-5" />
-        </IconButton>
+        {showMobileMenu && (
+          <IconButton
+            onClick={onOpenMobile}
+            className="lg:hidden"
+            label="Buka navigasi"
+          >
+            <AapmIcon name="menu" className="h-5 w-5" />
+          </IconButton>
+        )}
         <div className="min-w-0">
           <div className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">{page.group}</div>
           <div className="truncate text-sm font-semibold text-foreground sm:text-base">{page.label}</div>

@@ -27,6 +27,16 @@ const workspaceTools = [
   { to: "/modules", label: "Materi", icon: "solar:notebook-bold-duotone" },
 ];
 
+function filterConversations(conversations, query) {
+  const keyword = query.trim().toLocaleLowerCase("id-ID");
+  if (!keyword) return conversations;
+  return conversations.filter((conversation) =>
+    `${conversation.title || ""} ${conversation.lastMessagePreview || ""}`
+      .toLocaleLowerCase("id-ID")
+      .includes(keyword),
+  );
+}
+
 function personalizedSuggestions({ farm, progress, user }) {
   const name = (
     user?.fullName ||
@@ -217,28 +227,20 @@ function AssistantMessage({ message, retryPrompt, onRetry, streamSteps }) {
         </div>
       )}
       {!message.streaming && message.provider && (
-        <div className="mt-3 flex items-end gap-2.5">
-          <AiAvatar
-            size="sm"
-            state={message.error ? "alert" : message.fallback ? "idle" : "complete"}
-            decorative
-            className="mb-0.5 shrink-0"
+        <div className="mt-3 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+          <AapmIcon
+            name={
+              message.fallback
+                ? "solar:info-circle-bold"
+                : "solar:verified-check-bold"
+            }
+            className={`h-3.5 w-3.5 shrink-0 ${message.fallback ? "text-brand-orange" : "text-brand-green"}`}
           />
-          <div className="flex min-w-0 items-center gap-1.5 pb-1 text-[10px] text-muted-foreground">
-            <AapmIcon
-              name={
-                message.fallback
-                  ? "solar:info-circle-bold"
-                  : "solar:verified-check-bold"
-              }
-              className={`h-3.5 w-3.5 shrink-0 ${message.fallback ? "text-brand-orange" : "text-brand-green"}`}
-            />
-            <span className="truncate">
-              {message.fallback
-                ? "Respons lokal tersimpan"
-                : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
-            </span>
-          </div>
+          <span className="truncate">
+            {message.fallback
+              ? "Respons lokal tersimpan"
+              : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
+          </span>
         </div>
       )}
     </article>
@@ -254,6 +256,9 @@ function ConversationList({
   onDelete,
   onNew,
 }) {
+  const [query, setQuery] = useState("");
+  const visibleConversations = filterConversations(conversations, query);
+
   return (
     <aside className="hidden w-72 shrink-0 border-r border-border bg-surface-subtle/35 lg:flex lg:flex-col">
       <div className="flex items-center justify-between px-4 py-4">
@@ -278,6 +283,19 @@ function ConversationList({
           />
         </Button>
       </div>
+      <label className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 focus-within:border-brand-orange/45">
+        <AapmIcon
+          name="solar:magnifer-bold-duotone"
+          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+        />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Cari riwayat"
+          className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+          aria-label="Cari riwayat percakapan"
+        />
+      </label>
       <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
         <div className="space-y-1">
           {loading && (
@@ -290,7 +308,12 @@ function ConversationList({
               Belum ada riwayat. Percakapan pertama akan tersimpan otomatis.
             </p>
           )}
-          {conversations.map((conversation) => (
+          {!loading && conversations.length > 0 && visibleConversations.length === 0 && (
+            <p className="px-2 py-3 text-xs leading-5 text-muted-foreground">
+              Tidak ada percakapan yang cocok.
+            </p>
+          )}
+          {visibleConversations.map((conversation) => (
             <div
               key={conversation.id}
               className={`group flex items-center gap-1 rounded-lg ${conversation.id === activeConversationId ? "bg-tint-orange" : "hover:bg-surface-default"}`}
@@ -361,6 +384,9 @@ function MobileConversationSheet({
   onDelete,
   onNew,
 }) {
+  const [query, setQuery] = useState("");
+  const visibleConversations = filterConversations(conversations, query);
+
   if (!open) return null;
 
   return (
@@ -411,6 +437,19 @@ function MobileConversationSheet({
             </Button>
           </div>
         </header>
+        <label className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
+          <AapmIcon
+            name="solar:magnifer-bold-duotone"
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+          />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Cari riwayat"
+            className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            aria-label="Cari riwayat percakapan"
+          />
+        </label>
         <ScrollArea className="min-h-0 flex-1 px-3 py-3">
           <div className="space-y-1.5">
             {loading && (
@@ -424,7 +463,12 @@ function MobileConversationSheet({
                 baru secara otomatis.
               </p>
             )}
-            {conversations.map((conversation) => (
+            {!loading && conversations.length > 0 && visibleConversations.length === 0 && (
+              <p className="px-2 py-4 text-xs leading-5 text-muted-foreground">
+                Tidak ada percakapan yang cocok.
+              </p>
+            )}
+            {visibleConversations.map((conversation) => (
               <div
                 key={conversation.id}
                 className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition-colors ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-default"}`}
@@ -499,6 +543,18 @@ export default function AiAssistant() {
   const contextLabel = includeFarm
     ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif`
     : "Tanpa konteks KPI";
+  const lastAssistantMessage = [...messages]
+    .reverse()
+    .find((message) => message.role !== "user");
+  const shellAvatarState = isStreaming
+    ? lastAssistantMessage?.content
+      ? "responding"
+      : "thinking"
+    : lastAssistantMessage?.error
+      ? "alert"
+      : lastAssistantMessage?.provider
+        ? "complete"
+        : "idle";
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -627,7 +683,7 @@ export default function AiAssistant() {
             </Button>
           </div>
         </header>
-        <div className="min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1">
           <ScrollArea className="h-full">
             <div className="mx-auto flex w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-9">
               {isLoadingConversation ? (
@@ -696,6 +752,16 @@ export default function AiAssistant() {
               )}
             </div>
           </ScrollArea>
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 sm:bottom-4">
+            <div className="mx-auto flex max-w-3xl px-5 sm:px-8">
+              <AiAvatar
+                size="md"
+                state={shellAvatarState}
+                decorative
+                className="shrink-0"
+              />
+            </div>
+          </div>
         </div>
         <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto max-w-3xl">

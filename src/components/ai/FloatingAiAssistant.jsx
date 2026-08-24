@@ -50,6 +50,29 @@ function pageContextForPath(pathname) {
   return "";
 }
 
+function pageContextLabel(pathname) {
+  const labels = {
+    calculators: "Kalkulator farm",
+    kpi: "KPI farm",
+    learning: "Materi belajar",
+    certification: "Sertifikasi",
+    exam: "Final exam",
+    admin: "Administrasi Academy",
+    dashboard: "Dashboard Academy",
+  };
+  return labels[pageContextForPath(pathname)] || "Academy";
+}
+
+function filterConversations(conversations, query) {
+  const keyword = query.trim().toLocaleLowerCase("id-ID");
+  if (!keyword) return conversations;
+  return conversations.filter((conversation) =>
+    `${conversation.title || ""} ${conversation.lastMessagePreview || ""}`
+      .toLocaleLowerCase("id-ID")
+      .includes(keyword),
+  );
+}
+
 function BubbleAnswer({ content }) {
   return (
     <ReactMarkdown
@@ -126,10 +149,13 @@ export default function FloatingAiAssistant() {
   const [closing, setClosing] = useState(false);
   const [input, setInput] = useState("");
   const [allowWebSearch, setAllowWebSearch] = useState(false);
-  const [avatarState, setAvatarState] = useState("idle");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [imageAttachment, setImageAttachment] = useState(null);
+  const [attachmentError, setAttachmentError] = useState("");
   const closeTimer = useRef(null);
   const endRef = useRef(null);
-  const wasStreamingRef = useRef(false);
+  const imageInputRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -140,6 +166,8 @@ export default function FloatingAiAssistant() {
     streamStatus,
     streamSteps,
     startNewConversation,
+    selectConversation,
+    deleteConversation,
     send,
   } = useAiChat();
   const activeConversation = conversations.find(
@@ -150,22 +178,6 @@ export default function FloatingAiAssistant() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isStreaming]);
-  useEffect(() => {
-    const lastMessage = messages.at(-1);
-    if (isStreaming) {
-      wasStreamingRef.current = true;
-      setAvatarState(lastMessage?.content ? "responding" : "thinking");
-      return undefined;
-    }
-    if (wasStreamingRef.current) {
-      wasStreamingRef.current = false;
-      setAvatarState(lastMessage?.error ? "alert" : "complete");
-      const timer = window.setTimeout(() => setAvatarState("idle"), 1200);
-      return () => window.clearTimeout(timer);
-    }
-    setAvatarState("idle");
-    return undefined;
-  }, [isStreaming, messages]);
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event) => {
@@ -185,20 +197,64 @@ export default function FloatingAiAssistant() {
 
   if (location.pathname === "/ai-assistant") return null;
 
+  const visibleConversations = filterConversations(conversations, historyQuery);
+  const lastAssistantMessage = [...messages]
+    .reverse()
+    .find((message) => message.role !== "user");
+  const panelAvatarState = isStreaming
+    ? lastAssistantMessage?.content
+      ? "responding"
+      : "thinking"
+    : lastAssistantMessage?.error
+      ? "alert"
+      : lastAssistantMessage?.provider
+        ? "complete"
+        : "idle";
+
   const openPanel = () => {
     setClosing(false);
     setOpen(true);
   };
-  const closePanel = () => setClosing(true);
+  const closePanel = () => {
+    setHistoryOpen(false);
+    setClosing(true);
+  };
   const submit = async (text = input) => {
-    const message = text.trim();
+    const message =
+      text.trim() ||
+      (imageAttachment
+        ? "Tolong analisis foto farm ini dan sebutkan observasi yang perlu saya verifikasi di lapangan."
+        : "");
     if (!message || isStreaming) return;
+    const image = imageAttachment?.dataUrl || null;
     setInput("");
+    setImageAttachment(null);
+    setAttachmentError("");
     await send(message, {
       includeFarm: true,
       allowWebSearch,
       pageContext: pageContextForPath(location.pathname),
+      image,
     });
+  };
+  const handleImageSelection = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setAttachmentError("Gunakan foto JPG, PNG, atau WebP.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setAttachmentError("Ukuran foto maksimal 3 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageAttachment({ dataUrl: String(reader.result), name: file.name });
+      setAttachmentError("");
+    };
+    reader.readAsDataURL(file);
   };
   const handleAction = (action) => {
     if (action.kind === "prompt") return submit(action.prompt);
@@ -221,7 +277,7 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
-          className={`aapm-ai-panel fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[80] flex h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:bottom-5 sm:left-auto sm:right-5 sm:h-[min(39rem,calc(100dvh-6.5rem))] sm:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`aapm-ai-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-[80] flex h-[min(74dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -244,7 +300,24 @@ export default function FloatingAiAssistant() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={startNewConversation}
+                onClick={() => setHistoryOpen(true)}
+                disabled={isStreaming}
+                className="h-8 w-8"
+                aria-label="Buka riwayat percakapan"
+              >
+                <AapmIcon
+                  name="solar:chat-round-dots-bold-duotone"
+                  className="h-3.5 w-3.5"
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setHistoryOpen(false);
+                  startNewConversation();
+                }}
                 disabled={isStreaming}
                 className="h-8 w-8"
                 aria-label="Percakapan baru"
@@ -266,8 +339,9 @@ export default function FloatingAiAssistant() {
               </Button>
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            <div className="flex min-h-full flex-col gap-4">
+          <div className="relative min-h-0 flex-1">
+            <div className="h-full overflow-y-auto px-4 py-4">
+              <div className="flex min-h-full flex-col gap-4">
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
                   <p className="text-sm font-semibold tracking-[-0.015em]">
@@ -311,9 +385,16 @@ export default function FloatingAiAssistant() {
                 messages.map((message) =>
                   message.role === "user" ? (
                     <div
-                      key={message.id}
-                      className="ml-auto max-w-[86%] rounded-2xl rounded-br-md bg-brand-green px-3 py-2 text-xs leading-5 text-white"
-                    >
+                  key={message.id}
+                  className="ml-auto max-w-[86%] rounded-2xl rounded-br-md bg-brand-green px-3 py-2 text-xs leading-5 text-white"
+                >
+                      {message.image?.dataUrl && (
+                        <img
+                          src={message.image.dataUrl}
+                          alt="Foto yang dikirim untuk dianalisis"
+                          className="mb-2 max-h-40 w-full rounded-xl object-cover"
+                        />
+                      )}
                       {message.content}
                     </div>
                   ) : (
@@ -371,80 +452,233 @@ export default function FloatingAiAssistant() {
                 )
               )}
               <div ref={endRef} />
+              </div>
             </div>
-          </div>
-          <footer className="shrink-0 border-t border-border bg-background p-3">
-            <div className="flex items-end gap-2.5">
-              <AiAvatar
-                size="sm"
-                state={avatarState}
-                decorative
-                className="mb-1 shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[10px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <AapmIcon
-                      name="solar:chart-square-bold-duotone"
-                      className="h-3.5 w-3.5 text-brand-orange"
-                    />
-                    Konteks KPI digunakan saat tersedia.
-                  </span>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 font-medium">
-                    <Switch
-                      checked={allowWebSearch}
-                      onCheckedChange={setAllowWebSearch}
-                      disabled={isStreaming}
-                      aria-label="Izinkan APPI mencari referensi web"
-                      className="scale-75"
-                    />
-                    <AapmIcon
-                      name="solar:global-bold-duotone"
-                      className="h-3.5 w-3.5 text-brand-orange"
-                    />
-                    Cari web
-                  </label>
-                </div>
-                <div className="flex items-end gap-2 rounded-xl border border-input bg-surface-elevated p-1.5 transition-colors focus-within:border-brand-orange">
-                  <textarea
-                    value={input}
-                    onChange={(event) => setInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        submit();
-                      }
-                    }}
-                    rows={1}
-                    placeholder="Tanyakan kondisi farm…"
-                    className="max-h-24 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-xs leading-5 outline-none"
+            {!historyOpen && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10">
+                <div className="flex px-4">
+                  <AiAvatar
+                    size="sm"
+                    state={panelAvatarState}
+                    decorative
+                    className="shrink-0"
                   />
+                </div>
+              </div>
+            )}
+            {historyOpen && (
+              <aside
+                aria-label="Riwayat percakapan APPI"
+                className="aapm-ai-history-sheet absolute inset-0 z-20 flex min-h-0 flex-col bg-background"
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">Riwayat chat</h3>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      Tersimpan khusus di akun Anda
+                    </p>
+                  </div>
                   <Button
                     type="button"
+                    variant="ghost"
                     size="icon"
-                    onClick={() => submit()}
-                    disabled={!input.trim() || isStreaming}
-                    className="h-8 w-8 shrink-0 rounded-lg bg-brand-orange text-white hover:bg-brand-orange/90"
+                    onClick={() => setHistoryOpen(false)}
+                    className="h-8 w-8"
+                    aria-label="Tutup riwayat"
                   >
                     <AapmIcon
-                      name="solar:plane-2-bold-duotone"
-                      className="h-3.5 w-3.5"
+                      name="solar:close-circle-bold"
+                      className="h-4 w-4"
                     />
-                    <span className="sr-only">Kirim</span>
                   </Button>
                 </div>
-                <Link
-                  to="/ai-assistant"
-                  onClick={closePanel}
-                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
-                >
-                  Buka semua percakapan{" "}
+                <label className="m-3 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
                   <AapmIcon
-                    name="solar:arrow-right-up-bold"
-                    className="h-3 w-3"
+                    name="solar:magnifer-bold-duotone"
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
                   />
-                </Link>
+                  <input
+                    value={historyQuery}
+                    onChange={(event) => setHistoryQuery(event.target.value)}
+                    placeholder="Cari riwayat"
+                    className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                    aria-label="Cari riwayat percakapan"
+                  />
+                </label>
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+                  <div className="space-y-1.5">
+                    {visibleConversations.length === 0 && (
+                      <p className="px-2 py-5 text-xs leading-5 text-muted-foreground">
+                        {historyQuery
+                          ? "Tidak ada percakapan yang cocok."
+                          : "Belum ada riwayat percakapan."}
+                      </p>
+                    )}
+                    {visibleConversations.map((conversation) => (
+                      <div
+                        key={conversation.id}
+                        className={`group flex items-center gap-1 rounded-xl border p-1.5 ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-subtle"}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectConversation(conversation.id);
+                            setHistoryOpen(false);
+                          }}
+                          disabled={isStreaming}
+                          className="min-w-0 flex-1 px-2 py-2 text-left"
+                        >
+                          <span className="block truncate text-xs font-semibold">
+                            {conversation.title}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+                            {conversation.lastMessagePreview || "Belum ada pesan"}
+                          </span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteConversation(conversation.id)}
+                          disabled={isStreaming}
+                          className="h-8 w-8 shrink-0 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                          aria-label={`Hapus percakapan ${conversation.title}`}
+                        >
+                          <AapmIcon
+                            name="solar:trash-bin-trash-bold"
+                            className="h-3.5 w-3.5 text-muted-foreground hover:text-danger"
+                          />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+            )}
+          </div>
+          <footer className="shrink-0 border-t border-border bg-background p-3">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageSelection}
+              className="sr-only"
+            />
+            {imageAttachment && (
+              <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-2.5 py-2">
+                <img
+                  src={imageAttachment.dataUrl}
+                  alt="Pratinjau foto lampiran"
+                  className="h-8 w-8 rounded-lg object-cover"
+                />
+                <span className="min-w-0 flex-1 truncate text-[10px] font-medium">
+                  {imageAttachment.name}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setImageAttachment(null)}
+                  className="h-7 w-7 shrink-0"
+                  aria-label="Hapus foto"
+                >
+                  <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
+                </Button>
               </div>
+            )}
+            <div className="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <AapmIcon
+                  name="solar:map-point-bold-duotone"
+                  className="h-3.5 w-3.5 text-brand-orange"
+                />
+                {pageContextLabel(location.pathname)}
+              </span>
+              <label className="inline-flex cursor-pointer items-center gap-1.5 font-medium">
+                <Switch
+                  checked={allowWebSearch}
+                  onCheckedChange={setAllowWebSearch}
+                  disabled={isStreaming}
+                  aria-label="Izinkan APPI mencari referensi web"
+                  className="scale-75"
+                />
+                <AapmIcon
+                  name="solar:global-bold-duotone"
+                  className="h-3.5 w-3.5 text-brand-orange"
+                />
+                Cari web
+              </label>
+            </div>
+            <div className="flex items-end gap-1.5 rounded-xl border border-input bg-surface-elevated p-1.5 transition-colors focus-within:border-brand-orange">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isStreaming}
+                className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground hover:text-brand-orange"
+                aria-label="Lampirkan foto farm"
+              >
+                <AapmIcon
+                  name="solar:gallery-add-bold-duotone"
+                  className="h-4 w-4"
+                />
+              </Button>
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    submit();
+                  }
+                }}
+                rows={1}
+                placeholder="Tanyakan kondisi farm…"
+                className="max-h-24 min-h-[2.25rem] flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-5 outline-none"
+              />
+              <Button
+                type="button"
+                size="icon"
+                onClick={() => submit()}
+                disabled={(!input.trim() && !imageAttachment) || isStreaming}
+                className="h-8 w-8 shrink-0 rounded-lg bg-brand-orange text-white hover:bg-brand-orange/90"
+              >
+                <AapmIcon
+                  name="solar:plane-2-bold-duotone"
+                  className="h-3.5 w-3.5"
+                />
+                <span className="sr-only">Kirim</span>
+              </Button>
+            </div>
+            {attachmentError && (
+              <p className="mt-1.5 text-[10px] font-medium text-danger">
+                {attachmentError}
+              </p>
+            )}
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(true)}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+              >
+                <AapmIcon
+                  name="solar:history-2-bold-duotone"
+                  className="h-3 w-3 text-brand-orange"
+                />
+                Riwayat
+              </button>
+              <Link
+                to="/ai-assistant"
+                onClick={closePanel}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
+              >
+                Workspace APPI
+                <AapmIcon
+                  name="solar:arrow-right-up-bold"
+                  className="h-3 w-3"
+                />
+              </Link>
             </div>
           </footer>
         </section>
@@ -453,7 +687,7 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-[75] inline-flex h-12 items-center gap-2 rounded-full border border-white/35 bg-brand-orange py-1.5 pl-2 pr-3.5 text-left text-white shadow-[0_14px_32px_hsl(var(--aapm-orange-500)/0.36)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:bottom-5 sm:right-5"
+          className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.5rem)] right-4 z-[75] inline-flex h-12 items-center gap-2 rounded-full border border-white/35 bg-brand-orange py-1.5 pl-2 pr-3.5 text-left text-white shadow-[0_14px_32px_hsl(var(--aapm-orange-500)/0.36)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 lg:bottom-5 lg:right-5"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >

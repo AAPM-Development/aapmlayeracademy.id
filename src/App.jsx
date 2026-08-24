@@ -28,6 +28,7 @@ import AdminCourseDetail from '@/pages/admin/AdminCourseDetail';
 import AdminLearners from '@/pages/admin/AdminLearners';
 import AdminLearnerDetail from '@/pages/admin/AdminLearnerDetail';
 import AdminAiSettings from '@/pages/admin/AdminAiSettings';
+import AdminWorkspaceStatus from '@/pages/admin/AdminWorkspaceStatus';
 import { Navigate } from 'react-router-dom';
 // Add page imports here
 
@@ -75,6 +76,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin/learners" element={<AdminLearners />} />
           <Route path="/admin/learners/:learnerId" element={<AdminLearnerDetail />} />
           <Route path="/admin/ai-settings" element={<AdminAiSettings />} />
+          <Route path="/admin/workspace-status" element={<AdminWorkspaceStatus />} />
           </Route>
         </Route>
       </Route>

@@ -34,6 +34,18 @@ const providers = [
     model: "nvidia/nemotron-3.5-lightning:free",
     baseUrl: "https://openrouter.ai/api/v1",
     keyHint: "sk-or-v1-…",
+    models: [
+      {
+        value: "nvidia/nemotron-3.5-lightning:free",
+        label: "NVIDIA Nemotron 3.5 Lightning",
+        tier: "Gratis",
+      },
+      {
+        value: "openrouter/free",
+        label: "Free model router otomatis",
+        tier: "Gratis",
+      },
+    ],
   },
   {
     value: "openai-compatible",
@@ -43,6 +55,10 @@ const providers = [
     model: "gpt-4o-mini",
     baseUrl: "https://api.openai.com/v1",
     keyHint: "API key provider atau “ollama” untuk local",
+    models: [
+      { value: "gpt-4o-mini", label: "Default OpenAI-compatible", tier: "Berbayar / sesuai provider" },
+      { value: "llama3.2", label: "Ollama Llama 3.2", tier: "Lokal" },
+    ],
   },
   {
     value: "gemini",
@@ -51,6 +67,9 @@ const providers = [
     model: "gemini-2.5-flash",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     keyHint: "AIza…",
+    models: [
+      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", tier: "Sesuai akun Google" },
+    ],
   },
   {
     value: "anthropic",
@@ -59,6 +78,9 @@ const providers = [
     model: "claude-haiku-4-5",
     baseUrl: "https://api.anthropic.com/v1",
     keyHint: "sk-ant-…",
+    models: [
+      { value: "claude-haiku-4-5", label: "Claude Haiku", tier: "Berbayar" },
+    ],
   },
 ];
 
@@ -73,12 +95,15 @@ export default function AdminAiSettings() {
   const [enabled, setEnabled] = useState(true);
   const [allowLocal, setAllowLocal] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [providerLabel, setProviderLabel] = useState("");
   const [testResult, setTestResult] = useState(null);
 
   const currentProvider = useMemo(
     () => providers.find((item) => item.value === provider) || providers[0],
     [provider],
   );
+  const modelOptions = currentProvider.models || [];
+  const modelIsPreset = modelOptions.some((item) => item.value === model);
   const lockedByPrivateConfig = settings?.keyStorage === "private_config";
 
   useEffect(() => {
@@ -91,6 +116,12 @@ export default function AdminAiSettings() {
     setBaseUrl(settings.baseUrl || configuredProvider.baseUrl);
     setEnabled(Boolean(settings.enabled));
     setAllowLocal(Boolean(settings.allowLocal));
+    setProviderLabel(
+      settings.provider === "openai-compatible" &&
+        settings.providerLabel !== configuredProvider.label
+        ? settings.providerLabel
+        : "",
+    );
   }, [settings]);
 
   const selectProvider = (nextProvider) => {
@@ -101,6 +132,7 @@ export default function AdminAiSettings() {
     setBaseUrl(next.baseUrl);
     setAllowLocal(false);
     setApiKey("");
+    setProviderLabel("");
     setTestResult(null);
   };
 
@@ -108,6 +140,7 @@ export default function AdminAiSettings() {
     provider,
     model: model.trim(),
     baseUrl: baseUrl.trim(),
+    providerLabel: providerLabel.trim(),
     enabled,
     allowLocal,
     ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
@@ -256,7 +289,7 @@ export default function AdminAiSettings() {
                 onValueChange={selectProvider}
                 disabled={lockedByPrivateConfig}
               >
-                <SelectTrigger id="ai-provider">
+                <SelectTrigger id="ai-provider" className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -272,21 +305,66 @@ export default function AdminAiSettings() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ai-model">Model</Label>
-              <Input
-                id="ai-model"
+              <Label htmlFor="ai-model-preset">Pilihan model</Label>
+              <Select
                 value={model}
-                onChange={(event) => setModel(event.target.value)}
-                placeholder={currentProvider.model}
+                onValueChange={setModel}
                 disabled={lockedByPrivateConfig}
-              />
+              >
+                <SelectTrigger id="ai-model-preset" className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {modelOptions.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label} · {item.tier}
+                    </SelectItem>
+                  ))}
+                  {!modelIsPreset && model && (
+                    <SelectItem value={model}>Custom · {model}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
               <p className="text-xs leading-5 text-muted-foreground">
                 {provider === "openrouter"
-                  ? "OpenRouter dibatasi ke model gratis dengan akhiran :free."
-                  : "Gunakan slug model sesuai provider yang dipilih."}
+                  ? "Pilih model gratis atau router gratis. Batas kuota tetap mengikuti akun OpenRouter."
+                  : "Preset mempercepat setup; model custom tetap dapat dipakai di bawah."}
               </p>
             </div>
           </div>
+
+          <div className="mt-5 space-y-2">
+            <Label htmlFor="ai-model">Model ID</Label>
+            <Input
+              id="ai-model"
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              placeholder={currentProvider.model}
+              disabled={lockedByPrivateConfig}
+              className="h-11"
+            />
+            <p className="text-xs leading-5 text-muted-foreground">
+              Gunakan ID model custom jika belum ada pada pilihan di atas.
+            </p>
+          </div>
+
+          {provider === "openai-compatible" && (
+            <div className="mt-5 space-y-2">
+              <Label htmlFor="ai-provider-label">Nama koneksi</Label>
+              <Input
+                id="ai-provider-label"
+                value={providerLabel}
+                onChange={(event) => setProviderLabel(event.target.value)}
+                placeholder="Contoh: Groq produksi atau Ollama kantor"
+                disabled={lockedByPrivateConfig}
+                className="h-11"
+              />
+              <p className="text-xs leading-5 text-muted-foreground">
+                Nama ini tampil di admin dan disimpan bersama koneksi aktif;
+                adapter tetap OpenAI-compatible.
+              </p>
+            </div>
+          )}
 
           {provider === "openai-compatible" && (
             <div className="mt-5 grid gap-5 border-t border-border pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -298,6 +376,7 @@ export default function AdminAiSettings() {
                   onChange={(event) => setBaseUrl(event.target.value)}
                   placeholder="https://api.openai.com/v1"
                   disabled={lockedByPrivateConfig}
+                  className="h-11"
                 />
                 <p className="text-xs leading-5 text-muted-foreground">
                   Contoh local: <code>http://localhost:11434/v1</code> untuk
@@ -341,6 +420,7 @@ export default function AdminAiSettings() {
                   : currentProvider.keyHint
               }
               disabled={lockedByPrivateConfig}
+              className="h-11"
             />
             <p className="text-xs leading-5 text-muted-foreground">
               {lockedByPrivateConfig

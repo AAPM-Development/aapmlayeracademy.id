@@ -6,9 +6,37 @@ export const adminPrimaryNavigation = [
 ];
 
 export const adminSecondaryNavigation = [
-  { label: "Course CMS", icon: "modules" },
-  { label: "Assessment", icon: "assessment" },
-  { label: "Certificates", icon: "certificate" },
-  { label: "Media Library", icon: "media" },
-  { label: "Analytics", icon: "analytics" },
+  {
+    to: "/admin/workspace-status",
+    label: "Workspace status",
+    icon: "solar:clipboard-list-bold-duotone",
+  },
+];
+
+export const adminPlannedCapabilities = [
+  {
+    label: "Course CMS",
+    detail: "Editor, publish, dan urutan modul memerlukan endpoint pengelolaan konten native.",
+    icon: "modules",
+  },
+  {
+    label: "Assessment",
+    detail: "Bank soal dan penilaian terpusat belum diekspos oleh API native.",
+    icon: "assessment",
+  },
+  {
+    label: "Certificates",
+    detail: "Data sertifikat sudah dapat dibaca per learner; penerbitan global memerlukan endpoint baru.",
+    icon: "certificate",
+  },
+  {
+    label: "Media library",
+    detail: "Upload dan manajemen media perlu penyimpanan server yang dikelola secara terpisah.",
+    icon: "media",
+  },
+  {
+    label: "Analytics",
+    detail: "Ringkasan live tersedia di Overview; laporan terjadwal belum memiliki API native.",
+    icon: "analytics",
+  },
 ];

@@ -46,7 +46,7 @@ function ai_provider_definition(string $provider): array
 
 function ai_is_openrouter_free_model(string $model): bool
 {
-    return (bool) preg_match('/\A[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free\z/i', $model);
+    return $model === 'openrouter/free' || (bool) preg_match('/\A[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free\z/i', $model);
 }
 
 function ai_validate_model(string $provider, string $model): string
@@ -56,9 +56,19 @@ function ai_validate_model(string $provider, string $model): string
         error_response('Nama model AI tidak valid.', 422, 'invalid_ai_model');
     }
     if ($provider === 'openrouter' && !ai_is_openrouter_free_model($model)) {
-        error_response('Model OpenRouter harus menggunakan slug gratis yang diakhiri :free.', 422, 'invalid_ai_model');
+        error_response('Model OpenRouter harus menggunakan slug gratis yang diakhiri :free atau router openrouter/free.', 422, 'invalid_ai_model');
     }
     return $model;
+}
+
+function ai_validate_provider_label(string $label): string
+{
+    $label = trim(preg_replace('/\s+/u', ' ', $label) ?? '');
+    if ($label === '') return '';
+    if (strlen($label) > 160 || preg_match('/[\x00-\x1F\x7F]/', $label)) {
+        error_response('Nama provider maksimal 80 karakter dan tidak boleh memuat karakter kontrol.', 422, 'invalid_ai_provider_label');
+    }
+    return $label;
 }
 
 function ai_encryption_key(): string
@@ -183,9 +193,13 @@ function ai_settings_status(): array
     $enabled = $private['apiKey'] !== '' ? true : app_setting_get('ai_enabled', app_setting_get('ai_openrouter_enabled', '1')) !== '0';
     $storedSecret = $private['apiKey'] === '' ? ai_stored_secret($provider) : '';
     $keyRequired = (bool) $definition['keyRequired'] && !($provider === 'openai-compatible' && $allowLocal);
+    $storedProviderLabel = $private['apiKey'] === '' && $provider === 'openai-compatible'
+        ? ai_validate_provider_label(app_setting_get('ai_provider_label'))
+        : '';
+    $providerLabel = $storedProviderLabel !== '' ? $storedProviderLabel : $definition['label'];
 
     return [
-        'provider' => $provider, 'providerLabel' => $definition['label'], 'adapter' => $definition['adapter'],
+        'provider' => $provider, 'providerLabel' => $providerLabel, 'adapter' => $definition['adapter'],
         'enabled' => $enabled, 'model' => $model, 'baseUrl' => $baseUrl, 'allowLocal' => $allowLocal,
         'freeOnly' => (bool) $definition['freeOnly'], 'supportsLocal' => (bool) $definition['supportsLocal'], 'apiKeyRequired' => $keyRequired,
         'apiKeyConfigured' => $private['apiKey'] !== '' || $storedSecret !== '' || !$keyRequired,
@@ -220,7 +234,11 @@ function ai_save_settings(array $input): array
     $allowLocal = $provider === 'openai-compatible' && bool_value($input['allowLocal'] ?? false) === 1;
     $model = ai_validate_model($provider, (string) ($input['model'] ?? $definition['defaultModel']));
     $baseUrl = ai_normalize_base_url($provider, (string) ($input['baseUrl'] ?? $definition['baseUrl']), $allowLocal);
+    $providerLabel = $provider === 'openai-compatible'
+        ? ai_validate_provider_label((string) ($input['providerLabel'] ?? ''))
+        : '';
     app_setting_set('ai_provider', $provider);
+    app_setting_set('ai_provider_label', $providerLabel);
     app_setting_set('ai_model', $model);
     app_setting_set('ai_base_url', $baseUrl);
     app_setting_set('ai_allow_local', $allowLocal ? '1' : '0');
