@@ -1,23 +1,11 @@
 import React from "react";
-import { Menu, Moon, PanelLeft, Sun } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/primitives";
 import { getNavigationMeta } from "./academyNavigation";
-import { cn } from "@/lib/utils";
 
 export default function AcademyHeader({
   onOpenMobile = () => {},
-  onToggleSidebar = () => {},
-  sidebarCollapsed = false,
   themeMode = "light",
   onToggleTheme = () => {},
   onLogout = () => {},
@@ -33,18 +21,10 @@ export default function AcademyHeader({
         <button
           type="button"
           onClick={onOpenMobile}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
           aria-label="Buka navigasi"
         >
           <Menu className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="hidden h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
-          aria-label={sidebarCollapsed ? "Buka sidebar" : "Ciutkan sidebar"}
-        >
-          <PanelLeft className={cn("h-4 w-4 transition-transform", sidebarCollapsed && "rotate-180")} />
         </button>
         <div className="min-w-0">
           <div className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">{page.group}</div>

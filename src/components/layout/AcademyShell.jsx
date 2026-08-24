@@ -1,18 +1,14 @@
 import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useUserProgress } from "@/lib/useCourseData";
 import { useThemeMode } from "@/lib/useThemeMode";
 import AcademyHeader from "./AcademyHeader";
 import AcademySidebar from "./AcademySidebar";
 
-function initialSidebarState() {
-  return typeof window !== "undefined" ? window.innerWidth < 1024 : false;
-}
-
 export default function AcademyShell() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarState);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: progress = [] } = useUserProgress();
   const { user, logout } = useAuth();
@@ -22,7 +18,7 @@ export default function AcademyShell() {
 
   return (
     <div className="academy-shell flex h-screen overflow-hidden bg-background text-foreground">
-      <div className="hidden shrink-0 md:flex">
+      <div className="hidden shrink-0 lg:flex">
         <AcademySidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((current) => !current)}
@@ -48,8 +44,6 @@ export default function AcademyShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <AcademyHeader
           onOpenMobile={() => setMobileOpen(true)}
-          onToggleSidebar={() => setSidebarCollapsed((current) => !current)}
-          sidebarCollapsed={sidebarCollapsed}
           themeMode={themeMode}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}

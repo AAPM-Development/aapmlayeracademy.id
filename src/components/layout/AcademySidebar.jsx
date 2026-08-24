@@ -2,15 +2,14 @@ import React from "react";
 import { ChevronLeft, ChevronRight, LogOut, TrendingUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
-import { Badge } from "@/components/ui/badge";
-import { IconTile } from "@/components/ui/icon-tile";
+import { Badge, IconTile } from "@/components/primitives";
 import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
 import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
 
 export default function AcademySidebar({
   collapsed = false,
-  onToggle = () => {},
+  onToggle = null,
   onNavigate = () => {},
   onLogout = () => {},
   progress = [],
@@ -25,14 +24,16 @@ export default function AcademySidebar({
     <aside className={cn("relative flex h-full min-h-0 flex-col border-r border-border bg-surface-subtle transition-[width] duration-200", collapsed ? "w-[76px]" : "w-64", className)}>
       <div className={cn("flex h-[73px] shrink-0 items-center border-b border-border", collapsed ? "justify-center px-3" : "justify-between px-4")}>
         <AppBrand variant={collapsed ? "icon" : "logo"} className={collapsed ? "h-9 w-9" : "h-11 w-auto max-w-[182px]"} />
-        <button
-          type="button"
-          onClick={onToggle}
-          className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "absolute -right-3 top-5 z-10 border bg-background shadow-sm")}
-          aria-label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "absolute -right-3 top-5 z-10 border bg-background shadow-sm")}
+            aria-label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       <div className={cn("shrink-0", collapsed ? "px-3 py-4" : "px-4 py-5")}>
