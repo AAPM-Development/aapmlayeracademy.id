@@ -143,23 +143,23 @@ Error generating stack: `+_.message+`
     margin-right: `).concat(s,"px ").concat(r,`;
     `),n==="padding"&&"padding-right: ".concat(s,"px ").concat(r,";")].filter(Boolean).join(""),`
   }
-  
+
   .`).concat(Yh,` {
     right: `).concat(s,"px ").concat(r,`;
   }
-  
+
   .`).concat(Qh,` {
     margin-right: `).concat(s,"px ").concat(r,`;
   }
-  
+
   .`).concat(Yh," .").concat(Yh,` {
     right: 0 `).concat(r,`;
   }
-  
+
   .`).concat(Qh," .").concat(Qh,` {
     margin-right: 0 `).concat(r,`;
   }
-  
+
   body[`).concat(Gl,`] {
     `).concat(PQ,": ").concat(s,`px;
   }
