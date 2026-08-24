@@ -35,6 +35,7 @@ function app_config(): array
         dirname(__DIR__, 2) . '/config.php',
         dirname(__DIR__, 2) . '/config.local.php',
         dirname(__DIR__, 3) . '/aapmlayeracademy-config.php',
+        dirname(__DIR__, 4) . '/aapmlayeracademy-config.php',
     ]);
 
     foreach ($candidatePaths as $path) {
