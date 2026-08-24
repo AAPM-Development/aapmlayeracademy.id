@@ -113,17 +113,44 @@ export default function AdminAiSettings() {
     ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
   });
 
+  const isFreeModelQuotaExhausted = (exception) =>
+    /free-models-per-day|rate limit exceeded/i.test(
+      String(exception?.message || ""),
+    );
+
+  const showProviderTestError = (exception, { settingsSaved = false } = {}) => {
+    if (isFreeModelQuotaExhausted(exception)) {
+      toast({
+        variant: "destructive",
+        title: "Kuota model gratis habis",
+        description: `${settingsSaved ? "Pengaturan sudah tersimpan. " : ""}Kredensial OpenRouter valid, tetapi kuota harian akun telah habis. Tunggu reset kuota atau tambahkan kredit pada akun OpenRouter.`,
+      });
+      return;
+    }
+    toast({
+      variant: "destructive",
+      title: "Test provider gagal",
+      description:
+        exception.message ||
+        "Periksa API key, model, endpoint, dan koneksi server.",
+    });
+  };
+
   const saveSettings = async ({ runTest = false } = {}) => {
     setTestResult(null);
+    let settingsSaved = false;
     try {
       const result = await save.mutateAsync(payload());
+      settingsSaved = true;
       setApiKey("");
-      toast({
-        title: "Pengaturan AI tersimpan",
-        description: result.apiKeyConfigured
-          ? `${result.providerLabel} siap digunakan.`
-          : "Tambahkan API key untuk mengaktifkan provider.",
-      });
+      if (!runTest) {
+        toast({
+          title: "Pengaturan AI tersimpan",
+          description: result.apiKeyConfigured
+            ? `${result.providerLabel} siap digunakan.`
+            : "Tambahkan API key untuk mengaktifkan provider.",
+        });
+      }
       if (runTest) {
         const connection = await test.mutateAsync();
         setTestResult(connection);
@@ -133,9 +160,13 @@ export default function AdminAiSettings() {
         });
       }
     } catch (exception) {
+      if (runTest) {
+        showProviderTestError(exception, { settingsSaved });
+        return;
+      }
       toast({
         variant: "destructive",
-        title: runTest ? "Test provider gagal" : "Pengaturan belum tersimpan",
+        title: "Pengaturan belum tersimpan",
         description:
           exception.message || "Periksa kembali model, endpoint, dan API key.",
       });
@@ -152,13 +183,7 @@ export default function AdminAiSettings() {
         description: `${connection.providerLabel} · ${connection.model}`,
       });
     } catch (exception) {
-      toast({
-        variant: "destructive",
-        title: "Test provider gagal",
-        description:
-          exception.message ||
-          "Periksa API key, model, endpoint, dan koneksi server.",
-      });
+      showProviderTestError(exception);
     }
   };
 

@@ -217,20 +217,28 @@ function AssistantMessage({ message, retryPrompt, onRetry, streamSteps }) {
         </div>
       )}
       {!message.streaming && message.provider && (
-        <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <AapmIcon
-            name={
-              message.fallback
-                ? "solar:info-circle-bold"
-                : "solar:verified-check-bold"
-            }
-            className={`h-3.5 w-3.5 ${message.fallback ? "text-brand-orange" : "text-brand-green"}`}
+        <div className="mt-3 flex items-end gap-2.5">
+          <AiAvatar
+            size="sm"
+            state={message.error ? "alert" : message.fallback ? "idle" : "complete"}
+            decorative
+            className="mb-0.5 shrink-0"
           />
-          <span>
-            {message.fallback
-              ? "Respons lokal tersimpan"
-              : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
-          </span>
+          <div className="flex min-w-0 items-center gap-1.5 pb-1 text-[10px] text-muted-foreground">
+            <AapmIcon
+              name={
+                message.fallback
+                  ? "solar:info-circle-bold"
+                  : "solar:verified-check-bold"
+              }
+              className={`h-3.5 w-3.5 shrink-0 ${message.fallback ? "text-brand-orange" : "text-brand-green"}`}
+            />
+            <span className="truncate">
+              {message.fallback
+                ? "Respons lokal tersimpan"
+                : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
+            </span>
+          </div>
         </div>
       )}
     </article>
@@ -464,10 +472,8 @@ export default function AiAssistant() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
-  const [avatarState, setAvatarState] = useState("idle");
   const scrollRef = useRef(null);
   const imageInputRef = useRef(null);
-  const wasStreamingRef = useRef(false);
   const { data: farm = [] } = useFarmData();
   const { data: progress = [] } = useUserProgress();
   const { user } = useAuth();
@@ -497,22 +503,6 @@ export default function AiAssistant() {
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isStreaming]);
-  useEffect(() => {
-    const lastMessage = messages.at(-1);
-    if (isStreaming) {
-      wasStreamingRef.current = true;
-      setAvatarState(lastMessage?.content ? "responding" : "thinking");
-      return undefined;
-    }
-    if (wasStreamingRef.current) {
-      wasStreamingRef.current = false;
-      setAvatarState(lastMessage?.error ? "alert" : "complete");
-      const timer = window.setTimeout(() => setAvatarState("idle"), 1200);
-      return () => window.clearTimeout(timer);
-    }
-    setAvatarState("idle");
-    return undefined;
-  }, [isStreaming, messages]);
   useEffect(() => {
     if (!isDraft && !activeConversationId && conversations.length > 0)
       selectConversation(conversations[0].id);
@@ -708,14 +698,8 @@ export default function AiAssistant() {
           </ScrollArea>
         </div>
         <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
-          <div className="mx-auto flex max-w-3xl items-end gap-2.5">
-            <AiAvatar
-              size="md"
-              state={avatarState}
-              decorative
-              className="mb-1 shrink-0"
-            />
-            <div className="min-w-0 flex-1">
+          <div className="mx-auto max-w-3xl">
+            <div className="min-w-0">
               <input
                 ref={imageInputRef}
                 type="file"
