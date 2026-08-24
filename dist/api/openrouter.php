@@ -233,7 +233,7 @@ function ai_save_settings(array $input): array
 
 function ai_system_prompt(): string
 {
-    return "Anda adalah APPI (AAPM Predictive & Personal Intelligence) untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Gunakan heading dan poin bila membantu. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
+    return "Anda adalah APPI (AAPM Predictive & Personal Intelligence) untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika informasi penting belum cukup untuk memberi kesimpulan yang aman, jelaskan data yang kurang dan ajukan maksimal tiga pertanyaan lanjutan yang spesifik, termasuk satuan atau periode data bila relevan. Untuk membandingkan dua atau lebih indikator atau opsi, gunakan tabel Markdown. Untuk alur pemeriksaan atau pohon keputusan yang benar-benar lebih jelas secara visual, gunakan diagram Mermaid dalam code fence `mermaid` dengan maksimal delapan node; jangan membuat diagram dekoratif. Jika pengguna mengirim foto, pisahkan observasi visual dari hal yang belum dapat dipastikan dan sarankan foto/data pelengkap yang relevan. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
 }
 
 function ai_context_for_user(int $userId): array
@@ -257,6 +257,59 @@ function ai_context_text(array $rows): string
         $lines[] = implode(' | ', $parts);
     }
     return implode("\n", $lines);
+}
+
+function ai_page_context_text(string $pageContext): string
+{
+    $contexts = [
+        'calculators' => 'Pengguna sedang berada di halaman Kalkulator Farm. Kaitkan jawaban dengan input, satuan, rumus, dan batas interpretasi indikator yang sedang dihitung.',
+        'kpi' => 'Pengguna sedang berada di halaman Farm KPI. Kaitkan jawaban dengan pembacaan tren, periode data, dan pemeriksaan lanjutan yang relevan.',
+        'learning' => 'Pengguna sedang berada di area materi pembelajaran. Kaitkan jawaban dengan konsep atau modul yang membantu, tanpa mengklaim progres yang tidak tersedia.',
+        'certification' => 'Pengguna sedang berada di area sertifikasi. Bantu menjelaskan kesiapan dan materi terkait tanpa menjanjikan kelulusan.',
+        'exam' => 'Pengguna sedang berada di area ujian akhir. Beri arahan konsep dan cara belajar, bukan jawaban yang menyalahi integritas ujian.',
+        'admin' => 'Pengguna sedang berada di area administrasi Academy. Jelaskan dampak operasional secara ringkas dan jangan mengubah pengaturan apa pun.',
+        'dashboard' => 'Pengguna sedang berada di dashboard pembelajaran. Kaitkan jawaban dengan data dan langkah berikutnya yang terlihat di workspace.',
+    ];
+    return $contexts[$pageContext] ?? '';
+}
+
+function ai_user_prompt(string $message, array $farmContext, string $pageContext = '', string $accountMemory = ''): string
+{
+    $pageText = ai_page_context_text($pageContext);
+    return "Pertanyaan pengguna:\n" . substr($message, 0, 3000)
+        . ($pageText !== '' ? "\n\nKonteks halaman aktif:\n" . $pageText : '')
+        . ($accountMemory !== '' ? "\n\nMemori percakapan akun (gunakan hanya untuk kesinambungan; jangan anggap sebagai fakta terbaru tanpa konfirmasi):\n" . $accountMemory : '')
+        . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext);
+}
+
+function ai_normalize_image_data_url($value): ?string
+{
+    if (!is_string($value) || trim($value) === '') return null;
+    if (!preg_match('#^data:image/(jpeg|png|webp);base64,([A-Za-z0-9+/=\r\n]+)$#', trim($value), $matches)) {
+        error_response('Foto harus berformat JPG, PNG, atau WebP.', 422, 'invalid_image');
+    }
+    $bytes = base64_decode($matches[2], true);
+    if (!is_string($bytes) || $bytes === '') {
+        error_response('Foto tidak dapat dibaca.', 422, 'invalid_image');
+    }
+    if (strlen($bytes) > 3 * 1024 * 1024) {
+        error_response('Ukuran foto maksimal 3 MB.', 422, 'image_too_large');
+    }
+    return 'data:image/' . $matches[1] . ';base64,' . base64_encode($bytes);
+}
+
+function ai_openai_messages(string $systemPrompt, string $userPrompt, ?string $imageDataUrl = null): array
+{
+    $content = $imageDataUrl === null
+        ? $userPrompt
+        : [
+            ['type' => 'text', 'text' => $userPrompt],
+            ['type' => 'image_url', 'image_url' => ['url' => $imageDataUrl]],
+        ];
+    return [
+        ['role' => 'system', 'content' => $systemPrompt],
+        ['role' => 'user', 'content' => $content],
+    ];
 }
 
 function ai_http_json(string $url, array $headers, array $body, string $providerLabel): array
@@ -291,7 +344,7 @@ function ai_openai_content(array $decoded, string $providerLabel): string
     return $content;
 }
 
-function ai_openai_compatible_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
+function ai_openai_compatible_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
 {
     $headers = $apiKey !== '' ? ['Authorization: Bearer ' . $apiKey] : [];
     if ($settings['provider'] === 'openrouter') {
@@ -301,13 +354,19 @@ function ai_openai_compatible_completion(array $settings, string $apiKey, string
     }
     $body = [
         'model' => $settings['model'],
-        'messages' => [['role' => 'system', 'content' => $systemPrompt], ['role' => 'user', 'content' => $userPrompt]],
+        'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl),
         'temperature' => 0.3, 'max_tokens' => AAPM_AI_MAX_TOKENS,
     ];
     if ($settings['provider'] === 'openrouter') {
         // Reasoning-capable free models may expose an intermediate trace.
         // OpenRouter suppresses that trace while retaining the final answer.
         $body['reasoning'] = ['effort' => 'none', 'exclude' => true];
+        if ($allowWebSearch) {
+            $body['tools'] = [[
+                'type' => 'openrouter:web_search',
+                'parameters' => ['max_results' => 3, 'max_total_results' => 5],
+            ]];
+        }
     }
     $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions', $headers, $body, (string) $settings['providerLabel']);
     return ai_openai_content($decoded, (string) $settings['providerLabel']);
@@ -338,7 +397,7 @@ function ai_anthropic_completion(array $settings, string $apiKey, string $system
     return $content;
 }
 
-function ai_provider_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
+function ai_provider_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
 {
     // Keep the provider dispatch explicit. This file is loaded by the central
     // API router, so a parser incompatibility here would break every API route.
@@ -350,7 +409,7 @@ function ai_provider_completion(array $settings, string $apiKey, string $systemP
         return ai_anthropic_completion($settings, $apiKey, $systemPrompt, $userPrompt);
     }
 
-    return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt);
+    return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt, $allowWebSearch, $imageDataUrl);
 }
 
 function ai_sse_start(): void
@@ -375,22 +434,31 @@ function ai_sse_emit(string $event, array $payload = []): void
     flush();
 }
 
-function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
+function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
 {
     $headers = ['Authorization: Bearer ' . $apiKey, 'X-OpenRouter-Title: AAPM Layer Academy'];
     $origin = app_base_url();
     if ($origin !== '') {
         $headers[] = 'HTTP-Referer: ' . $origin;
     }
-    $payload = json_encode([
+    $requestBody = [
         'model' => $settings['model'],
-        'messages' => [['role' => 'system', 'content' => $systemPrompt], ['role' => 'user', 'content' => $userPrompt]],
+        'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl),
         'temperature' => 0.3,
         'max_tokens' => AAPM_AI_MAX_TOKENS,
         'stream' => true,
         // Only public output is sent to the browser. Provider reasoning is never relayed.
         'reasoning' => ['effort' => 'none', 'exclude' => true],
-    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    ];
+    if ($allowWebSearch) {
+        // OpenRouter runs this server-side tool only when the model needs current
+        // information. The low cap keeps the learner-facing mode predictable.
+        $requestBody['tools'] = [[
+            'type' => 'openrouter:web_search',
+            'parameters' => ['max_results' => 3, 'max_total_results' => 5],
+        ]];
+    }
+    $payload = json_encode($requestBody, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     if (!is_string($payload) || !function_exists('curl_init')) {
         throw new RuntimeException('Streaming provider AI belum tersedia.');
     }
@@ -438,6 +506,9 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                 }
                 $content = (string) $content;
                 if ($content !== '') {
+                    if (!$receivedText) {
+                        ai_sse_emit('status', ['label' => 'APPI menulis jawaban']);
+                    }
                     $receivedText = true;
                     $responseText .= $content;
                     ai_sse_emit('delta', ['text' => $content]);
@@ -458,29 +529,39 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     return $responseText;
 }
 
-function ai_assistant_stream(string $message, array $farmContext): array
+function ai_assistant_stream(string $message, array $farmContext, bool $allowWebSearch = false, ?string $imageDataUrl = null, string $pageContext = '', string $accountMemory = ''): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
-    ai_sse_emit('status', ['label' => 'APPI menelaah konteks farm']);
+    ai_sse_emit('status', ['label' => 'APPI memeriksa konteks KPI']);
     try {
         if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
             throw new RuntimeException('Provider belum dikonfigurasi.');
         }
+        if ($accountMemory !== '') {
+            ai_sse_emit('status', ['label' => 'APPI mengingat konteks percakapan']);
+        }
+        $webSearch = $allowWebSearch && $settings['provider'] === 'openrouter';
+        if ($imageDataUrl !== null && $settings['provider'] !== 'openrouter') {
+            throw new RuntimeException('Analisis foto saat ini memerlukan provider OpenRouter dengan model vision-capable.');
+        }
+        if ($webSearch) {
+            ai_sse_emit('status', ['label' => 'APPI menyiapkan referensi web']);
+        }
         if ($settings['provider'] !== 'openrouter') {
-            ai_sse_emit('status', ['label' => 'APPI menyusun jawaban']);
-            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+            ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
+            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory));
             ai_sse_emit('delta', ['text' => $reply]);
         } else {
-            ai_sse_emit('status', ['label' => 'APPI menyusun jawaban']);
+            ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
             try {
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory), $webSearch, $imageDataUrl);
             } catch (RuntimeException $exception) {
                 // Free providers may occasionally reject a single request while
                 // remaining healthy. Retry once before showing a local fallback.
                 error_log('[aapm-ai-provider-retry] ' . $exception->getMessage());
-                ai_sse_emit('status', ['label' => 'Menghubungkan ulang provider']);
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+                ai_sse_emit('status', ['label' => 'APPI menghubungkan ulang provider']);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory), $webSearch, $imageDataUrl);
             }
         }
         $result = ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null];
@@ -488,6 +569,14 @@ function ai_assistant_stream(string $message, array $farmContext): array
         return $result;
     } catch (RuntimeException $exception) {
         error_log('[aapm-ai-provider] ' . $exception->getMessage());
+        if ($imageDataUrl !== null) {
+            $notice = 'Foto tidak dianalisis karena model aktif belum mendukung input gambar atau provider menolaknya.';
+            $reply = 'APPI belum dapat membaca foto ini dengan model aktif. Pilih model OpenRouter yang mendukung input gambar di pengaturan admin, lalu coba lagi. Foto tidak disimpan di riwayat percakapan.';
+            ai_sse_emit('notice', ['text' => $notice]);
+            ai_sse_emit('delta', ['text' => $reply]);
+            ai_sse_emit('done', ['provider' => 'local', 'model' => null, 'fallback' => true]);
+            return ['reply' => $reply, 'provider' => 'local', 'model' => null, 'fallback' => true, 'notice' => $notice];
+        }
         $reply = native_ai_reply($message, $farmContext);
         $notice = ai_provider_fallback_notice();
         ai_sse_emit('notice', ['text' => $notice]);
@@ -511,7 +600,7 @@ function ai_provider_test_error(RuntimeException $exception): string
     return substr(trim((string) $message), 0, 260);
 }
 
-function ai_assistant_reply(string $message, array $farmContext): array
+function ai_assistant_reply(string $message, array $farmContext, bool $allowWebSearch = false): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
@@ -526,7 +615,7 @@ function ai_assistant_reply(string $message, array $farmContext): array
         ];
     }
     try {
-        $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+        $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext), $allowWebSearch && $settings['provider'] === 'openrouter');
         return [
             'reply' => $reply,
             'provider' => $settings['provider'],

@@ -1,10 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
-import { Button } from "@/components/primitives";
+import AiStreamActivity from "@/components/ai/AiStreamActivity";
+import { Button, Switch } from "@/components/primitives";
 import { useAiChat } from "@/components/ai/AiChatProvider";
+
+const MermaidDiagram = React.lazy(
+  () => import("@/components/ai/MermaidDiagram"),
+);
 
 const quickActions = [
   {
@@ -31,9 +37,23 @@ const quickActions = [
   },
 ];
 
+function pageContextForPath(pathname) {
+  if (pathname === "/calculators") return "calculators";
+  if (pathname === "/kpi") return "kpi";
+  if (pathname === "/modules" || pathname.startsWith("/module/")) {
+    return "learning";
+  }
+  if (pathname === "/certification") return "certification";
+  if (pathname === "/exam") return "exam";
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname === "/dashboard" || pathname === "/") return "dashboard";
+  return "";
+}
+
 function BubbleAnswer({ content }) {
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => <p className="mt-2 first:mt-0">{children}</p>,
         h1: ({ children }) => (
@@ -58,6 +78,42 @@ function BubbleAnswer({ content }) {
         strong: ({ children }) => (
           <strong className="font-semibold text-foreground">{children}</strong>
         ),
+        table: ({ children }) => (
+          <div className="aapm-ai-table-wrap">
+            <table>{children}</table>
+          </div>
+        ),
+        th: ({ children }) => <th>{children}</th>,
+        td: ({ children }) => <td>{children}</td>,
+        code: ({ className, children, ...props }) => {
+          const language = /language-(\w+)/.exec(className || "")?.[1];
+          const source = String(children).replace(/\n$/, "");
+          if (language === "mermaid")
+            return (
+              <React.Suspense
+                fallback={
+                  <div className="aapm-ai-mermaid-loading">
+                    Menyiapkan diagram…
+                  </div>
+                }
+              >
+                <MermaidDiagram chart={source} />
+              </React.Suspense>
+            );
+          if (language)
+            return (
+              <pre className="aapm-ai-code-block">
+                <code className={className} {...props}>
+                  {source}
+                </code>
+              </pre>
+            );
+          return (
+            <code className="aapm-ai-inline-code" {...props}>
+              {children}
+            </code>
+          );
+        },
       }}
     >
       {content}
@@ -65,25 +121,11 @@ function BubbleAnswer({ content }) {
   );
 }
 
-function BubbleThinking({ label }) {
-  return (
-    <div className="aapm-ai-thinking" aria-live="polite">
-      <span className="aapm-ai-orbit" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="text-[11px] font-medium text-muted-foreground">
-        {label || "APPI menyusun jawaban"}
-      </span>
-    </div>
-  );
-}
-
 export default function FloatingAiAssistant() {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [input, setInput] = useState("");
+  const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [avatarState, setAvatarState] = useState("idle");
   const closeTimer = useRef(null);
   const endRef = useRef(null);
@@ -96,6 +138,7 @@ export default function FloatingAiAssistant() {
     messages,
     isStreaming,
     streamStatus,
+    streamSteps,
     startNewConversation,
     send,
   } = useAiChat();
@@ -151,7 +194,11 @@ export default function FloatingAiAssistant() {
     const message = text.trim();
     if (!message || isStreaming) return;
     setInput("");
-    await send(message, { includeFarm: true });
+    await send(message, {
+      includeFarm: true,
+      allowWebSearch,
+      pageContext: pageContextForPath(location.pathname),
+    });
   };
   const handleAction = (action) => {
     if (action.kind === "prompt") return submit(action.prompt);
@@ -174,11 +221,16 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
-          className={`aapm-ai-panel fixed inset-x-0 bottom-0 z-[80] flex h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-t-[1.5rem] border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:bottom-5 sm:left-auto sm:right-5 sm:h-[min(39rem,calc(100dvh-6.5rem))] sm:w-[25rem] sm:rounded-2xl ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`aapm-ai-panel fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[80] flex h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:bottom-5 sm:left-auto sm:right-5 sm:h-[min(39rem,calc(100dvh-6.5rem))] sm:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
-              <AiAvatar size="md" state={avatarState} decorative />
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
+                <AapmIcon
+                  name="solar:stars-minimalistic-bold-duotone"
+                  className="h-4 w-4"
+                />
+              </span>
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-semibold">APPI</h2>
                 <p className="truncate text-[10px] text-muted-foreground">
@@ -283,10 +335,16 @@ export default function FloatingAiAssistant() {
                         )}
                       </div>
                       {message.streaming && (
-                        <BubbleThinking label={streamStatus} />
+                        <AiStreamActivity
+                          label={streamStatus}
+                          steps={streamSteps}
+                          compact
+                        />
                       )}
                       {message.content && (
-                        <div className="mt-2.5">
+                        <div
+                          className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
+                        >
                           <BubbleAnswer content={message.content} />
                         </div>
                       )}
@@ -316,49 +374,78 @@ export default function FloatingAiAssistant() {
             </div>
           </div>
           <footer className="shrink-0 border-t border-border bg-background p-3">
-            <div className="mb-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <AapmIcon
-                name="solar:chart-square-bold-duotone"
-                className="h-3.5 w-3.5 text-brand-orange"
+            <div className="flex items-end gap-2.5">
+              <AiAvatar
+                size="sm"
+                state={avatarState}
+                decorative
+                className="mb-1 shrink-0"
               />
-              Konteks KPI digunakan saat tersedia.
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[10px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <AapmIcon
+                      name="solar:chart-square-bold-duotone"
+                      className="h-3.5 w-3.5 text-brand-orange"
+                    />
+                    Konteks KPI digunakan saat tersedia.
+                  </span>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 font-medium">
+                    <Switch
+                      checked={allowWebSearch}
+                      onCheckedChange={setAllowWebSearch}
+                      disabled={isStreaming}
+                      aria-label="Izinkan APPI mencari referensi web"
+                      className="scale-75"
+                    />
+                    <AapmIcon
+                      name="solar:global-bold-duotone"
+                      className="h-3.5 w-3.5 text-brand-orange"
+                    />
+                    Cari web
+                  </label>
+                </div>
+                <div className="flex items-end gap-2 rounded-xl border border-input bg-surface-elevated p-1.5 transition-colors focus-within:border-brand-orange">
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        submit();
+                      }
+                    }}
+                    rows={1}
+                    placeholder="Tanyakan kondisi farm…"
+                    className="max-h-24 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-xs leading-5 outline-none"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    onClick={() => submit()}
+                    disabled={!input.trim() || isStreaming}
+                    className="h-8 w-8 shrink-0 rounded-lg bg-brand-orange text-white hover:bg-brand-orange/90"
+                  >
+                    <AapmIcon
+                      name="solar:plane-2-bold-duotone"
+                      className="h-3.5 w-3.5"
+                    />
+                    <span className="sr-only">Kirim</span>
+                  </Button>
+                </div>
+                <Link
+                  to="/ai-assistant"
+                  onClick={closePanel}
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
+                >
+                  Buka semua percakapan{" "}
+                  <AapmIcon
+                    name="solar:arrow-right-up-bold"
+                    className="h-3 w-3"
+                  />
+                </Link>
+              </div>
             </div>
-            <div className="flex items-end gap-2 rounded-xl border border-input bg-surface-elevated p-1.5 transition-colors focus-within:border-brand-orange">
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    submit();
-                  }
-                }}
-                rows={1}
-                placeholder="Tanyakan kondisi farm…"
-                className="max-h-24 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-xs leading-5 outline-none"
-              />
-              <Button
-                type="button"
-                size="icon"
-                onClick={() => submit()}
-                disabled={!input.trim() || isStreaming}
-                className="h-8 w-8 shrink-0 rounded-lg bg-brand-orange text-white hover:bg-brand-orange/90"
-              >
-                <AapmIcon
-                  name="solar:plane-2-bold-duotone"
-                  className="h-3.5 w-3.5"
-                />
-                <span className="sr-only">Kirim</span>
-              </Button>
-            </div>
-            <Link
-              to="/ai-assistant"
-              onClick={closePanel}
-              className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
-            >
-              Buka semua percakapan{" "}
-              <AapmIcon name="solar:arrow-right-up-bold" className="h-3 w-3" />
-            </Link>
           </footer>
         </section>
       )}
@@ -366,7 +453,7 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="fixed bottom-4 right-4 z-[75] inline-flex h-12 items-center gap-2 rounded-full border border-white/35 bg-brand-orange py-1.5 pl-2 pr-3.5 text-left text-white shadow-[0_14px_32px_hsl(var(--aapm-orange-500)/0.36)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:bottom-5 sm:right-5"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-[75] inline-flex h-12 items-center gap-2 rounded-full border border-white/35 bg-brand-orange py-1.5 pl-2 pr-3.5 text-left text-white shadow-[0_14px_32px_hsl(var(--aapm-orange-500)/0.36)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:bottom-5 sm:right-5"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >

@@ -556,6 +556,118 @@
     animation: aapm-ai-panel-out 180ms cubic-bezier(0.7, 0, 0.84, 0) both;
   }
 
+  @keyframes aapm-ai-answer-caret {
+    0%,
+    44% {
+      opacity: 1;
+    }
+    45%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .aapm-ai-activity {
+    max-width: 28rem;
+    padding: 0.35rem 0;
+  }
+
+  .aapm-ai-activity--compact {
+    max-width: none;
+    padding: 0.15rem 0;
+  }
+
+  .aapm-ai-response--streaming::after {
+    display: inline-block;
+    width: 0.12rem;
+    height: 1em;
+    margin-left: 0.22rem;
+    vertical-align: -0.12em;
+    border-radius: 99px;
+    background: hsl(var(--aapm-orange-500));
+    content: "";
+    animation: aapm-ai-answer-caret 0.9s steps(1, end) infinite;
+  }
+
+  .aapm-ai-table-wrap {
+    width: 100%;
+    margin-top: 1rem;
+    overflow-x: auto;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    background: hsl(var(--surface-default));
+  }
+
+  .aapm-ai-table-wrap table {
+    width: 100%;
+    min-width: 32rem;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  .aapm-ai-table-wrap th,
+  .aapm-ai-table-wrap td {
+    padding: 0.7rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .aapm-ai-table-wrap th {
+    color: hsl(var(--foreground));
+    font-weight: 650;
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-ai-table-wrap tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .aapm-ai-inline-code {
+    padding: 0.08rem 0.32rem;
+    border-radius: 0.28rem;
+    background: hsl(var(--muted));
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.84em;
+  }
+
+  .aapm-ai-code-block {
+    margin-top: 1rem;
+    overflow-x: auto;
+    padding: 0.85rem 0.95rem;
+    border-radius: 0.75rem;
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+
+  .aapm-ai-mermaid,
+  .aapm-ai-mermaid-loading {
+    display: flex;
+    min-height: 8rem;
+    margin-top: 1rem;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 1rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    background: hsl(var(--surface-default));
+  }
+
+  .aapm-ai-mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .aapm-ai-mermaid-loading {
+    gap: 0.55rem;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -569,7 +681,8 @@
     .aapm-ai-presence__avatar,
     .aapm-ai-presence__decor,
     .aapm-ai-panel--enter,
-    .aapm-ai-panel--exit {
+    .aapm-ai-panel--exit,
+    .aapm-ai-response--streaming::after {
       animation: none;
     }
 

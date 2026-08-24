@@ -25,6 +25,7 @@ function clientMessage(message) {
     fallback: Boolean(message.fallback),
     notice: message.notice ?? "",
     streaming: Boolean(message.streaming),
+    image: message.image ?? null,
     createdAt: message.createdAt ?? null,
   };
 }
@@ -44,6 +45,7 @@ export function AiChatProvider({ children }) {
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamStatus, setStreamStatus] = useState("");
+  const [streamSteps, setStreamSteps] = useState([]);
   const activeRef = useRef(null);
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export function AiChatProvider({ children }) {
     setActiveConversationId(null);
     setMessages([]);
     setStreamStatus("");
+    setStreamSteps([]);
   }, [isStreaming]);
 
   const ensureConversation = useCallback(
@@ -98,7 +101,15 @@ export function AiChatProvider({ children }) {
   );
 
   const send = useCallback(
-    async (rawMessage, { includeFarm = true } = {}) => {
+    async (
+      rawMessage,
+      {
+        includeFarm = true,
+        allowWebSearch = false,
+        image = null,
+        pageContext = "",
+      } = {},
+    ) => {
       const message = rawMessage.trim();
       if (!message || isStreaming) return;
       const conversation = await ensureConversation(message);
@@ -106,7 +117,7 @@ export function AiChatProvider({ children }) {
       const userId = idFor("user");
       setMessages((current) => [
         ...current,
-        clientMessage({ id: userId, role: "user", content: message }),
+        clientMessage({ id: userId, role: "user", content: message, image }),
         clientMessage({
           id: assistantId,
           role: "assistant",
@@ -115,7 +126,18 @@ export function AiChatProvider({ children }) {
         }),
       ]);
       setIsStreaming(true);
-      setStreamStatus("APPI menelaah konteks farm");
+      const startLabel = "APPI menyiapkan konteks percakapan";
+      setStreamStatus(startLabel);
+      setStreamSteps([startLabel]);
+      const reportStep = (label) => {
+        const nextLabel = label || "APPI menyusun jawaban";
+        setStreamStatus(nextLabel);
+        setStreamSteps((current) =>
+          current.at(-1) === nextLabel
+            ? current
+            : [...current, nextLabel].slice(-4),
+        );
+      };
       const updateAssistant = (update) =>
         setMessages((current) =>
           current.map((item) =>
@@ -127,9 +149,11 @@ export function AiChatProvider({ children }) {
           id: conversation.id,
           message,
           farmContext: includeFarm && farm.length ? farm.slice(-8) : null,
+          allowWebSearch,
+          imageDataUrl: image?.dataUrl ?? null,
+          pageContext,
           onEvent: ({ event, data }) => {
-            if (event === "status")
-              setStreamStatus(data.label || "APPI menyusun jawaban");
+            if (event === "status") reportStep(data.label);
             if (event === "delta" && data.text) {
               setMessages((current) =>
                 current.map((item) =>
@@ -160,6 +184,7 @@ export function AiChatProvider({ children }) {
       } finally {
         setIsStreaming(false);
         setStreamStatus("");
+        setStreamSteps([]);
         queryClient.invalidateQueries({ queryKey: ["aiConversations"] });
       }
     },
@@ -190,6 +215,7 @@ export function AiChatProvider({ children }) {
       isLoadingConversation,
       isStreaming,
       streamStatus,
+      streamSteps,
       selectConversation,
       startNewConversation,
       deleteConversation,
@@ -208,6 +234,7 @@ export function AiChatProvider({ children }) {
       send,
       startNewConversation,
       streamStatus,
+      streamSteps,
     ],
   );
 

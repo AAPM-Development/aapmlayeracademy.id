@@ -501,13 +501,17 @@ try {
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
         $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
+        $imageDataUrl = ai_normalize_image_data_url($input['imageDataUrl'] ?? null);
+        $pageContext = trim((string) ($input['pageContext'] ?? ''));
+        $accountMemory = ai_account_memory_for_user((int) $user['id']);
         ai_record_chat_message((int) $conversation['id'], 'user', $message);
         ai_touch_conversation((int) $conversation['id'], (string) $conversation['title'], $message, (int) $conversation['message_count'] === 0);
         ai_sse_start();
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        $response = ai_assistant_stream($message, $farmContext);
+        $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory);
         ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
         ai_touch_conversation((int) $conversation['id'], ai_conversation_title($message), (string) $response['reply'], false);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
@@ -549,11 +553,13 @@ try {
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
         $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
+        $imageDataUrl = ai_normalize_image_data_url($input['imageDataUrl'] ?? null);
         ai_sse_start();
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        ai_assistant_stream($message, $farmContext);
+        ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
     }
@@ -571,7 +577,8 @@ try {
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
         $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
-        $response = ai_assistant_reply($message, $farmContext);
+        $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
+        $response = ai_assistant_reply($message, $farmContext, $allowWebSearch);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         json_response($response);
     }
@@ -605,6 +612,46 @@ function ai_conversation_for_user(int $conversationId, int $userId): ?array
     $stmt->execute([$conversationId, $userId]);
     $conversation = $stmt->fetch();
     return $conversation ?: null;
+}
+
+function ai_account_memory_for_user(int $userId): string
+{
+    // Memory stays in the existing per-account chat store. We only construct a
+    // compact, request-time view: recent continuity plus one user anchor per
+    // month in a three-month window. Deleting a conversation removes it from memory.
+    $recentStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? ORDER BY m.created_at DESC, m.id DESC LIMIT 6');
+    $recentStmt->execute([$userId]);
+    $rows = array_reverse($recentStmt->fetchAll());
+    $seen = [];
+    foreach ($rows as $row) {
+        $seen[(int) $row['id']] = true;
+    }
+
+    $monthStart = new DateTimeImmutable('first day of this month 00:00:00');
+    $anchorStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? AND m.role = ? AND m.created_at >= ? AND m.created_at < ? ORDER BY m.created_at DESC, m.id DESC LIMIT 1');
+    for ($offset = 3; $offset >= 0; $offset--) {
+        $start = $monthStart->modify('-' . $offset . ' months');
+        $end = $start->modify('+1 month');
+        $anchorStmt->execute([$userId, 'user', $start->format('Y-m-d H:i:s'), $end->format('Y-m-d H:i:s')]);
+        $anchor = $anchorStmt->fetch();
+        if ($anchor && !isset($seen[(int) $anchor['id']])) {
+            $rows[] = $anchor;
+            $seen[(int) $anchor['id']] = true;
+        }
+    }
+
+    usort($rows, static function (array $left, array $right): int {
+        return strcmp((string) $left['created_at'], (string) $right['created_at']) ?: ((int) $left['id'] <=> (int) $right['id']);
+    });
+    $lines = [];
+    foreach ($rows as $row) {
+        $content = trim((string) ($row['content'] ?? ''));
+        if ($content === '') continue;
+        $excerpt = function_exists('mb_substr') ? mb_substr($content, 0, 180) : substr($content, 0, 180);
+        $month = substr((string) ($row['created_at'] ?? ''), 0, 7);
+        $lines[] = ($month !== '' ? '[' . $month . '] ' : '') . (($row['role'] ?? '') === 'assistant' ? 'APPI' : 'Pengguna') . ': ' . $excerpt;
+    }
+    return implode("\n", $lines);
 }
 
 function ai_record_chat_message(int $conversationId, string $role, string $content, ?string $provider = null, ?string $model = null, bool $fallback = false): void

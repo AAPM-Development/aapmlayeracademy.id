@@ -1,12 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
+import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import { Button, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
+
+const MermaidDiagram = React.lazy(
+  () => import("@/components/ai/MermaidDiagram"),
+);
 
 const welcomeMessage =
   "Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.";
@@ -66,6 +72,7 @@ function personalizedSuggestions({ farm, progress, user }) {
 function MarkdownAnswer({ content }) {
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
           <h2 className="mt-5 text-base font-semibold tracking-[-0.02em] first:mt-0">
@@ -97,6 +104,42 @@ function MarkdownAnswer({ content }) {
             {children}
           </blockquote>
         ),
+        table: ({ children }) => (
+          <div className="aapm-ai-table-wrap">
+            <table>{children}</table>
+          </div>
+        ),
+        th: ({ children }) => <th>{children}</th>,
+        td: ({ children }) => <td>{children}</td>,
+        code: ({ className, children, ...props }) => {
+          const language = /language-(\w+)/.exec(className || "")?.[1];
+          const source = String(children).replace(/\n$/, "");
+          if (language === "mermaid")
+            return (
+              <React.Suspense
+                fallback={
+                  <div className="aapm-ai-mermaid-loading">
+                    Menyiapkan diagram…
+                  </div>
+                }
+              >
+                <MermaidDiagram chart={source} />
+              </React.Suspense>
+            );
+          if (language)
+            return (
+              <pre className="aapm-ai-code-block">
+                <code className={className} {...props}>
+                  {source}
+                </code>
+              </pre>
+            );
+          return (
+            <code className="aapm-ai-inline-code" {...props}>
+              {children}
+            </code>
+          );
+        },
       }}
     >
       {content}
@@ -104,23 +147,8 @@ function MarkdownAnswer({ content }) {
   );
 }
 
-function ThinkingIndicator({ label }) {
-  return (
-    <div className="aapm-ai-thinking" aria-live="polite">
-      <span className="aapm-ai-orbit" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="text-xs font-medium text-muted-foreground">
-        {label || "APPI menyusun jawaban"}
-      </span>
-    </div>
-  );
-}
-
-function AssistantMessage({ message, retryPrompt, onRetry }) {
-  const [expanded, setExpanded] = useState(false);
+function AssistantMessage({ message, retryPrompt, onRetry, streamSteps }) {
+  const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
     <article className="min-w-0 max-w-2xl">
@@ -137,24 +165,26 @@ function AssistantMessage({ message, retryPrompt, onRetry }) {
           </span>
         )}
       </div>
-      {message.streaming && <ThinkingIndicator label={message.streamStatus} />}
+      {message.streaming && (
+        <AiStreamActivity label={message.streamStatus} steps={streamSteps} />
+      )}
       {message.content && (
         <>
           <div
-            className={`relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && !expanded ? "max-h-56 overflow-hidden" : ""}`}
+            className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
           >
             <MarkdownAnswer content={message.content} />
-            {canCollapse && !expanded && (
+            {canCollapse && collapsed && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
             )}
           </div>
           {canCollapse && (
             <button
               type="button"
-              onClick={() => setExpanded((value) => !value)}
+              onClick={() => setCollapsed((value) => !value)}
               className="mt-3 text-xs font-semibold text-brand-orange transition-colors hover:text-brand-orange/75"
             >
-              {expanded ? "Ringkas jawaban" : "Tampilkan jawaban lengkap"}
+              {collapsed ? "Tampilkan jawaban lengkap" : "Ringkas jawaban"}
             </button>
           )}
         </>
@@ -312,11 +342,131 @@ function ConversationList({
   );
 }
 
+function MobileConversationSheet({
+  open,
+  conversations,
+  activeConversationId,
+  loading,
+  disabled,
+  onClose,
+  onSelect,
+  onDelete,
+  onNew,
+}) {
+  if (!open) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Tutup riwayat percakapan"
+        onClick={onClose}
+        className="fixed inset-0 z-[84] bg-foreground/25 backdrop-blur-[1px] lg:hidden"
+      />
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Riwayat percakapan APPI"
+        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[85] flex max-h-[min(76dvh,38rem)] min-h-[20rem] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.2)] lg:hidden"
+      >
+        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
+          <div>
+            <h2 className="text-sm font-semibold">Percakapan</h2>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Tersimpan khusus di akun Anda
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onNew}
+              disabled={disabled}
+              className="h-8 gap-1.5 px-2.5 text-xs"
+            >
+              <AapmIcon
+                name="solar:pen-new-square-bold"
+                className="h-3.5 w-3.5 text-brand-orange"
+              />
+              Baru
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8"
+              aria-label="Tutup riwayat"
+            >
+              <AapmIcon name="solar:close-circle-bold" className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
+        <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+          <div className="space-y-1.5">
+            {loading && (
+              <p className="px-2 py-4 text-xs text-muted-foreground">
+                Memuat percakapan…
+              </p>
+            )}
+            {!loading && conversations.length === 0 && (
+              <p className="px-2 py-4 text-xs leading-5 text-muted-foreground">
+                Belum ada riwayat. Pertanyaan pertama akan membuat percakapan
+                baru secara otomatis.
+              </p>
+            )}
+            {conversations.map((conversation) => (
+              <div
+                key={conversation.id}
+                className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition-colors ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-default"}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelect(conversation.id)}
+                  disabled={disabled}
+                  className="min-w-0 flex-1 px-2.5 py-2.5 text-left"
+                >
+                  <span className="block truncate text-xs font-semibold text-foreground">
+                    {conversation.title}
+                  </span>
+                  <span className="mt-1 block truncate text-[10px] text-muted-foreground">
+                    {conversation.lastMessagePreview || "Belum ada pesan"}
+                  </span>
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(conversation.id)}
+                  disabled={disabled}
+                  className="mr-0.5 h-8 w-8 shrink-0"
+                  aria-label={`Hapus percakapan ${conversation.title}`}
+                >
+                  <AapmIcon
+                    name="solar:trash-bin-trash-bold"
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                  />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </aside>
+    </>
+  );
+}
+
 export default function AiAssistant() {
   const [input, setInput] = useState("");
   const [includeFarm, setIncludeFarm] = useState(true);
+  const [allowWebSearch, setAllowWebSearch] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [imageAttachment, setImageAttachment] = useState(null);
+  const [attachmentError, setAttachmentError] = useState("");
   const [avatarState, setAvatarState] = useState("idle");
   const scrollRef = useRef(null);
+  const imageInputRef = useRef(null);
   const wasStreamingRef = useRef(false);
   const { data: farm = [] } = useFarmData();
   const { data: progress = [] } = useUserProgress();
@@ -330,6 +480,7 @@ export default function AiAssistant() {
     isLoadingConversation,
     isStreaming,
     streamStatus,
+    streamSteps,
     selectConversation,
     startNewConversation,
     deleteConversation,
@@ -367,15 +518,42 @@ export default function AiAssistant() {
       selectConversation(conversations[0].id);
   }, [activeConversationId, conversations, isDraft, selectConversation]);
 
+  const handleImageSelection = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setAttachmentError("Gunakan foto JPG, PNG, atau WebP.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setAttachmentError("Ukuran foto maksimal 3 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageAttachment({ dataUrl: String(reader.result), name: file.name });
+      setAttachmentError("");
+    };
+    reader.onerror = () => setAttachmentError("Foto tidak dapat dibaca.");
+    reader.readAsDataURL(file);
+  };
+
   const submit = async (text = input) => {
-    const message = text.trim();
-    if (!message || isStreaming) return;
+    const content = text.trim();
+    if ((!content && !imageAttachment) || isStreaming) return;
+    const image = imageAttachment;
+    const message =
+      content ||
+      "Tolong analisis foto farm ini. Bedakan observasi visual, hal yang belum pasti, dan data yang perlu saya cek berikutnya.";
     setInput("");
-    await send(message, { includeFarm });
+    setImageAttachment(null);
+    setAttachmentError("");
+    await send(message, { includeFarm, allowWebSearch, image });
   };
 
   return (
-    <div className="flex h-[calc(100dvh-73px)] min-h-[33rem] overflow-hidden bg-background">
+    <div className="flex h-[calc(100dvh-64px)] min-h-[31rem] overflow-hidden bg-background sm:h-[calc(100dvh-73px)] sm:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -388,7 +566,12 @@ export default function AiAssistant() {
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <AiAvatar size="sm" state={avatarState} decorative />
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
+              <AapmIcon
+                name="solar:stars-minimalistic-bold-duotone"
+                className="h-4 w-4"
+              />
+            </span>
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold tracking-[-0.015em]">
                 APPI
@@ -400,23 +583,20 @@ export default function AiAssistant() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <select
-              value={activeConversationId ?? ""}
-              onChange={(event) =>
-                event.target.value
-                  ? selectConversation(Number(event.target.value))
-                  : startNewConversation()
-              }
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setHistoryOpen(true)}
               disabled={isStreaming}
-              className="h-8 max-w-36 rounded-lg border border-input bg-background px-2 text-[11px] text-foreground lg:hidden"
+              className="h-8 gap-1.5 px-2.5 text-xs lg:hidden"
             >
-              <option value="">Percakapan baru</option>
-              {conversations.map((conversation) => (
-                <option key={conversation.id} value={conversation.id}>
-                  {conversation.title}
-                </option>
-              ))}
-            </select>
+              <AapmIcon
+                name="solar:history-2-bold-duotone"
+                className="h-3.5 w-3.5"
+              />
+              Riwayat
+            </Button>
             <span
               className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium sm:inline-flex ${includeFarm ? "bg-tint-green text-tint-green-foreground" : "bg-surface-subtle text-muted-foreground"}`}
             >
@@ -424,6 +604,22 @@ export default function AiAssistant() {
                 className={`h-1.5 w-1.5 rounded-full ${includeFarm ? "bg-brand-green" : "bg-muted-foreground/50"}`}
               />
               {contextLabel}
+            </span>
+            {allowWebSearch && (
+              <span className="hidden items-center gap-1.5 rounded-full bg-tint-orange px-2.5 py-1 text-[10px] font-medium text-tint-orange-foreground sm:inline-flex">
+                <AapmIcon
+                  name="solar:global-bold-duotone"
+                  className="h-3 w-3"
+                />
+                Referensi web
+              </span>
+            )}
+            <span className="hidden items-center gap-1.5 rounded-full bg-surface-subtle px-2.5 py-1 text-[10px] font-medium text-muted-foreground xl:inline-flex">
+              <AapmIcon
+                name="solar:history-2-bold-duotone"
+                className="h-3 w-3 text-brand-green"
+              />
+              Memori 3 bulan
             </span>
             <Button
               type="button"
@@ -443,7 +639,7 @@ export default function AiAssistant() {
         </header>
         <div className="min-h-0 flex-1">
           <ScrollArea className="h-full">
-            <div className="mx-auto flex w-full max-w-3xl flex-col px-4 py-7 sm:px-8 sm:py-9">
+            <div className="mx-auto flex w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-9">
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
                   Memuat percakapan…
@@ -482,7 +678,14 @@ export default function AiAssistant() {
                   {messages.map((message, index) =>
                     message.role === "user" ? (
                       <div key={message.id} className="flex justify-end">
-                        <div className="max-w-[88%] rounded-2xl rounded-br-md bg-brand-green px-3.5 py-2.5 text-sm leading-6 text-white shadow-sm">
+                        <div className="max-w-[84%] rounded-2xl rounded-br-md bg-brand-green px-3.5 py-2.5 text-sm leading-6 text-white shadow-sm sm:max-w-[88%]">
+                          {message.image?.dataUrl && (
+                            <img
+                              src={message.image.dataUrl}
+                              alt="Foto yang dikirim untuk dianalisis"
+                              className="mb-2.5 max-h-56 w-full rounded-xl object-cover"
+                            />
+                          )}
                           {message.content}
                         </div>
                       </div>
@@ -490,6 +693,7 @@ export default function AiAssistant() {
                       <AssistantMessage
                         key={message.id}
                         message={{ ...message, streamStatus }}
+                        streamSteps={streamSteps}
                         retryPrompt={
                           message.fallback ? messages[index - 1]?.content : ""
                         }
@@ -503,58 +707,149 @@ export default function AiAssistant() {
             </div>
           </ScrollArea>
         </div>
-        <div className="shrink-0 border-t border-border bg-background px-4 py-3 sm:px-8 sm:py-4">
-          <div className="mx-auto max-w-3xl">
-            <div className="aapm-field flex items-end gap-2 rounded-2xl border border-input bg-surface-elevated p-2 shadow-sm transition-shadow focus-within:shadow-md">
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    submit();
-                  }
-                }}
-                rows={1}
-                placeholder="Tanyakan situasi yang sedang terjadi di farm…"
-                className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
+        <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
+          <div className="mx-auto flex max-w-3xl items-end gap-2.5">
+            <AiAvatar
+              size="md"
+              state={avatarState}
+              decorative
+              className="mb-1 shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageSelection}
+                className="sr-only"
               />
-              <Button
-                type="button"
-                size="icon"
-                onClick={() => submit()}
-                disabled={isStreaming || !input.trim()}
-                className="h-9 w-9 shrink-0 rounded-xl bg-brand-orange text-white hover:bg-brand-orange/90"
-              >
-                <AapmIcon
-                  name="solar:plane-2-bold-duotone"
-                  className="h-4 w-4"
+              {imageAttachment && (
+                <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-2.5 py-2">
+                  <img
+                    src={imageAttachment.dataUrl}
+                    alt="Pratinjau foto lampiran"
+                    className="h-9 w-9 rounded-lg object-cover"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground">
+                    {imageAttachment.name}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setImageAttachment(null)}
+                    className="h-7 w-7 shrink-0"
+                    aria-label="Hapus foto"
+                  >
+                    <AapmIcon
+                      name="solar:close-circle-bold"
+                      className="h-3.5 w-3.5"
+                    />
+                  </Button>
+                </div>
+              )}
+              <div className="aapm-field flex items-end gap-2 rounded-2xl border border-input bg-surface-elevated p-2 shadow-sm transition-shadow focus-within:shadow-md">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isStreaming}
+                  className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground hover:text-brand-orange"
+                  aria-label="Lampirkan foto farm"
+                >
+                  <AapmIcon
+                    name="solar:gallery-add-bold-duotone"
+                    className="h-4 w-4"
+                  />
+                </Button>
+                <textarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      submit();
+                    }
+                  }}
+                  rows={1}
+                  placeholder="Tanyakan situasi yang sedang terjadi di farm…"
+                  className="max-h-32 min-h-[2.5rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
                 />
-                <span className="sr-only">Kirim pertanyaan</span>
-              </Button>
-            </div>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="flex items-center gap-1.5 text-[10px] leading-4 text-muted-foreground">
-                <AapmIcon
-                  name="solar:medical-kit-bold"
-                  className="h-3.5 w-3.5 shrink-0 text-brand-orange"
-                />{" "}
-                Untuk diagnosis penyakit dan dosis obat, konsultasikan dengan
-                dokter hewan.
-              </p>
-              <div className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-muted-foreground lg:hidden">
-                <Switch
-                  checked={includeFarm}
-                  onCheckedChange={setIncludeFarm}
-                  aria-label="Sertakan data KPI sebagai konteks"
-                  className="scale-75"
-                />
-                KPI
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={() => submit()}
+                  disabled={isStreaming || (!input.trim() && !imageAttachment)}
+                  className="h-9 w-9 shrink-0 rounded-xl bg-brand-orange text-white hover:bg-brand-orange/90"
+                >
+                  <AapmIcon
+                    name="solar:plane-2-bold-duotone"
+                    className="h-4 w-4"
+                  />
+                  <span className="sr-only">Kirim pertanyaan</span>
+                </Button>
+              </div>
+              {attachmentError && (
+                <p className="mt-1.5 text-[10px] font-medium text-danger">
+                  {attachmentError}
+                </p>
+              )}
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <p className="flex items-center gap-1.5 text-[10px] leading-4 text-muted-foreground">
+                  <AapmIcon
+                    name="solar:medical-kit-bold"
+                    className="h-3.5 w-3.5 shrink-0 text-brand-orange"
+                  />{" "}
+                  Untuk diagnosis penyakit dan dosis obat, konsultasikan dengan
+                  dokter hewan.
+                </p>
+                <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                  <Switch
+                    checked={includeFarm}
+                    onCheckedChange={setIncludeFarm}
+                    aria-label="Sertakan data KPI sebagai konteks"
+                    disabled={isStreaming}
+                    className="scale-75"
+                  />
+                  Pakai KPI
+                </label>
+                <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                  <Switch
+                    checked={allowWebSearch}
+                    onCheckedChange={setAllowWebSearch}
+                    aria-label="Izinkan APPI mencari referensi web"
+                    disabled={isStreaming}
+                    className="scale-75"
+                  />
+                  <AapmIcon
+                    name="solar:global-bold-duotone"
+                    className="h-3.5 w-3.5 text-brand-orange"
+                  />
+                  Cari web
+                </label>
               </div>
             </div>
           </div>
         </div>
       </section>
+      <MobileConversationSheet
+        open={historyOpen}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        loading={conversationsLoading}
+        disabled={isStreaming}
+        onClose={() => setHistoryOpen(false)}
+        onSelect={(id) => {
+          selectConversation(id);
+          setHistoryOpen(false);
+        }}
+        onDelete={deleteConversation}
+        onNew={() => {
+          startNewConversation();
+          setHistoryOpen(false);
+        }}
+      />
       <aside className="hidden w-72 shrink-0 border-l border-border bg-surface-subtle/45 2xl:flex 2xl:flex-col">
         <div className="p-5">
           <div className="flex items-start justify-between gap-3">
