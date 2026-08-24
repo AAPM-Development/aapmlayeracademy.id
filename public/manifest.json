@@ -7,7 +7,7 @@
   "theme_color": "#318139",
   "icons": [
     {
-      "src": "/assets/Icon_AAPM.svg",
+      "src": "/brand/aapm/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
