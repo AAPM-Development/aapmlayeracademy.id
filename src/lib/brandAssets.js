@@ -17,6 +17,10 @@ export const brandAssets = Object.freeze({
       light: "/brand/aapm/logo_long.svg",
       dark: "/brand/aapm/logo_long_dark.svg",
     }),
+    main: Object.freeze({
+      light: "/brand/aapm/logo_main.svg",
+      dark: "/brand/aapm/logo_main_dark.svg",
+    }),
     icon: Object.freeze({
       light: "/brand/aapm/logo_main.svg",
       dark: "/brand/aapm/logo_main_dark.svg",

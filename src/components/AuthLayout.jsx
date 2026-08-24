@@ -110,7 +110,12 @@ function LoginAuthLayout(props) {
       <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
         <div className="w-full max-w-[420px]">
           <div className="mb-9 flex justify-center">
-            <AppBrand className="h-16 w-auto max-w-[260px]" />
+            <AppBrand
+              product="aapm"
+              variant="main"
+              className="h-24 w-auto max-w-[150px]"
+              alt="AAPM Layer Academy"
+            />
           </div>
           <div className="mb-9">
             <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl">{title}</h1>
