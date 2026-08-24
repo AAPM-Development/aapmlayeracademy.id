@@ -45,7 +45,7 @@ export default function ForgotPassword() {
           <p>If an account exists with that email, you'll receive a password reset link shortly.</p>
           {devResetLink && (
             <a className="text-primary font-medium hover:underline" href={devResetLink}>
-              Buka link reset lokal
+              Buka tautan reset
             </a>
           )}
         </div>
