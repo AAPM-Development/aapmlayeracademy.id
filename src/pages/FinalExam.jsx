@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, XCircle, Trophy, RotateCcw, Award, GraduationCap, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Trophy, RotateCcw, Award, GraduationCap, AlertCircle } from 'lucide-react';
 import { useQuizQuestions, useSaveProgress, useIssueCertificate } from '@/lib/useCourseData';
 import { useToast } from '@/components/ui/use-toast';
 

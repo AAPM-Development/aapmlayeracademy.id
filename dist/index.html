@@ -23,40 +23,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="LayerPro Academy — Pelatihan Profesional Manajemen Peternakan Ayam Petelur" />
     <meta name="twitter:description" content="Platform e-learning profesional terintegrasi untuk manajemen peternakan ayam petelur komersial." />
-    <script type="module" crossorigin src="/assets/index-C9cUAg7s.js"></script>
+    <script type="module" crossorigin src="/assets/index-D5lcz161.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BfE338rC.css">
-    <script type="module">
-if (window.self === window.top) {
-  let lastPath = "";
-  function getPageNameFromPath(path) {
-    const segments = path.split("/").filter(Boolean);
-    return segments[0] || null;
-  }
-  function trackPageView() {
-    const path = window.location.pathname;
-    if (path === lastPath) return;
-    lastPath = path;
-    const pageName = getPageNameFromPath(path) || "home";
-    const appId = "";
-    if (!appId) return;
-    fetch(`/api/app-logs/${appId}/log-user-in-app/${pageName}`, {
-      method: "POST",
-    }).catch(() => {});
-  }
-  const originalPushState = history.pushState.bind(history);
-  history.pushState = function (...args) {
-    originalPushState(...args);
-    trackPageView();
-  };
-  const originalReplaceState = history.replaceState.bind(history);
-  history.replaceState = function (...args) {
-    originalReplaceState(...args);
-    trackPageView();
-  };
-  window.addEventListener("popstate", trackPageView);
-  trackPageView();
-}
-</script>
   </head>
   <body>
     <div id="root"></div>

@@ -5,8 +5,7 @@ import {
   Sparkles, Award, GraduationCap, Menu, X, Egg
 } from 'lucide-react';
 import { useUserProgress } from '@/lib/useCourseData';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,11 +21,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { data: progress = [] } = useUserProgress();
-
-  const { data: me } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => base44.auth.me(),
-  });
+  const { user: me } = useAuth();
 
   const completed = progress.filter(p => p.completed).length;
   const totalModules = 22;

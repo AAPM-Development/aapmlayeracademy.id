@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { nativeApi } from "@/api/nativeClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,14 +11,18 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [devResetLink, setDevResetLink] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await base44.auth.resetPasswordRequest(email);
+      const result = await nativeApi.auth.requestPasswordReset(email);
+      if (result?.devResetToken) {
+        setDevResetLink(`${window.location.origin}/reset-password?token=${encodeURIComponent(result.devResetToken)}`);
+      }
     } catch {
-      // Always show success regardless
+      // Keep the response generic to avoid revealing whether an email exists.
     } finally {
       setLoading(false);
       setSent(true);
@@ -37,9 +41,14 @@ export default function ForgotPassword() {
       }
     >
       {sent ? (
-        <p className="text-sm text-foreground text-center">
-          If an account exists with that email, you'll receive a password reset link shortly.
-        </p>
+        <div className="space-y-3 text-sm text-foreground text-center">
+          <p>If an account exists with that email, you'll receive a password reset link shortly.</p>
+          {devResetLink && (
+            <a className="text-primary font-medium hover:underline" href={devResetLink}>
+              Buka link reset lokal
+            </a>
+          )}
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

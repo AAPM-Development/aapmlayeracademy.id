@@ -30,3 +30,9 @@ dist-ssr
 .env
 .vite
 base44/.app.jsonc
+
+# Native PHP configuration and local database files
+config.php
+config.local.php
+aapmlayeracademy-config.php
+storage/

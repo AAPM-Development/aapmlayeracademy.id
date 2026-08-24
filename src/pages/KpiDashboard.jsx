@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis,
+  BarChart, Bar, LineChart, Line, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart
 } from 'recharts';
-import { Plus, Trash2, BarChart3, Egg, TrendingUp, DollarSign, Sparkles, Pencil } from 'lucide-react';
+import { Trash2, BarChart3, Egg, TrendingUp, DollarSign, Sparkles, Pencil } from 'lucide-react';
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from '@/lib/useCourseData';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';

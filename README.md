@@ -1,93 +1,105 @@
-# Base44 Project
+# AAPM Layer Academy
 
-Use this repository to run and edit the app locally, then publish changes back through Base44.
+Native local/cPanel version of the Layer Farm Academy application. The
+existing React/Vite screens and UI structure are preserved; persistence and
+authentication now run through a PHP API with SQLite locally and MySQL on
+cPanel.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+## Stack
 
-## Prerequisites
+- React 18 + Vite + Tailwind CSS
+- PHP 7.4+ compatible REST API (`public/api/`)
+- SQLite for local development; MySQL/MariaDB for cPanel
+- PHP sessions and `password_hash`/`password_verify` for authentication
+- Local rule-based Farm Assistant fallback; no Base44 runtime dependency
 
-1. Clone the repository using the project's Git URL.
-2. Navigate to the project directory.
-3. Install dependencies: `npm install`.
-4. Install the Base44 CLI: `npm install -g base44@latest`.
+PHP 8.3 is recommended for cPanel, although the API remains compatible with
+the currently available PHP 7.4.33 fallback.
 
-See the [Base44 CLI docs](https://docs.base44.com/developers/references/cli/get-started/overview) if you want to run Base44 commands directly.
+## Local development
 
-## Run Locally
+Prerequisites: Node.js/npm and PHP with `pdo_sqlite` enabled. The bundled
+Windows PHP in this workspace has the SQLite DLLs available but disabled, so
+the commands below enable them per process without changing the global PHP
+installation.
 
-Run the full local development environment from the project root:
-
-```bash
-base44 dev
+```powershell
+Copy-Item config.native.example.php config.php
+php -d extension=php_sqlite3.dll -d extension=php_pdo_sqlite.dll database/seed.php
+php -d extension=php_sqlite3.dll -d extension=php_pdo_sqlite.dll -S 127.0.0.1:8000 -t public public/router.php
 ```
 
-`base44 dev` starts the local Base44 development backend and, when this app is configured for it, also starts the frontend dev server for you. Use the frontend URL printed by the command.
+In a second terminal:
 
-For example, when the Base44 project config includes a `serveCommand`, `base44 dev` can launch the frontend too:
-
-```json5
-{
-  "site": {
-    "serveCommand": "npm run dev"
-  }
-}
-```
-
-In a Base44 project this lives in `base44/config.jsonc`.
-
-## Run Only The Frontend
-
-If you only want to work on the frontend against the hosted Base44 backend, run:
-
-```bash
+```powershell
+npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite.
+Open the Vite URL printed in the terminal. Vite proxies `/api` to the local
+PHP server. The seed creates a demo account:
 
-## Use The Hosted Backend
+- Email: `demo@aapmlayeracademy.id`
+- Password: `aapmacademy@2026`
 
-For frontend-only development, create or update `.env.local` in the project root:
+The local SQLite database is created under `storage/` and is ignored by git.
 
-```bash
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=https://your-app.base44.app
-```
+## Native API
 
-`VITE_BASE44_APP_ID` identifies the Base44 app.
+The API exposes:
 
-`VITE_BASE44_APP_BASE_URL` tells the Base44 Vite plugin where to send local `/api` requests. Point it at your deployed Base44 app URL when you want the local frontend to use the hosted backend.
+- `/api/auth/*` — login, register, logout, and password reset
+- `/api/modules` and `/api/quiz` — course content and questions
+- `/api/progress` — per-user progress and quiz scores
+- `/api/certificates` — per-user certificates
+- `/api/farm-data` — per-user KPI rows
+- `/api/ai-assistant` — local assistant response
+- `/api/health` — deployment health check
 
-When you use `base44 dev`, the command injects the local Base44 values for you, so `.env.local` is mainly needed for frontend-only workflows.
+All mutating authenticated requests use the session's CSRF token. PHP creates
+the table structure automatically on first request; `database/schema.sql` is
+provided for explicit MySQL setup and `database/seed.php` loads demo content.
 
-## Publish Your Changes
+## cPanel staging
 
-After pushing your changes to git, open the Base44 dashboard and publish the app:
+The `develop` branch deploys the Vite artifact in `dist/` to
+`staging.aapmlayeracademy.id`. The artifact includes the PHP API under
+`dist/api/`.
 
-```bash
-base44 dashboard open
-```
+1. Create a MySQL database and user in cPanel.
+2. Configure `/home/aapp8359/aapmlayeracademy-config.php` outside
+   `public_html` using `config.native.example.php` as the template.
+3. Set the staging domain to PHP 8.3 and enable `pdo_mysql`.
+4. Build and include the static artifact:
 
-## Docs & Support
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Base44 CLI command reference: [https://docs.base44.com/developers/references/cli/commands/introduction](https://docs.base44.com/developers/references/cli/commands/introduction)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
-
-## cPanel staging deployment
-
-The `develop` branch deploys the committed Vite artifact in `dist/` to
-`staging.aapmlayeracademy.id`. Before pushing frontend changes, rebuild and
-include the artifact:
-
-```bash
+```powershell
 npm run build
 git add -f dist
-git commit -m "build: update staging artifact"
+git commit -m "build: update native staging artifact"
 git push origin develop
 ```
 
-The cPanel Git repository is then updated to the new `develop` commit and its
-`Deploy HEAD Commit` action publishes `dist/` to the staging document root.
+5. In cPanel Git Version Control for the staging repository, choose `Update
+   from Remote`, then `Deploy HEAD Commit`.
+6. Run the seed from the checked-out repository with `php database/seed.php`.
+7. Verify `https://staging.aapmlayeracademy.id/api/health` and log in with the
+   demo account.
+
+Production remains connected to `main` and is not changed by staging deploys.
+Promote a tested commit to `main` only after the native staging smoke test
+passes.
+
+## Content migration
+
+The repository contained the original Base44 entity schemas but not the
+hosted module/quiz records. The native seed therefore provides 22 editable
+demo modules and questions matching that schema. Replace the seed content or
+load the final curriculum into `course_modules` and `quiz_questions` when it
+is available.
+
+## Google login
+
+Google OAuth is intentionally not enabled in this native baseline because no
+Google Cloud OAuth client ID/secret was supplied. Email/password login is
+fully local. Google login can be added later as a separate OAuth adapter
+without changing the course data model.

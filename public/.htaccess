@@ -1,7 +1,20 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Native PHP API. The route is passed as a query parameter so the same
+  # front controller works on Apache and PHP's built-in development server.
+  RewriteRule ^api/?$ api/index.php [L,QSA]
+  RewriteRule ^api/(.*)$ api/index.php?path=$1 [L,QSA]
+
+  # Vite's React SPA fallback.
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
 </IfModule>
+
+# Never expose local database/config artifacts if they are placed under the
+# document root during development.
+<FilesMatch "\.(sqlite|sqlite3|db|env|local\.php)$">
+  Require all denied
+</FilesMatch>

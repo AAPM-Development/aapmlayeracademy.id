@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, CheckCircle2, Lock, Star, Download, ChevronRight, GraduationCap } from 'lucide-react';
+import { Award, Lock, Star, Download, ChevronRight, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserProgress, useCertificates, useIssueCertificate } from '@/lib/useCourseData';
 import { useToast } from '@/components/ui/use-toast';
