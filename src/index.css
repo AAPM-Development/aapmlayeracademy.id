@@ -116,10 +116,18 @@
     --metric-positive: 142 61% 35%;
     --metric-negative: 0 72% 51%;
     --metric-neutral: 215 16% 47%;
-    --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-heading:
+      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+      Arial, sans-serif;
+    --font-body:
+      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+      Arial, sans-serif;
+    --font-display:
+      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+      Arial, sans-serif;
+    --font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 145 14% 26%;
     --sidebar-primary: var(--aapm-green-700);
@@ -131,7 +139,8 @@
     /* Component tokens. */
     --card-radius: var(--radius-lg);
     --card-padding: var(--space-6);
-    --card-shadow: 0 1px 2px rgba(19, 64, 35, 0.06), 0 12px 26px -24px rgba(19, 64, 35, 0.34);
+    --card-shadow:
+      0 1px 2px rgba(19, 64, 35, 0.06), 0 12px 26px -24px rgba(19, 64, 35, 0.34);
     --card-shadow-hover: 0 12px 26px -22px rgba(19, 64, 35, 0.32);
     --surface-shadow: var(--card-shadow);
     --surface-shadow-hover: var(--card-shadow-hover);
@@ -214,7 +223,8 @@
     --sidebar-accent-foreground: 210 20% 96%;
     --sidebar-border: 220 8% 23%;
     --sidebar-ring: 136 53% 53%;
-    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 12px 26px -22px rgba(0, 0, 0, 0.52);
+    --card-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.24), 0 12px 26px -22px rgba(0, 0, 0, 0.52);
     --card-shadow-hover: 0 14px 30px -22px rgba(0, 0, 0, 0.64);
     --surface-shadow: var(--card-shadow);
     --surface-shadow-hover: var(--card-shadow-hover);
@@ -224,8 +234,6 @@
     --hero-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.75);
   }
 }
-
-
 
 @layer base {
   * {
@@ -331,31 +339,35 @@
   }
 
   @keyframes aapm-ai-dot {
-    0%, 70%, 100% { opacity: 0.26; transform: scale(0.72); }
-    35% { opacity: 1; transform: scale(1); }
+    0%,
+    70%,
+    100% {
+      opacity: 0.26;
+      transform: scale(0.72);
+    }
+    35% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   .aapm-ai-thinking {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    min-height: 3.5rem;
-    max-width: 17rem;
-    padding: 0.65rem 0.75rem;
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.875rem;
-    background: hsl(var(--surface-subtle) / 0.72);
+    gap: 0.5rem;
+    min-height: 1.5rem;
+    color: hsl(var(--muted-foreground));
   }
 
   .aapm-ai-orbit {
     display: inline-flex;
     align-items: center;
     gap: 0.2rem;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
     justify-content: center;
-    border-radius: 0.625rem;
-    background: hsl(var(--aapm-orange-500) / 0.13);
+    border-radius: 999px;
+    background: hsl(var(--aapm-orange-500) / 0.1);
   }
 
   .aapm-ai-orbit span {
@@ -366,54 +378,182 @@
     animation: aapm-ai-dot 1.1s ease-in-out infinite;
   }
 
-  .aapm-ai-orbit span:nth-child(2) { animation-delay: 0.13s; }
-  .aapm-ai-orbit span:nth-child(3) { animation-delay: 0.26s; }
-
-  @keyframes aapm-ai-avatar-float {
-    0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); }
-    50% { transform: translateY(-2px) rotate(1deg) scale(1.03); }
+  .aapm-ai-orbit span:nth-child(2) {
+    animation-delay: 0.13s;
+  }
+  .aapm-ai-orbit span:nth-child(3) {
+    animation-delay: 0.26s;
   }
 
-  @keyframes aapm-ai-avatar-listening {
-    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--aapm-orange-500) / 0.28); }
-    55% { box-shadow: 0 0 0 8px hsl(var(--aapm-orange-500) / 0); }
+  @keyframes aapm-ai-presence-enter {
+    0% {
+      opacity: 0;
+      transform: translateY(8%) scale(0.72) rotate(-6deg);
+    }
+    68% {
+      opacity: 1;
+      transform: translateY(-2%) scale(1.08) rotate(1.5deg);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1) rotate(0);
+    }
   }
 
-  .aapm-ai-avatar {
+  @keyframes aapm-ai-presence-exit {
+    0% {
+      opacity: 1;
+      transform: translateY(0) scale(1) rotate(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-8%) scale(0.76) rotate(5deg);
+    }
+  }
+
+  @keyframes aapm-ai-decor-enter {
+    0% {
+      opacity: 0;
+      transform: translate(-18%, 18%) scale(0.4) rotate(-20deg);
+    }
+    70% {
+      opacity: 1;
+      transform: translate(2%, -2%) scale(1.1) rotate(4deg);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0) scale(1) rotate(0);
+    }
+  }
+
+  @keyframes aapm-ai-decor-exit {
+    0% {
+      opacity: 1;
+      transform: translate(0) scale(1) rotate(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(15%, -16%) scale(0.45) rotate(18deg);
+    }
+  }
+
+  @keyframes aapm-ai-decor-orbit {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-3deg);
+    }
+    50% {
+      transform: translateY(-6%) rotate(4deg);
+    }
+  }
+
+  @keyframes aapm-ai-decor-process {
+    from {
+      transform: rotate(0deg) scale(0.92);
+    }
+    50% {
+      transform: rotate(180deg) scale(1.08);
+    }
+    to {
+      transform: rotate(360deg) scale(0.92);
+    }
+  }
+
+  .aapm-ai-presence {
     position: relative;
     display: inline-flex;
     flex: none;
     align-items: center;
     justify-content: center;
     overflow: visible;
-    border-radius: 999px;
-    background: #fff7f3;
     isolation: isolate;
   }
 
-  .aapm-ai-avatar__halo {
+  .aapm-ai-presence__avatar,
+  .aapm-ai-presence__decor {
     position: absolute;
-    inset: 8%;
-    z-index: -1;
-    border-radius: inherit;
-    background: hsl(var(--aapm-orange-500) / 0.13);
+    display: block;
+    pointer-events: none;
   }
 
-  .aapm-ai-avatar__image {
-    width: 128%;
-    max-width: none;
-    height: 128%;
+  .aapm-ai-presence__avatar {
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
-    object-position: 50% 54%;
-    animation: aapm-ai-avatar-float 4.8s ease-in-out infinite;
   }
 
-  .aapm-ai-avatar--active {
-    animation: aapm-ai-avatar-listening 1.75s ease-out infinite;
+  .aapm-ai-presence__decor {
+    z-index: 2;
+    top: -13%;
+    right: -18%;
+    width: 43%;
+    max-width: none;
+    height: 43%;
+    object-fit: contain;
   }
 
-  .aapm-ai-avatar--active .aapm-ai-avatar__image {
-    animation-duration: 1.5s;
+  .aapm-ai-presence__avatar--enter {
+    animation: aapm-ai-presence-enter 430ms cubic-bezier(0.16, 1.28, 0.3, 1)
+      both;
+  }
+  .aapm-ai-presence__decor--enter {
+    animation: aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1)
+      both;
+  }
+  .aapm-ai-presence__avatar--exit {
+    animation: aapm-ai-presence-exit 170ms cubic-bezier(0.7, 0, 0.84, 0) both;
+  }
+  .aapm-ai-presence__decor--exit {
+    animation: aapm-ai-decor-exit 140ms cubic-bezier(0.7, 0, 0.84, 0) both;
+  }
+
+  .aapm-ai-presence[data-state="idle"] .aapm-ai-presence__decor--enter,
+  .aapm-ai-presence[data-state="thinking"] .aapm-ai-presence__decor--enter {
+    animation:
+      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-orbit 4.8s 520ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="responding"] .aapm-ai-presence__decor--enter {
+    animation:
+      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-process 2.2s 580ms linear infinite;
+  }
+
+  @keyframes aapm-ai-panel-in {
+    0% {
+      opacity: 0;
+      transform: translateY(18px) scale(0.96);
+    }
+    72% {
+      opacity: 1;
+      transform: translateY(-2px) scale(1.012);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes aapm-ai-panel-out {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+  }
+
+  .aapm-ai-panel--enter {
+    animation: aapm-ai-panel-in 360ms cubic-bezier(0.16, 1.18, 0.3, 1) both;
+  }
+
+  .aapm-ai-panel--exit {
+    animation: aapm-ai-panel-out 180ms cubic-bezier(0.7, 0, 0.84, 0) both;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -426,8 +566,10 @@
     .academy-enter,
     .academy-insight,
     .aapm-ai-orbit span,
-    .aapm-ai-avatar,
-    .aapm-ai-avatar__image {
+    .aapm-ai-presence__avatar,
+    .aapm-ai-presence__decor,
+    .aapm-ai-panel--enter,
+    .aapm-ai-panel--exit {
       animation: none;
     }
 
@@ -443,20 +585,52 @@
   .markdown-body {
     @apply text-sm leading-relaxed text-foreground;
   }
-  .markdown-body h1 { @apply text-xl font-bold mt-6 mb-2; }
-  .markdown-body h2 { @apply text-lg font-semibold mt-5 mb-2; }
-  .markdown-body h3 { @apply text-base font-semibold mt-4 mb-1.5; }
-  .markdown-body p { @apply my-2.5; }
-  .markdown-body ul { @apply list-disc pl-5 my-2.5 space-y-0.5; }
-  .markdown-body ol { @apply list-decimal pl-5 my-2.5 space-y-0.5; }
-  .markdown-body li { @apply leading-relaxed; }
-  .markdown-body strong { @apply font-semibold; }
-  .markdown-body code { @apply bg-muted px-1.5 py-0.5 rounded text-xs font-mono; }
-  .markdown-body pre { @apply bg-muted p-3 rounded-lg overflow-x-auto my-3; }
-  .markdown-body pre code { @apply bg-transparent p-0; }
-  .markdown-body blockquote { @apply border-l-4 border-amber-300 pl-3 italic text-muted-foreground my-3; }
-  .markdown-body table { @apply w-full border-collapse my-3 text-sm; }
-  .markdown-body th { @apply bg-muted font-medium px-3 py-2 text-left border border-border; }
-  .markdown-body td { @apply px-3 py-2 border border-border; }
-  .markdown-body hr { @apply my-4 border-border; }
+  .markdown-body h1 {
+    @apply text-xl font-bold mt-6 mb-2;
+  }
+  .markdown-body h2 {
+    @apply text-lg font-semibold mt-5 mb-2;
+  }
+  .markdown-body h3 {
+    @apply text-base font-semibold mt-4 mb-1.5;
+  }
+  .markdown-body p {
+    @apply my-2.5;
+  }
+  .markdown-body ul {
+    @apply list-disc pl-5 my-2.5 space-y-0.5;
+  }
+  .markdown-body ol {
+    @apply list-decimal pl-5 my-2.5 space-y-0.5;
+  }
+  .markdown-body li {
+    @apply leading-relaxed;
+  }
+  .markdown-body strong {
+    @apply font-semibold;
+  }
+  .markdown-body code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-xs font-mono;
+  }
+  .markdown-body pre {
+    @apply bg-muted p-3 rounded-lg overflow-x-auto my-3;
+  }
+  .markdown-body pre code {
+    @apply bg-transparent p-0;
+  }
+  .markdown-body blockquote {
+    @apply border-l-4 border-amber-300 pl-3 italic text-muted-foreground my-3;
+  }
+  .markdown-body table {
+    @apply w-full border-collapse my-3 text-sm;
+  }
+  .markdown-body th {
+    @apply bg-muted font-medium px-3 py-2 text-left border border-border;
+  }
+  .markdown-body td {
+    @apply px-3 py-2 border border-border;
+  }
+  .markdown-body hr {
+    @apply my-4 border-border;
+  }
 }

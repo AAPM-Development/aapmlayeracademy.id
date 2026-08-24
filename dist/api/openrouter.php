@@ -233,7 +233,7 @@ function ai_save_settings(array $input): array
 
 function ai_system_prompt(): string
 {
-    return "Anda adalah AI Layer Farm Assistant untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Gunakan heading dan poin bila membantu. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
+    return "Anda adalah APPI (AAPM Predictive & Personal Intelligence) untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Gunakan heading dan poin bila membantu. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
 }
 
 function ai_context_for_user(int $userId): array
@@ -462,17 +462,17 @@ function ai_assistant_stream(string $message, array $farmContext): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
-    ai_sse_emit('status', ['label' => 'Membaca konteks farm']);
+    ai_sse_emit('status', ['label' => 'APPI menelaah konteks farm']);
     try {
         if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
             throw new RuntimeException('Provider belum dikonfigurasi.');
         }
         if ($settings['provider'] !== 'openrouter') {
-            ai_sse_emit('status', ['label' => 'Menyusun jawaban']);
+            ai_sse_emit('status', ['label' => 'APPI menyusun jawaban']);
             $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
             ai_sse_emit('delta', ['text' => $reply]);
         } else {
-            ai_sse_emit('status', ['label' => 'Menyusun jawaban']);
+            ai_sse_emit('status', ['label' => 'APPI menyusun jawaban']);
             try {
                 $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
             } catch (RuntimeException $exception) {

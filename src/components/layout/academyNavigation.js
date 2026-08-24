@@ -9,9 +9,17 @@ export const academyNavigation = [
   {
     label: "Tools",
     items: [
-      { to: "/calculators", label: "Farm Calculators", icon: "solar:calculator-bold-duotone" },
+      {
+        to: "/calculators",
+        label: "Farm Calculators",
+        icon: "solar:calculator-bold-duotone",
+      },
       { to: "/kpi", label: "Farm KPI", icon: "kpi" },
-      { to: "/ai-assistant", label: "AI Farm Assistant", icon: "solar:stars-minimalistic-bold-duotone" },
+      {
+        to: "/ai-assistant",
+        label: "APPI",
+        icon: "solar:stars-minimalistic-bold-duotone",
+      },
     ],
   },
   {
@@ -25,7 +33,9 @@ export const academyNavigation = [
 
 export function getNavigationMeta(pathname = "/") {
   for (const group of academyNavigation) {
-    const item = group.items.find((entry) => entry.end ? pathname === entry.to : pathname.startsWith(entry.to));
+    const item = group.items.find((entry) =>
+      entry.end ? pathname === entry.to : pathname.startsWith(entry.to),
+    );
     if (item) return { ...item, group: group.label };
   }
 

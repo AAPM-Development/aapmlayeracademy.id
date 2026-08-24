@@ -1,9 +1,24 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, IconTile, Progress, Skeleton } from "@/components/primitives";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  IconTile,
+  Progress,
+  Skeleton,
+} from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
-import { getLevelProgress, learningLevels, TOTAL_MODULES } from "@/lib/academyData";
+import {
+  getLevelProgress,
+  learningLevels,
+  TOTAL_MODULES,
+} from "@/lib/academyData";
 
 export function ContinueLearning({ module = null, progress = null } = {}) {
   if (!module) {
@@ -12,11 +27,24 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
         <div className="absolute inset-x-0 top-0 h-1 bg-brand-green" />
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-green">Learning path selesai</div>
-            <h2 className="text-xl font-semibold tracking-tight">Semua modul sudah selesai.</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Tinjau kembali roadmap atau lanjutkan ke Final Exam.</p>
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-green">
+              Learning path selesai
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight">
+              Semua modul sudah selesai.
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Tinjau kembali roadmap atau lanjutkan ke Final Exam.
+            </p>
           </div>
-          <Button asChild className="shrink-0 bg-brand-green text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-green/90"><Link to="/final-exam">Buka Final Exam <AapmIcon name="arrowRight" /></Link></Button>
+          <Button
+            asChild
+            className="shrink-0 bg-brand-green text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-green/90"
+          >
+            <Link to="/final-exam">
+              Buka Final Exam <AapmIcon name="arrowRight" />
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -29,19 +57,41 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <Badge variant="soft" className="bg-tint-lime text-[10px] uppercase tracking-[0.14em] text-tint-lime-foreground">Lanjutkan belajar</Badge>
-              <span className="text-xs tabular-nums text-muted-foreground">Modul {module.moduleNumber} · Level {module.level}</span>
+              <Badge
+                variant="soft"
+                className="bg-tint-lime text-[10px] uppercase tracking-[0.14em] text-tint-lime-foreground"
+              >
+                Lanjutkan belajar
+              </Badge>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                Modul {module.moduleNumber} · Level {module.level}
+              </span>
             </div>
-            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{module.title}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{module.summary}</p>
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              {module.title}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {module.summary}
+            </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Button asChild><Link to={`/modules/${module.moduleNumber}`}>{progress?.completed ? "Review lesson" : "Buka lesson"} <AapmIcon name="arrowRight" /></Link></Button>
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><AapmIcon name="clock" className="h-3.5 w-3.5" /> Fokus berikutnya di roadmap</span>
+              <Button asChild>
+                <Link to={`/modules/${module.moduleNumber}`}>
+                  {progress?.completed ? "Review lesson" : "Buka lesson"}{" "}
+                  <AapmIcon name="arrowRight" />
+                </Link>
+              </Button>
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <AapmIcon name="clock" className="h-3.5 w-3.5" /> Fokus
+                berikutnya di roadmap
+              </span>
             </div>
           </div>
           <div className="relative hidden h-24 w-24 shrink-0 items-center justify-center rounded-full border border-brand-lime/40 bg-tint-lime text-brand-green sm:flex">
             <div className="absolute inset-2 rounded-full border border-brand-green/15" />
-            <AapmIcon name="solar:play-circle-bold" className="relative h-9 w-9 transition-transform duration-300 group-hover:scale-110" />
+            <AapmIcon
+              name="solar:play-circle-bold"
+              className="relative h-9 w-9 transition-transform duration-300 group-hover:scale-110"
+            />
           </div>
         </div>
       </CardContent>
@@ -49,14 +99,30 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
   );
 }
 
-export function DashboardMetricStrip({ modules = [], progress = [], nextModule = null, isLoading = false } = {}) {
+export function DashboardMetricStrip({
+  modules = [],
+  progress = [],
+  nextModule = null,
+  isLoading = false,
+} = {}) {
   if (isLoading) {
     return (
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-live="polite" aria-busy="true">
+      <div
+        className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
         <span className="sr-only">Memuat ringkasan progress...</span>
         {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--card-shadow)]">
-            <div className="flex items-start justify-between gap-3"><Skeleton className="h-9 w-9 rounded-xl" /><Skeleton className="h-5 w-20 rounded-full" /></div>
+          <div
+            key={index}
+            className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--card-shadow)]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton className="h-9 w-9 rounded-xl" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
             <Skeleton className="mt-4 h-8 w-20" />
             <Skeleton className="mt-2 h-4 w-28" />
           </div>
@@ -69,30 +135,82 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
   const total = modules.length || TOTAL_MODULES;
   const coursePercent = total ? Math.round((completed / total) * 100) : 0;
   const scored = progress.filter((item) => item?.quizTotal);
-  const average = scored.length ? Math.round(scored.reduce((totalScore, item) => totalScore + ((item.quizScore || 0) / item.quizTotal) * 100, 0) / scored.length) : 0;
+  const average = scored.length
+    ? Math.round(
+        scored.reduce(
+          (totalScore, item) =>
+            totalScore + ((item.quizScore || 0) / item.quizTotal) * 100,
+          0,
+        ) / scored.length,
+      )
+    : 0;
   const activeLevel = nextModule
     ? learningLevels.find((level) => level.number === nextModule.level)
     : modules.length
       ? learningLevels[learningLevels.length - 1]
       : learningLevels[0];
   const metrics = [
-    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: "check", accent: "border-t-brand-green", iconClass: "text-brand-green" },
-    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: "progress", accent: "border-t-brand-orange", iconClass: "text-brand-orange" },
-    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: "solar:target-bold-duotone", accent: "border-t-info", iconClass: "text-info" },
-    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: "solar:cup-star-bold", accent: "border-t-brand-orange", iconClass: "text-brand-orange" },
+    {
+      value: `${completed}/${total}`,
+      label: "Modul selesai",
+      detail: "Learning path",
+      icon: "check",
+      accent: "border-t-brand-green",
+      iconClass: "text-brand-green",
+    },
+    {
+      value: `${coursePercent}%`,
+      label: "Progress course",
+      detail: "Ritme belajar",
+      icon: "progress",
+      accent: "border-t-brand-orange",
+      iconClass: "text-brand-orange",
+    },
+    {
+      value: `${average}%`,
+      label: "Rata-rata nilai kuis",
+      detail: `${scored.length} kuis tersimpan`,
+      icon: "solar:target-bold-duotone",
+      accent: "border-t-info",
+      iconClass: "text-info",
+    },
+    {
+      value: activeLevel?.name || "Foundation",
+      label: "Level saat ini",
+      detail: "Professional track",
+      icon: "solar:cup-star-bold",
+      accent: "border-t-brand-orange",
+      iconClass: "text-brand-orange",
+    },
   ];
 
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric, index) => {
         return (
-          <div key={metric.label} className={cn("academy-enter aapm-interactive-card rounded-[var(--card-radius)] border border-border border-t-[3px] bg-card p-4", metric.accent)} style={{ animationDelay: `${index * 70}ms` }}>
+          <div
+            key={metric.label}
+            className={cn(
+              "academy-enter aapm-interactive-card rounded-[var(--card-radius)] border border-border border-t-[3px] bg-card p-4",
+              metric.accent,
+            )}
+            style={{ animationDelay: `${index * 70}ms` }}
+          >
             <div className="flex items-start justify-between gap-3">
-              <AapmIcon name={metric.icon} className={cn("h-5 w-5", metric.iconClass)} />
-              <span className="text-[10px] font-medium text-muted-foreground">{metric.detail}</span>
+              <AapmIcon
+                name={metric.icon}
+                className={cn("h-5 w-5", metric.iconClass)}
+              />
+              <span className="text-[10px] font-medium text-muted-foreground">
+                {metric.detail}
+              </span>
             </div>
-            <div className="mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">{metric.value}</div>
-            <div className="mt-1 text-xs font-medium text-foreground/80">{metric.label}</div>
+            <div className="mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">
+              {metric.value}
+            </div>
+            <div className="mt-1 text-xs font-medium text-foreground/80">
+              {metric.label}
+            </div>
           </div>
         );
       })}
@@ -101,52 +219,162 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
 }
 
 const dashboardTracks = [
-  { name: "Beginner", description: "Bangun fondasi flock dan ritme kerja yang konsisten.", levels: [1, 2, 3, 4, 5], tone: "green", icon: "course" },
-  { name: "Intermediate", description: "Hubungkan lingkungan, biosecurity, telur, dan KPI.", levels: [6, 7, 8, 9, 10, 11], tone: "lime", icon: "solar:shield-check-bold" },
-  { name: "Advanced", description: "Kelola operasi dengan root cause analysis dan disiplin data.", levels: [12, 13], tone: "orange", icon: "analytics" },
-  { name: "Expert", description: "Ambil keputusan lintas fungsi dan pimpin perbaikan farm.", levels: [14], tone: "slate", icon: "solar:cup-star-bold" },
+  {
+    name: "Beginner",
+    description: "Bangun fondasi flock dan ritme kerja yang konsisten.",
+    levels: [1, 2, 3, 4, 5],
+    tone: "green",
+    icon: "course",
+  },
+  {
+    name: "Intermediate",
+    description: "Hubungkan lingkungan, biosecurity, telur, dan KPI.",
+    levels: [6, 7, 8, 9, 10, 11],
+    tone: "lime",
+    icon: "solar:shield-check-bold",
+  },
+  {
+    name: "Advanced",
+    description: "Kelola operasi dengan root cause analysis dan disiplin data.",
+    levels: [12, 13],
+    tone: "orange",
+    icon: "analytics",
+  },
+  {
+    name: "Expert",
+    description: "Ambil keputusan lintas fungsi dan pimpin perbaikan farm.",
+    levels: [14],
+    tone: "slate",
+    icon: "solar:cup-star-bold",
+  },
 ];
 
 export function LearningTracks({ modules = [], progress = [] } = {}) {
-  const completedSet = new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
+  const completedSet = new Set(
+    progress.filter((item) => item?.completed).map((item) => item.moduleNumber),
+  );
   const tones = {
-    green: { card: "border-tint-green-border bg-tint-green", bar: "bg-tint-green-foreground", label: "text-tint-green-foreground" },
-    lime: { card: "border-tint-lime-border bg-tint-lime", bar: "bg-tint-lime-foreground", label: "text-tint-lime-foreground" },
-    orange: { card: "border-tint-orange-border bg-tint-orange", bar: "bg-tint-orange-foreground", label: "text-tint-orange-foreground" },
-    slate: { card: "border-tint-slate-border bg-tint-slate", bar: "bg-tint-slate-foreground", label: "text-tint-slate-foreground" },
+    green: {
+      card: "border-tint-green-border bg-tint-green",
+      bar: "bg-tint-green-foreground",
+      label: "text-tint-green-foreground",
+    },
+    lime: {
+      card: "border-tint-lime-border bg-tint-lime",
+      bar: "bg-tint-lime-foreground",
+      label: "text-tint-lime-foreground",
+    },
+    orange: {
+      card: "border-tint-orange-border bg-tint-orange",
+      bar: "bg-tint-orange-foreground",
+      label: "text-tint-orange-foreground",
+    },
+    slate: {
+      card: "border-tint-slate-border bg-tint-slate",
+      bar: "bg-tint-slate-foreground",
+      label: "text-tint-slate-foreground",
+    },
   };
 
   return (
     <section className="academy-enter mt-8" style={{ animationDelay: "180ms" }}>
       <div className="mb-4 flex items-end justify-between gap-3">
         <div>
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Learning path</div>
-          <h2 className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">Jalur pembelajaran</h2>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-orange">
+            Learning path
+          </div>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">
+            Jalur pembelajaran
+          </h2>
         </div>
-        <Link to="/modules" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Lihat semua <AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Link>
+        <Link
+          to="/modules"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline"
+        >
+          Lihat semua <AapmIcon name="chevronRight" className="h-3.5 w-3.5" />
+        </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {dashboardTracks.map((track) => {
           const tone = tones[track.tone];
-          const stats = track.levels.reduce((result, levelNumber) => {
-            const levelStats = getLevelProgress(levelNumber, modules, completedSet);
-            return { completed: result.completed + levelStats.completed, total: result.total + levelStats.total };
-          }, { completed: 0, total: 0 });
-          const percent = stats.total ? Math.round((stats.completed / stats.total) * 100) : 0;
-          const levelNames = track.levels.map((levelNumber) => learningLevels.find((level) => level.number === levelNumber)?.name).filter(Boolean);
+          const stats = track.levels.reduce(
+            (result, levelNumber) => {
+              const levelStats = getLevelProgress(
+                levelNumber,
+                modules,
+                completedSet,
+              );
+              return {
+                completed: result.completed + levelStats.completed,
+                total: result.total + levelStats.total,
+              };
+            },
+            { completed: 0, total: 0 },
+          );
+          const percent = stats.total
+            ? Math.round((stats.completed / stats.total) * 100)
+            : 0;
+          const levelNames = track.levels
+            .map(
+              (levelNumber) =>
+                learningLevels.find((level) => level.number === levelNumber)
+                  ?.name,
+            )
+            .filter(Boolean);
 
           return (
-            <Link key={track.name} to="/modules" className={cn("group aapm-interactive-card overflow-hidden rounded-[var(--card-radius)] border p-5", tone.card)}>
+            <Link
+              key={track.name}
+              to="/modules"
+              className={cn(
+                "group aapm-interactive-card overflow-hidden rounded-[var(--card-radius)] border p-5",
+                tone.card,
+              )}
+            >
               <div className="flex items-start gap-3">
                 <IconTile icon={track.icon} tone={track.tone} size="md" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3"><h3 className={cn("text-base font-semibold", tone.label)}>{track.name}</h3><AapmIcon name="arrowRight" className={cn("h-4 w-4 transition-transform duration-300 group-hover:translate-x-1", tone.label)} /></div>
-                  <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">{track.description}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className={cn("text-base font-semibold", tone.label)}>
+                      {track.name}
+                    </h3>
+                    <AapmIcon
+                      name="arrowRight"
+                      className={cn(
+                        "h-4 w-4 transition-transform duration-300 group-hover:translate-x-1",
+                        tone.label,
+                      )}
+                    />
+                  </div>
+                  <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+                    {track.description}
+                  </p>
                 </div>
               </div>
-              <div className="mt-5 flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="tabular-nums">{stats.completed}/{stats.total || "—"} modul selesai</span><Badge variant="soft" className="bg-white/70 text-[10px] text-muted-foreground">{track.levels.length} level</Badge></div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10"><div className={cn("h-full rounded-full transition-[width] duration-500", tone.bar)} style={{ width: `${percent}%` }} /></div>
-              <div className="mt-3 truncate text-[11px] text-muted-foreground/80">{levelNames.slice(0, 4).join(" · ")}{levelNames.length > 4 ? " · …" : ""}</div>
+              <div className="mt-5 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                <span className="tabular-nums">
+                  {stats.completed}/{stats.total || "—"} modul selesai
+                </span>
+                <Badge
+                  variant="soft"
+                  className="bg-white/70 text-[10px] text-muted-foreground"
+                >
+                  {track.levels.length} level
+                </Badge>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/10">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-500",
+                    tone.bar,
+                  )}
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              <div className="mt-3 truncate text-[11px] text-muted-foreground/80">
+                {levelNames.slice(0, 4).join(" · ")}
+                {levelNames.length > 4 ? " · …" : ""}
+              </div>
             </Link>
           );
         })}
@@ -157,9 +385,19 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
 
 export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
   const completed = progress.filter((item) => item?.completed).length;
-  const percent = modules.length ? Math.round((completed / modules.length) * 100) : Math.round((completed / TOTAL_MODULES) * 100);
+  const percent = modules.length
+    ? Math.round((completed / modules.length) * 100)
+    : Math.round((completed / TOTAL_MODULES) * 100);
   const scored = progress.filter((item) => item?.quizTotal);
-  const average = scored.length ? Math.round(scored.reduce((total, item) => total + ((item.quizScore || 0) / item.quizTotal) * 100, 0) / scored.length) : 0;
+  const average = scored.length
+    ? Math.round(
+        scored.reduce(
+          (total, item) =>
+            total + ((item.quizScore || 0) / item.quizTotal) * 100,
+          0,
+        ) / scored.length,
+      )
+    : 0;
   const hasProgress = progress.length > 0;
 
   return (
@@ -168,20 +406,53 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base">Learning progress</CardTitle>
-            <CardDescription className="mt-1">Ritme belajar Anda di Academy.</CardDescription>
+            <CardDescription className="mt-1">
+              Ritme belajar Anda di Academy.
+            </CardDescription>
           </div>
           <AapmIcon name="progress" className="h-5 w-5 text-brand-green" />
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
-        {hasProgress ? <div className="flex items-end justify-between gap-3">
-          <div className="text-3xl font-semibold tracking-tight">{percent}%</div>
-          <div className="text-right text-xs text-muted-foreground">{completed}/{modules.length || TOTAL_MODULES} modul selesai</div>
-        </div> : <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4"><div className="text-sm font-medium text-foreground">Mulai dari lesson pertama</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Progress Anda akan muncul setelah menyelesaikan satu modul.</p><Link to="/modules" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka Learning Path <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div>}
-        <Progress value={percent} className="mt-3 h-2 bg-muted [&>div]:bg-brand-green" />
+        {hasProgress ? (
+          <div className="flex items-end justify-between gap-3">
+            <div className="text-3xl font-semibold tracking-tight">
+              {percent}%
+            </div>
+            <div className="text-right text-xs text-muted-foreground">
+              {completed}/{modules.length || TOTAL_MODULES} modul selesai
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4">
+            <div className="text-sm font-medium text-foreground">
+              Mulai dari lesson pertama
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Progress Anda akan muncul setelah menyelesaikan satu modul.
+            </p>
+            <Link
+              to="/modules"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline"
+            >
+              Buka Learning Path{" "}
+              <AapmIcon name="arrowRight" className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+        <Progress
+          value={percent}
+          className="mt-3 h-2 bg-muted [&>div]:bg-brand-green"
+        />
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
-          <div><div className="text-lg font-semibold">{average}%</div><div className="text-xs text-muted-foreground">Rata-rata kuis</div></div>
-          <div><div className="text-lg font-semibold">{scored.length}</div><div className="text-xs text-muted-foreground">Kuis tersimpan</div></div>
+          <div>
+            <div className="text-lg font-semibold">{average}%</div>
+            <div className="text-xs text-muted-foreground">Rata-rata kuis</div>
+          </div>
+          <div>
+            <div className="text-lg font-semibold">{scored.length}</div>
+            <div className="text-xs text-muted-foreground">Kuis tersimpan</div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -189,7 +460,9 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
 }
 
 export function LearningJourney({ modules = [], progress = [] } = {}) {
-  const completedSet = new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
+  const completedSet = new Set(
+    progress.filter((item) => item?.completed).map((item) => item.moduleNumber),
+  );
 
   return (
     <Card className="bg-card/95">
@@ -197,33 +470,93 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base">Learning journey</CardTitle>
-            <CardDescription className="mt-1">14 level yang membentuk jalur kompetensi Anda.</CardDescription>
+            <CardDescription className="mt-1">
+              14 level yang membentuk jalur kompetensi Anda.
+            </CardDescription>
           </div>
-          <Link to="/modules" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Lihat path <AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Link>
+          <Link
+            to="/modules"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline"
+          >
+            Lihat path <AapmIcon name="chevronRight" className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
-        {!modules.length ? <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4 text-sm text-muted-foreground">Learning journey akan terisi setelah roadmap tersedia. <Link to="/modules" className="font-semibold text-brand-green hover:underline">Buka path</Link>.</div> : <div className="grid gap-2 sm:grid-cols-2">
-          {learningLevels.slice(0, 6).map((level) => {
-            const stats = getLevelProgress(level.number, modules, completedSet);
-            const active = stats.completed > 0 && stats.completed < stats.total;
-            const done = stats.total > 0 && stats.completed === stats.total;
-            return (
-              <Link key={level.number} to="/modules" className="group rounded-xl border border-border p-3 transition-colors hover:border-brand-green/40 hover:bg-brand-green/5">
-                <div className="flex items-start gap-3">
-                  <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", done ? "bg-success/15 text-success" : active ? "bg-brand-orange/15 text-brand-orange" : "bg-muted text-muted-foreground")}>
-                    {done ? <AapmIcon name="check" className="h-4 w-4" /> : level.number}
+        {!modules.length ? (
+          <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4 text-sm text-muted-foreground">
+            Learning journey akan terisi setelah roadmap tersedia.{" "}
+            <Link
+              to="/modules"
+              className="font-semibold text-brand-green hover:underline"
+            >
+              Buka path
+            </Link>
+            .
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {learningLevels.slice(0, 6).map((level) => {
+              const stats = getLevelProgress(
+                level.number,
+                modules,
+                completedSet,
+              );
+              const active =
+                stats.completed > 0 && stats.completed < stats.total;
+              const done = stats.total > 0 && stats.completed === stats.total;
+              return (
+                <Link
+                  key={level.number}
+                  to="/modules"
+                  className="group rounded-xl border border-border p-3 transition-colors hover:border-brand-green/40 hover:bg-brand-green/5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold",
+                        done
+                          ? "bg-success/15 text-success"
+                          : active
+                            ? "bg-brand-orange/15 text-brand-orange"
+                            : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {done ? (
+                        <AapmIcon name="check" className="h-4 w-4" />
+                      ) : (
+                        level.number
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="truncate text-sm font-medium">
+                          {level.name}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                          {stats.completed}/{stats.total || "—"}
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full",
+                            done ? "bg-success" : "bg-brand-lime",
+                          )}
+                          style={{ width: `${stats.percent}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2"><div className="truncate text-sm font-medium">{level.name}</div><span className="text-[11px] text-muted-foreground">{stats.completed}/{stats.total || "—"}</span></div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full", done ? "bg-success" : "bg-brand-lime")} style={{ width: `${stats.percent}%` }} /></div>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>}
-        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-brand-lime" /> Progress detail tersedia di Learning Path.</div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-lime" /> Progress
+          detail tersedia di Learning Path.
+        </div>
       </CardContent>
     </Card>
   );
@@ -231,16 +564,57 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
 
 export function QuickToolGrid() {
   const tools = [
-    { to: "/calculators", label: "Farm Calculators", description: "Hitung indikator operasional.", icon: "solar:calculator-bold-duotone", tone: "lime" },
-    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: "kpi", tone: "green" },
-    { to: "/ai-assistant", label: "AI Farm Assistant", description: "Tanya dengan konteks farm.", icon: "solar:stars-minimalistic-bold-duotone", tone: "orange" },
+    {
+      to: "/calculators",
+      label: "Farm Calculators",
+      description: "Hitung indikator operasional.",
+      icon: "solar:calculator-bold-duotone",
+      tone: "lime",
+    },
+    {
+      to: "/kpi",
+      label: "Farm KPI",
+      description: "Review data produksi.",
+      icon: "kpi",
+      tone: "green",
+    },
+    {
+      to: "/ai-assistant",
+      label: "APPI",
+      description: "Tanya dengan konteks farm.",
+      icon: "solar:stars-minimalistic-bold-duotone",
+      tone: "orange",
+    },
   ];
 
   return (
     <Card className="bg-card/95">
-      <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3"><CardTitle className="text-base">Quick tools</CardTitle><CardDescription className="mt-1">Alat bantu saat Anda belajar.</CardDescription></CardHeader>
+      <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3">
+        <CardTitle className="text-base">Quick tools</CardTitle>
+        <CardDescription className="mt-1">
+          Alat bantu saat Anda belajar.
+        </CardDescription>
+      </CardHeader>
       <CardContent className="grid gap-2 p-5 pt-2 sm:p-6 sm:pt-2">
-      {tools.map((tool) => <Link key={tool.to} to={tool.to} className="group aapm-interactive-card flex items-center gap-3 rounded-xl border border-border p-3"><IconTile icon={tool.icon} tone={tool.tone} size="sm" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{tool.label}</div><div className="truncate text-xs text-muted-foreground">{tool.description}</div></div><AapmIcon name="chevronRight" className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link>)}
+        {tools.map((tool) => (
+          <Link
+            key={tool.to}
+            to={tool.to}
+            className="group aapm-interactive-card flex items-center gap-3 rounded-xl border border-border p-3"
+          >
+            <IconTile icon={tool.icon} tone={tool.tone} size="sm" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">{tool.label}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {tool.description}
+              </div>
+            </div>
+            <AapmIcon
+              name="chevronRight"
+              className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+            />
+          </Link>
+        ))}
       </CardContent>
     </Card>
   );
@@ -261,32 +635,78 @@ export function DashboardWelcome({ user = null } = {}) {
     <section className="academy-enter mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] border border-border bg-card shadow-[var(--surface-shadow)]">
       <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="bg-brand-green px-6 py-7 text-white sm:px-10 sm:py-9">
-          <Badge variant="soft" className="border border-white/20 bg-white/10 text-xs font-semibold text-white shadow-none"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
-          <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-[2.25rem]">Layer Poultry <span className="text-brand-lime">Farm Management</span></h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">Bangun keputusan operasional yang lebih presisi, dari fase DOC sampai akhir flock, dengan materi, simulasi, kuis, dan sertifikasi dalam satu jalur belajar.</p>
+          <Badge
+            variant="soft"
+            className="border border-white/20 bg-white/10 text-xs font-semibold text-white shadow-none"
+          >
+            <AapmIcon
+              name="solar:stars-minimalistic-bold-duotone"
+              className="h-3.5 w-3.5"
+            />{" "}
+            E-Course Professional
+          </Badge>
+          <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-[2.25rem]">
+            Layer Poultry{" "}
+            <span className="text-brand-lime">Farm Management</span>
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">
+            Bangun keputusan operasional yang lebih presisi, dari fase DOC
+            sampai akhir flock, dengan materi, simulasi, kuis, dan sertifikasi
+            dalam satu jalur belajar.
+          </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
-            <Button asChild variant="ghost" className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white"><Link to="/ai-assistant">AI Farm Assistant</Link></Button>
+            <Button
+              asChild
+              className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90"
+            >
+              <Link to="/modules">
+                <AapmIcon name="course" /> Mulai belajar
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white"
+            >
+              <Link to="/ai-assistant">Tanya APPI</Link>
+            </Button>
           </div>
-          <p className="mt-6 text-xs text-white/65">Selamat datang, {name}. Fokuskan setiap sesi pada satu keputusan yang dapat dibawa ke farm.</p>
+          <p className="mt-6 text-xs text-white/65">
+            Selamat datang, {name}. Fokuskan setiap sesi pada satu keputusan
+            yang dapat dibawa ke farm.
+          </p>
         </div>
 
         <aside className="flex min-h-full flex-col border-t border-border bg-surface-subtle p-6 sm:p-7 lg:border-l lg:border-t-0">
           <div>
-            <div className="text-sm font-semibold text-foreground">Siklus pembelajaran</div>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">Enam fase untuk memahami ritme produksi layer secara utuh.</p>
+            <div className="text-sm font-semibold text-foreground">
+              Siklus pembelajaran
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Enam fase untuk memahami ritme produksi layer secara utuh.
+            </p>
           </div>
           <ol className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
             {cycle.map((phase, index) => (
               <li key={phase} className="flex items-start gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/10 text-[10px] font-semibold tabular-nums text-brand-orange">{index + 1}</span>
-                <span className="pt-0.5 text-xs font-medium leading-4 text-foreground">{phase}</span>
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/10 text-[10px] font-semibold tabular-nums text-brand-orange">
+                  {index + 1}
+                </span>
+                <span className="pt-0.5 text-xs font-medium leading-4 text-foreground">
+                  {phase}
+                </span>
               </li>
             ))}
           </ol>
           <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs">
             <span className="text-muted-foreground">6 fase utama</span>
-            <Link to="/modules" className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80">Lihat roadmap <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link>
+            <Link
+              to="/modules"
+              className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80"
+            >
+              Lihat roadmap{" "}
+              <AapmIcon name="arrowRight" className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </aside>
       </div>
