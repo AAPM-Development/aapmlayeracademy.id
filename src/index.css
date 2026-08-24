@@ -728,6 +728,13 @@
     overflow-x: hidden !important;
   }
 
+  .aapm-chat-scroll [data-radix-scroll-area-viewport] > div {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
   .aapm-ai-response--streaming::after {
     display: inline-block;
     width: 0.12rem;

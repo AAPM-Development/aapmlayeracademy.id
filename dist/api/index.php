@@ -570,6 +570,13 @@ try {
         json_response(array_map('present_ai_conversation', $stmt->fetchAll()));
     }
 
+    if ($path === 'ai/activity' && $method === 'GET') {
+        $user = require_user();
+        $stmt = db()->prepare('SELECT id, conversation_id, event_type, label, detail, created_at FROM ai_activity_log WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 80');
+        $stmt->execute([(int) $user['id']]);
+        json_response(array_map('present_ai_activity', $stmt->fetchAll()));
+    }
+
     if ($path === 'ai/conversations' && $method === 'POST') {
         $user = require_user();
         require_csrf();
@@ -605,6 +612,13 @@ try {
         $pageContext = trim((string) ($input['pageContext'] ?? ''));
         $accountMemory = ai_account_memory_for_user((int) $user['id']);
         ai_record_chat_message((int) $conversation['id'], 'user', $message);
+        ai_record_activity(
+            (int) $user['id'],
+            (int) $conversation['id'],
+            'question',
+            $imageDataUrl !== null ? 'Pertanyaan dengan foto dikirim' : 'Pertanyaan dikirim',
+            ai_conversation_preview($message)
+        );
         ai_touch_conversation((int) $conversation['id'], (string) $conversation['title'], $message, (int) $conversation['message_count'] === 0);
         ai_sse_start();
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -612,6 +626,13 @@ try {
         }
         $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory);
         ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
+        ai_record_activity(
+            (int) $user['id'],
+            (int) $conversation['id'],
+            (bool) $response['fallback'] ? 'fallback' : 'response',
+            (bool) $response['fallback'] ? 'Respons lokal disimpan' : 'Jawaban APPI selesai',
+            trim((string) ($response['provider'] ?? '')) . (trim((string) ($response['model'] ?? '')) !== '' ? ' · ' . trim((string) $response['model']) : '')
+        );
         ai_touch_conversation((int) $conversation['id'], ai_conversation_title($message), (string) $response['reply'], false);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
@@ -757,6 +778,18 @@ function ai_record_chat_message(int $conversationId, string $role, string $conte
 {
     $insert = db()->prepare('INSERT INTO ai_chat_messages (conversation_id, role, content, provider, model, used_fallback) VALUES (?, ?, ?, ?, ?, ?)');
     $insert->execute([$conversationId, $role, $content, $provider, $model, $fallback ? 1 : 0]);
+}
+
+function ai_record_activity(int $userId, ?int $conversationId, string $type, string $label, string $detail = ''): void
+{
+    $insert = db()->prepare('INSERT INTO ai_activity_log (user_id, conversation_id, event_type, label, detail) VALUES (?, ?, ?, ?, ?)');
+    $insert->execute([
+        $userId,
+        $conversationId,
+        ai_conversation_preview($type),
+        ai_conversation_preview($label),
+        ai_conversation_preview($detail),
+    ]);
 }
 
 function ai_touch_conversation(int $conversationId, string $title, string $preview, bool $setTitle): void
