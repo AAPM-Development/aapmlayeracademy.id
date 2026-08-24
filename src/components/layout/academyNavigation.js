@@ -10,7 +10,7 @@ export const academyNavigation = [
     label: "Tools",
     items: [
       { to: "/calculators", label: "Farm Calculators", icon: "solar:calculator-bold-duotone" },
-      { to: "/kpi", label: "Farm KPI", icon: "analytics" },
+      { to: "/kpi", label: "Farm KPI", icon: "kpi" },
       { to: "/ai-assistant", label: "AI Farm Assistant", icon: "solar:stars-minimalistic-bold-duotone" },
     ],
   },

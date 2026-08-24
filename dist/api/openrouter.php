@@ -347,19 +347,54 @@ function ai_provider_completion(array $settings, string $apiKey, string $systemP
     return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt);
 }
 
+function ai_provider_fallback_notice(): string
+{
+    return 'Provider AI belum dapat merespons. Jawaban ini dibuat oleh asisten lokal dan tidak memakai model eksternal.';
+}
+
+function ai_provider_test_error(RuntimeException $exception): string
+{
+    // Provider failures are visible only to admins in the connection test. The
+    // transport code never includes the Authorization header in its message;
+    // still redact common key prefixes as a final defensive boundary.
+    $message = preg_replace('/\b(sk-or-v1|sk-[A-Za-z0-9_-]+|AIza)[A-Za-z0-9._-]*/', '[credential disamarkan]', $exception->getMessage());
+    return substr(trim((string) $message), 0, 260);
+}
+
 function ai_assistant_reply(string $message, array $farmContext): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
     if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
-        return ['reply' => native_ai_reply($message, $farmContext), 'provider' => 'local', 'model' => null, 'fallback' => true];
+        return [
+            'reply' => native_ai_reply($message, $farmContext),
+            'provider' => 'local',
+            'model' => null,
+            'fallback' => true,
+            'providerStatus' => 'not_configured',
+            'notice' => 'Provider AI belum dikonfigurasi. Jawaban ini dibuat oleh asisten lokal.',
+        ];
     }
     try {
         $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
-        return ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false];
+        return [
+            'reply' => $reply,
+            'provider' => $settings['provider'],
+            'model' => $settings['model'],
+            'fallback' => false,
+            'providerStatus' => 'ready',
+            'notice' => null,
+        ];
     } catch (RuntimeException $exception) {
         error_log('[aapm-ai-provider] ' . $exception->getMessage());
-        return ['reply' => native_ai_reply($message, $farmContext), 'provider' => 'local', 'model' => null, 'fallback' => true];
+        return [
+            'reply' => native_ai_reply($message, $farmContext),
+            'provider' => 'local',
+            'model' => null,
+            'fallback' => true,
+            'providerStatus' => 'unavailable',
+            'notice' => ai_provider_fallback_notice(),
+        ];
     }
 }
 
@@ -369,6 +404,10 @@ function ai_test_connection(): array
     $apiKey = ai_api_key($settings);
     if (!$settings['enabled']) error_response('Aktifkan provider AI sebelum menjalankan test.', 422, 'ai_disabled');
     if ($settings['apiKeyRequired'] && $apiKey === '') error_response('Simpan API key untuk provider ini terlebih dahulu.', 422, 'ai_key_missing');
-    $reply = ai_provider_completion($settings, $apiKey, 'Anda adalah service test. Jawab persis dengan: AAPM AI siap.', 'Jalankan pemeriksaan koneksi.');
+    try {
+        $reply = ai_provider_completion($settings, $apiKey, 'Anda adalah service test. Jawab persis dengan: AAPM AI siap.', 'Jalankan pemeriksaan koneksi.');
+    } catch (RuntimeException $exception) {
+        error_response('Koneksi provider gagal: ' . ai_provider_test_error($exception), 502, 'ai_provider_unavailable');
+    }
     return ['ok' => true, 'provider' => $settings['provider'], 'providerLabel' => $settings['providerLabel'], 'model' => $settings['model'], 'reply' => $reply];
 }

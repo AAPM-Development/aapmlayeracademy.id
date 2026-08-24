@@ -67,6 +67,17 @@ export default function AdminAiSettings() {
     }
   };
 
+  const runConnectionTest = async () => {
+    setTestResult(null);
+    try {
+      const connection = await test.mutateAsync();
+      setTestResult(connection);
+      toast({ title: 'Test provider berhasil', description: `${connection.providerLabel} · ${connection.model}` });
+    } catch (exception) {
+      toast({ variant: 'destructive', title: 'Test provider gagal', description: exception.message || 'Periksa API key, model, endpoint, dan koneksi server.' });
+    }
+  };
+
   if (isLoading) return <AdminPageFrame title="AI settings" description="Menyiapkan konfigurasi AI."><AdminLoading label="Memuat konfigurasi AI…" /></AdminPageFrame>;
   if (error) return <AdminPageFrame title="AI settings" description="Kelola provider dan model AI."><AdminError error={error} onRetry={refetch} /></AdminPageFrame>;
 
@@ -94,7 +105,14 @@ export default function AdminAiSettings() {
 
           {!settings?.encryptionReady && !lockedByPrivateConfig && <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange p-3 text-xs leading-5 text-tint-orange-foreground"><span className="font-semibold">Secret storage belum siap.</span> Tambahkan <code>ai_settings_encryption_key</code> pada konfigurasi privat cPanel sebelum menyimpan API key melalui halaman ini.</div>}
 
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button type="button" variant="outline" onClick={() => saveSettings()} disabled={save.isPending || test.isPending || lockedByPrivateConfig}>Simpan konfigurasi</Button><Button type="button" className="bg-brand-orange text-white hover:bg-brand-orange/90" onClick={() => saveSettings({ runTest: true })} disabled={save.isPending || test.isPending || !enabled || lockedByPrivateConfig}><AapmIcon name={test.isPending ? 'loading' : 'ai'} className={test.isPending ? 'animate-spin' : ''} /> Simpan & test provider</Button></div>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {!lockedByPrivateConfig && <Button type="button" variant="outline" onClick={() => saveSettings()} disabled={save.isPending || test.isPending}>Simpan konfigurasi</Button>}
+            {lockedByPrivateConfig ? (
+              <Button type="button" className="bg-brand-orange text-white hover:bg-brand-orange/90" onClick={runConnectionTest} disabled={test.isPending || !enabled}><AapmIcon name={test.isPending ? 'loading' : 'ai'} className={test.isPending ? 'animate-spin' : ''} /> Test koneksi aktif</Button>
+            ) : (
+              <Button type="button" className="bg-brand-orange text-white hover:bg-brand-orange/90" onClick={() => saveSettings({ runTest: true })} disabled={save.isPending || test.isPending || !enabled}><AapmIcon name={test.isPending ? 'loading' : 'ai'} className={test.isPending ? 'animate-spin' : ''} /> Simpan & test provider</Button>
+            )}
+          </div>
         </Surface>
 
         <div className="space-y-5"><Surface tone={settings?.apiKeyConfigured ? 'green' : 'orange'} className="p-5"><div className="flex items-start gap-3"><AapmIcon name={settings?.apiKeyConfigured ? 'checkRead' : 'alert'} className="mt-0.5 h-5 w-5 shrink-0" /><div><div className="text-sm font-semibold">{keyState}</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Aktif: {settings?.providerLabel} · {settings?.model}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Storage: {storageLabel}</p><p className="mt-3 text-xs leading-5 text-muted-foreground">Jika provider gagal merespons, AI Assistant kembali ke respons lokal yang aman.</p></div></div></Surface>

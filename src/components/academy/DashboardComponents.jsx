@@ -232,7 +232,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
 export function QuickToolGrid() {
   const tools = [
     { to: "/calculators", label: "Farm Calculators", description: "Hitung indikator operasional.", icon: "solar:calculator-bold-duotone", tone: "lime" },
-    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: "analytics", tone: "green" },
+    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: "kpi", tone: "green" },
     { to: "/ai-assistant", label: "AI Farm Assistant", description: "Tanya dengan konteks farm.", icon: "solar:stars-minimalistic-bold-duotone", tone: "orange" },
   ];
 
@@ -248,29 +248,47 @@ export function QuickToolGrid() {
 
 export function DashboardWelcome({ user = null } = {}) {
   const name = user?.full_name || user?.email?.split("@")[0] || "Learner";
-  const cycle = ["DOC", "Brooding", "Growing", "Peak", "Layer", "Molting"];
+  const cycle = [
+    "DOC & brooding",
+    "Growing",
+    "Pre-lay",
+    "Peak production",
+    "Layer management",
+    "Molting & akhir flock",
+  ];
 
   return (
-    <section className="academy-enter aapm-hero relative mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] px-6 py-7 text-white sm:px-10 sm:py-9">
-      <div className="pointer-events-none absolute -right-8 -top-16 h-48 w-48 rounded-full border-[8px] border-brand-lime/25" />
-      <div className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full border-[2px] border-white/15" />
-      <div className="pointer-events-none absolute -bottom-20 right-1/4 h-40 w-40 rounded-full bg-brand-lime/20 blur-2xl" />
-      <div className="aapm-hero-panel pointer-events-none absolute right-8 top-1/2 hidden w-48 -translate-y-1/2 rounded-2xl p-3 xl:block">
-        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70"><span>Farm cycle</span><AapmIcon name="solar:arrow-right-up-bold" className="h-3.5 w-3.5" /></div>
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
-          {cycle.map((phase) => <span key={phase} className="rounded-lg bg-white/10 px-1.5 py-2 text-center text-[10px] font-medium text-white/90">{phase}</span>)}
+    <section className="academy-enter mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] border border-border bg-card shadow-[var(--surface-shadow)]">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="bg-brand-green px-6 py-7 text-white sm:px-10 sm:py-9">
+          <Badge variant="soft" className="border border-white/20 bg-white/10 text-xs font-semibold text-white shadow-none"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
+          <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-[2.25rem]">Layer Poultry <span className="text-brand-lime">Farm Management</span></h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">Bangun keputusan operasional yang lebih presisi, dari fase DOC sampai akhir flock, dengan materi, simulasi, kuis, dan sertifikasi dalam satu jalur belajar.</p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
+            <Button asChild variant="ghost" className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white"><Link to="/ai-assistant">AI Farm Assistant</Link></Button>
+          </div>
+          <p className="mt-6 text-xs text-white/65">Selamat datang, {name}. Fokuskan setiap sesi pada satu keputusan yang dapat dibawa ke farm.</p>
         </div>
-        <div className="mt-3 text-right text-[10px] text-white/65">6 fase utama</div>
-      </div>
-      <div className="relative max-w-4xl">
-        <Badge variant="soft" className="border border-brand-orange/80 bg-brand-orange text-xs font-semibold text-white shadow-sm"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
-        <h1 className="mt-5 max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-[2.35rem]">Layer Poultry <span className="text-brand-lime">Farm Management</span></h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-white/85 sm:text-[0.95rem]">Dari pemula hingga expert — pelajari seluruh siklus produksi ayam petelur komersial: DOC → Brooding → Growing → Pre-lay → Peak → Post-peak → Molting → Spent Hen, dengan kombinasi video, materi baca, simulasi interaktif, kuis, case study, dan sertifikasi.</p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
-          <Button asChild variant="ghost" className="border border-white/20 bg-white/10 text-white shadow-none hover:bg-white/20 hover:text-white"><Link to="/ai-assistant"><AapmIcon name="solar:stars-minimalistic-bold-duotone" /> AI Farm Assistant</Link></Button>
-        </div>
-        <div className="mt-5 flex items-center gap-2 text-xs text-white/75"><span className="h-1.5 w-1.5 rounded-full bg-white/80" /> Selamat datang, {name}. Satu keputusan lebih baik setiap sesi.</div>
+
+        <aside className="flex min-h-full flex-col border-t border-border bg-surface-subtle p-6 sm:p-7 lg:border-l lg:border-t-0">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Siklus pembelajaran</div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Enam fase untuk memahami ritme produksi layer secara utuh.</p>
+          </div>
+          <ol className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
+            {cycle.map((phase, index) => (
+              <li key={phase} className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/10 text-[10px] font-semibold tabular-nums text-brand-orange">{index + 1}</span>
+                <span className="pt-0.5 text-xs font-medium leading-4 text-foreground">{phase}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs">
+            <span className="text-muted-foreground">6 fase utama</span>
+            <Link to="/modules" className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80">Lihat roadmap <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link>
+          </div>
+        </aside>
       </div>
     </section>
   );

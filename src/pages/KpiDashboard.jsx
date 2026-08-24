@@ -58,7 +58,7 @@ export default function KpiDashboard() {
     { label: "Avg HDP", value: `${avg("henDayProduction")}%`, detail: "Hen day production", icon: "egg", tone: "orange" },
     { label: "Avg FCR", value: avg("fcr") || "—", detail: "Feed conversion", icon: "trend", tone: "green" },
     { label: "Total profit", value: `Rp ${(profit / 1000000).toFixed(1)}jt`, detail: profit >= 0 ? "Margin positif" : "Perlu review biaya", icon: "finance", tone: profit >= 0 ? "green" : "orange" },
-    { label: "Avg egg weight", value: `${avg("eggWeight")} g`, detail: "Berat telur", icon: "analytics", tone: "blue" },
+    { label: "Avg egg weight", value: `${avg("eggWeight")} g`, detail: "Berat telur", icon: "weight", tone: "blue" },
   ];
 
   return (

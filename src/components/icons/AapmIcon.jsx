@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { cn } from "@/lib/utils";
+import { solarIconData } from "./solarIconData";
 
 // Minimal UI's sidebar uses the Solar collection through Iconify. Keeping the
 // semantic names here avoids scattering provider-specific icon strings across
@@ -11,7 +12,8 @@ export const aapmIconSources = Object.freeze({
   modules: "solar:notes-bold-duotone",
   assessment: "solar:file-text-bold",
   users: "solar:users-group-rounded-bold-duotone",
-  analytics: "solar:chart-square-outline",
+  analytics: "solar:chart-square-bold-duotone",
+  kpi: "solar:chart-2-bold-duotone",
   ai: "solar:stars-minimalistic-bold-duotone",
   certificate: "solar:verified-check-bold",
   media: "solar:gallery-wide-bold",
@@ -22,7 +24,7 @@ export const aapmIconSources = Object.freeze({
   arrowLeft: "solar:alt-arrow-left-linear",
   arrowRight: "solar:alt-arrow-right-linear",
   logout: "solar:logout-3-bold",
-  progress: "solar:chart-square-outline",
+  progress: "solar:chart-square-bold-duotone",
   themeLight: "solar:sun-2-bold-duotone",
   themeDark: "solar:moon-bold-duotone",
   lock: "solar:lock-password-outline",
@@ -44,6 +46,7 @@ export const aapmIconSources = Object.freeze({
   edit: "solar:pen-new-square-bold",
   delete: "solar:trash-bin-trash-bold",
   egg: "solar:chart-2-bold-duotone",
+  weight: "solar:scale-bold-duotone",
   finance: "solar:wallet-money-bold-duotone",
   trend: "solar:graph-up-bold-duotone",
   target: "solar:target-bold-duotone",
@@ -64,7 +67,7 @@ export default function AapmIcon({ name = "dashboard", className = "", alt = "",
 
   return (
     <IconifyIcon
-      icon={icon}
+      icon={solarIconData[icon] || icon}
       aria-label={alt || undefined}
       aria-hidden={alt ? undefined : true}
       className={cn("h-5 w-5 shrink-0", className)}

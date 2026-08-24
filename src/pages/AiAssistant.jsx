@@ -32,9 +32,14 @@ export default function AiAssistant() {
     setInput('');
     try {
       const response = await ai.mutateAsync({ message, farmContext });
-      setMessages((current) => [...current, { role: 'assistant', content: response.reply || response.error || 'Jawaban belum tersedia. Coba ulangi pertanyaan Anda.' }]);
-    } catch {
-      setMessages((current) => [...current, { role: 'assistant', content: 'Koneksi ke asisten belum tersedia. Coba lagi dalam beberapa saat.' }]);
+      setMessages((current) => [...current, {
+        role: 'assistant',
+        content: response.reply || response.error || 'Jawaban belum tersedia. Coba ulangi pertanyaan Anda.',
+        fallback: Boolean(response.fallback),
+        notice: response.notice || '',
+      }]);
+    } catch (exception) {
+      setMessages((current) => [...current, { role: 'assistant', content: exception?.message || 'Koneksi ke asisten belum tersedia. Coba lagi dalam beberapa saat.', error: true }]);
     }
   };
 
@@ -86,7 +91,11 @@ export default function AiAssistant() {
                   return (
                     <div key={`${message.role}-${index}`} className={`flex gap-3 ${isUser ? 'justify-end' : 'items-start'}`}>
                       {!isUser && <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-4 w-4" /></div>}
-                      <div className={`whitespace-pre-wrap text-sm leading-6 ${isUser ? 'max-w-[85%] rounded-2xl rounded-br-md bg-brand-green px-4 py-3 text-white shadow-sm' : 'max-w-2xl pt-0.5 text-foreground'}`}>{message.content}</div>
+                      <div className={isUser ? 'max-w-[85%] rounded-2xl rounded-br-md bg-brand-green px-4 py-3 text-sm leading-6 text-white shadow-sm' : 'max-w-2xl pt-0.5 text-foreground'}>
+                        <div className="whitespace-pre-wrap text-sm leading-6">{message.content}</div>
+                        {message.fallback && <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[11px] leading-4 text-tint-orange-foreground"><AapmIcon name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />{message.notice}</div>}
+                        {message.error && <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-danger/20 bg-danger/10 px-2.5 py-2 text-[11px] leading-4 text-danger"><AapmIcon name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />Permintaan tidak dapat diproses.</div>}
+                      </div>
                     </div>
                   );
                 })}
