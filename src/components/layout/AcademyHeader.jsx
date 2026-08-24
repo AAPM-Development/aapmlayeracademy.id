@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
-import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/primitives";
+import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, IconButton } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { getNavigationMeta } from "./academyNavigation";
 
@@ -18,14 +18,13 @@ export default function AcademyHeader({
   return (
     <header className="sticky top-0 z-30 flex h-[73px] shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
-        <button
-          type="button"
+        <IconButton
           onClick={onOpenMobile}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
-          aria-label="Buka navigasi"
+          className="lg:hidden"
+          label="Buka navigasi"
         >
           <AapmIcon name="menu" className="h-5 w-5" />
-        </button>
+        </IconButton>
         <div className="min-w-0">
           <div className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">{page.group}</div>
           <div className="truncate text-sm font-semibold text-foreground sm:text-base">{page.label}</div>
@@ -37,9 +36,9 @@ export default function AcademyHeader({
           <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
           Academy workspace
         </Badge>
-        <Button type="button" variant="ghost" size="icon" onClick={onToggleTheme} aria-label={themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}>
+        <IconButton variant="ghost" onClick={onToggleTheme} label={themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}>
           <AapmIcon name={themeMode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" />
-        </Button>
+        </IconButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" className="h-9 gap-2 px-2 sm:px-3">
@@ -53,7 +52,7 @@ export default function AcademyHeader({
               <div className="mt-1 truncate text-xs text-muted-foreground">Layer Farm learner</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout}>Keluar dari Academy</DropdownMenuItem>
+            <DropdownMenuItem onClick={onLogout}><AapmIcon name="logout" className="mr-2 h-4 w-4" /> Keluar dari Academy</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

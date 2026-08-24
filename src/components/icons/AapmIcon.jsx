@@ -12,9 +12,11 @@ export const aapmIconSources = Object.freeze({
   assessment: "solar:file-text-bold",
   users: "solar:users-group-rounded-bold-duotone",
   analytics: "solar:chart-square-outline",
+  ai: "solar:stars-minimalistic-bold-duotone",
   certificate: "solar:verified-check-bold",
   media: "solar:gallery-wide-bold",
   menu: "solar:list-bold",
+  close: "solar:close-circle-bold",
   chevronLeft: "solar:alt-arrow-left-linear",
   chevronRight: "solar:alt-arrow-right-linear",
   arrowLeft: "solar:alt-arrow-left-linear",
@@ -31,7 +33,25 @@ export const aapmIconSources = Object.freeze({
   add: "solar:add-circle-bold",
   search: "solar:magnifer-bold",
   alert: "solar:danger-triangle-bold",
+  alertCircle: "solar:danger-circle-bold",
   check: "solar:check-circle-bold",
+  checkRead: "solar:check-read-bold-duotone",
+  closeCircle: "solar:close-circle-bold",
+  flag: "solar:flag-2-bold",
+  award: "solar:medal-ribbon-star-bold",
+  graduation: "solar:medal-star-bold",
+  refresh: "solar:restart-bold",
+  edit: "solar:pen-new-square-bold",
+  delete: "solar:trash-bin-trash-bold",
+  egg: "solar:egg-bold-duotone",
+  finance: "solar:wallet-money-bold-duotone",
+  trend: "solar:graph-up-bold-duotone",
+  target: "solar:target-bold-duotone",
+  shield: "solar:shield-check-bold",
+  circle: "solar:record-circle-bold-duotone",
+  play: "solar:play-circle-bold",
+  download: "solar:download-minimalistic-bold",
+  info: "solar:info-circle-bold",
   clock: "solar:clock-circle-bold",
   reorder: "solar:sort-vertical-bold-duotone",
   fileCheck: "solar:file-check-bold-duotone",
@@ -39,7 +59,7 @@ export const aapmIconSources = Object.freeze({
 
 export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
 
-export default function AapmIcon({ name = "dashboard", className, alt = "", ...props }) {
+export default function AapmIcon({ name = "dashboard", className = "", alt = "", ...props }) {
   const icon = aapmIconSources[name] || (name.includes(":") ? name : aapmIconSources.dashboard);
 
   return (

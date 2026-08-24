@@ -3,6 +3,7 @@
 
 export { Button, buttonVariants } from "@/components/ui/button";
 export { Input } from "@/components/ui/input";
+export { Textarea } from "@/components/ui/textarea";
 export { Label } from "@/components/ui/label";
 export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton } from "@/components/ui/select";
 export { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +12,7 @@ export { Badge, badgeVariants } from "@/components/ui/badge";
 export { Progress } from "@/components/ui/progress";
 export { Skeleton } from "@/components/ui/skeleton";
 export { IconTile, iconTileVariants } from "@/components/ui/icon-tile";
+export { IconButton } from "@/components/ui/icon-button";
 export { Surface, surfaceVariants } from "@/components/primitives/surface";
 export { default as Icon, aapmIconNames, aapmIconSources } from "@/components/icons/AapmIcon";
 

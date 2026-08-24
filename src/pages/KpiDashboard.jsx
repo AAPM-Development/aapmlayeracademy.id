@@ -1,246 +1,122 @@
-import React, { useState } from 'react';
-import {
-  BarChart, Bar, LineChart, Line, Area, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart
-} from 'recharts';
-import { Trash2, BarChart3, Egg, TrendingUp, DollarSign, Sparkles, Pencil } from 'lucide-react';
-import { useFarmData, useSaveFarmData, useDeleteFarmData } from '@/lib/useCourseData';
-import { useToast } from '@/components/ui/use-toast';
-import { Link } from 'react-router-dom';
+import React, { useState } from "react";
+import { Area, Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Link } from "react-router-dom";
+import ContentContainer from "@/components/layout/ContentContainer";
+import PageHeader from "@/components/layout/PageHeader";
+import AapmIcon from "@/components/icons/AapmIcon";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, IconButton, IconTile, Input, Label, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from "@/components/primitives";
+import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
+import { useToast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
+
+const chartGrid = "hsl(var(--border))";
+const chartTooltip = { backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "12px", color: "hsl(var(--popover-foreground))", fontSize: 12 };
+
+function emptyForm() {
+  return { week: "", henDayProduction: "", feedIntake: "", eggWeight: "", mortality: "", waterIntake: "", temperature: "", humidity: "", revenue: "", cost: "", fcr: "", notes: "" };
+}
+
+const numberFields = [
+  { key: "week", label: "Umur (minggu)", required: true }, { key: "henDayProduction", label: "HDP (%)" }, { key: "feedIntake", label: "Feed intake (g)" }, { key: "eggWeight", label: "Egg weight (g)" }, { key: "fcr", label: "FCR" }, { key: "mortality", label: "Mortality (%)" }, { key: "waterIntake", label: "Water (ml)" }, { key: "temperature", label: "Suhu (°C)" }, { key: "humidity", label: "Humidity (%)" }, { key: "revenue", label: "Revenue (Rp)" }, { key: "cost", label: "Cost (Rp)" },
+];
 
 export default function KpiDashboard() {
   const { data: rows = [], isLoading } = useFarmData();
   const save = useSaveFarmData();
   const del = useDeleteFarmData();
+  const saveFarmData = /** @type {any} */ (save.mutateAsync);
+  const deleteFarmData = /** @type {any} */ (del.mutateAsync);
   const { toast } = useToast();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm());
-
-  function emptyForm() {
-    return { week: '', henDayProduction: '', feedIntake: '', eggWeight: '', mortality: '', waterIntake: '', temperature: '', humidity: '', revenue: '', cost: '', fcr: '', notes: '' };
-  }
-
   const sorted = [...rows].sort((a, b) => a.week - b.week);
+  const avg = (key) => sorted.length ? (sorted.reduce((sum, row) => sum + (parseFloat(row[key]) || 0), 0) / sorted.length).toFixed(sorted[0] && hasDecimal(sorted[0][key]) ? 1 : 0) : "0";
+  const totalRevenue = sorted.reduce((sum, row) => sum + (parseFloat(row.revenue) || 0), 0);
+  const totalCost = sorted.reduce((sum, row) => sum + (parseFloat(row.cost) || 0), 0);
+  const profit = totalRevenue - totalCost;
 
-  const avg = (key) => sorted.length ? (sorted.reduce((s, r) => s + (parseFloat(r[key]) || 0), 0) / sorted.length).toFixed(sorted[0] && r2(sorted[0][key]) ? 1 : 0) : '0';
-
-  const totalRev = sorted.reduce((s, r) => s + (parseFloat(r.revenue) || 0), 0);
-  const totalCost = sorted.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0);
-  const profit = totalRev - totalCost;
-
-  const submit = async (e) => {
-    e.preventDefault();
-    const payload = {
-      week: parseInt(form.week, 10),
-      henDayProduction: f(form.henDayProduction),
-      feedIntake: f(form.feedIntake),
-      eggWeight: f(form.eggWeight),
-      mortality: f(form.mortality),
-      waterIntake: f(form.waterIntake),
-      temperature: f(form.temperature),
-      humidity: f(form.humidity),
-      revenue: f(form.revenue),
-      cost: f(form.cost),
-      fcr: f(form.fcr),
-      notes: form.notes,
-    };
-    await save.mutateAsync({ id: editing?.id, data: payload });
-    toast({ title: editing ? 'Data diperbarui' : 'Data farm ditambahkan' });
+  const submit = async (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, key === "notes" ? value : numeric(value)]));
+    await saveFarmData({ id: editing?.id, data });
+    toast({ title: editing ? "Data diperbarui" : "Data farm ditambahkan" });
     setForm(emptyForm());
     setEditing(null);
   };
 
-  const edit = (r) => {
-    setEditing(r);
-    setForm({ week: r.week, henDayProduction: r.henDayProduction, feedIntake: r.feedIntake, eggWeight: r.eggWeight, mortality: r.mortality, waterIntake: r.waterIntake, temperature: r.temperature, humidity: r.humidity, revenue: r.revenue, cost: r.cost, fcr: r.fcr, notes: r.notes || '' });
+  const startEdit = (row) => {
+    setEditing(row);
+    setForm({ week: row.week, henDayProduction: row.henDayProduction, feedIntake: row.feedIntake, eggWeight: row.eggWeight, mortality: row.mortality, waterIntake: row.waterIntake, temperature: row.temperature, humidity: row.humidity, revenue: row.revenue, cost: row.cost, fcr: row.fcr, notes: row.notes || "" });
   };
 
   const remove = async (id) => {
-    await del.mutateAsync(id);
-    toast({ title: 'Data dihapus' });
+    await deleteFarmData(id);
+    toast({ title: "Data dihapus" });
   };
 
+  const stats = [
+    { label: "Avg HDP", value: `${avg("henDayProduction")}%`, detail: "Hen day production", icon: "egg", tone: "lime" },
+    { label: "Avg FCR", value: avg("fcr") || "—", detail: "Feed conversion", icon: "trend", tone: "green" },
+    { label: "Total profit", value: `Rp ${(profit / 1000000).toFixed(1)}jt`, detail: profit >= 0 ? "Margin positif" : "Perlu review biaya", icon: "finance", tone: profit >= 0 ? "green" : "orange" },
+    { label: "Avg egg weight", value: `${avg("eggWeight")} g`, detail: "Berat telur", icon: "analytics", tone: "blue" },
+  ];
+
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3 className="h-6 w-6 text-amber-600" /> Farm KPI Dashboard</h1>
-        <Link to="/ai-assistant" className="inline-flex items-center gap-1.5 text-sm text-amber-600 font-medium">
-          <Sparkles className="h-4 w-4" /> Analisis dengan AI
-        </Link>
-      </div>
-      <p className="text-sm text-muted-foreground mb-5">Input data mingguan farm Anda — dashboard menghitung KPI dan menampilkan tren produksi.</p>
+    <ContentContainer>
+      <PageHeader eyebrow="Farm performance" title="Farm KPI dashboard" description="Catat indikator mingguan, baca pola produksi, lalu ambil keputusan yang lebih presisi." actions={<Button asChild variant="outline"><Link to="/ai-assistant"><AapmIcon name="ai" /> Analisis dengan AI</Link></Button>} />
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Stat icon={Egg} label="Avg HDP" value={`${avg('henDayProduction')}%`} tint="text-amber-600 bg-amber-50" />
-        <Stat icon={TrendingUp} label="Avg FCR" value={avg('fcr') || '—'} tint="text-sky-600 bg-sky-50" />
-        <Stat icon={DollarSign} label="Total Profit" value={`Rp ${(profit / 1000000).toFixed(1)}jt`} tint={profit >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'} />
-        <Stat icon={BarChart3} label="Avg Egg Weight" value={`${avg('eggWeight')} g`} tint="text-violet-600 bg-violet-50" />
-      </div>
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat, index) => <KpiStat key={stat.label} {...stat} index={index} />)}
+      </section>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Input form */}
-        <div className="lg:col-span-1">
-          <form onSubmit={submit} className="rounded-2xl border bg-card p-5 shadow-sm sticky top-4">
-            <h2 className="font-semibold mb-3 text-sm">{editing ? 'Edit Data Mingguan' : 'Input Data Mingguan'}</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Umur (minggu)" v={form.week} on={v => setForm({ ...form, week: v })} req />
-              <Input label="HDP (%)" v={form.henDayProduction} on={v => setForm({ ...form, henDayProduction: v })} />
-              <Input label="Feed Intake (g)" v={form.feedIntake} on={v => setForm({ ...form, feedIntake: v })} />
-              <Input label="Egg Weight (g)" v={form.eggWeight} on={v => setForm({ ...form, eggWeight: v })} />
-              <Input label="FCR" v={form.fcr} on={v => setForm({ ...form, fcr: v })} />
-              <Input label="Mortality (%)" v={form.mortality} on={v => setForm({ ...form, mortality: v })} />
-              <Input label="Water (ml)" v={form.waterIntake} on={v => setForm({ ...form, waterIntake: v })} />
-              <Input label="Suhu (°C)" v={form.temperature} on={v => setForm({ ...form, temperature: v })} />
-              <Input label="Humidity (%)" v={form.humidity} on={v => setForm({ ...form, humidity: v })} />
-              <Input label="Revenue (Rp)" v={form.revenue} on={v => setForm({ ...form, revenue: v })} />
-              <Input label="Cost (Rp)" v={form.cost} on={v => setForm({ ...form, cost: v })} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,2fr)]">
+        <Card className="h-fit border-tint-green-border bg-card xl:sticky xl:top-5">
+          <CardHeader className="p-5 pb-3"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base">{editing ? "Edit data mingguan" : "Input data mingguan"}</CardTitle><CardDescription className="mt-1">Angka yang rapi membuat tren lebih mudah dibaca.</CardDescription></div><IconTile icon={editing ? "edit" : "finance"} tone={editing ? "orange" : "lime"} size="sm" /></div></CardHeader>
+          <CardContent className="p-5 pt-2">
+            <form onSubmit={submit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">{numberFields.map((field) => <MetricInput key={field.key} label={field.label} value={form[field.key]} required={field.required} onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))} />)}</div>
+              <div className="space-y-2"><Label htmlFor="farm-notes" className="text-xs text-muted-foreground">Catatan operasional</Label><Textarea id="farm-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Contoh: perubahan pakan, cuaca, atau kondisi kandang." /></div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">{editing && <Button type="button" variant="outline" onClick={() => { setEditing(null); setForm(emptyForm()); }}>Batal</Button>}<Button type="submit" className="flex-1" disabled={save.isPending}>{editing ? "Simpan perubahan" : "Tambah data"}<AapmIcon name="arrowRight" /></Button></div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <section className="min-w-0 space-y-6">
+          {isLoading ? <EmptyKpiState loading /> : sorted.length === 0 ? <EmptyKpiState /> : <>
+            <ChartCard title="Production curve" description="HDP dan berat telur berdasarkan umur flock.">
+              <ResponsiveContainer width="100%" height={272}><ComposedChart data={sorted} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke={chartGrid} strokeDasharray="3 3" vertical={false} /><XAxis dataKey="week" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><YAxis yAxisId="left" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><Tooltip contentStyle={chartTooltip} /><Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} /><Area yAxisId="left" type="monotone" dataKey="henDayProduction" name="HDP %" stroke="hsl(var(--brand-aapm-lime))" fill="hsl(var(--brand-aapm-lime) / 0.18)" strokeWidth={2.5} /><Line yAxisId="right" type="monotone" dataKey="eggWeight" name="Egg weight (g)" stroke="hsl(var(--chart-2))" strokeWidth={2.5} dot={{ r: 3 }} /></ComposedChart></ResponsiveContainer>
+            </ChartCard>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ChartCard title="FCR trend" description="Efisiensi pakan dari minggu ke minggu."><ResponsiveContainer width="100%" height={208}><LineChart data={sorted} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke={chartGrid} strokeDasharray="3 3" vertical={false} /><XAxis dataKey="week" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><Tooltip contentStyle={chartTooltip} /><Line type="monotone" dataKey="fcr" name="FCR" stroke="hsl(var(--brand-aapm-green))" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--brand-aapm-green))" }} /></LineChart></ResponsiveContainer></ChartCard>
+              <ChartCard title="Revenue vs cost" description="Nilai ditampilkan dalam juta rupiah."><ResponsiveContainer width="100%" height={208}><BarChart data={sorted.map((row) => ({ ...row, revenueM: (row.revenue || 0) / 1e6, costM: (row.cost || 0) / 1e6 }))} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke={chartGrid} strokeDasharray="3 3" vertical={false} /><XAxis dataKey="week" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><Tooltip contentStyle={chartTooltip} /><Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} /><Bar dataKey="revenueM" name="Revenue" fill="hsl(var(--brand-aapm-green))" radius={[6, 6, 0, 0]} /><Bar dataKey="costM" name="Cost" fill="hsl(var(--brand-aapm-orange))" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></ChartCard>
             </div>
-            <textarea
-              value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
-              placeholder="Catatan"
-              className="w-full mt-3 rounded-lg border px-3 py-2 text-sm outline-none focus:border-amber-500"
-              rows={2}
-            />
-            <div className="flex gap-2 mt-3">
-              <button type="submit" className="flex-1 rounded-xl bg-amber-600 text-white py-2.5 text-sm font-semibold hover:bg-amber-700">
-                {editing ? 'Update' : 'Tambah Data'}
-              </button>
-              {editing && (
-                <button type="button" onClick={() => { setEditing(null); setForm(emptyForm()); }} className="rounded-xl border px-4 text-sm font-medium hover:bg-muted">
-                  Batal
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
 
-        {/* Charts + table */}
-        <div className="lg:col-span-2 space-y-6">
-          {sorted.length === 0 ? (
-            <div className="rounded-2xl border bg-card p-12 text-center text-sm text-muted-foreground">
-              <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              Belum ada data. Masukkan data mingguan untuk melihat tren KPI.
-            </div>
-          ) : (
-            <>
-              <Chart title="Production Curve — HDP & Egg Weight">
-                <ResponsiveContainer width="100%" height={240}>
-                  <ComposedChart data={sorted}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="week" tick={{ fontSize: 11 }} unit=" mg" />
-                    <YAxis yAxisId="l" tick={{ fontSize: 11 }} />
-                    <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11 }} />
-                    <Tooltip contentStyle={{ fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Area yAxisId="l" type="monotone" dataKey="henDayProduction" name="HDP %" stroke="#f59e0b" fill="#fef3c7" />
-                    <Line yAxisId="r" type="monotone" dataKey="eggWeight" name="Egg Weight (g)" stroke="#8b5cf6" strokeWidth={2} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </Chart>
-
-              <div className="grid sm:grid-cols-2 gap-6">
-                <Chart title="FCR Trend">
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={sorted}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="week" tick={{ fontSize: 11 }} unit=" mg" />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={{ fontSize: 12 }} />
-                      <Line type="monotone" dataKey="fcr" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Chart>
-                <Chart title="Revenue vs Cost (Rp jt)">
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={sorted.map(r => ({ ...r, revenueM: (r.revenue || 0) / 1e6, costM: (r.cost || 0) / 1e6 }))}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="week" tick={{ fontSize: 11 }} unit=" mg" />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={{ fontSize: 12 }} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="revenueM" name="Revenue" fill="#10b981" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="costM" name="Cost" fill="#ef4444" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Chart>
-              </div>
-
-              <div className="rounded-2xl border bg-card overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">Mgg</th>
-                      <th className="px-3 py-2 text-right font-medium">HDP</th>
-                      <th className="px-3 py-2 text-right font-medium">FCR</th>
-                      <th className="px-3 py-2 text-right font-medium">Feed</th>
-                      <th className="px-3 py-2 text-right font-medium">EggW</th>
-                      <th className="px-3 py-2 text-right font-medium">Mort</th>
-                      <th className="px-3 py-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sorted.map(r => (
-                      <tr key={r.id} className="border-t hover:bg-muted/30">
-                        <td className="px-3 py-2 font-medium">{r.week}</td>
-                        <td className="px-3 py-2 text-right">{r.henDayProduction ?? '—'}%</td>
-                        <td className="px-3 py-2 text-right">{r.fcr ?? '—'}</td>
-                        <td className="px-3 py-2 text-right">{r.feedIntake ?? '—'}</td>
-                        <td className="px-3 py-2 text-right">{r.eggWeight ?? '—'}</td>
-                        <td className="px-3 py-2 text-right">{r.mortality ?? '—'}%</td>
-                        <td className="px-3 py-2 text-right">
-                          <button onClick={() => edit(r)} className="text-muted-foreground hover:text-amber-600 mr-2"><Pencil className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => remove(r.id)} className="text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+            <Card className="overflow-hidden"><CardHeader className="p-5 pb-3"><CardTitle className="text-base">Riwayat input</CardTitle><CardDescription className="mt-1">Kelola dan koreksi data mingguan Anda.</CardDescription></CardHeader><CardContent className="p-0"><Table><TableHeader className="bg-surface-subtle"><TableRow><TableHead>Mgg</TableHead><TableHead className="text-right">HDP</TableHead><TableHead className="text-right">FCR</TableHead><TableHead className="text-right">Feed</TableHead><TableHead className="text-right">Egg W.</TableHead><TableHead className="text-right">Mort.</TableHead><TableHead className="w-24" /></TableRow></TableHeader><TableBody>{sorted.map((row) => <TableRow key={row.id}><TableCell className="font-medium">{row.week}</TableCell><TableCell className="text-right">{formatValue(row.henDayProduction, "%")}</TableCell><TableCell className="text-right">{formatValue(row.fcr)}</TableCell><TableCell className="text-right">{formatValue(row.feedIntake)}</TableCell><TableCell className="text-right">{formatValue(row.eggWeight)}</TableCell><TableCell className="text-right">{formatValue(row.mortality, "%")}</TableCell><TableCell><div className="flex justify-end gap-1"><IconButton label={`Edit minggu ${row.week}`} tooltip="Edit data" variant="ghost" onClick={() => startEdit(row)}><AapmIcon name="edit" className="h-4 w-4" /></IconButton><IconButton label={`Hapus minggu ${row.week}`} tooltip="Hapus data" variant="ghost" className="text-danger hover:bg-danger/10 hover:text-danger" onClick={() => remove(row.id)}><AapmIcon name="delete" className="h-4 w-4" /></IconButton></div></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+          </>}
+        </section>
       </div>
-    </div>
+    </ContentContainer>
   );
 }
 
-function f(v) { return v === '' || v === null || v === undefined ? null : parseFloat(v); }
-function r2(v) { return String(v).includes('.'); }
-
-function Input({ label, v, on, req }) {
-  return (
-    <label className="block">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <input
-        type="number"
-        value={v ?? ''}
-        onChange={e => on(e.target.value)}
-        required={req}
-        className="mt-1 w-full rounded-lg border px-2.5 py-2 text-sm outline-none focus:border-amber-500"
-      />
-    </label>
-  );
+function MetricInput({ label, value, required = false, onChange }) {
+  const id = `farm-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  return <div className="space-y-1.5"><Label htmlFor={id} className="text-[11px] text-muted-foreground">{label}</Label><Input id={id} type="number" inputMode="decimal" value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></div>;
 }
 
-function Stat({ icon: Icon, label, value, tint }) {
-  return (
-    <div className="rounded-2xl border bg-card p-4 shadow-sm">
-      <div className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${tint} mb-2.5`}>
-        <Icon className="h-4.5 w-4.5" />
-      </div>
-      <div className="text-xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-    </div>
-  );
+function KpiStat({ label, value, detail, icon, tone, index }) {
+  return <Card className={cn("academy-enter aapm-interactive-card shadow-none", tone === "lime" && "border-tint-lime-border bg-tint-lime", tone === "green" && "border-tint-green-border bg-tint-green", tone === "orange" && "border-tint-orange-border bg-tint-orange", tone === "blue" && "border-tint-blue-border bg-tint-blue")} style={{ animationDelay: `${index * 60}ms` }}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><IconTile icon={icon} tone={tone} size="sm" /><span className="text-[10px] font-medium text-muted-foreground">KPI farm</span></div><div className="mt-4 truncate text-xl font-semibold tracking-[-0.04em] tabular-nums">{value}</div><div className="mt-1 text-xs font-medium text-foreground/80">{label}</div><div className="mt-1 text-[11px] text-muted-foreground">{detail}</div></CardContent></Card>;
 }
 
-function Chart({ title, children }) {
-  return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm">
-      <h3 className="text-sm font-semibold mb-3">{title}</h3>
-      {children}
-    </div>
-  );
+function ChartCard({ title, description, children }) {
+  return <Card className="min-w-0"><CardHeader className="p-5 pb-2"><CardTitle className="text-base">{title}</CardTitle><CardDescription className="mt-1">{description}</CardDescription></CardHeader><CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">{children}</CardContent></Card>;
 }
+
+function EmptyKpiState({ loading = false } = {}) {
+  return <Card className="border-dashed"><CardContent className="p-10 text-center sm:p-14"><IconTile icon="analytics" tone="lime" size="lg" className="mx-auto" /><h2 className="mt-4 text-lg font-semibold">{loading ? "Memuat data KPI…" : "Mulai dengan data mingguan pertama"}</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{loading ? "Kami sedang menyiapkan ringkasan produksi Anda." : "Masukkan HDP, pakan, produksi, dan biaya untuk melihat tren operasional farm."}</p></CardContent></Card>;
+}
+
+function numeric(value) { return value === "" || value === null || value === undefined ? null : parseFloat(value); }
+function hasDecimal(value) { return String(value).includes("."); }
+function formatValue(value, suffix = "") { return value === null || value === undefined || value === "" ? "—" : `${value}${suffix}`; }

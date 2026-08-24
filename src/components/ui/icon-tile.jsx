@@ -5,12 +5,13 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 const iconTileVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-xl transition-colors",
+  "inline-flex shrink-0 items-center justify-center rounded-xl border border-transparent transition-colors",
   {
     variants: {
       tone: {
         neutral: "bg-surface-inset text-muted-foreground",
-        green: "bg-tint-green text-tint-green-foreground",
+        green: "border-tint-green-border/60 bg-tint-green text-tint-green-foreground",
+        lime: "border-tint-lime-border/70 bg-tint-lime text-tint-lime-foreground",
         orange: "bg-tint-orange text-tint-orange-foreground",
         blue: "bg-tint-blue text-tint-blue-foreground",
         violet: "bg-tint-violet text-tint-violet-foreground",

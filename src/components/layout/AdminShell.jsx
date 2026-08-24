@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, Sheet, SheetContent, SheetTitle } from "@/components/primitives";
+import { Button, IconButton, Sheet, SheetContent, SheetTitle } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useThemeMode } from "@/lib/useThemeMode";
 import AdminNavigation from "@/components/admin/AdminNavigation";
@@ -36,8 +36,8 @@ export default function AdminShell() {
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3"><Button type="button" size="icon" variant="ghost" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Buka navigasi admin"><AapmIcon name="menu" className="h-5 w-5" /></Button><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Administration</div><div className="truncate text-sm font-semibold">{location.pathname === "/admin" ? "Overview" : "Academy management"}</div></div></div>
-          <div className="flex items-center gap-1.5"><Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/">Buka Academy</Link></Button><Button type="button" variant="ghost" size="icon" onClick={toggleTheme} aria-label={mode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}><AapmIcon name={mode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" /></Button><Button type="button" variant="outline" className="hidden text-xs sm:inline-flex" onClick={() => logout()}>{displayName} · Keluar</Button></div>
+          <div className="flex min-w-0 items-center gap-3"><IconButton variant="ghost" className="lg:hidden" onClick={() => setMobileOpen(true)} label="Buka navigasi admin"><AapmIcon name="menu" className="h-5 w-5" /></IconButton><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Administration</div><div className="truncate text-sm font-semibold">{location.pathname === "/admin" ? "Overview" : "Academy management"}</div></div></div>
+          <div className="flex items-center gap-1.5"><Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/">Buka Academy</Link></Button><IconButton variant="ghost" onClick={toggleTheme} label={mode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}><AapmIcon name={mode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" /></IconButton><Button type="button" variant="outline" className="hidden text-xs sm:inline-flex" onClick={() => logout()}><AapmIcon name="logout" /> {displayName} · Keluar</Button></div>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto"><Outlet /></main>
       </div>

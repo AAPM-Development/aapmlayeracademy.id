@@ -9,7 +9,7 @@ import { getLevelProgress, getModuleState, learningLevels } from "@/lib/academyD
 function ModuleStatus({ state = "locked" } = {}) {
   const config = {
     completed: { label: "Completed", icon: "check", className: "bg-success/10 text-success" },
-    current: { label: "Current", icon: "solar:record-circle-bold", className: "bg-brand-orange/10 text-brand-orange" },
+    current: { label: "Current", icon: "solar:record-circle-bold", className: "bg-tint-lime text-tint-lime-foreground" },
     available: { label: "Available", icon: "solar:lock-keyhole-minimalistic-unlocked-bold", className: "bg-tint-blue text-tint-blue-foreground" },
     locked: { label: "Locked", icon: "lock", className: "bg-muted text-muted-foreground" },
   }[state] || { label: "Locked", icon: "lock", className: "bg-muted text-muted-foreground" };
@@ -19,8 +19,8 @@ function ModuleStatus({ state = "locked" } = {}) {
 function ModuleRow({ module = null, state = "locked" } = {}) {
   if (!module) return null;
   const content = (
-    <div className={cn("flex items-start gap-3 rounded-xl border p-3 transition-colors sm:items-center", state === "current" ? "border-brand-orange/35 bg-brand-orange/5" : state === "available" ? "border-tint-blue-border bg-tint-blue/45" : state === "locked" ? "cursor-not-allowed border-border bg-surface-subtle" : "border-border bg-surface-elevated", state !== "locked" && "hover:border-brand-green/35 hover:bg-brand-green/5")}>
-      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", state === "completed" ? "bg-success/10 text-success" : state === "current" ? "bg-brand-orange/10 text-brand-orange" : state === "available" ? "bg-tint-blue text-tint-blue-foreground" : "bg-muted text-muted-foreground")}>
+    <div className={cn("flex items-start gap-3 rounded-xl border p-3 transition-colors sm:items-center", state === "current" ? "border-tint-lime-border bg-tint-lime" : state === "available" ? "border-tint-blue-border bg-tint-blue/45" : state === "locked" ? "cursor-not-allowed border-border bg-surface-subtle" : "border-border bg-surface-elevated", state !== "locked" && "aapm-interactive-card")}>
+      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", state === "completed" ? "bg-success/10 text-success" : state === "current" ? "bg-brand-green text-white" : state === "available" ? "bg-tint-blue text-tint-blue-foreground" : "bg-muted text-muted-foreground")}>
         {state === "completed" ? <AapmIcon name="check" className="h-4 w-4" /> : state === "locked" ? <AapmIcon name="lock" className="h-4 w-4" /> : module.moduleNumber}
       </div>
       <div className="min-w-0 flex-1">
@@ -45,7 +45,7 @@ export default function LearningRoadmap({ modules = [], progress = [] } = {}) {
         if (!levelModules.length) return null;
         const stats = getLevelProgress(level.number, sortedModules, completedSet);
         return (
-          <Card key={level.number} id={`level-${level.number}`} className="overflow-hidden shadow-none">
+          <Card key={level.number} id={`level-${level.number}`} className="aapm-interactive-card overflow-hidden shadow-none">
             <CardHeader className="border-b border-border p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">

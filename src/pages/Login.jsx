@@ -53,7 +53,7 @@ export default function Login() {
           New to the Academy?{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="font-medium text-[var(--brand-aapm-green)] underline-offset-4 hover:underline"
+            className="font-semibold text-brand-green underline-offset-4 hover:underline"
           >
             Create an account
           </Link>
@@ -62,28 +62,32 @@ export default function Login() {
     >
       {error && (
         <div
-          className="mb-6 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          className="mb-6 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
           role="alert"
           aria-live="polite"
         >
-          {error}
+          <AapmIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
           <LoginLabel htmlFor="email" className="text-xs font-semibold text-foreground">Email address</LoginLabel>
-          <LoginInput
-            id="email"
-            type="email"
-            autoComplete="email"
-            autoFocus
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="h-12 rounded-xl border-border/80 bg-surface-subtle px-3 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
-            required
-          />
+          <div className="aapm-field relative rounded-xl">
+            <AapmIcon name="mail" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <LoginInput
+              id="email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-12 rounded-xl border-border/80 bg-surface-subtle pl-10 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
+              required
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -97,7 +101,7 @@ export default function Login() {
           <div className="flex justify-end pt-1">
             <Link
               to="/forgot-password"
-              className="text-sm text-[var(--brand-aapm-green)] underline-offset-4 hover:underline"
+              className="text-sm font-medium text-brand-green underline-offset-4 hover:underline"
             >
               Forgot password?
             </Link>
@@ -106,7 +110,7 @@ export default function Login() {
 
         <Button
           type="submit"
-          className="h-12 w-full rounded-xl bg-[var(--brand-aapm-green)] font-semibold text-white shadow-[var(--card-shadow)] hover:-translate-y-0.5 hover:bg-[#286b2f]"
+          className="h-12 w-full bg-brand-green text-white shadow-[var(--card-shadow)] hover:bg-brand-green/90"
           disabled={loading}
         >
           {loading ? (

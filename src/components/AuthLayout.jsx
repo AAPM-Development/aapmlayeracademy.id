@@ -42,7 +42,7 @@ function AcademyVideoPanel() {
   }, [prefersReducedMotion]);
 
   return (
-    <aside className="relative hidden min-h-[100svh] overflow-hidden bg-[#10251c] lg:block">
+    <aside className="relative hidden min-h-[100svh] overflow-hidden bg-brand-green lg:block">
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
@@ -54,15 +54,15 @@ function AcademyVideoPanel() {
         preload={prefersReducedMotion ? "none" : "metadata"}
         aria-hidden="true"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#07120d]/60 via-[#07120d]/15 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-brand-foreground/80 via-brand-foreground/25 to-transparent" />
       <div className="absolute inset-x-0 top-0 flex justify-center px-10 pt-6 xl:pt-8">
         <div
-          className="pointer-events-none absolute inset-x-0 -top-1 h-28 bg-[radial-gradient(ellipse_at_top,rgba(7,18,13,0.58),rgba(7,18,13,0.18)_48%,transparent_78%)]"
+          className="pointer-events-none absolute inset-x-0 -top-1 h-28 bg-[radial-gradient(ellipse_at_top,hsl(var(--aapm-green-950)_/_0.68),hsl(var(--aapm-green-950)_/_0.22)_48%,transparent_78%)]"
           aria-hidden="true"
         />
         <AppBrand
           mode="dark"
-          className="relative z-10 h-12 w-auto max-w-[180px] drop-shadow-[0_4px_18px_rgba(0,0,0,0.58)]"
+          className="relative z-10 h-12 w-auto max-w-[180px] drop-shadow-[0_4px_18px_rgba(0,0,0,0.7)]"
           alt="AAPM Layer Academy"
         />
       </div>
@@ -107,17 +107,17 @@ function LoginAuthLayout(props) {
   const { title, subtitle, footer, children } = props;
   return (
     <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
-      <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
+      <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
         <div className="w-full max-w-[420px]">
-          <div className="mb-9 flex justify-center">
+          <div className="mb-10 flex justify-center">
             <AppBrand
               product="aapm"
               variant="main"
-              className="h-24 w-auto max-w-[150px]"
+              className="h-24 w-auto max-w-[160px] drop-shadow-[0_12px_24px_hsl(var(--aapm-green-700)_/_0.12)]"
               alt="AAPM Layer Academy"
             />
           </div>
-          <div className="mb-9">
+          <div className="mb-8 text-center sm:text-left">
             <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl">{title}</h1>
             {subtitle && <p className="mt-3 max-w-sm text-base leading-7 text-muted-foreground">{subtitle}</p>}
           </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IconButton } from "@/components/ui/icon-button";
 import AapmIcon from "@/components/icons/AapmIcon";
 
 export default function PasswordField({
@@ -19,7 +20,7 @@ export default function PasswordField({
   return (
     <div className="space-y-2">
       <Label htmlFor={id} className="text-xs font-semibold text-foreground">{label}</Label>
-      <div className="relative">
+      <div className="aapm-field relative rounded-xl">
         <AapmIcon name="lock" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={id}
@@ -33,15 +34,14 @@ export default function PasswordField({
           minLength={minLength}
           required={required}
         />
-        <button
-          type="button"
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <IconButton
+          className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground"
           onClick={() => setVisible((current) => !current)}
-          aria-label={visible ? "Sembunyikan password" : "Tampilkan password"}
+          label={visible ? "Sembunyikan password" : "Tampilkan password"}
           aria-pressed={visible}
         >
           <AapmIcon name={visible ? "eyeOff" : "eye"} className="h-4 w-4" />
-        </button>
+        </IconButton>
       </div>
     </div>
   );

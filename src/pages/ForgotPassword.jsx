@@ -53,7 +53,7 @@ export default function ForgotPassword() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-xs font-semibold text-foreground">Email address</Label>
-            <div className="relative">
+            <div className="aapm-field relative rounded-xl">
               <AapmIcon name="mail" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
@@ -68,7 +68,7 @@ export default function ForgotPassword() {
               />
             </div>
           </div>
-          <Button type="submit" className="h-12 w-full rounded-xl font-medium shadow-[var(--card-shadow)] hover:-translate-y-0.5" disabled={loading}>
+          <Button type="submit" className="h-12 w-full shadow-[var(--card-shadow)]" disabled={loading}>
             {loading ? (
               <>
                 <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />

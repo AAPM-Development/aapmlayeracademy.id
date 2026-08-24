@@ -23,24 +23,24 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
   }
 
   return (
-    <Card className="group relative overflow-hidden border-border/80 bg-card shadow-[var(--card-shadow)] transition-shadow duration-300 hover:shadow-[var(--card-shadow-hover)]">
-      <div className="absolute inset-x-0 top-0 h-1 bg-brand-orange" />
+    <Card className="group aapm-interactive-card relative overflow-hidden border-tint-lime-border bg-card shadow-[var(--card-shadow)]">
+      <div className="absolute inset-x-0 top-0 h-1 bg-brand-lime" />
       <CardContent className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <Badge variant="soft" className="bg-tint-orange text-[10px] uppercase tracking-[0.14em] text-tint-orange-foreground">Lanjutkan belajar</Badge>
+              <Badge variant="soft" className="bg-tint-lime text-[10px] uppercase tracking-[0.14em] text-tint-lime-foreground">Lanjutkan belajar</Badge>
               <span className="text-xs tabular-nums text-muted-foreground">Modul {module.moduleNumber} · Level {module.level}</span>
             </div>
             <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{module.title}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{module.summary}</p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Button asChild className="bg-brand-orange text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-orange/90"><Link to={`/modules/${module.moduleNumber}`}>{progress?.completed ? "Review lesson" : "Buka lesson"} <AapmIcon name="arrowRight" /></Link></Button>
+              <Button asChild><Link to={`/modules/${module.moduleNumber}`}>{progress?.completed ? "Review lesson" : "Buka lesson"} <AapmIcon name="arrowRight" /></Link></Button>
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><AapmIcon name="clock" className="h-3.5 w-3.5" /> Fokus berikutnya di roadmap</span>
             </div>
           </div>
-          <div className="relative hidden h-24 w-24 shrink-0 items-center justify-center rounded-full border border-brand-orange/20 bg-brand-orange/5 text-brand-orange sm:flex">
-            <div className="absolute inset-2 rounded-full border border-brand-orange/15" />
+          <div className="relative hidden h-24 w-24 shrink-0 items-center justify-center rounded-full border border-brand-lime/40 bg-tint-lime text-brand-green sm:flex">
+            <div className="absolute inset-2 rounded-full border border-brand-green/15" />
             <AapmIcon name="solar:play-circle-bold" className="relative h-9 w-9 transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
@@ -77,16 +77,16 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
       : learningLevels[0];
   const metrics = [
     { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: "check", tone: "green", surface: "border-tint-green-border bg-tint-green" },
-    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: "progress", tone: "orange", surface: "border-tint-orange-border bg-tint-orange" },
+    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: "progress", tone: "lime", surface: "border-tint-lime-border bg-tint-lime" },
     { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: "solar:target-bold-duotone", tone: "blue", surface: "border-tint-blue-border bg-tint-blue" },
-    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: "solar:cup-star-bold", tone: "violet", surface: "border-tint-violet-border bg-tint-violet" },
+    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: "solar:cup-star-bold", tone: "orange", surface: "border-tint-orange-border bg-tint-orange" },
   ];
 
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric, index) => {
         return (
-          <div key={metric.label} className={cn("academy-enter rounded-2xl border p-4 shadow-none transition-[border-color,box-shadow] duration-300 hover:shadow-[var(--surface-shadow-hover)]", metric.surface)} style={{ animationDelay: `${index * 70}ms` }}>
+          <div key={metric.label} className={cn("academy-enter aapm-interactive-card rounded-[var(--card-radius)] border p-4", metric.surface)} style={{ animationDelay: `${index * 70}ms` }}>
             <div className="flex items-start justify-between gap-3">
               <IconTile icon={metric.icon} tone={metric.tone} size="sm" />
               <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] font-medium text-muted-foreground">{metric.detail}</span>
@@ -102,8 +102,8 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
 
 const dashboardTracks = [
   { name: "Beginner", description: "Bangun fondasi flock dan ritme kerja yang konsisten.", levels: [1, 2, 3, 4, 5], tone: "green", icon: "course" },
-  { name: "Intermediate", description: "Hubungkan lingkungan, biosecurity, telur, dan KPI.", levels: [6, 7, 8, 9, 10, 11], tone: "blue", icon: "solar:shield-check-bold" },
-  { name: "Advanced", description: "Kelola operasi dengan root cause analysis dan disiplin data.", levels: [12, 13], tone: "violet", icon: "analytics" },
+  { name: "Intermediate", description: "Hubungkan lingkungan, biosecurity, telur, dan KPI.", levels: [6, 7, 8, 9, 10, 11], tone: "lime", icon: "solar:shield-check-bold" },
+  { name: "Advanced", description: "Kelola operasi dengan root cause analysis dan disiplin data.", levels: [12, 13], tone: "orange", icon: "analytics" },
   { name: "Expert", description: "Ambil keputusan lintas fungsi dan pimpin perbaikan farm.", levels: [14], tone: "slate", icon: "solar:cup-star-bold" },
 ];
 
@@ -111,8 +111,8 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
   const completedSet = new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
   const tones = {
     green: { card: "border-tint-green-border bg-tint-green", bar: "bg-tint-green-foreground", label: "text-tint-green-foreground" },
-    blue: { card: "border-tint-blue-border bg-tint-blue", bar: "bg-tint-blue-foreground", label: "text-tint-blue-foreground" },
-    violet: { card: "border-tint-violet-border bg-tint-violet", bar: "bg-tint-violet-foreground", label: "text-tint-violet-foreground" },
+    lime: { card: "border-tint-lime-border bg-tint-lime", bar: "bg-tint-lime-foreground", label: "text-tint-lime-foreground" },
+    orange: { card: "border-tint-orange-border bg-tint-orange", bar: "bg-tint-orange-foreground", label: "text-tint-orange-foreground" },
     slate: { card: "border-tint-slate-border bg-tint-slate", bar: "bg-tint-slate-foreground", label: "text-tint-slate-foreground" },
   };
 
@@ -136,7 +136,7 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
           const levelNames = track.levels.map((levelNumber) => learningLevels.find((level) => level.number === levelNumber)?.name).filter(Boolean);
 
           return (
-            <Link key={track.name} to="/modules" className={cn("group overflow-hidden rounded-[1.25rem] border p-5 shadow-none transition-[border-color,box-shadow] duration-300 hover:shadow-[var(--surface-shadow-hover)]", tone.card)}>
+            <Link key={track.name} to="/modules" className={cn("group aapm-interactive-card overflow-hidden rounded-[var(--card-radius)] border p-5", tone.card)}>
               <div className="flex items-start gap-3">
                 <IconTile icon={track.icon} tone={track.tone} size="md" />
                 <div className="min-w-0 flex-1">
@@ -216,14 +216,14 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2"><div className="truncate text-sm font-medium">{level.name}</div><span className="text-[11px] text-muted-foreground">{stats.completed}/{stats.total || "—"}</span></div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full", done ? "bg-success" : "bg-brand-orange")} style={{ width: `${stats.percent}%` }} /></div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full", done ? "bg-success" : "bg-brand-lime")} style={{ width: `${stats.percent}%` }} /></div>
                   </div>
                 </div>
               </Link>
             );
           })}
         </div>}
-        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-brand-orange" /> Progress detail tersedia di Learning Path.</div>
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-brand-lime" /> Progress detail tersedia di Learning Path.</div>
       </CardContent>
     </Card>
   );
@@ -231,16 +231,16 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
 
 export function QuickToolGrid() {
   const tools = [
-    { to: "/calculators", label: "Farm Calculators", description: "Hitung indikator operasional.", icon: "solar:calculator-bold-duotone", tone: "orange" },
-    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: "analytics", tone: "blue" },
-    { to: "/ai-assistant", label: "AI Farm Assistant", description: "Tanya dengan konteks farm.", icon: "solar:stars-minimalistic-bold-duotone", tone: "violet" },
+    { to: "/calculators", label: "Farm Calculators", description: "Hitung indikator operasional.", icon: "solar:calculator-bold-duotone", tone: "lime" },
+    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: "analytics", tone: "green" },
+    { to: "/ai-assistant", label: "AI Farm Assistant", description: "Tanya dengan konteks farm.", icon: "solar:stars-minimalistic-bold-duotone", tone: "orange" },
   ];
 
   return (
     <Card className="bg-card/95">
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3"><CardTitle className="text-base">Quick tools</CardTitle><CardDescription className="mt-1">Alat bantu saat Anda belajar.</CardDescription></CardHeader>
       <CardContent className="grid gap-2 p-5 pt-2 sm:p-6 sm:pt-2">
-      {tools.map((tool) => <Link key={tool.to} to={tool.to} className="group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:border-brand-green/30 hover:bg-surface-hover"><IconTile icon={tool.icon} tone={tool.tone} size="sm" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{tool.label}</div><div className="truncate text-xs text-muted-foreground">{tool.description}</div></div><AapmIcon name="chevronRight" className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link>)}
+      {tools.map((tool) => <Link key={tool.to} to={tool.to} className="group aapm-interactive-card flex items-center gap-3 rounded-xl border border-border p-3"><IconTile icon={tool.icon} tone={tool.tone} size="sm" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{tool.label}</div><div className="truncate text-xs text-muted-foreground">{tool.description}</div></div><AapmIcon name="chevronRight" className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link>)}
       </CardContent>
     </Card>
   );
@@ -251,24 +251,24 @@ export function DashboardWelcome({ user = null } = {}) {
   const cycle = ["DOC", "Brooding", "Growing", "Peak", "Layer", "Molting"];
 
   return (
-    <section className="academy-enter relative mb-6 overflow-hidden rounded-[1.5rem] bg-[linear-gradient(120deg,#f4a400_0%,#ff7615_48%,#f33e62_100%)] px-6 py-7 text-white shadow-[var(--hero-shadow)] sm:px-10 sm:py-9">
-      <div className="pointer-events-none absolute -right-8 -top-16 h-48 w-48 rounded-full border-[8px] border-white/15" />
-      <div className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full border-[2px] border-white/10" />
-      <div className="pointer-events-none absolute -bottom-20 right-1/4 h-40 w-40 rounded-full bg-[#ffbe30]/25 blur-2xl" />
-      <div className="pointer-events-none absolute right-8 top-1/2 hidden w-48 -translate-y-1/2 rounded-2xl border border-white/20 bg-black/10 p-3 backdrop-blur-sm xl:block">
+    <section className="academy-enter aapm-hero relative mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] px-6 py-7 text-white sm:px-10 sm:py-9">
+      <div className="pointer-events-none absolute -right-8 -top-16 h-48 w-48 rounded-full border-[8px] border-brand-lime/25" />
+      <div className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full border-[2px] border-white/15" />
+      <div className="pointer-events-none absolute -bottom-20 right-1/4 h-40 w-40 rounded-full bg-brand-lime/20 blur-2xl" />
+      <div className="aapm-hero-panel pointer-events-none absolute right-8 top-1/2 hidden w-48 -translate-y-1/2 rounded-2xl p-3 xl:block">
         <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70"><span>Farm cycle</span><AapmIcon name="solar:arrow-right-up-bold" className="h-3.5 w-3.5" /></div>
         <div className="mt-3 grid grid-cols-3 gap-1.5">
-          {cycle.map((phase) => <span key={phase} className="rounded-lg bg-white/15 px-1.5 py-2 text-center text-[10px] font-medium text-white/90">{phase}</span>)}
+          {cycle.map((phase) => <span key={phase} className="rounded-lg bg-white/10 px-1.5 py-2 text-center text-[10px] font-medium text-white/90">{phase}</span>)}
         </div>
         <div className="mt-3 text-right text-[10px] text-white/65">6 fase utama</div>
       </div>
       <div className="relative max-w-4xl">
-        <Badge variant="soft" className="border border-white/15 bg-white/20 text-xs font-semibold text-white shadow-sm backdrop-blur-sm"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
-        <h1 className="mt-5 max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-[2.35rem]">Layer Poultry Farm Management</h1>
+        <Badge variant="soft" className="border border-brand-lime/35 bg-brand-lime/15 text-xs font-semibold text-brand-lime shadow-sm backdrop-blur-sm"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
+        <h1 className="mt-5 max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-[2.35rem]">Layer Poultry <span className="text-brand-lime">Farm Management</span></h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/85 sm:text-[0.95rem]">Dari pemula hingga expert — pelajari seluruh siklus produksi ayam petelur komersial: DOC → Brooding → Growing → Pre-lay → Peak → Post-peak → Molting → Spent Hen, dengan kombinasi video, materi baca, simulasi interaktif, kuis, case study, dan sertifikasi.</p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button asChild className="bg-white text-[#b94716] shadow-sm hover:-translate-y-0.5 hover:bg-white/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
-          <Button asChild variant="ghost" className="border border-white/20 bg-white/15 text-white shadow-none hover:bg-white/25 hover:text-white"><Link to="/ai-assistant"><AapmIcon name="solar:stars-minimalistic-bold-duotone" /> AI Farm Assistant</Link></Button>
+          <Button asChild className="bg-brand-lime text-brand-foreground shadow-sm hover:bg-brand-lime/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
+          <Button asChild variant="ghost" className="border border-white/20 bg-white/10 text-white shadow-none hover:bg-white/20 hover:text-white"><Link to="/ai-assistant"><AapmIcon name="solar:stars-minimalistic-bold-duotone" /> AI Farm Assistant</Link></Button>
         </div>
         <div className="mt-5 flex items-center gap-2 text-xs text-white/75"><span className="h-1.5 w-1.5 rounded-full bg-white/80" /> Selamat datang, {name}. Satu keputusan lebih baik setiap sesi.</div>
       </div>

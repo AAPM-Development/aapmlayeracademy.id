@@ -53,8 +53,9 @@ export default function ResetPassword() {
   return (
     <AuthLayout title="New password" subtitle="Enter your new password below">
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          <AapmIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,7 +77,7 @@ export default function ResetPassword() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           minLength={8}
         />
-        <Button type="submit" className="h-12 w-full rounded-xl font-medium shadow-[var(--card-shadow)] hover:-translate-y-0.5" disabled={loading}>
+        <Button type="submit" className="h-12 w-full shadow-[var(--card-shadow)]" disabled={loading}>
           {loading ? (
             <>
               <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />

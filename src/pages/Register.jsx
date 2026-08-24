@@ -59,15 +59,16 @@ export default function Register() {
       }
     >
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          <AapmIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">Email</Label>
-          <div className="relative">
+          <div className="aapm-field relative rounded-xl">
             <AapmIcon name="mail" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="email"
@@ -99,7 +100,7 @@ export default function Register() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           minLength={8}
         />
-        <Button type="submit" className="h-12 w-full rounded-xl font-medium shadow-[var(--card-shadow)] hover:-translate-y-0.5" disabled={loading}>
+        <Button type="submit" className="h-12 w-full shadow-[var(--card-shadow)]" disabled={loading}>
           {loading ? (
             <>
               <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />

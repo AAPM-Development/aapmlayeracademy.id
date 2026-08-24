@@ -11,10 +11,11 @@ module.exports = {
   		},
 		colors: {
 			brand: {
-				green: 'var(--brand-aapm-green)',
-				orange: 'var(--brand-aapm-orange)',
-				foreground: 'var(--brand-foreground)',
-				'foreground-muted': 'var(--brand-foreground-muted)'
+				green: 'hsl(var(--brand-aapm-green) / <alpha-value>)',
+				lime: 'hsl(var(--brand-aapm-lime) / <alpha-value>)',
+				orange: 'hsl(var(--brand-aapm-orange) / <alpha-value>)',
+				foreground: 'hsl(var(--brand-foreground) / <alpha-value>)',
+				'foreground-muted': 'hsl(var(--brand-foreground-muted) / <alpha-value>)'
 			},
 			background: 'hsl(var(--background))',
 			foreground: 'hsl(var(--foreground))',
@@ -29,6 +30,9 @@ module.exports = {
 				green: 'hsl(var(--tint-green))',
 				'green-foreground': 'hsl(var(--tint-green-foreground))',
 				'green-border': 'hsl(var(--tint-green-border))',
+				lime: 'hsl(var(--tint-lime))',
+				'lime-foreground': 'hsl(var(--tint-lime-foreground))',
+				'lime-border': 'hsl(var(--tint-lime-border))',
 				orange: 'hsl(var(--tint-orange))',
 				'orange-foreground': 'hsl(var(--tint-orange-foreground))',
 				'orange-border': 'hsl(var(--tint-orange-border))',

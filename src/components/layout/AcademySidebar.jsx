@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge } from "@/components/primitives";
+import { Badge, IconButton } from "@/components/primitives";
 import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
 import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
@@ -25,14 +25,14 @@ export default function AcademySidebar({
       <div className={cn("flex h-[73px] shrink-0 items-center border-b border-border", collapsed ? "justify-center px-3" : "justify-between px-4")}>
         <AppBrand variant={collapsed ? "icon" : "logo"} className={collapsed ? "h-9 w-9" : "h-11 w-auto max-w-[182px]"} />
         {onToggle && (
-          <button
-            type="button"
+          <IconButton
             onClick={onToggle}
-            className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "absolute -right-3 top-5 z-10 border bg-background shadow-sm")}
-            aria-label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
+            size="sm"
+            className={cn(collapsed && "absolute -right-3 top-5 z-10 border bg-background shadow-sm")}
+            label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
           >
             <AapmIcon name={collapsed ? "chevronRight" : "chevronLeft"} className="h-4 w-4" />
-          </button>
+          </IconButton>
         )}
       </div>
 
@@ -40,25 +40,25 @@ export default function AcademySidebar({
         <div className={cn("overflow-hidden rounded-2xl border border-tint-green-border bg-tint-green", collapsed ? "p-2" : "p-3")}>
           {collapsed ? (
             <div className="text-center">
-              <div className="text-sm font-semibold text-brand-orange">{percent}%</div>
+              <div className="text-sm font-semibold text-brand-green">{percent}%</div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-brand-orange" style={{ width: `${percent}%` }} />
+                <div className="h-full rounded-full bg-brand-lime" style={{ width: `${percent}%` }} />
               </div>
             </div>
           ) : (
             <>
               <div className="relative flex items-start gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-tint-orange-foreground"><AapmIcon name="progress" className="h-4 w-4" /></div>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-lime text-tint-lime-foreground"><AapmIcon name="progress" className="h-4 w-4" /></div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="font-semibold text-foreground">Learning progress</span>
-                    <Badge variant="soft" className="bg-card/70 px-2 py-0.5 text-[10px] tabular-nums text-brand-orange">{percent}%</Badge>
+                    <Badge variant="soft" className="bg-card/70 px-2 py-0.5 text-[10px] tabular-nums text-brand-green">{percent}%</Badge>
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground">{completed} dari {TOTAL_MODULES} modul selesai</div>
                 </div>
               </div>
               <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-foreground/10">
-                <div className="h-full rounded-full bg-brand-orange transition-[width]" style={{ width: `${percent}%` }} />
+                <div className="h-full rounded-full bg-brand-lime transition-[width]" style={{ width: `${percent}%` }} />
               </div>
             </>
           )}
@@ -106,15 +106,14 @@ export default function AcademySidebar({
               <div className="mt-0.5 text-[11px] text-muted-foreground">Layer Farm learner</div>
             </div>
           )}
-          <button
-            type="button"
+          <IconButton
             onClick={onLogout}
-            title="Keluar"
-            className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "hidden")}
-            aria-label="Keluar"
+            size="sm"
+            className={cn("shrink-0", collapsed && "hidden")}
+            label="Keluar"
           >
             <AapmIcon name="logout" className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
       </div>
     </aside>
