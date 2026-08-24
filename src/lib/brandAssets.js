@@ -1,7 +1,17 @@
-export const DEFAULT_BRAND_PRODUCT = "academy";
+export const DEFAULT_BRAND_PRODUCT = "classic";
 export const DEFAULT_BRAND_VARIANT = "logo";
 
 export const brandAssets = Object.freeze({
+  classic: Object.freeze({
+    logo: Object.freeze({
+      light: "/assets/Logo_AAPM_Main.svg",
+      dark: "/assets/Logo_AAPM_Main_Dark_Mode.svg",
+    }),
+    icon: Object.freeze({
+      light: "/assets/Icon_AAPM.svg",
+      dark: "/assets/Icon_AAPM_dark_mode.svg",
+    }),
+  }),
   academy: Object.freeze({
     logo: Object.freeze({
       light: "/brand/academy/logo.svg",
