@@ -28,6 +28,8 @@ function app_config(): array
         'session_name' => getenv('AAPLAYERACADEMY_SESSION_NAME') ?: 'aapm_layer_session',
         'app_url' => getenv('AAPLAYERACADEMY_APP_URL') ?: '',
         'mail_from' => getenv('AAPLAYERACADEMY_MAIL_FROM') ?: '',
+        'mail_host' => getenv('AAPLAYERACADEMY_MAIL_HOST') ?: '127.0.0.1',
+        'mail_port' => (int) (getenv('AAPLAYERACADEMY_MAIL_PORT') ?: 25),
         'google_client_id' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_ID') ?: '',
         'google_client_secret' => getenv('AAPLAYERACADEMY_GOOGLE_CLIENT_SECRET') ?: '',
         'google_redirect_uri' => getenv('AAPLAYERACADEMY_GOOGLE_REDIRECT_URI') ?: '',
@@ -561,7 +563,7 @@ function password_reset_url(string $token): string
 function send_password_reset_email(string $email, string $token): bool
 {
     $from = trim((string) (app_config()['mail_from'] ?? ''));
-    if ($from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL) || !function_exists('mail')) {
+    if ($from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
         return false;
     }
 
@@ -579,7 +581,80 @@ function send_password_reset_email(string $email, string $token): bool
         'Content-Type: text/plain; charset=UTF-8',
     ]);
 
-    return @mail($email, $subject, $body, $headers);
+    if (function_exists('mail') && @mail($email, $subject, $body, $headers)) {
+        return true;
+    }
+
+    return send_smtp_email($email, $from, $subject, $body);
+}
+
+function smtp_response($socket): string
+{
+    $response = '';
+    while (($line = fgets($socket, 512)) !== false) {
+        $response .= $line;
+        if (strlen($line) < 4 || $line[3] === ' ') {
+            break;
+        }
+    }
+
+    return $response;
+}
+
+function smtp_code(string $response): int
+{
+    return (int) substr(trim($response), 0, 3);
+}
+
+function smtp_command($socket, string $command, array $expectedCodes): bool
+{
+    if (fwrite($socket, $command . "\r\n") === false) {
+        return false;
+    }
+
+    return in_array(smtp_code(smtp_response($socket)), $expectedCodes, true);
+}
+
+function send_smtp_email(string $email, string $from, string $subject, string $body): bool
+{
+    $config = app_config();
+    $host = (string) ($config['mail_host'] ?? '127.0.0.1');
+    $port = (int) ($config['mail_port'] ?? 25);
+    $errno = 0;
+    $error = '';
+    $socket = @fsockopen($host, $port, $errno, $error, 5);
+    if (!$socket) {
+        return false;
+    }
+    stream_set_timeout($socket, 5);
+
+    $connected = smtp_code(smtp_response($socket)) === 220;
+    $connected = $connected && smtp_command($socket, 'EHLO ' . (parse_url(app_base_url(), PHP_URL_HOST) ?: 'localhost'), [250]);
+    $connected = $connected && smtp_command($socket, 'MAIL FROM:<' . $from . '>', [250]);
+    $connected = $connected && smtp_command($socket, 'RCPT TO:<' . $email . '>', [250, 251]);
+    $connected = $connected && smtp_command($socket, 'DATA', [354]);
+
+    if ($connected) {
+        $message = implode("\r\n", [
+            'From: ' . $from,
+            'To: ' . $email,
+            'Subject: ' . $subject,
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=UTF-8',
+            '',
+            $body,
+        ]);
+        $message = preg_replace('/(?m)^\./', '..', $message);
+        $connected = fwrite($socket, $message . "\r\n.\r\n") !== false
+            && in_array(smtp_code(smtp_response($socket)), [250], true);
+    }
+
+    if (is_resource($socket)) {
+        @fwrite($socket, "QUIT\r\n");
+        fclose($socket);
+    }
+
+    return $connected;
 }
 
 function nullable_number(array $data, string $key)

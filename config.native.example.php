@@ -15,6 +15,8 @@ return [
     'session_name' => 'aapm_layer_session',
     'app_url' => 'http://127.0.0.1:8000',
     'mail_from' => '',
+    'mail_host' => '127.0.0.1',
+    'mail_port' => 25,
     'google_client_id' => '',
     'google_client_secret' => '',
     'google_redirect_uri' => '',
