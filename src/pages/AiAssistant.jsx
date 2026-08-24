@@ -747,21 +747,19 @@ export default function AiAssistant() {
                       />
                     ),
                   )}
-                  <div ref={scrollRef} />
                 </div>
               )}
+              <div className="flex items-end pt-5" aria-label="Status APPI">
+                <AiAvatar
+                  size="md"
+                  state={shellAvatarState}
+                  decorative
+                  className="shrink-0"
+                />
+              </div>
+              <div ref={scrollRef} />
             </div>
           </ScrollArea>
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 sm:bottom-4">
-            <div className="mx-auto flex max-w-3xl px-5 sm:px-8">
-              <AiAvatar
-                size="md"
-                state={shellAvatarState}
-                decorative
-                className="shrink-0"
-              />
-            </div>
-          </div>
         </div>
         <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto max-w-3xl">

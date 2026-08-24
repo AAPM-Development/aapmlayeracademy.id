@@ -451,12 +451,11 @@ export default function FloatingAiAssistant() {
                   ),
                 )
               )}
-              <div ref={endRef} />
-              </div>
-            </div>
-            {!historyOpen && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10">
-                <div className="flex px-4">
+              {!historyOpen && (
+                <div
+                  className="flex items-end pt-1"
+                  aria-label="Status APPI"
+                >
                   <AiAvatar
                     size="sm"
                     state={panelAvatarState}
@@ -464,8 +463,10 @@ export default function FloatingAiAssistant() {
                     className="shrink-0"
                   />
                 </div>
+              )}
+              <div ref={endRef} />
               </div>
-            )}
+            </div>
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
@@ -687,21 +688,20 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.5rem)] right-4 z-[75] inline-flex h-12 items-center gap-2 rounded-full border border-white/35 bg-brand-orange py-1.5 pl-2 pr-3.5 text-left text-white shadow-[0_14px_32px_hsl(var(--aapm-orange-500)/0.36)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 lg:bottom-5 lg:right-5"
+          className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.5rem)] right-4 z-[75] inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand-orange/30 bg-background p-1 text-foreground shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] transition-transform hover:-translate-y-0.5 hover:border-brand-orange/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:h-12 sm:w-auto sm:justify-start sm:gap-2 sm:py-1.5 sm:pl-2 sm:pr-2.5 lg:bottom-5 lg:right-5"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >
           <AiAvatar size="md" state="idle" decorative />
-          <span className="flex flex-col">
+          <span className="hidden flex-col sm:flex">
             <span className="text-sm font-semibold leading-4">Tanya APPI</span>
-            <span className="mt-0.5 text-[10px] text-white/80">
+            <span className="mt-0.5 text-[10px] text-brand-orange/80">
               AAPM Intelligence
             </span>
           </span>
-          <AapmIcon
-            name="solar:arrow-up-bold"
-            className="ml-0.5 h-3.5 w-3.5 text-white/85"
-          />
+          <span className="hidden h-7 w-7 items-center justify-center rounded-full bg-brand-orange text-white sm:flex">
+            <AapmIcon name="solar:arrow-up-bold" className="h-3 w-3" />
+          </span>
         </button>
       )}
     </>
