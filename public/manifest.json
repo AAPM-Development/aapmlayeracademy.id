@@ -7,10 +7,16 @@
   "theme_color": "#318139",
   "icons": [
     {
-      "src": "/brand/aapm/icon.svg",
+      "src": "/brand/aapm/app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/aapm/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
