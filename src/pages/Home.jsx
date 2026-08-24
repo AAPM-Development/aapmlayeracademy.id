@@ -7,7 +7,8 @@ import ContentContainer from "@/components/layout/ContentContainer";
 import {
   ContinueLearning,
   DashboardWelcome,
-  LearningJourney,
+  DashboardMetricStrip,
+  LearningTracks,
   LearningProgressSummary,
   QuickToolGrid,
 } from "@/components/academy/DashboardComponents";
@@ -26,17 +27,19 @@ export default function Home() {
   return (
     <ContentContainer>
       <DashboardWelcome user={user} />
+      <DashboardMetricStrip modules={modules} progress={progress} nextModule={nextModule} />
 
       {modulesLoading ? (
-        <Card className="border-brand-orange/20 shadow-none"><CardContent className="space-y-3 p-6"><Skeleton className="h-5 w-36" /><Skeleton className="h-8 w-3/4" /><Skeleton className="h-4 w-full max-w-2xl" /><Skeleton className="h-9 w-32" /></CardContent></Card>
+        <Card className="border-brand-orange/20"><CardContent className="space-y-3 p-6"><Skeleton className="h-5 w-36" /><Skeleton className="h-8 w-3/4" /><Skeleton className="h-4 w-full max-w-2xl" /><Skeleton className="h-9 w-32" /></CardContent></Card>
       ) : (
         <ContinueLearning module={nextModule} progress={nextProgress} />
       )}
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+      <LearningTracks modules={modules} progress={progress} />
+
+      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
         <div className="space-y-5">
           <LearningProgressSummary modules={modules} progress={progress} />
-          <LearningJourney modules={modules} progress={progress} />
           <Card className="shadow-none">
             <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3"><CardTitle className="text-base">Up next</CardTitle></CardHeader>
             <CardContent className="space-y-2 p-5 pt-2 sm:p-6 sm:pt-2">

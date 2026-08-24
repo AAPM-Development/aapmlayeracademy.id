@@ -21,7 +21,7 @@ export default function AcademyShell() {
   const handleLogout = () => logout();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="academy-shell flex h-screen overflow-hidden bg-background text-foreground">
       <div className="hidden shrink-0 md:flex">
         <AcademySidebar
           collapsed={sidebarCollapsed}

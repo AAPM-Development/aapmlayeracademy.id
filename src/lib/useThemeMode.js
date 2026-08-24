@@ -10,7 +10,7 @@ function readStoredTheme() {
     // Storage can be unavailable in privacy-restricted browsers.
   }
 
-  return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+  return "light";
 }
 
 function applyTheme(mode) {
