@@ -62,7 +62,7 @@ function AcademyVideoPanel() {
         />
         <AppBrand
           mode="dark"
-          className="relative z-10 h-7 w-auto max-w-[140px] drop-shadow-[0_2px_12px_rgba(0,0,0,0.42)]"
+          className="relative z-10 h-12 w-auto max-w-[180px] drop-shadow-[0_4px_18px_rgba(0,0,0,0.58)]"
           alt="AAPM Layer Academy"
         />
       </div>
@@ -108,10 +108,10 @@ function LoginAuthLayout(props) {
   return (
     <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
       <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
-        <div className="absolute inset-x-6 top-7 flex justify-center sm:top-8 lg:inset-x-auto lg:left-12 lg:justify-start xl:left-16">
-          <AppBrand className="h-16 w-auto max-w-[260px]" />
-        </div>
-        <div className="w-full max-w-[420px] pt-10 lg:pt-0">
+        <div className="w-full max-w-[420px]">
+          <div className="mb-9 flex justify-center">
+            <AppBrand className="h-16 w-auto max-w-[260px]" />
+          </div>
           <div className="mb-9">
             <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl">{title}</h1>
             {subtitle && <p className="mt-3 max-w-sm text-base leading-7 text-muted-foreground">{subtitle}</p>}
