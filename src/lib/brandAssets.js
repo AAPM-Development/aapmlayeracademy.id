@@ -4,8 +4,8 @@ export const DEFAULT_BRAND_VARIANT = "logo";
 export const brandAssets = Object.freeze({
   academy: Object.freeze({
     logo: Object.freeze({
-      light: "/brand/academy/logo.svg",
-      dark: "/brand/academy/logo-dark.svg",
+      light: "/brand/academy/Academy_Main_Logo_Long.svg",
+      dark: "/brand/academy/Academy_Main_Logo_Long_For_Dark.svg",
     }),
     icon: Object.freeze({
       light: "/brand/academy/icon.svg",
@@ -14,12 +14,12 @@ export const brandAssets = Object.freeze({
   }),
   aapm: Object.freeze({
     logo: Object.freeze({
-      light: "/brand/aapm/logo.svg",
-      dark: "/brand/aapm/logo-dark.svg",
+      light: "/brand/aapm/Logo_AAPM_Main.svg",
+      dark: "/brand/aapm/Logo_AAPM_Main_Dark_Mode.svg",
     }),
     icon: Object.freeze({
-      light: "/brand/aapm/icon.svg",
-      dark: "/brand/aapm/icon-dark.svg",
+      light: "/brand/aapm/Icon_AAPM.svg",
+      dark: "/brand/aapm/Icon_AAPM_dark_mode.svg",
     }),
   }),
 });
