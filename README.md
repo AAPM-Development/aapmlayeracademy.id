@@ -75,3 +75,19 @@ Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.
 Base44 CLI command reference: [https://docs.base44.com/developers/references/cli/commands/introduction](https://docs.base44.com/developers/references/cli/commands/introduction)
 
 Support: [https://app.base44.com/support](https://app.base44.com/support)
+
+## cPanel staging deployment
+
+The `develop` branch deploys the committed Vite artifact in `dist/` to
+`staging.aapmlayeracademy.id`. Before pushing frontend changes, rebuild and
+include the artifact:
+
+```bash
+npm run build
+git add -f dist
+git commit -m "build: update staging artifact"
+git push origin develop
+```
+
+The cPanel Git repository is then updated to the new `develop` commit and its
+`Deploy HEAD Commit` action publishes `dist/` to the staging document root.
