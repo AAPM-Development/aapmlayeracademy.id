@@ -605,6 +605,83 @@
     padding: 0.15rem 0;
   }
 
+  .aapm-ai-companion-dock {
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    min-height: 7.25rem;
+    align-items: flex-end;
+    padding: 1.15rem 1.25rem 0.7rem;
+    background: linear-gradient(
+      to top,
+      hsl(var(--background)) 22%,
+      hsl(var(--background) / 0.94) 53%,
+      hsl(var(--background) / 0) 100%
+    );
+  }
+
+  .aapm-ai-companion-dock--compact {
+    min-height: 5.5rem;
+    padding: 0.7rem 1rem 0.5rem;
+  }
+
+  .aapm-ai-companion-dock__inner {
+    display: flex;
+    width: 100%;
+    max-width: 48rem;
+    align-items: flex-end;
+    gap: 0.65rem;
+    margin-inline: auto;
+  }
+
+  .aapm-ai-companion-dock__avatar {
+    margin-bottom: 0.1rem;
+  }
+
+  .aapm-ai-companion-dock--streaming .aapm-ai-companion-dock__avatar {
+    margin-bottom: 0.18rem;
+  }
+
+  .aapm-ai-companion-dock .aapm-ai-activity {
+    flex: 1;
+    max-width: 21rem;
+  }
+
+  .aapm-ai-panel,
+  .aapm-ai-panel * {
+    min-width: 0;
+  }
+
+  .aapm-ai-panel .aapm-ai-response,
+  .aapm-ai-panel .aapm-ai-response p,
+  .aapm-ai-panel .aapm-ai-response li {
+    overflow-wrap: anywhere;
+  }
+
+  .aapm-ai-panel img,
+  .aapm-ai-panel svg {
+    max-width: 100%;
+  }
+
+  @media (max-width: 639px) {
+    .aapm-ai-companion-dock {
+      min-height: 6.65rem;
+      padding-inline: 1rem;
+    }
+
+    .aapm-ai-companion-dock--compact {
+      min-height: 5.4rem;
+      padding-inline: 0.8rem;
+    }
+
+    .aapm-ai-companion-dock .aapm-ai-activity {
+      max-width: min(17.5rem, calc(100% - 3.25rem));
+    }
+  }
+
   .aapm-ai-stream-skeleton span {
     display: block;
     height: 0.35rem;

@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import AiStreamActivity from "@/components/ai/AiStreamActivity";
+import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import { Button, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useUserProgress } from "@/lib/useCourseData";
@@ -156,7 +156,7 @@ function MarkdownAnswer({ content }) {
   );
 }
 
-function AssistantMessage({ message, retryPrompt, onRetry, streamSteps, avatarState }) {
+function AssistantMessage({ message, retryPrompt, onRetry }) {
   const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
@@ -174,9 +174,6 @@ function AssistantMessage({ message, retryPrompt, onRetry, streamSteps, avatarSt
           </span>
         )}
       </div>
-      {message.streaming && (
-        <AiStreamActivity label={message.streamStatus} steps={streamSteps} avatarState={avatarState} />
-      )}
       {message.content && (
         <>
           <div
@@ -687,7 +684,7 @@ export default function AiAssistant() {
         </header>
         <div className="relative flex min-h-0 flex-1 flex-col">
           <ScrollArea className="min-h-0 flex-1">
-            <div className="mx-auto flex w-full max-w-3xl flex-col px-5 py-6 sm:px-8 sm:py-9">
+            <div className="mx-auto flex w-full max-w-3xl flex-col px-5 pb-28 pt-6 sm:px-8 sm:pb-32 sm:pt-9">
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
                   Memuat percakapan…
@@ -741,8 +738,6 @@ export default function AiAssistant() {
                       <AssistantMessage
                         key={message.id}
                         message={{ ...message, streamStatus }}
-                        streamSteps={streamSteps}
-                        avatarState={message.content ? "responding" : "thinking"}
                         retryPrompt={
                           message.fallback ? messages[index - 1]?.content : ""
                         }
@@ -755,6 +750,12 @@ export default function AiAssistant() {
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
+          <AiCompanionDock
+            streaming={isStreaming}
+            state={messages[messages.length - 1]?.content ? "responding" : "thinking"}
+            label={streamStatus}
+            steps={streamSteps}
+          />
         </div>
         <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto max-w-3xl">

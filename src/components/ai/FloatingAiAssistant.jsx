@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
-import AiStreamActivity from "@/components/ai/AiStreamActivity";
+import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import { Button, Switch } from "@/components/primitives";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
@@ -264,7 +264,7 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
-          className={`aapm-ai-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-[80] flex h-[min(74dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`aapm-ai-panel fixed inset-x-4 bottom-[calc(max(0.875rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -326,9 +326,9 @@ export default function FloatingAiAssistant() {
               </Button>
             </div>
           </header>
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-              <div className="flex min-h-full flex-col gap-4">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
+            <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4">
+              <div className="flex min-h-full min-w-0 flex-col gap-4">
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
                   <p className="text-sm font-semibold tracking-[-0.015em]">
@@ -387,7 +387,7 @@ export default function FloatingAiAssistant() {
                   ) : (
                     <article
                       key={message.id}
-                      className="max-w-full text-xs leading-5"
+                      className="min-w-0 max-w-full break-words text-xs leading-5"
                     >
                       <div className="mb-1.5 flex items-center gap-1.5 font-semibold">
                         <AapmIcon
@@ -402,14 +402,6 @@ export default function FloatingAiAssistant() {
                           </span>
                         )}
                       </div>
-                      {message.streaming && (
-                        <AiStreamActivity
-                          label={streamStatus}
-                          steps={streamSteps}
-                          compact
-                          avatarState={message.content ? "responding" : "thinking"}
-                        />
-                      )}
                       {message.content && (
                         <div
                           className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
@@ -442,10 +434,17 @@ export default function FloatingAiAssistant() {
               <div ref={endRef} />
               </div>
             </div>
+            <AiCompanionDock
+              compact
+              streaming={isStreaming}
+              state={messages[messages.length - 1]?.content ? "responding" : "thinking"}
+              label={streamStatus}
+              steps={streamSteps}
+            />
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
-                className="aapm-ai-history-sheet absolute inset-0 z-20 flex min-h-0 flex-col bg-background"
+                className="aapm-ai-history-sheet absolute inset-0 z-20 flex min-h-0 min-w-0 flex-col overflow-hidden bg-background"
               >
                 <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <div>
