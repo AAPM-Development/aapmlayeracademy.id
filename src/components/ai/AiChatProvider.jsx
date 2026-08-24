@@ -62,12 +62,6 @@ export function AiChatProvider({ children }) {
     }
   }, [isStreaming]);
 
-  useEffect(() => {
-    if (!isDraft && !activeConversationId && conversations.length > 0) {
-      selectConversation(conversations[0].id);
-    }
-  }, [activeConversationId, conversations, isDraft, selectConversation]);
-
   const startNewConversation = useCallback(() => {
     if (isStreaming) return;
     setIsDraft(true);

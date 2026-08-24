@@ -77,11 +77,14 @@ export default function AiAssistant() {
   const { data: farm = [] } = useFarmData();
   const { data: progress = [] } = useUserProgress();
   const { user } = useAuth();
-  const { conversations, conversationsLoading, activeConversationId, messages, isLoadingConversation, isStreaming, streamStatus, selectConversation, startNewConversation, deleteConversation, send } = useAiChat();
+  const { conversations, conversationsLoading, activeConversationId, messages, isDraft, isLoadingConversation, isStreaming, streamStatus, selectConversation, startNewConversation, deleteConversation, send } = useAiChat();
   const suggestions = useMemo(() => personalizedSuggestions({ farm, progress, user }), [farm, progress, user]);
   const contextLabel = includeFarm ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif` : 'Tanpa konteks KPI';
 
   useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [messages, isStreaming]);
+  useEffect(() => {
+    if (!isDraft && !activeConversationId && conversations.length > 0) selectConversation(conversations[0].id);
+  }, [activeConversationId, conversations, isDraft, selectConversation]);
 
   const submit = async (text = input) => {
     const message = text.trim();
