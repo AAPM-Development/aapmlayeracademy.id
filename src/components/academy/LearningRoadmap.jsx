@@ -1,20 +1,19 @@
 import React from "react";
-import { CheckCircle2, ChevronRight, Circle, LockKeyhole, Unlock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 import { LearningEmptyState } from "@/components/academy/LearningStates";
 import { cn } from "@/lib/utils";
 import { getLevelProgress, getModuleState, learningLevels } from "@/lib/academyData";
 
 function ModuleStatus({ state = "locked" } = {}) {
   const config = {
-    completed: { label: "Completed", icon: CheckCircle2, className: "bg-success/10 text-success" },
-    current: { label: "Current", icon: Circle, className: "bg-brand-orange/10 text-brand-orange" },
-    available: { label: "Available", icon: Unlock, className: "bg-tint-blue text-tint-blue-foreground" },
-    locked: { label: "Locked", icon: LockKeyhole, className: "bg-muted text-muted-foreground" },
-  }[state] || { label: "Locked", icon: LockKeyhole, className: "bg-muted text-muted-foreground" };
-  const Icon = config.icon;
-  return <span role="status" aria-label={`Status: ${config.label}`} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold", config.className)}><Icon className="h-3 w-3" aria-hidden="true" /> {config.label}</span>;
+    completed: { label: "Completed", icon: "check", className: "bg-success/10 text-success" },
+    current: { label: "Current", icon: "solar:record-circle-bold", className: "bg-brand-orange/10 text-brand-orange" },
+    available: { label: "Available", icon: "solar:lock-keyhole-minimalistic-unlocked-bold", className: "bg-tint-blue text-tint-blue-foreground" },
+    locked: { label: "Locked", icon: "lock", className: "bg-muted text-muted-foreground" },
+  }[state] || { label: "Locked", icon: "lock", className: "bg-muted text-muted-foreground" };
+  return <span role="status" aria-label={`Status: ${config.label}`} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold", config.className)}><AapmIcon name={config.icon} className="h-3 w-3" /> {config.label}</span>;
 }
 
 function ModuleRow({ module = null, state = "locked" } = {}) {
@@ -22,14 +21,14 @@ function ModuleRow({ module = null, state = "locked" } = {}) {
   const content = (
     <div className={cn("flex items-start gap-3 rounded-xl border p-3 transition-colors sm:items-center", state === "current" ? "border-brand-orange/35 bg-brand-orange/5" : state === "available" ? "border-tint-blue-border bg-tint-blue/45" : state === "locked" ? "cursor-not-allowed border-border bg-surface-subtle" : "border-border bg-surface-elevated", state !== "locked" && "hover:border-brand-green/35 hover:bg-brand-green/5")}>
       <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", state === "completed" ? "bg-success/10 text-success" : state === "current" ? "bg-brand-orange/10 text-brand-orange" : state === "available" ? "bg-tint-blue text-tint-blue-foreground" : "bg-muted text-muted-foreground")}>
-        {state === "completed" ? <CheckCircle2 className="h-4 w-4" /> : state === "locked" ? <LockKeyhole className="h-4 w-4" /> : module.moduleNumber}
+        {state === "completed" ? <AapmIcon name="check" className="h-4 w-4" /> : state === "locked" ? <AapmIcon name="lock" className="h-4 w-4" /> : module.moduleNumber}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2"><div className="line-clamp-2 break-words text-sm font-medium">{module.title}</div><ModuleStatus state={state} /></div>
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{module.summary}</p>
         <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground"><span>Modul {module.moduleNumber}</span><span>·</span><span>{module.category}</span></div>
       </div>
-      {state !== "locked" && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />}
+      {state !== "locked" && <AapmIcon name="chevronRight" className="mt-1 h-4 w-4 shrink-0 text-muted-foreground sm:mt-0" />}
     </div>
   );
   return state === "locked" ? <div aria-disabled="true" title="Selesaikan modul sebelumnya untuk membuka lesson ini.">{content}</div> : <Link to={`/modules/${module.moduleNumber}`} aria-current={state === "current" ? "step" : undefined} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{content}</Link>;

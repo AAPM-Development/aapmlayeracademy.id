@@ -1,7 +1,7 @@
 import React from "react";
-import { ArrowRight, ArrowUpRight, BarChart3, BookOpen, Calculator, CheckCircle2, ChevronRight, Clock3, Gauge, LineChart, PlayCircle, ShieldCheck, Sparkles, Target, Trophy, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, IconTile, Progress, Skeleton } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 import { getLevelProgress, learningLevels, TOTAL_MODULES } from "@/lib/academyData";
 
@@ -16,7 +16,7 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
             <h2 className="text-xl font-semibold tracking-tight">Semua modul sudah selesai.</h2>
             <p className="mt-1 text-sm text-muted-foreground">Tinjau kembali roadmap atau lanjutkan ke Final Exam.</p>
           </div>
-          <Button asChild className="shrink-0 bg-brand-green text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-green/90"><Link to="/final-exam">Buka Final Exam <ArrowRight /></Link></Button>
+          <Button asChild className="shrink-0 bg-brand-green text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-green/90"><Link to="/final-exam">Buka Final Exam <AapmIcon name="arrowRight" /></Link></Button>
         </CardContent>
       </Card>
     );
@@ -35,13 +35,13 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
             <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{module.title}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{module.summary}</p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Button asChild className="bg-brand-orange text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-orange/90"><Link to={`/modules/${module.moduleNumber}`}>{progress?.completed ? "Review lesson" : "Buka lesson"} <ArrowRight /></Link></Button>
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> Fokus berikutnya di roadmap</span>
+              <Button asChild className="bg-brand-orange text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-orange/90"><Link to={`/modules/${module.moduleNumber}`}>{progress?.completed ? "Review lesson" : "Buka lesson"} <AapmIcon name="arrowRight" /></Link></Button>
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><AapmIcon name="clock" className="h-3.5 w-3.5" /> Fokus berikutnya di roadmap</span>
             </div>
           </div>
           <div className="relative hidden h-24 w-24 shrink-0 items-center justify-center rounded-full border border-brand-orange/20 bg-brand-orange/5 text-brand-orange sm:flex">
             <div className="absolute inset-2 rounded-full border border-brand-orange/15" />
-            <PlayCircle className="relative h-9 w-9 transition-transform duration-300 group-hover:scale-110" />
+            <AapmIcon name="solar:play-circle-bold" className="relative h-9 w-9 transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
       </CardContent>
@@ -76,10 +76,10 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
       ? learningLevels[learningLevels.length - 1]
       : learningLevels[0];
   const metrics = [
-    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: CheckCircle2, tone: "green", surface: "border-tint-green-border bg-tint-green" },
-    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: TrendingUp, tone: "orange", surface: "border-tint-orange-border bg-tint-orange" },
-    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: Target, tone: "blue", surface: "border-tint-blue-border bg-tint-blue" },
-    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: Trophy, tone: "violet", surface: "border-tint-violet-border bg-tint-violet" },
+    { value: `${completed}/${total}`, label: "Modul selesai", detail: "Learning path", icon: "check", tone: "green", surface: "border-tint-green-border bg-tint-green" },
+    { value: `${coursePercent}%`, label: "Progress course", detail: "Ritme belajar", icon: "progress", tone: "orange", surface: "border-tint-orange-border bg-tint-orange" },
+    { value: `${average}%`, label: "Rata-rata nilai kuis", detail: `${scored.length} kuis tersimpan`, icon: "solar:target-bold-duotone", tone: "blue", surface: "border-tint-blue-border bg-tint-blue" },
+    { value: activeLevel?.name || "Foundation", label: "Level saat ini", detail: "Professional track", icon: "solar:cup-star-bold", tone: "violet", surface: "border-tint-violet-border bg-tint-violet" },
   ];
 
   return (
@@ -101,10 +101,10 @@ export function DashboardMetricStrip({ modules = [], progress = [], nextModule =
 }
 
 const dashboardTracks = [
-  { name: "Beginner", description: "Bangun fondasi flock dan ritme kerja yang konsisten.", levels: [1, 2, 3, 4, 5], tone: "green", icon: BookOpen },
-  { name: "Intermediate", description: "Hubungkan lingkungan, biosecurity, telur, dan KPI.", levels: [6, 7, 8, 9, 10, 11], tone: "blue", icon: ShieldCheck },
-  { name: "Advanced", description: "Kelola operasi dengan root cause analysis dan disiplin data.", levels: [12, 13], tone: "violet", icon: LineChart },
-  { name: "Expert", description: "Ambil keputusan lintas fungsi dan pimpin perbaikan farm.", levels: [14], tone: "slate", icon: Trophy },
+  { name: "Beginner", description: "Bangun fondasi flock dan ritme kerja yang konsisten.", levels: [1, 2, 3, 4, 5], tone: "green", icon: "course" },
+  { name: "Intermediate", description: "Hubungkan lingkungan, biosecurity, telur, dan KPI.", levels: [6, 7, 8, 9, 10, 11], tone: "blue", icon: "solar:shield-check-bold" },
+  { name: "Advanced", description: "Kelola operasi dengan root cause analysis dan disiplin data.", levels: [12, 13], tone: "violet", icon: "analytics" },
+  { name: "Expert", description: "Ambil keputusan lintas fungsi dan pimpin perbaikan farm.", levels: [14], tone: "slate", icon: "solar:cup-star-bold" },
 ];
 
 export function LearningTracks({ modules = [], progress = [] } = {}) {
@@ -123,7 +123,7 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Learning path</div>
           <h2 className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">Jalur pembelajaran</h2>
         </div>
-        <Link to="/modules" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Lihat semua <ChevronRight className="h-3.5 w-3.5" /></Link>
+        <Link to="/modules" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Lihat semua <AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {dashboardTracks.map((track) => {
@@ -140,7 +140,7 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
               <div className="flex items-start gap-3">
                 <IconTile icon={track.icon} tone={track.tone} size="md" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3"><h3 className={cn("text-base font-semibold", tone.label)}>{track.name}</h3><ArrowRight className={cn("h-4 w-4 transition-transform duration-300 group-hover:translate-x-1", tone.label)} /></div>
+                  <div className="flex items-center justify-between gap-3"><h3 className={cn("text-base font-semibold", tone.label)}>{track.name}</h3><AapmIcon name="arrowRight" className={cn("h-4 w-4 transition-transform duration-300 group-hover:translate-x-1", tone.label)} /></div>
                   <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">{track.description}</p>
                 </div>
               </div>
@@ -170,14 +170,14 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
             <CardTitle className="text-base">Learning progress</CardTitle>
             <CardDescription className="mt-1">Ritme belajar Anda di Academy.</CardDescription>
           </div>
-          <Gauge className="h-5 w-5 text-brand-green" />
+          <AapmIcon name="progress" className="h-5 w-5 text-brand-green" />
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
         {hasProgress ? <div className="flex items-end justify-between gap-3">
           <div className="text-3xl font-semibold tracking-tight">{percent}%</div>
           <div className="text-right text-xs text-muted-foreground">{completed}/{modules.length || TOTAL_MODULES} modul selesai</div>
-        </div> : <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4"><div className="text-sm font-medium text-foreground">Mulai dari lesson pertama</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Progress Anda akan muncul setelah menyelesaikan satu modul.</p><Link to="/modules" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka Learning Path <ArrowRight className="h-3.5 w-3.5" /></Link></div>}
+        </div> : <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4"><div className="text-sm font-medium text-foreground">Mulai dari lesson pertama</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Progress Anda akan muncul setelah menyelesaikan satu modul.</p><Link to="/modules" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka Learning Path <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div>}
         <Progress value={percent} className="mt-3 h-2 bg-muted [&>div]:bg-brand-green" />
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4">
           <div><div className="text-lg font-semibold">{average}%</div><div className="text-xs text-muted-foreground">Rata-rata kuis</div></div>
@@ -199,7 +199,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
             <CardTitle className="text-base">Learning journey</CardTitle>
             <CardDescription className="mt-1">14 level yang membentuk jalur kompetensi Anda.</CardDescription>
           </div>
-          <Link to="/modules" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Lihat path <ChevronRight className="h-3.5 w-3.5" /></Link>
+          <Link to="/modules" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Lihat path <AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Link>
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
@@ -212,7 +212,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
               <Link key={level.number} to="/modules" className="group rounded-xl border border-border p-3 transition-colors hover:border-brand-green/40 hover:bg-brand-green/5">
                 <div className="flex items-start gap-3">
                   <div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold", done ? "bg-success/15 text-success" : active ? "bg-brand-orange/15 text-brand-orange" : "bg-muted text-muted-foreground")}>
-                    {done ? <CheckCircle2 className="h-4 w-4" /> : level.number}
+                    {done ? <AapmIcon name="check" className="h-4 w-4" /> : level.number}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2"><div className="truncate text-sm font-medium">{level.name}</div><span className="text-[11px] text-muted-foreground">{stats.completed}/{stats.total || "—"}</span></div>
@@ -231,16 +231,16 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
 
 export function QuickToolGrid() {
   const tools = [
-    { to: "/calculators", label: "Farm Calculators", description: "Hitung indikator operasional.", icon: Calculator, tone: "orange" },
-    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: BarChart3, tone: "blue" },
-    { to: "/ai-assistant", label: "AI Farm Assistant", description: "Tanya dengan konteks farm.", icon: Sparkles, tone: "violet" },
+    { to: "/calculators", label: "Farm Calculators", description: "Hitung indikator operasional.", icon: "solar:calculator-bold-duotone", tone: "orange" },
+    { to: "/kpi", label: "Farm KPI", description: "Review data produksi.", icon: "analytics", tone: "blue" },
+    { to: "/ai-assistant", label: "AI Farm Assistant", description: "Tanya dengan konteks farm.", icon: "solar:stars-minimalistic-bold-duotone", tone: "violet" },
   ];
 
   return (
     <Card className="bg-card/95">
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3"><CardTitle className="text-base">Quick tools</CardTitle><CardDescription className="mt-1">Alat bantu saat Anda belajar.</CardDescription></CardHeader>
       <CardContent className="grid gap-2 p-5 pt-2 sm:p-6 sm:pt-2">
-      {tools.map((tool) => <Link key={tool.to} to={tool.to} className="group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:border-brand-green/30 hover:bg-surface-hover"><IconTile icon={tool.icon} tone={tool.tone} size="sm" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{tool.label}</div><div className="truncate text-xs text-muted-foreground">{tool.description}</div></div><ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link>)}
+      {tools.map((tool) => <Link key={tool.to} to={tool.to} className="group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:border-brand-green/30 hover:bg-surface-hover"><IconTile icon={tool.icon} tone={tool.tone} size="sm" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{tool.label}</div><div className="truncate text-xs text-muted-foreground">{tool.description}</div></div><AapmIcon name="chevronRight" className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link>)}
       </CardContent>
     </Card>
   );
@@ -256,19 +256,19 @@ export function DashboardWelcome({ user = null } = {}) {
       <div className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full border-[2px] border-white/10" />
       <div className="pointer-events-none absolute -bottom-20 right-1/4 h-40 w-40 rounded-full bg-[#ffbe30]/25 blur-2xl" />
       <div className="pointer-events-none absolute right-8 top-1/2 hidden w-48 -translate-y-1/2 rounded-2xl border border-white/20 bg-black/10 p-3 backdrop-blur-sm xl:block">
-        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70"><span>Farm cycle</span><ArrowUpRight className="h-3.5 w-3.5" /></div>
+        <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70"><span>Farm cycle</span><AapmIcon name="solar:arrow-right-up-bold" className="h-3.5 w-3.5" /></div>
         <div className="mt-3 grid grid-cols-3 gap-1.5">
           {cycle.map((phase) => <span key={phase} className="rounded-lg bg-white/15 px-1.5 py-2 text-center text-[10px] font-medium text-white/90">{phase}</span>)}
         </div>
         <div className="mt-3 text-right text-[10px] text-white/65">6 fase utama</div>
       </div>
       <div className="relative max-w-4xl">
-        <Badge variant="soft" className="border border-white/15 bg-white/20 text-xs font-semibold text-white shadow-sm backdrop-blur-sm"><Sparkles className="h-3.5 w-3.5" /> E-Course Professional</Badge>
+        <Badge variant="soft" className="border border-white/15 bg-white/20 text-xs font-semibold text-white shadow-sm backdrop-blur-sm"><AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-3.5 w-3.5" /> E-Course Professional</Badge>
         <h1 className="mt-5 max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-[2.35rem]">Layer Poultry Farm Management</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-white/85 sm:text-[0.95rem]">Dari pemula hingga expert — pelajari seluruh siklus produksi ayam petelur komersial: DOC → Brooding → Growing → Pre-lay → Peak → Post-peak → Molting → Spent Hen, dengan kombinasi video, materi baca, simulasi interaktif, kuis, case study, dan sertifikasi.</p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button asChild className="bg-white text-[#b94716] shadow-sm hover:-translate-y-0.5 hover:bg-white/90"><Link to="/modules"><BookOpen /> Mulai belajar</Link></Button>
-          <Button asChild variant="ghost" className="border border-white/20 bg-white/15 text-white shadow-none hover:bg-white/25 hover:text-white"><Link to="/ai-assistant"><Sparkles /> AI Farm Assistant</Link></Button>
+          <Button asChild className="bg-white text-[#b94716] shadow-sm hover:-translate-y-0.5 hover:bg-white/90"><Link to="/modules"><AapmIcon name="course" /> Mulai belajar</Link></Button>
+          <Button asChild variant="ghost" className="border border-white/20 bg-white/15 text-white shadow-none hover:bg-white/25 hover:text-white"><Link to="/ai-assistant"><AapmIcon name="solar:stars-minimalistic-bold-duotone" /> AI Farm Assistant</Link></Button>
         </div>
         <div className="mt-5 flex items-center gap-2 text-xs text-white/75"><span className="h-1.5 w-1.5 rounded-full bg-white/80" /> Selamat datang, {name}. Satu keputusan lebih baik setiap sesi.</div>
       </div>

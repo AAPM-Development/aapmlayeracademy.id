@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";
 
 export default function ResetPassword() {
@@ -79,7 +79,7 @@ export default function ResetPassword() {
         <Button type="submit" className="h-12 w-full rounded-xl font-medium shadow-[var(--card-shadow)] hover:-translate-y-0.5" disabled={loading}>
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
               Resetting...
             </>
           ) : (

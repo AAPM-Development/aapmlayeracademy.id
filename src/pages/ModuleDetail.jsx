@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { FileText, Lightbulb, PlayCircle, Target } from "lucide-react";
 import { Card, CardContent, useToast } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 import LearningFocusShell from "@/components/layout/LearningFocusShell";
 import {
   LessonChecklist,
@@ -86,20 +86,20 @@ export default function ModuleDetail() {
       footer={<div className="mt-8 lg:pr-[292px]">{saveProgress.isError && <div className="mb-4 rounded-xl border border-danger/25 bg-danger/5 p-4 text-sm text-danger" role="alert">Progress belum tersimpan. Silakan coba tombol selesai lagi.</div>}<LessonNavigation previous={previous} next={next} onComplete={markComplete} completed={Boolean(moduleProgress?.completed)} saving={saveProgress.isPending} /></div>}
     >
       <div className="space-y-10">
-        <LessonSection id="content" title="Materi" icon={FileText}>
+        <LessonSection id="content" title="Materi" icon="solar:file-text-bold">
           <div className="markdown-body"><ReactMarkdown>{module.content || "Konten modul sedang disiapkan."}</ReactMarkdown></div>
         </LessonSection>
 
-        <LessonSection id="video" title="Video lesson" icon={PlayCircle}>
+        <LessonSection id="video" title="Video lesson" icon="solar:play-circle-bold">
           <LessonMedia module={module} />
           <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Script instruktur</div>{module.videoScript || "Script video sedang disiapkan."}</CardContent></Card>
         </LessonSection>
 
-        <LessonSection id="objectives" title="Tujuan & insight" icon={Target}>
-          <div className="grid gap-6 sm:grid-cols-2"><div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon={Target} /></div><div><div className="mb-3 text-sm font-semibold"><Lightbulb className="mr-1 inline h-4 w-4 text-brand-orange" /> Key takeaways</div><LessonInsightList items={module.keyTakeaways || []} /></div></div>
+        <LessonSection id="objectives" title="Tujuan & insight" icon="solar:target-bold-duotone">
+          <div className="grid gap-6 sm:grid-cols-2"><div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon="solar:target-bold-duotone" /></div><div><div className="mb-3 text-sm font-semibold"><AapmIcon name="solar:lightbulb-bolt-bold-duotone" className="mr-1 inline h-4 w-4 text-brand-orange" /> Key takeaways</div><LessonInsightList items={module.keyTakeaways || []} /></div></div>
         </LessonSection>
 
-        <LessonSection id="practical" title="Praktik" icon={Target}>
+        <LessonSection id="practical" title="Praktik" icon="solar:clipboard-check-bold-duotone">
           <Card className="border-brand-green/20 bg-brand-green/5 shadow-none"><CardContent className="p-5"><div className="mb-3 text-sm font-semibold">Practical assignment</div><p className="text-sm leading-6 text-muted-foreground">{module.practicalAssignment || "Tugas praktik untuk modul ini akan ditampilkan di sini."}</p>{module.checklist?.length > 0 && <div className="mt-5 border-t border-brand-green/15 pt-5"><div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-green">Checklist observasi</div><LessonChecklist items={module.checklist} /></div>}</CardContent></Card>
         </LessonSection>
       </div>

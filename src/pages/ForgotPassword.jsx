@@ -4,8 +4,8 @@ import { nativeApi } from "@/api/nativeClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import AapmIcon from "@/components/icons/AapmIcon";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -31,12 +31,12 @@ export default function ForgotPassword() {
 
   return (
     <AuthLayout
-      icon={Mail}
+      iconName="mail"
       title="Reset password"
       subtitle="We'll send you a link to reset it"
       footer={
         <Link to="/login" className="text-primary font-medium hover:underline">
-          <ArrowLeft className="w-3 h-3 inline mr-1" />Back to log in
+          <AapmIcon name="arrowLeft" className="mr-1 inline h-3 w-3" />Back to log in
         </Link>
       }
     >
@@ -54,7 +54,7 @@ export default function ForgotPassword() {
           <div className="space-y-2">
             <Label htmlFor="email" className="text-xs font-semibold text-foreground">Email address</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+              <AapmIcon name="mail" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -71,7 +71,7 @@ export default function ForgotPassword() {
           <Button type="submit" className="h-12 w-full rounded-xl font-medium shadow-[var(--card-shadow)] hover:-translate-y-0.5" disabled={loading}>
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
                 Sending...
               </>
             ) : (

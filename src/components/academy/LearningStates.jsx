@@ -1,7 +1,7 @@
 import React from "react";
-import { AlertCircle, BookOpen, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button, Card, CardContent, IconTile, Skeleton } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 
 export function LearningLoading({ label = "Memuat pengalaman belajar...", lines = 3 } = {}) {
   return (
@@ -32,14 +32,14 @@ export function LearningErrorState({ title = "Learning data belum tersedia", des
   return (
     <Card className="border-danger/25 bg-danger/5 shadow-none" role="alert">
       <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-        <IconTile icon={AlertCircle} tone="orange" size="md" />
+        <IconTile icon="alert" tone="orange" size="md" />
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold text-foreground">{title}</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
         {onRetry && (
           <Button type="button" variant="outline" onClick={onRetry} className="shrink-0">
-            <RefreshCw /> Coba lagi
+            <AapmIcon name="loading" /> Coba lagi
           </Button>
         )}
       </CardContent>
@@ -51,7 +51,7 @@ export function LearningEmptyState({ title = "Belum ada materi", description = "
   return (
     <Card className="border-dashed shadow-none">
       <CardContent className="flex flex-col items-center p-8 text-center sm:p-10">
-        <IconTile icon={BookOpen} tone="green" size="lg" />
+        <IconTile icon="course" tone="green" size="lg" />
         <h2 className="mt-4 text-lg font-semibold text-foreground">{title}</h2>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
         {actionLabel && actionTo && (

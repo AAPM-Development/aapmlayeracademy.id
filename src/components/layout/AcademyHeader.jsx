@@ -1,7 +1,7 @@
 import React from "react";
-import { Menu, Moon, Sun } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 import { getNavigationMeta } from "./academyNavigation";
 
 export default function AcademyHeader({
@@ -24,7 +24,7 @@ export default function AcademyHeader({
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
           aria-label="Buka navigasi"
         >
-          <Menu className="h-5 w-5" />
+          <AapmIcon name="menu" className="h-5 w-5" />
         </button>
         <div className="min-w-0">
           <div className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">{page.group}</div>
@@ -38,7 +38,7 @@ export default function AcademyHeader({
           Academy workspace
         </Badge>
         <Button type="button" variant="ghost" size="icon" onClick={onToggleTheme} aria-label={themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}>
-          {themeMode === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <AapmIcon name={themeMode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

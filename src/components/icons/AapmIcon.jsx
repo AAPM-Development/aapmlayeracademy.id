@@ -14,12 +14,33 @@ export const aapmIconSources = Object.freeze({
   analytics: "solar:chart-square-outline",
   certificate: "solar:verified-check-bold",
   media: "solar:gallery-wide-bold",
+  menu: "solar:list-bold",
+  chevronLeft: "solar:alt-arrow-left-linear",
+  chevronRight: "solar:alt-arrow-right-linear",
+  arrowLeft: "solar:alt-arrow-left-linear",
+  arrowRight: "solar:alt-arrow-right-linear",
+  logout: "solar:logout-3-bold",
+  progress: "solar:chart-square-outline",
+  themeLight: "solar:sun-2-bold-duotone",
+  themeDark: "solar:moon-bold-duotone",
+  lock: "solar:lock-password-outline",
+  mail: "solar:letter-bold",
+  eye: "solar:eye-bold",
+  eyeOff: "solar:eye-closed-bold",
+  loading: "solar:restart-bold",
+  add: "solar:add-circle-bold",
+  search: "solar:magnifer-bold",
+  alert: "solar:danger-triangle-bold",
+  check: "solar:check-circle-bold",
+  clock: "solar:clock-circle-bold",
+  reorder: "solar:sort-vertical-bold-duotone",
+  fileCheck: "solar:file-check-bold-duotone",
 });
 
 export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
 
 export default function AapmIcon({ name = "dashboard", className, alt = "", ...props }) {
-  const icon = aapmIconSources[name] || aapmIconSources.dashboard;
+  const icon = aapmIconSources[name] || (name.includes(":") ? name : aapmIconSources.dashboard);
 
   return (
     <IconifyIcon

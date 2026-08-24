@@ -1,7 +1,7 @@
 import React from "react";
-import { Layers } from "lucide-react";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
+import AapmIcon from "@/components/icons/AapmIcon";
 import LearningRoadmap from "@/components/academy/LearningRoadmap";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useUserProgress } from "@/lib/useCourseData";
@@ -29,7 +29,7 @@ export default function Modules() {
 
   return (
     <ContentContainer>
-      <PageHeader eyebrow="Learning path" title="Jalur pembelajaran" description="22 modul dalam 14 learning level. Ikuti status setiap modul dari current hingga completed." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><Layers className="h-3.5 w-3.5 text-brand-green" /> 22 modules · 14 levels</div>} />
+      <PageHeader eyebrow="Learning path" title="Jalur pembelajaran" description="22 modul dalam 14 learning level. Ikuti status setiap modul dari current hingga completed." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><AapmIcon name="modules" className="h-3.5 w-3.5 text-brand-green" /> 22 modules · 14 levels</div>} />
       {isError ? (
         <LearningErrorState
           title="Learning Path belum dapat dimuat"

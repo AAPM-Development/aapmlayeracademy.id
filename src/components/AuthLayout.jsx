@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import AppBrand from "@/components/AppBrand";
-import { IconTile } from "@/components/ui/icon-tile";
+import AapmIcon from "@/components/icons/AapmIcon";
 
 const academyInsights = [
   "Di balik hasil yang konsisten, ada keputusan kecil yang diamati, dicatat, dan dijalankan dengan disiplin.",
@@ -81,7 +81,7 @@ function AcademyVideoPanel() {
 
 /** @param {any} props */
 function DefaultAuthLayout(props) {
-  const { title, subtitle, footer, children, icon: PageIcon = null } = props;
+  const { title, subtitle, footer, children, iconName = null } = props;
   return (
     <div className="auth-ambient flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
@@ -89,7 +89,7 @@ function DefaultAuthLayout(props) {
           <div className="mb-7 flex justify-center">
             <AppBrand className="h-12 w-auto max-w-[220px]" />
           </div>
-          {PageIcon && <div className="mb-5 flex justify-center"><IconTile icon={PageIcon} tone="green" size="lg" /></div>}
+          {iconName && <div className="mb-5 flex justify-center"><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-tint-green text-tint-green-foreground"><AapmIcon name={iconName} className="h-6 w-6" /></div></div>}
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground">{title}</h1>
           {subtitle && <p className="mt-3 text-sm leading-6 text-muted-foreground">{subtitle}</p>}
         </div>

@@ -4,8 +4,8 @@ import { nativeApi } from "@/api/nativeClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
@@ -68,7 +68,7 @@ export default function Register() {
         <div className="space-y-2">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">Email</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <AapmIcon name="mail" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="email"
               type="email"
@@ -102,7 +102,7 @@ export default function Register() {
         <Button type="submit" className="h-12 w-full rounded-xl font-medium shadow-[var(--card-shadow)] hover:-translate-y-0.5" disabled={loading}>
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
               Creating account...
             </>
           ) : (

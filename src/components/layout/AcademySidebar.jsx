@@ -1,8 +1,8 @@
 import React from "react";
-import { ChevronLeft, ChevronRight, LogOut, TrendingUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
-import { Badge, IconTile } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
+import { Badge } from "@/components/primitives";
 import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
 import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
@@ -31,7 +31,7 @@ export default function AcademySidebar({
             className={cn("inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "absolute -right-3 top-5 z-10 border bg-background shadow-sm")}
             aria-label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            <AapmIcon name={collapsed ? "chevronRight" : "chevronLeft"} className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -48,7 +48,7 @@ export default function AcademySidebar({
           ) : (
             <>
               <div className="relative flex items-start gap-2.5">
-                <IconTile icon={TrendingUp} tone="orange" size="sm" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-tint-orange-foreground"><AapmIcon name="progress" className="h-4 w-4" /></div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="font-semibold text-foreground">Learning progress</span>
@@ -71,7 +71,6 @@ export default function AcademySidebar({
             {!collapsed && <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{group.label}</div>}
             <div className="space-y-1">
               {group.items.map((item) => {
-                const Icon = item.icon;
                 return (
                   <NavLink
                     key={item.to}
@@ -85,7 +84,7 @@ export default function AcademySidebar({
                       isActive ? "bg-brand-green/10 font-semibold text-brand-green shadow-sm ring-1 ring-brand-green/10" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <AapmIcon name={item.icon} className="h-4 w-4 shrink-0" />
                     {!collapsed && <span className="truncate">{item.label}</span>}
                     {!collapsed && item.to === "/modules" && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-orange opacity-0 transition-opacity group-[.active]:opacity-100" />}
                   </NavLink>
@@ -114,7 +113,7 @@ export default function AcademySidebar({
             className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "hidden")}
             aria-label="Keluar"
           >
-            <LogOut className="h-4 w-4" />
+            <AapmIcon name="logout" className="h-4 w-4" />
           </button>
         </div>
       </div>

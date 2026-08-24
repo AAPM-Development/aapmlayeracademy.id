@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Bot, User, Loader2, Stethoscope } from 'lucide-react';
+import AapmIcon from '@/components/icons/AapmIcon';
 import { useAiAssistant, useFarmData } from '@/lib/useCourseData';
 
 const suggestions = [
@@ -43,7 +43,7 @@ export default function AiAssistant() {
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 flex flex-col h-[calc(100vh-1px)] lg:h-screen">
       <div className="flex items-center gap-2.5 mb-1">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-orange text-white">
-          <Sparkles className="h-5 w-5" />
+          <AapmIcon name="solar:stars-minimalistic-bold-duotone" className="h-5 w-5" />
         </div>
         <div>
           <h1 className="text-lg font-bold leading-tight">AI Layer Farm Assistant</h1>
@@ -62,7 +62,7 @@ export default function AiAssistant() {
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${m.role === 'user' ? 'bg-sky-100 text-sky-700' : 'bg-brand-orange text-white'}`}>
-              {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+              {m.role === 'user' ? <AapmIcon name="solar:user-rounded-bold" className="h-4 w-4" /> : <AapmIcon name="solar:chat-round-dots-bold" className="h-4 w-4" />}
             </div>
             <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-line ${m.role === 'user' ? 'bg-amber-600 text-white' : 'bg-muted/50'}`}>
               {m.content}
@@ -72,10 +72,10 @@ export default function AiAssistant() {
         {ai.isPending && (
           <div className="flex gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange text-white">
-              <Bot className="h-4 w-4" />
+              <AapmIcon name="solar:chat-round-dots-bold" className="h-4 w-4" />
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-2xl px-4 py-2.5">
-              <Loader2 className="h-4 w-4 animate-spin" /> Menganalisis…
+              <AapmIcon name="loading" className="h-4 w-4 animate-spin" /> Menganalisis…
             </div>
           </div>
         )}
@@ -101,12 +101,12 @@ export default function AiAssistant() {
           className="flex-1 bg-transparent text-sm outline-none py-1.5"
         />
         <button onClick={() => send()} disabled={ai.isPending || !input.trim()} className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-600 text-white disabled:opacity-40 hover:bg-amber-700">
-          <Send className="h-4 w-4" />
+          <AapmIcon name="solar:plain-2-bold" className="h-4 w-4" />
         </button>
       </div>
 
       <div className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground">
-        <Stethoscope className="h-3 w-3" /> Untuk diagnosis penyakit & dosis obat, selalu konsultasi dokter hewan.
+        <AapmIcon name="solar:medical-kit-bold" className="h-3 w-3" /> Untuk diagnosis penyakit & dosis obat, selalu konsultasi dokter hewan.
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
 
+import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 const iconTileVariants = cva(
@@ -29,12 +30,13 @@ const iconTileVariants = cva(
 );
 
 /** @type {any} */
-const IconTile = React.forwardRef(({ className, icon: Icon, tone, size, ...props } = {}, ref) => {
-  if (!Icon) return null;
+const IconTile = React.forwardRef(({ className, icon, tone, size, ...props } = {}, ref) => {
+  if (!icon) return null;
+  const isIconifyName = typeof icon === "string";
 
   return (
     <span ref={ref} className={cn(iconTileVariants({ tone, size, className }))} {...props}>
-      <Icon aria-hidden="true" />
+      {isIconifyName ? <AapmIcon name={icon} /> : React.createElement(icon, { "aria-hidden": true })}
     </span>
   );
 });

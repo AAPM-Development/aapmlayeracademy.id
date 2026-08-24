@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { PanelRight } from "lucide-react";
 import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 const LearningSheetContent = /** @type {any} */ (SheetContent);
@@ -15,7 +15,7 @@ export default function LearningFocusShell({ header = null, sidebar = null, chil
       {header}
       {sidebar && <div className="mt-6 lg:hidden">
         <Button type="button" variant="soft" className="w-full justify-between" aria-expanded={mapOpen} aria-controls="mobile-lesson-map" onClick={() => setMapOpen(true)}>
-          <span className="inline-flex items-center gap-2"><PanelRight className="h-4 w-4" /> Buka lesson map</span>
+          <span className="inline-flex items-center gap-2"><AapmIcon name="solar:sidebar-minimalistic-bold-duotone" className="h-4 w-4" /> Buka lesson map</span>
           <span className="text-xs text-muted-foreground">Navigasi materi</span>
         </Button>
         <Sheet open={mapOpen} onOpenChange={setMapOpen}>

@@ -4,8 +4,8 @@ import { nativeApi } from "@/api/nativeClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
@@ -111,7 +111,7 @@ export default function Login() {
         >
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
               Signing in…
             </>
           ) : (

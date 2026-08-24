@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Calculator, Ruler, TrendingDown, DollarSign, Wind, Droplets, Egg, Gauge } from 'lucide-react';
+import AapmIcon from '@/components/icons/AapmIcon';
 
 const tools = [
-  { id: 'fcr', name: 'FCR', icon: Gauge },
-  { id: 'eggmass', name: 'Egg Mass', icon: Egg },
-  { id: 'uniformity', name: 'Uniformity', icon: Ruler },
-  { id: 'mortality', name: 'Mortality', icon: TrendingDown },
-  { id: 'waterfeed', name: 'Water/Feed Ratio', icon: Droplets },
-  { id: 'ventilation', name: 'Ventilasi', icon: Wind },
-  { id: 'roi', name: 'ROI & Break Even', icon: DollarSign },
+  { id: 'fcr', name: 'FCR', icon: 'solar:chart-square-outline' },
+  { id: 'eggmass', name: 'Egg Mass', icon: 'solar:egg-bold-duotone' },
+  { id: 'uniformity', name: 'Uniformity', icon: 'solar:ruler-bold-duotone' },
+  { id: 'mortality', name: 'Mortality', icon: 'solar:graph-down-bold-duotone' },
+  { id: 'waterfeed', name: 'Water/Feed Ratio', icon: 'solar:waterdrops-bold-duotone' },
+  { id: 'ventilation', name: 'Ventilasi', icon: 'solar:wind-bold-duotone' },
+  { id: 'roi', name: 'ROI & Break Even', icon: 'solar:wad-of-money-bold' },
 ];
 
 export default function Calculators() {
@@ -17,13 +17,12 @@ export default function Calculators() {
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Calculator className="h-6 w-6 text-amber-600" /> Kalkulator Interaktif</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2"><AapmIcon name="solar:calculator-bold-duotone" className="h-6 w-6 text-amber-600" /> Kalkulator Interaktif</h1>
         <p className="text-sm text-muted-foreground mt-1">Masukkan data farm Anda dan sistem menghitung KPI secara otomatis.</p>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
         {tools.map(t => {
-          const Icon = t.icon;
           return (
             <button
               key={t.id}
@@ -32,7 +31,7 @@ export default function Calculators() {
                 active === t.id ? 'bg-amber-600 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/70'
               }`}
             >
-              <Icon className="h-3.5 w-3.5" /> {t.name}
+              <AapmIcon name={t.icon} className="h-3.5 w-3.5" /> {t.name}
             </button>
           );
         })}

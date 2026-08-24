@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React from "react";
-import { AlertCircle, LoaderCircle } from "lucide-react";
 import { Button, Surface } from "@/components/primitives";
+import AapmIcon from "@/components/icons/AapmIcon";
 
 export function AdminPageFrame({ eyebrow = "Administration", title, description, actions, children }) {
   return (
@@ -13,11 +13,11 @@ export function AdminPageFrame({ eyebrow = "Administration", title, description,
 }
 
 export function AdminLoading({ label = "Memuat data workspace…" }) {
-  return <Surface variant="muted" className="flex min-h-52 items-center justify-center gap-3 p-6 text-sm text-muted-foreground"><LoaderCircle className="h-5 w-5 animate-spin text-brand-green" />{label}</Surface>;
+  return <Surface variant="muted" className="flex min-h-52 items-center justify-center gap-3 p-6 text-sm text-muted-foreground"><AapmIcon name="loading" className="h-5 w-5 animate-spin text-brand-green" />{label}</Surface>;
 }
 
 export function AdminError({ error, onRetry }) {
-  return <Surface tone="orange" className="flex min-h-52 flex-col items-center justify-center p-6 text-center"><AlertCircle className="h-6 w-6 text-tint-orange-foreground" /><div className="mt-3 text-sm font-semibold">Data admin belum dapat dimuat</div><p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{error?.message || "Terjadi kendala saat mengambil data native."}</p>{onRetry && <Button type="button" variant="outline" className="mt-4" onClick={onRetry}>Coba lagi</Button>}</Surface>;
+  return <Surface tone="orange" className="flex min-h-52 flex-col items-center justify-center p-6 text-center"><AapmIcon name="alert" className="h-6 w-6 text-tint-orange-foreground" /><div className="mt-3 text-sm font-semibold">Data admin belum dapat dimuat</div><p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{error?.message || "Terjadi kendala saat mengambil data native."}</p>{onRetry && <Button type="button" variant="outline" className="mt-4" onClick={onRetry}>Coba lagi</Button>}</Surface>;
 }
 
 export function AdminUnavailable({ title = "Belum tersedia", description = "Kemampuan ini belum didukung oleh API native." }) {

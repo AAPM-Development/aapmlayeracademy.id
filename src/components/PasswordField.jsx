@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import AapmIcon from "@/components/icons/AapmIcon";
 
 export default function PasswordField({
   id,
@@ -20,7 +20,7 @@ export default function PasswordField({
     <div className="space-y-2">
       <Label htmlFor={id} className="text-xs font-semibold text-foreground">{label}</Label>
       <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+        <AapmIcon name="lock" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={id}
           type={visible ? "text" : "password"}
@@ -40,7 +40,7 @@ export default function PasswordField({
           aria-label={visible ? "Sembunyikan password" : "Tampilkan password"}
           aria-pressed={visible}
         >
-          {visible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+          <AapmIcon name={visible ? "eyeOff" : "eye"} className="h-4 w-4" />
         </button>
       </div>
     </div>
