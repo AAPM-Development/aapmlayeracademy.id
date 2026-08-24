@@ -14,12 +14,12 @@ export const brandAssets = Object.freeze({
   }),
   aapm: Object.freeze({
     logo: Object.freeze({
-      light: "/brand/aapm/Logo_AAPM_Main.svg",
-      dark: "/brand/aapm/Logo_AAPM_Main_Dark_Mode.svg",
+      light: "/brand/aapm/logo_long.svg",
+      dark: "/brand/aapm/logo_long_dark.svg",
     }),
     icon: Object.freeze({
-      light: "/brand/aapm/Icon_AAPM.svg",
-      dark: "/brand/aapm/Icon_AAPM_dark_mode.svg",
+      light: "/brand/aapm/logo_main.svg",
+      dark: "/brand/aapm/logo_main_dark.svg",
     }),
   }),
 });

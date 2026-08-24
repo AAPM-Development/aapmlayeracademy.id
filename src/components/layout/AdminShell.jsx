@@ -11,9 +11,9 @@ import AdminNavigation from "@/components/admin/AdminNavigation";
 function AdminSidebar({ onNavigate = () => {} }) {
   return (
     <aside className="flex h-full w-[264px] flex-col border-r border-[hsl(var(--surface-border))] bg-surface-subtle">
-      <Link to="/admin" onClick={onNavigate} className="flex h-[72px] items-center gap-3 border-b border-[hsl(var(--surface-border))] px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <AppBrand product="aapm" variant="icon" className="h-9 w-9" />
-        <div><div className="text-sm font-semibold tracking-tight">AAPM Admin</div><div className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Academy workspace</div></div>
+      <Link to="/admin" onClick={onNavigate} className="flex h-[84px] flex-col justify-center gap-1.5 border-b border-[hsl(var(--surface-border))] px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <AppBrand product="aapm" variant="logo" className="h-auto w-[150px] max-w-full" />
+        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Admin workspace</span>
       </Link>
       <div className="min-h-0 flex-1 overflow-y-auto"><AdminNavigation onNavigate={onNavigate} /></div>
       <div className="border-t border-[hsl(var(--surface-border))] p-4 text-xs leading-5 text-muted-foreground">Data dan kontrol hanya tampil jika didukung oleh API native.</div>
