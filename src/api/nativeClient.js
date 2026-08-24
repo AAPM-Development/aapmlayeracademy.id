@@ -43,6 +43,52 @@ async function request(path, options = {}) {
   return data;
 }
 
+async function stream(path, body, onEvent) {
+  const response = await fetch(`${API_ROOT}${path}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
+      ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    let payload = null;
+    try { payload = await response.json(); } catch { payload = null; }
+    const error = payload?.error || {};
+    throw new ApiError(error.message || 'Permintaan streaming gagal.', response.status, error.code);
+  }
+  if (!response.body) {
+    throw new ApiError('Browser tidak mendukung respons streaming.', 0, 'stream_unavailable');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const dispatch = (block) => {
+    const lines = block.split('\n');
+    const event = lines.find((line) => line.startsWith('event:'))?.slice(6).trim() || 'message';
+    const data = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\n');
+    if (!data) return;
+    try { onEvent?.({ event, data: JSON.parse(data) }); } catch { /* ignore malformed stream events */ }
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done }).replace(/\r\n/g, '\n');
+    let boundary = buffer.indexOf('\n\n');
+    while (boundary >= 0) {
+      dispatch(buffer.slice(0, boundary));
+      buffer = buffer.slice(boundary + 2);
+      boundary = buffer.indexOf('\n\n');
+    }
+    if (done) break;
+  }
+}
+
 const json = (body) => ({ method: 'POST', body: JSON.stringify(body) });
 
 export const nativeApi = {
@@ -99,6 +145,7 @@ export const nativeApi = {
   },
   ai: {
     assistant: ({ message, farmContext }) => request('/ai-assistant', json({ message, farmContext })),
+    stream: ({ message, farmContext, onEvent }) => stream('/ai-assistant/stream', { message, farmContext }, onEvent),
   },
   admin: {
     overview: () => request('/admin/overview'),

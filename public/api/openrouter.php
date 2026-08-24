@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Filename kept for compatible deployments. This implements the generic provider layer.
 const AAPM_AI_DEFAULT_PROVIDER = 'openrouter';
-const AAPM_AI_DEFAULT_MODEL = 'nvidia/nemotron-3.5-lightning:free';
+const AAPM_AI_DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
 const AAPM_AI_MAX_TOKENS = 700;
 
 function app_setting_get(string $key, string $default = ''): string
@@ -307,7 +307,7 @@ function ai_openai_compatible_completion(array $settings, string $apiKey, string
     if ($settings['provider'] === 'openrouter') {
         // Reasoning-capable free models may expose an intermediate trace.
         // OpenRouter suppresses that trace while retaining the final answer.
-        $body['reasoning'] = ['exclude' => true];
+        $body['reasoning'] = ['effort' => 'none', 'exclude' => true];
     }
     $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions', $headers, $body, (string) $settings['providerLabel']);
     return ai_openai_content($decoded, (string) $settings['providerLabel']);
@@ -351,6 +351,133 @@ function ai_provider_completion(array $settings, string $apiKey, string $systemP
     }
 
     return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt);
+}
+
+function ai_sse_start(): void
+{
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    if (function_exists('apache_setenv')) {
+        @apache_setenv('no-gzip', '1');
+    }
+    @ini_set('zlib.output_compression', '0');
+    header('Content-Type: text/event-stream; charset=utf-8');
+    header('Cache-Control: no-cache, no-transform');
+    header('Connection: keep-alive');
+    header('X-Accel-Buffering: no');
+}
+
+function ai_sse_emit(string $event, array $payload = []): void
+{
+    echo 'event: ' . preg_replace('/[^a-z_-]/i', '', $event) . "\n";
+    echo 'data: ' . json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n\n";
+    flush();
+}
+
+function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): void
+{
+    $headers = ['Authorization: Bearer ' . $apiKey, 'X-OpenRouter-Title: AAPM Layer Academy'];
+    $origin = app_base_url();
+    if ($origin !== '') {
+        $headers[] = 'HTTP-Referer: ' . $origin;
+    }
+    $payload = json_encode([
+        'model' => $settings['model'],
+        'messages' => [['role' => 'system', 'content' => $systemPrompt], ['role' => 'user', 'content' => $userPrompt]],
+        'temperature' => 0.3,
+        'max_tokens' => AAPM_AI_MAX_TOKENS,
+        'stream' => true,
+        // Only public output is sent to the browser. Provider reasoning is never relayed.
+        'reasoning' => ['effort' => 'none', 'exclude' => true],
+    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    if (!is_string($payload) || !function_exists('curl_init')) {
+        throw new RuntimeException('Streaming provider AI belum tersedia.');
+    }
+
+    $lineBuffer = '';
+    $receivedText = false;
+    $streamError = '';
+    $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions');
+    curl_setopt_array($handle, [
+        CURLOPT_RETURNTRANSFER => false,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 70,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_USERAGENT => 'AAPM-Layer-Academy/1.0',
+        CURLOPT_HTTPHEADER => array_merge(['Accept: text/event-stream', 'Content-Type: application/json'], $headers),
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$streamError): int {
+            $lineBuffer .= str_replace("\r\n", "\n", $chunk);
+            while (($lineEnd = strpos($lineBuffer, "\n")) !== false) {
+                $line = trim(substr($lineBuffer, 0, $lineEnd));
+                $lineBuffer = substr($lineBuffer, $lineEnd + 1);
+                if (strpos($line, 'data:') !== 0) {
+                    continue;
+                }
+                $data = trim(substr($line, 5));
+                if ($data === '' || $data === '[DONE]') {
+                    continue;
+                }
+                $decoded = json_decode($data, true);
+                if (!is_array($decoded)) {
+                    continue;
+                }
+                $error = trim((string) ($decoded['error']['message'] ?? ''));
+                if ($error !== '') {
+                    $streamError = $error;
+                    continue;
+                }
+                $content = $decoded['choices'][0]['delta']['content'] ?? '';
+                if (is_array($content)) {
+                    $content = implode('', array_filter(array_map(static fn ($part): string => is_array($part) ? (string) ($part['text'] ?? '') : '', $content)));
+                }
+                $content = (string) $content;
+                if ($content !== '') {
+                    $receivedText = true;
+                    ai_sse_emit('delta', ['text' => $content]);
+                }
+            }
+            return strlen($chunk);
+        },
+    ]);
+    $ok = curl_exec($handle);
+    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($handle);
+    curl_close($handle);
+    if ($ok === false || $status < 200 || $status >= 300 || $streamError !== '' || !$receivedText) {
+        $detail = $streamError !== '' ? $streamError : ($curlError !== '' ? $curlError : 'provider tidak mengirim jawaban streaming');
+        throw new RuntimeException('OpenRouter: ' . substr($detail, 0, 220));
+    }
+}
+
+function ai_assistant_stream(string $message, array $farmContext): void
+{
+    $settings = ai_settings_status();
+    $apiKey = ai_api_key($settings);
+    ai_sse_emit('status', ['label' => 'Membaca konteks farm']);
+    try {
+        if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
+            throw new RuntimeException('Provider belum dikonfigurasi.');
+        }
+        if ($settings['provider'] !== 'openrouter') {
+            ai_sse_emit('status', ['label' => 'Menyusun jawaban']);
+            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+            ai_sse_emit('delta', ['text' => $reply]);
+        } else {
+            ai_sse_emit('status', ['label' => 'Menyusun jawaban']);
+            ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext));
+        }
+        ai_sse_emit('done', ['provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false]);
+    } catch (RuntimeException $exception) {
+        error_log('[aapm-ai-provider] ' . $exception->getMessage());
+        ai_sse_emit('notice', ['text' => ai_provider_fallback_notice()]);
+        ai_sse_emit('delta', ['text' => native_ai_reply($message, $farmContext)]);
+        ai_sse_emit('done', ['provider' => 'local', 'model' => null, 'fallback' => true]);
+    }
 }
 
 function ai_provider_fallback_notice(): string

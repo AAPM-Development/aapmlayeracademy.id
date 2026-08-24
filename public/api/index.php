@@ -464,6 +464,28 @@ try {
         json_response(['ok' => true]);
     }
 
+    if ($path === 'ai-assistant/stream' && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $input = request_json();
+        $message = trim((string) ($input['message'] ?? ''));
+        if ($message === '') {
+            error_response('Pertanyaan wajib diisi.', 422, 'validation_error');
+        }
+        if (strlen($message) > 3000) {
+            error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
+        }
+        rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
+        $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        ai_sse_start();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        ai_assistant_stream($message, $farmContext);
+        rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
+        exit;
+    }
+
     if ($path === 'ai-assistant' && $method === 'POST') {
         $user = require_user();
         require_csrf();

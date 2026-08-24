@@ -7,7 +7,7 @@ import { useAdminAiSettings, useSaveAdminAiSettings, useTestAdminAiSettings } fr
 import { useToast } from '@/components/ui/use-toast';
 
 const providers = [
-  { value: 'openrouter', label: 'OpenRouter', description: 'Default gratis untuk AI Farm Assistant.', model: 'nvidia/nemotron-3.5-lightning:free', baseUrl: 'https://openrouter.ai/api/v1', keyHint: 'sk-or-v1-…' },
+  { value: 'openrouter', label: 'OpenRouter', description: 'Default gratis untuk AI Farm Assistant.', model: 'google/gemma-4-26b-a4b-it:free', baseUrl: 'https://openrouter.ai/api/v1', keyHint: 'sk-or-v1-…' },
   { value: 'openai-compatible', label: 'OpenAI-compatible API', description: 'OpenAI, Groq, Together, Mistral, DeepSeek, vLLM, Ollama, atau LM Studio.', model: 'gpt-4o-mini', baseUrl: 'https://api.openai.com/v1', keyHint: 'API key provider atau “ollama” untuk local' },
   { value: 'gemini', label: 'Google Gemini', description: 'Gunakan Gemini API melalui Google AI Studio.', model: 'gemini-2.5-flash', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', keyHint: 'AIza…' },
   { value: 'anthropic', label: 'Anthropic Claude', description: 'Gunakan API Messages resmi Anthropic.', model: 'claude-haiku-4-5', baseUrl: 'https://api.anthropic.com/v1', keyHint: 'sk-ant-…' },
