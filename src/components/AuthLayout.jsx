@@ -55,16 +55,16 @@ function AcademyVideoPanel() {
         aria-hidden="true"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-brand-foreground/80 via-brand-foreground/25 to-transparent" />
-      <div className="absolute inset-x-0 top-[27%] flex justify-center px-10">
+      <div className="absolute inset-x-0 top-[30%] flex justify-center px-10">
         <div
-          className="pointer-events-none absolute -top-10 h-28 w-36 rounded-full bg-brand-foreground/45 blur-2xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-foreground/50 blur-3xl"
           aria-hidden="true"
         />
         <AppBrand
           product="aapm"
           variant="icon"
           mode="dark"
-          className="relative z-10 h-10 w-10 drop-shadow-[0_4px_18px_rgba(0,0,0,0.7)] xl:h-11 xl:w-11"
+          className="relative z-10 h-24 w-auto drop-shadow-[0_6px_20px_rgba(0,0,0,0.76)] xl:h-28"
           alt="AAPM"
         />
       </div>

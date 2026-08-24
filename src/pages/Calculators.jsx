@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import AapmIcon from '@/components/icons/AapmIcon';
+import ContentContainer from '@/components/layout/ContentContainer';
+import PageHeader from '@/components/layout/PageHeader';
 
 const tools = [
   { id: 'fcr', name: 'FCR', icon: 'solar:chart-square-outline' },
@@ -15,26 +17,25 @@ export default function Calculators() {
   const [active, setActive] = useState('fcr');
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><AapmIcon name="solar:calculator-bold-duotone" className="h-6 w-6 text-amber-600" /> Kalkulator Interaktif</h1>
-        <p className="text-sm text-muted-foreground mt-1">Masukkan data farm Anda dan sistem menghitung KPI secara otomatis.</p>
-      </div>
+    <ContentContainer className="max-w-5xl">
+      <PageHeader eyebrow="Farm tools" title="Kalkulator interaktif" description="Masukkan data farm Anda dan baca indikator operasional secara langsung." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><AapmIcon name="solar:calculator-bold-duotone" className="h-3.5 w-3.5 text-brand-orange" /> 7 kalkulator</div>} />
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="-mx-4 mb-6 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      <div className="flex w-max min-w-full gap-2">
         {tools.map(t => {
           return (
             <button
               key={t.id}
               onClick={() => setActive(t.id)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
-                active === t.id ? 'bg-amber-600 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                active === t.id ? 'bg-brand-orange text-white shadow-sm' : 'border border-border bg-surface-subtle text-muted-foreground hover:border-brand-orange/40 hover:bg-tint-orange hover:text-foreground'
               }`}
             >
               <AapmIcon name={t.icon} className="h-3.5 w-3.5" /> {t.name}
             </button>
           );
         })}
+      </div>
       </div>
 
       {active === 'fcr' && <FcrCalc />}
@@ -44,20 +45,20 @@ export default function Calculators() {
       {active === 'waterfeed' && <WaterFeedCalc />}
       {active === 'ventilation' && <VentilationCalc />}
       {active === 'roi' && <RoiCalc />}
-    </div>
+    </ContentContainer>
   );
 }
 
 function Card({ title, formula, children, result }) {
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+    <div className="rounded-[var(--card-radius)] border border-border bg-card p-5 shadow-[var(--surface-shadow)] sm:p-6">
       <h2 className="font-semibold mb-1">{title}</h2>
-      {formula && <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 mb-4 font-mono">{formula}</div>}
+      {formula && <div className="mb-4 rounded-lg border border-border bg-surface-subtle px-3 py-2 font-mono text-xs leading-5 text-muted-foreground">{formula}</div>}
       <div className="grid sm:grid-cols-2 gap-4">{children}</div>
       {result !== undefined && result !== null && (
-        <div className="mt-5 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-          <div className="text-xs text-amber-700 font-medium">Hasil</div>
-          <div className="text-2xl font-bold text-amber-700 mt-0.5">{result}</div>
+        <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange px-4 py-3">
+          <div className="text-xs font-medium text-tint-orange-foreground">Hasil</div>
+          <div className="mt-0.5 text-2xl font-bold text-tint-orange-foreground">{result}</div>
         </div>
       )}
     </div>
@@ -68,7 +69,7 @@ function Field({ label, value, onChange, unit, placeholder }) {
   return (
     <label className="block">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="mt-1 flex items-center rounded-lg border px-3 focus-within:border-amber-500">
+      <div className="aapm-field mt-1 flex items-center rounded-lg border border-input bg-surface-elevated px-3">
         <input
           type="number"
           value={value}
@@ -229,10 +230,10 @@ function RoiCalc() {
 
 function resultTag(value, note) {
   return (
-    <div className="mt-5 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 sm:col-span-2">
-      <div className="text-xs text-amber-700 font-medium">Hasil</div>
-      <div className="text-2xl font-bold text-amber-700 mt-0.5">{value}</div>
-      {note && <div className="text-xs text-amber-600 mt-1">{note}</div>}
+    <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange px-4 py-3 sm:col-span-2">
+      <div className="text-xs font-medium text-tint-orange-foreground">Hasil</div>
+      <div className="mt-0.5 text-2xl font-bold text-tint-orange-foreground">{value}</div>
+      {note && <div className="mt-1 text-xs text-tint-orange-foreground/80">{note}</div>}
     </div>
   );
 }

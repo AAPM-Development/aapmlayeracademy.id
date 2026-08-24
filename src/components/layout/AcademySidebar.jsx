@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconButton } from "@/components/primitives";
@@ -21,9 +21,12 @@ export default function AcademySidebar({
   const displayName = user?.full_name || user?.email || "Peserta";
 
   return (
-    <aside className={cn("relative flex h-full min-h-0 flex-col border-r border-border bg-surface-subtle transition-[width] duration-200", collapsed ? "w-[76px]" : "w-64", className)}>
-      <div className={cn("flex h-[73px] shrink-0 items-center border-b border-border", collapsed ? "justify-center px-3" : "justify-between px-4")}>
-        <AppBrand variant={collapsed ? "icon" : "logo"} className={collapsed ? "h-9 w-9" : "h-11 w-auto max-w-[182px]"} />
+    <aside className={cn("relative flex h-full min-h-0 flex-col border-r border-[hsl(var(--surface-border))] bg-surface-subtle transition-[width] duration-200", collapsed ? "w-[76px]" : "w-[264px]", className)}>
+      <div className={cn("flex h-[84px] shrink-0 items-center border-b border-[hsl(var(--surface-border))]", collapsed ? "justify-center px-3" : "justify-between px-5")}>
+        <Link to="/" onClick={onNavigate} className={cn("min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", collapsed && "flex items-center justify-center")} aria-label="Kembali ke dashboard Academy">
+          <AppBrand variant={collapsed ? "icon" : "logo"} className={collapsed ? "h-9 w-9" : "h-11 w-auto max-w-[182px]"} />
+          {!collapsed && <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Learning workspace</span>}
+        </Link>
         {onToggle && (
           <IconButton
             onClick={onToggle}
@@ -65,9 +68,9 @@ export default function AcademySidebar({
         </div>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Navigasi utama">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5" aria-label="Navigasi utama">
         {academyNavigation.map((group) => (
-          <div key={group.label} className="mb-5 last:mb-0">
+          <div key={group.label} className="mb-6 last:mb-0">
             {!collapsed && <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{group.label}</div>}
             <div className="space-y-1">
               {group.items.map((item) => {
@@ -79,14 +82,18 @@ export default function AcademySidebar({
                     onClick={onNavigate}
                     title={collapsed ? item.label : undefined}
                     className={({ isActive }) => cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       collapsed && "justify-center px-0",
-                      isActive ? "bg-brand-green/10 font-semibold text-brand-green shadow-sm ring-1 ring-brand-green/10" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                      isActive ? "bg-brand-green text-white shadow-sm" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
                     )}
                   >
-                    <AapmIcon name={item.icon} className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                    {!collapsed && item.to === "/modules" && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-orange opacity-0 transition-opacity group-[.active]:opacity-100" />}
+                    {({ isActive }) => (
+                      <>
+                        <AapmIcon name={item.icon} className={cn("h-[19px] w-[19px] shrink-0", isActive && "brightness-0 invert")} />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {!collapsed && item.to === "/modules" && <span className={cn("ml-auto h-1.5 w-1.5 rounded-full bg-brand-orange opacity-0 transition-opacity", isActive && "bg-brand-lime opacity-100")} />}
+                      </>
+                    )}
                   </NavLink>
                 );
               })}
