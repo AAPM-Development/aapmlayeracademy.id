@@ -109,7 +109,7 @@ function LoginAuthLayout(props) {
     <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
       <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-6 py-12 sm:px-10 lg:px-12 xl:px-16">
         <div className="absolute inset-x-6 top-7 flex justify-center sm:top-8 lg:inset-x-auto lg:left-12 lg:justify-start xl:left-16">
-          <AppBrand className="h-10 w-auto max-w-[220px]" />
+          <AppBrand className="h-16 w-auto max-w-[260px]" />
         </div>
         <div className="w-full max-w-[420px] pt-10 lg:pt-0">
           <div className="mb-9">
