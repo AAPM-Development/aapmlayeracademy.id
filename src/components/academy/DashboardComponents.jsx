@@ -642,7 +642,7 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
               variant="soft"
               className="border border-white/20 bg-white/10 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-none"
             >
-              <AapmIcon name="ai" className="h-3.5 w-3.5" /> Ruang belajar
+              <AapmIcon name="ai" className="shrink-0 text-[11px]" /> Ruang belajar
             </Badge>
             <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.05] tracking-[-0.045em] sm:text-[2.55rem]">
               Selamat datang, {name}.
@@ -656,14 +656,19 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
               <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">14</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
               <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold text-brand-lime">1</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90">
-                <Link to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/modules"}>
-                  <AapmIcon name="course" /> {nextModule ? "Lanjutkan belajar" : "Buka jalur belajar"}
+            <div className="mt-6 grid w-full max-w-xl gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+              <Button asChild className="h-11 w-full bg-brand-orange px-4 text-white shadow-sm hover:bg-brand-orange/90 sm:w-auto">
+                <Link
+                  to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/modules"}
+                  className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <AapmIcon name="course" className="shrink-0" /> {nextModule ? "Lanjutkan belajar" : "Buka jalur belajar"}
                 </Link>
               </Button>
-              <Button asChild variant="ghost" className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white">
-                <Link to="/ai-assistant"><AapmIcon name="ai" /> Tanya APPI</Link>
+              <Button asChild variant="ghost" className="h-11 w-full border border-white/[0.35] bg-white/[0.05] px-4 text-white shadow-none hover:bg-white/[0.12] hover:text-white sm:w-auto">
+                <Link to="/ai-assistant" className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap">
+                  <AapmIcon name="ai" className="shrink-0" /> Tanya APPI
+                </Link>
               </Button>
             </div>
           </div>

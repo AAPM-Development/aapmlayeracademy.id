@@ -12,11 +12,9 @@ const sizes = {
 // feels present without taking over the transcript.
 const stateAssets = {
   idle: {
-    frames: [
-      { avatar: "Asset%201.svg", decor: "Asset%2013.svg" },
-      { avatar: "Asset%202.svg", decor: "Asset%2014.svg" },
-      { avatar: "Asset%203.svg", decor: "Asset%2015.svg" },
-    ],
+    // Idle is a calm companion state: keep one neutral pair on screen and
+    // reserve expressive frames for meaningful changes in the conversation.
+    frames: [{ avatar: "Asset%201.svg", decor: "Asset%2013.svg" }],
     interval: 4800,
     label: "siap membantu",
   },
@@ -32,24 +30,30 @@ const stateAssets = {
   responding: {
     frames: [
       { avatar: "Asset%208.svg", decor: "Asset%2020.svg" },
-      { avatar: "Asset%209.svg", decor: "Asset%2021.svg" },
       { avatar: "Asset%2010.svg", decor: "Asset%2022.svg" },
+      { avatar: "Asset%2012.svg", decor: "Asset%2024.svg" },
     ],
     interval: 1800,
     label: "menyusun jawaban",
   },
   complete: {
     frames: [
-      { avatar: "Asset%203.svg", decor: "Asset%2023.svg" },
-      { avatar: "Asset%204.svg", decor: "Asset%2024.svg" },
+      { avatar: "Asset%209.svg", decor: "Asset%2021.svg" },
     ],
     interval: 4200,
     label: "jawaban selesai",
   },
+  success: {
+    frames: [
+      { avatar: "Asset%204.svg", decor: "Asset%2016.svg" },
+      { avatar: "Asset%209.svg", decor: "Asset%2021.svg" },
+    ],
+    interval: 4200,
+    label: "berhasil membantu",
+  },
   alert: {
     frames: [
       { avatar: "Asset%2011.svg", decor: "Asset%2023.svg" },
-      { avatar: "Asset%2012.svg", decor: "Asset%2024.svg" },
     ],
     interval: 3000,
     label: "perlu perhatian",

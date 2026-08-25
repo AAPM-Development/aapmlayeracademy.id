@@ -69,9 +69,16 @@ export const aapmIconSources = Object.freeze({
 export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
 
 function AiMark({ className = "", alt = "", ...props }) {
+  // AI is an inline wordmark rather than a square icon. Remove legacy sizing
+  // utilities so the letters can keep their natural width in every shell.
+  const markClassName = className
+    .split(/\s+/)
+    .filter((token) => token && !/^(?:h|w|size)-/.test(token))
+    .join(" ");
+
   return (
     <span
-      className={cn("aapm-ai-mark", className)}
+      className={cn("aapm-ai-mark", markClassName)}
       role={alt ? "img" : undefined}
       aria-label={alt || undefined}
       aria-hidden={alt ? undefined : true}
@@ -80,8 +87,8 @@ function AiMark({ className = "", alt = "", ...props }) {
       <span className="aapm-ai-mark__letters">AI</span>
       <IconifyIcon
         icon={
-          solarIconData["solar:stars-minimalistic-bold-duotone"] ||
-          "solar:stars-minimalistic-bold-duotone"
+          solarIconData["solar:stars-minimalistic-bold"] ||
+          "solar:stars-minimalistic-bold"
         }
         className="aapm-ai-mark__spark"
         aria-hidden="true"
