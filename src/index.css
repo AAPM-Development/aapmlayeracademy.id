@@ -746,6 +746,43 @@
     animation: aapm-ai-mark-spark 4.2s ease-in-out infinite;
   }
 
+  .aapm-ai-profile-avatar {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    border: 1px solid hsl(var(--aapm-orange-700) / 0.28);
+    border-radius: 9999px;
+    background: hsl(var(--aapm-orange-100));
+    box-shadow:
+      0 0 0 2px hsl(var(--background)),
+      0 5px 16px hsl(var(--aapm-orange-700) / 0.12);
+  }
+
+  .aapm-ai-profile-avatar::after {
+    position: absolute;
+    inset: 2px;
+    border: 1px solid hsl(var(--aapm-orange-700) / 0.15);
+    border-radius: inherit;
+    content: "";
+    pointer-events: none;
+  }
+
+  .aapm-ai-profile-avatar[data-state="thinking"],
+  .aapm-ai-profile-avatar[data-state="responding"] {
+    border-color: hsl(var(--aapm-orange-700) / 0.48);
+    box-shadow:
+      0 0 0 2px hsl(var(--background)),
+      0 6px 18px hsl(var(--aapm-orange-700) / 0.2);
+  }
+
+  .aapm-ai-profile-avatar[data-state="complete"],
+  .aapm-ai-profile-avatar[data-state="success"] {
+    border-color: hsl(var(--aapm-green-700) / 0.42);
+  }
+
   @keyframes aapm-ai-mark-spark {
     0%,
     100% {
