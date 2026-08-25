@@ -28,7 +28,7 @@ export default function Register() {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Konfirmasi password belum sama.");
       return;
     }
     setLoading(true);
@@ -36,7 +36,7 @@ export default function Register() {
       await nativeApi.auth.register({ email, password });
       window.location.href = safeReturnTo();
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(err.message || "Pendaftaran belum berhasil.");
     } finally {
       setLoading(false);
     }
@@ -44,16 +44,16 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Sign up to get started"
+      title="Buat akun Academy"
+      subtitle="Mulai jalur belajar yang terukur untuk keputusan farm Anda."
       footer={
         <>
-          Already have an account?{" "}
+          Sudah punya akun?{" "}
           <Link
             to={"/login" + (safeReturnTo() !== "/" ? "?returnTo=" + encodeURIComponent(safeReturnTo()) : "")}
             className="text-primary font-medium hover:underline"
           >
-            Log in
+            Masuk
           </Link>
         </>
       }
@@ -67,7 +67,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-xs font-semibold text-foreground">Email</Label>
+          <Label htmlFor="email" className="text-xs font-semibold text-foreground">Alamat email</Label>
           <div className="aapm-field relative rounded-xl">
             <AapmIcon name="mail" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -75,7 +75,7 @@ export default function Register() {
               type="email"
               autoComplete="email"
               autoFocus
-              placeholder="you@example.com"
+              placeholder="nama@perusahaan.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-12 rounded-xl border-border/80 bg-surface-subtle pl-10 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
@@ -94,7 +94,7 @@ export default function Register() {
         <p className="-mt-2 text-xs text-muted-foreground">Minimal 8 karakter dan harus memuat huruf serta angka.</p>
         <PasswordField
           id="confirm"
-          label="Confirm Password"
+          label="Konfirmasi password"
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
@@ -104,10 +104,10 @@ export default function Register() {
           {loading ? (
             <>
               <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
-              Creating account...
+              Membuat akun…
             </>
           ) : (
-            "Create account"
+            "Buat akun"
           )}
         </Button>
       </form>
@@ -125,7 +125,7 @@ export default function Register() {
             onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(safeReturnTo())}`; }}
           >
             <GoogleIcon />
-            Sign up with Google
+            Daftar dengan Google
           </Button>
         </>
       )}

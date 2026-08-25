@@ -458,7 +458,12 @@ export default function AdminModuleEditor() {
         </TabsList>
         <TabsContent value="content" className="mt-5">
           <form onSubmit={save} className="space-y-5">
+            <Surface tone="orange" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3"><AapmIcon name="edit" className="mt-0.5 h-5 w-5 shrink-0 text-tint-orange-foreground" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-tint-orange-foreground/75">Content workflow</div><h2 className="mt-1 text-base font-semibold">Bangun modul yang siap dipelajari</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Lengkapi identitas, media, materi, dan outcome. Field yang belum siap dapat disimpan lalu dilanjutkan dari editor ini.</p></div></div>
+              <div className="grid shrink-0 grid-cols-3 gap-2 text-center text-[10px] font-semibold text-muted-foreground"><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">01</div><div className="mt-1">Struktur</div></div><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">02</div><div className="mt-1">Materi</div></div><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">03</div><div className="mt-1">Evaluasi</div></div></div>
+            </Surface>
             <Surface className="p-5">
+              <div className="mb-4 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Structure</div><h2 className="mt-1 text-base font-semibold">Identitas modul</h2></div><span className="text-[11px] text-muted-foreground">Wajib untuk tampil di roadmap</span></div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2">
                   <Label>Level</Label>
@@ -531,6 +536,7 @@ export default function AdminModuleEditor() {
             <Surface className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Media</div>
                   <h2 className="text-sm font-semibold">Video lesson</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Simpan tautan YouTube, Vimeo, atau file MP4/WebM. Tautan
@@ -576,6 +582,7 @@ export default function AdminModuleEditor() {
               )}
             </Surface>
             <Surface className="p-5">
+              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">03 · Learning content</div><h2 className="mt-1 text-base font-semibold">Materi dan outcome</h2></div>
               <div className="space-y-2">
                 <Label>Isi materi</Label>
                 <Textarea
@@ -626,16 +633,7 @@ export default function AdminModuleEditor() {
                 </div>
               </div>
             </Surface>
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={createModule.isPending || updateModule.isPending}
-              >
-                {createModule.isPending || updateModule.isPending
-                  ? "Menyimpan…"
-                  : "Simpan modul"}
-              </Button>
-            </div>
+            <Surface variant="muted" className="sticky bottom-3 z-20 flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name="checkRead" className="h-4 w-4 text-brand-green" /> Perubahan hanya aktif setelah disimpan.</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
           </form>
         </TabsContent>
         <TabsContent value="assessment" className="mt-5">

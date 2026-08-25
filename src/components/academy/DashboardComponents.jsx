@@ -620,7 +620,7 @@ export function QuickToolGrid() {
   );
 }
 
-export function DashboardWelcome({ user = null } = {}) {
+export function DashboardWelcome({ user = null, nextModule = null } = {}) {
   const name = user?.full_name || user?.email?.split("@")[0] || "Learner";
   const cycle = [
     "DOC & brooding",
@@ -633,80 +633,66 @@ export function DashboardWelcome({ user = null } = {}) {
 
   return (
     <section className="academy-enter mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] border border-border bg-card shadow-[var(--surface-shadow)]">
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="bg-brand-green px-6 py-7 text-white sm:px-10 sm:py-9">
-          <Badge
-            variant="soft"
-            className="border border-white/20 bg-white/10 text-xs font-semibold text-white shadow-none"
-          >
-            <AapmIcon
-              name="ai"
-              className="h-3.5 w-3.5"
-            />{" "}
-            E-Course Professional
-          </Badge>
-          <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-[2.25rem]">
-            Layer Poultry{" "}
-            <span className="text-brand-lime">Farm Management</span>
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">
-            Bangun keputusan operasional yang lebih presisi, dari fase DOC
-            sampai akhir flock, dengan materi, simulasi, kuis, dan sertifikasi
-            dalam satu jalur belajar.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Button
-              asChild
-              className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90"
+      <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
+        <div className="relative overflow-hidden bg-brand-green px-5 py-6 text-white sm:px-8 sm:py-8">
+          <div className="pointer-events-none absolute -right-14 -top-14 h-44 w-44 rounded-full border-[18px] border-brand-lime/15" />
+          <div className="pointer-events-none absolute bottom-0 right-16 h-20 w-20 rounded-full border border-brand-orange/30" />
+          <div className="relative">
+            <Badge
+              variant="soft"
+              className="border border-white/20 bg-white/10 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-none"
             >
-              <Link to="/modules">
-                <AapmIcon name="course" /> Mulai belajar
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white"
-            >
-              <Link to="/ai-assistant">Tanya APPI</Link>
-            </Button>
+              <AapmIcon name="ai" className="h-3.5 w-3.5" /> Learning workspace
+            </Badge>
+            <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.05] tracking-[-0.045em] sm:text-[2.55rem]">
+              Selamat datang, {name}.
+              <span className="mt-1 block text-brand-lime">Belajar dengan arah.</span>
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">
+              Baca sinyal farm, kuasai konsep inti, lalu bawa keputusan yang lebih presisi kembali ke lapangan.
+            </p>
+            <div className="mt-6 grid max-w-xl grid-cols-3 divide-x divide-white/15 rounded-xl border border-white/15 bg-white/5">
+              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">22</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
+              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">14</div><div className="mt-0.5 text-[10px] text-white/65">learning level</div></div>
+              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold text-brand-lime">1</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90">
+                <Link to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/modules"}>
+                  <AapmIcon name="course" /> {nextModule ? "Lanjutkan belajar" : "Buka Learning Path"}
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white">
+                <Link to="/ai-assistant"><AapmIcon name="ai" /> Tanya APPI</Link>
+              </Button>
+            </div>
           </div>
-          <p className="mt-6 text-xs text-white/65">
-            Selamat datang, {name}. Fokuskan setiap sesi pada satu keputusan
-            yang dapat dibawa ke farm.
-          </p>
         </div>
 
-        <aside className="flex min-h-full flex-col border-t border-border bg-surface-subtle p-6 sm:p-7 lg:border-l lg:border-t-0">
-          <div>
-            <div className="text-sm font-semibold text-foreground">
-              Siklus pembelajaran
+        <aside className="flex min-h-full flex-col border-t border-border bg-surface-subtle p-5 sm:p-7 lg:border-l lg:border-t-0">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Rute sesi ini</div>
+              <div className="mt-1 text-base font-semibold text-foreground">Satu keputusan, satu langkah.</div>
             </div>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Enam fase untuk memahami ritme produksi layer secara utuh.
-            </p>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-orange text-brand-orange"><AapmIcon name="solar:route-bold-duotone" className="h-5 w-5" /></span>
           </div>
-          <ol className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4">
+          <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange p-3.5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-tint-orange-foreground/75">Fokus berikutnya</div>
+            <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{nextModule?.title || "Pilih modul pertama Anda"}</div>
+            <div className="mt-1 text-xs leading-5 text-muted-foreground">{nextModule ? `Modul ${nextModule.moduleNumber} · ${nextModule.category || "Academy"}` : "Roadmap akan memandu urutannya."}</div>
+          </div>
+          <ol className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
             {cycle.map((phase, index) => (
-              <li key={phase} className="flex items-start gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-orange/10 text-[10px] font-semibold tabular-nums text-brand-orange">
-                  {index + 1}
-                </span>
-                <span className="pt-0.5 text-xs font-medium leading-4 text-foreground">
-                  {phase}
-                </span>
+              <li key={phase} className="flex min-w-0 items-start gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px] font-semibold tabular-nums text-brand-orange shadow-sm">{index + 1}</span>
+                <span className="truncate pt-0.5 text-[11px] font-medium leading-4 text-foreground">{phase}</span>
               </li>
             ))}
           </ol>
-          <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs">
+          <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-xs">
             <span className="text-muted-foreground">6 fase utama</span>
-            <Link
-              to="/modules"
-              className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80"
-            >
-              Lihat roadmap{" "}
-              <AapmIcon name="arrowRight" className="h-3.5 w-3.5" />
-            </Link>
+            <Link to="/modules" className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80">Lihat roadmap <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link>
           </div>
         </aside>
       </div>

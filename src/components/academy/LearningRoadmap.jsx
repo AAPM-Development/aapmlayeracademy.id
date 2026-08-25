@@ -21,7 +21,7 @@ const accentStyles = {
   green: { section: "border-tint-green-border bg-tint-green/30", icon: "bg-tint-green text-tint-green-foreground", line: "bg-brand-green" },
   orange: { section: "border-tint-orange-border bg-tint-orange/30", icon: "bg-tint-orange text-tint-orange-foreground", line: "bg-brand-orange" },
   blue: { section: "border-tint-blue-border bg-tint-blue/30", icon: "bg-tint-blue text-tint-blue-foreground", line: "bg-info" },
-  violet: { section: "border-tint-violet-border bg-tint-violet/30", icon: "bg-tint-violet text-tint-violet-foreground", line: "bg-violet-500" },
+  violet: { section: "border-tint-violet-border bg-tint-violet/30", icon: "bg-tint-violet text-tint-violet-foreground", line: "bg-tint-violet-foreground" },
 };
 
 const moduleIdentity = {

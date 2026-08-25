@@ -37,7 +37,7 @@ export default function Login() {
       await nativeApi.auth.login(email, password);
       window.location.href = returnTo;
     } catch (err) {
-      setError(err.message || "Invalid email or password");
+      setError(err.message || "Email atau password belum sesuai.");
     } finally {
       setLoading(false);
     }
@@ -46,16 +46,16 @@ export default function Login() {
   return (
     <AuthLayout
       variant="login"
-      title="Sign in"
-      subtitle="Continue your learning journey."
+      title="Masuk ke Academy"
+      subtitle="Lanjutkan ritme belajar Anda di farm."
       footer={
         <>
-          New to the Academy?{" "}
+          Belum punya akun?{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
             className="font-semibold text-brand-green underline-offset-4 hover:underline"
           >
-            Create an account
+            Buat akun
           </Link>
         </>
       }
@@ -73,7 +73,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <LoginLabel htmlFor="email" className="text-xs font-semibold text-foreground">Email address</LoginLabel>
+          <LoginLabel htmlFor="email" className="text-xs font-semibold text-foreground">Alamat email</LoginLabel>
           <div className="aapm-field relative rounded-xl">
             <AapmIcon name="mail" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <LoginInput
@@ -81,7 +81,7 @@ export default function Login() {
               type="email"
               autoComplete="email"
               autoFocus
-              placeholder="you@example.com"
+              placeholder="nama@perusahaan.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-12 rounded-xl border-border/80 bg-surface-subtle pl-10 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
@@ -103,7 +103,7 @@ export default function Login() {
               to="/forgot-password"
               className="text-sm font-medium text-brand-green underline-offset-4 hover:underline"
             >
-              Forgot password?
+              Lupa password?
             </Link>
           </div>
         </div>
@@ -116,10 +116,10 @@ export default function Login() {
           {loading ? (
             <>
               <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
-              Signing in…
+              Memeriksa akun…
             </>
           ) : (
-            "Sign in"
+            "Masuk"
           )}
         </Button>
       </form>
@@ -127,7 +127,7 @@ export default function Login() {
         <>
           <div className="my-7 flex items-center gap-3 text-xs text-muted-foreground">
             <div className="h-px flex-1 bg-border" />
-            <span>or continue with</span>
+            <span>atau lanjutkan dengan</span>
             <div className="h-px flex-1 bg-border" />
           </div>
           <Button
@@ -137,7 +137,7 @@ export default function Login() {
             onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`; }}
           >
             <GoogleIcon />
-            Continue with Google
+            Lanjutkan dengan Google
           </Button>
         </>
       )}

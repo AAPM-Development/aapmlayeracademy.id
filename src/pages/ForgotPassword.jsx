@@ -32,17 +32,17 @@ export default function ForgotPassword() {
   return (
     <AuthLayout
       iconName="mail"
-      title="Reset password"
-      subtitle="We'll send you a link to reset it"
+      title="Atur ulang password"
+      subtitle="Kami akan mengirim tautan untuk membuat password baru."
       footer={
         <Link to="/login" className="text-primary font-medium hover:underline">
-          <AapmIcon name="arrowLeft" className="mr-1 inline h-3 w-3" />Back to log in
+          <AapmIcon name="arrowLeft" className="mr-1 inline h-3 w-3" />Kembali ke login
         </Link>
       }
     >
       {sent ? (
         <div className="space-y-3 text-sm text-foreground text-center">
-          <p>If an account exists with that email, you'll receive a password reset link shortly.</p>
+          <p>Jika akun dengan email tersebut tersedia, tautan reset akan segera dikirim.</p>
           {devResetLink && (
             <a className="text-primary font-medium hover:underline" href={devResetLink}>
               Buka tautan reset
@@ -52,7 +52,7 @@ export default function ForgotPassword() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-xs font-semibold text-foreground">Email address</Label>
+            <Label htmlFor="email" className="text-xs font-semibold text-foreground">Alamat email</Label>
             <div className="aapm-field relative rounded-xl">
               <AapmIcon name="mail" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -60,7 +60,7 @@ export default function ForgotPassword() {
                 type="email"
                 autoComplete="email"
                 autoFocus
-                placeholder="you@example.com"
+                placeholder="nama@perusahaan.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 rounded-xl border-border/80 bg-surface-subtle pl-10 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
@@ -72,10 +72,10 @@ export default function ForgotPassword() {
             {loading ? (
               <>
                 <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
+                Mengirim tautan…
               </>
             ) : (
-              "Send reset link"
+              "Kirim tautan reset"
             )}
           </Button>
         </form>
