@@ -649,29 +649,43 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    border: 1px solid currentColor;
-    border-radius: 0.38em;
+    overflow: visible;
     color: currentColor;
-    font-size: 0.7em;
+    font-size: 0.92em;
     font-weight: 850;
     letter-spacing: -0.14em;
     line-height: 1;
-    isolation: isolate;
-  }
-
-  .aapm-ai-mark::before {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: currentColor;
-    content: "";
-    opacity: 0.12;
   }
 
   .aapm-ai-mark__letters {
     display: block;
     transform: translateX(-0.06em);
+  }
+
+  .aapm-ai-mark__spark {
+    position: absolute;
+    top: -0.34em;
+    right: -0.48em;
+    width: 0.58em;
+    height: 0.58em;
+    color: hsl(var(--aapm-orange-700));
+    animation: aapm-ai-mark-spark 4.2s ease-in-out infinite;
+  }
+
+  @keyframes aapm-ai-mark-spark {
+    0%,
+    100% {
+      opacity: 0.72;
+      transform: translateY(0) rotate(0deg) scale(0.9);
+    }
+    45% {
+      opacity: 1;
+      transform: translateY(-0.08em) rotate(12deg) scale(1.08);
+    }
+    70% {
+      opacity: 0.84;
+      transform: translateY(0.02em) rotate(-5deg) scale(0.96);
+    }
   }
 
   @keyframes aapm-ai-panel-in {

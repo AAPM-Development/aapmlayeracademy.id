@@ -78,6 +78,14 @@ function AiMark({ className = "", alt = "", ...props }) {
       {...props}
     >
       <span className="aapm-ai-mark__letters">AI</span>
+      <IconifyIcon
+        icon={
+          solarIconData["solar:stars-minimalistic-bold-duotone"] ||
+          "solar:stars-minimalistic-bold-duotone"
+        }
+        className="aapm-ai-mark__spark"
+        aria-hidden="true"
+      />
     </span>
   );
 }
