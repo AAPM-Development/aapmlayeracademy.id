@@ -8,6 +8,7 @@ import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import AiComposer from "@/components/ai/AiComposer";
+import AiQuickActions from "@/components/ai/AiQuickActions";
 import { Button, ConfirmDialog } from "@/components/primitives";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
@@ -442,6 +443,15 @@ export default function FloatingAiAssistant() {
                             : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
                         </p>
                       )}
+                      {!message.streaming && !message.error && (
+                        <AiQuickActions
+                          content={message.content}
+                          pathname={location.pathname}
+                          onSelect={submit}
+                          disabled={isStreaming}
+                          compact
+                        />
+                      )}
                     </article>
                   ),
                 )
@@ -590,6 +600,7 @@ export default function FloatingAiAssistant() {
                 state={{
                   from: "appi-floating",
                   conversationId: activeConversationId || null,
+                  pageContext: pageContextForPath(location.pathname),
                 }}
                 onClick={closePanel}
                 className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
