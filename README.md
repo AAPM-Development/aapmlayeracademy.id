@@ -75,11 +75,17 @@ The `develop` branch deploys the Vite artifact in `dist/` to
 `dist/api/`.
 
 1. Create a MySQL database and user in cPanel.
-2. Configure `/home/aapp8359/aapmlayeracademy-config.php` outside
-   `public_html` using `config.native.example.php` as the template.
+2. Configure one shared file at
+   `/home/aapp8359/aapmlayeracademy-config.php`, outside `public_html`, using
+   `config.native.example.php` as the template. Both the main and staging API
+   layouts resolve this account-level file first, so they use the same MySQL
+   database instead of silently creating separate SQLite stores. Do not copy
+   the local `config.php` into either deployed document root.
 3. Set the staging domain to PHP 8.4 and enable `pdo_mysql`.
-4. Set `app_url` to the staging URL and `mail_from` to an address on the
-   verified application domain for forgot-password email delivery.
+4. Leave `app_url` empty when the same config file serves both domains; the API
+   derives the current HTTPS host for reset links and OAuth callbacks. Set
+   `mail_from` to an address on the verified application domain for
+   forgot-password email delivery.
 5. Build and include the static artifact:
 
 ```powershell
