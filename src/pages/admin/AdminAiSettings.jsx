@@ -260,9 +260,7 @@ export default function AdminAiSettings() {
         <Surface className="p-5 sm:p-6">
           <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange text-white">
-                <AapmIcon name="ai" className="h-5 w-5" />
-              </div>
+              <AapmIcon name="ai" className="mt-0.5 h-9 w-9 shrink-0 text-brand-orange" />
               <div>
                 <h2 className="text-base font-semibold">Provider AI</h2>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
