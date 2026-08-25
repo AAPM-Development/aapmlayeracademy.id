@@ -714,35 +714,17 @@
   }
 
   .aapm-ai-mark {
-    position: relative;
-    display: inline-flex;
+    display: inline-block;
     flex: none;
-    align-items: center;
-    justify-content: center;
-    width: auto;
-    min-width: 1.36em;
-    height: 1em;
     overflow: visible;
     color: currentColor;
-    font-size: 1.06em;
-    font-weight: 900;
-    letter-spacing: -0.1em;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
-  .aapm-ai-mark__letters {
-    display: inline-block;
-    transform: translateX(-0.04em);
+    vertical-align: middle;
   }
 
   .aapm-ai-mark__spark {
-    position: absolute;
-    top: -0.22em;
-    right: -0.24em;
-    width: 0.48em;
-    height: 0.48em;
-    color: hsl(var(--aapm-orange-700));
+    fill: hsl(var(--aapm-lime-500));
+    transform-box: fill-box;
+    transform-origin: center;
     animation: aapm-ai-mark-spark 4.2s ease-in-out infinite;
   }
 
