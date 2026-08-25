@@ -271,7 +271,7 @@ export default function FloatingAiAssistant() {
           aria-label="APPI cepat"
           className={`aapm-ai-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
-          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <header className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
                 <AapmIcon
@@ -287,7 +287,7 @@ export default function FloatingAiAssistant() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 type="button"
                 variant="ghost"
@@ -451,8 +451,8 @@ export default function FloatingAiAssistant() {
                 aria-label="Riwayat percakapan APPI"
                 className="aapm-ai-history-sheet absolute inset-0 z-20 flex min-h-0 min-w-0 flex-col overflow-hidden bg-background"
               >
-                <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-                  <div>
+                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+                  <div className="min-w-0">
                     <h3 className="text-sm font-semibold">Riwayat chat</h3>
                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                       Tersimpan khusus di akun Anda
@@ -472,10 +472,10 @@ export default function FloatingAiAssistant() {
                     />
                   </Button>
                 </div>
-                <div className="mt-3">
+                <div className="min-w-0 max-w-full pt-3">
                   <AiHistoryTabs value={historyView} onChange={setHistoryView} />
                 </div>
-                {historyView === "chats" && <label className="mx-3 mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
+                {historyView === "chats" && <label className="mx-3 mt-2 flex min-w-0 max-w-[calc(100%-1.5rem)] items-center gap-2 overflow-hidden rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
                   <AapmIcon
                     name="solar:magnifer-bold-duotone"
                     className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -488,12 +488,12 @@ export default function FloatingAiAssistant() {
                     aria-label="Cari riwayat percakapan"
                   />
                 </label>}
-                <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+                <div className="aapm-ai-history-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
                   {historyView === "activity" ? (
-                    <div className="pt-3">
+                    <div className="min-w-0 max-w-full pt-3">
                       <AiActivityList activity={activity} loading={activityLoading} />
                     </div>
-                  ) : <div className="space-y-1.5 pt-3">
+                  ) : <div className="min-w-0 max-w-full space-y-1.5 pt-3">
                     {visibleConversations.length === 0 && (
                       <p className="px-2 py-5 text-xs leading-5 text-muted-foreground">
                         {historyQuery
@@ -504,7 +504,7 @@ export default function FloatingAiAssistant() {
                     {visibleConversations.map((conversation) => (
                       <div
                         key={conversation.id}
-                        className={`group flex items-center gap-1 rounded-xl border p-1.5 ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-subtle"}`}
+                        className={`group flex min-w-0 max-w-full items-center gap-1 overflow-hidden rounded-xl border p-1.5 ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-subtle"}`}
                       >
                         <button
                           type="button"

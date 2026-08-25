@@ -254,9 +254,9 @@ function ConversationList({
   const visibleConversations = filterConversations(conversations, query);
 
   return (
-    <aside className="hidden w-72 shrink-0 border-r border-border bg-surface-subtle/35 lg:flex lg:flex-col">
-      <div className="flex items-center justify-between px-4 py-4">
-        <div>
+    <aside className="hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border bg-surface-subtle/35 lg:flex lg:flex-col">
+      <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-4">
+        <div className="min-w-0">
           <p className="text-xs font-semibold">Percakapan</p>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
             Tersimpan di akun Anda
@@ -291,12 +291,12 @@ function ConversationList({
           aria-label="Cari riwayat percakapan"
         />
       </label>}
-      <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
+      <ScrollArea className="aapm-ai-history-scroll min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
         {view === "activity" ? (
-          <div className="px-2 pt-3">
+          <div className="min-w-0 max-w-full px-2 pt-3">
             <AiActivityList activity={activity} loading={activityLoading} />
           </div>
-        ) : <div className="space-y-1">
+        ) : <div className="min-w-0 max-w-full space-y-1">
           {loading && (
             <p className="px-2 py-3 text-xs text-muted-foreground">
               Memuat percakapan…
@@ -315,7 +315,7 @@ function ConversationList({
           {visibleConversations.map((conversation) => (
             <div
               key={conversation.id}
-              className={`group flex items-center gap-1 rounded-lg ${conversation.id === activeConversationId ? "bg-tint-orange" : "hover:bg-surface-default"}`}
+              className={`group flex min-w-0 max-w-full items-center gap-1 overflow-hidden rounded-lg ${conversation.id === activeConversationId ? "bg-tint-orange" : "hover:bg-surface-default"}`}
             >
               <button
                 type="button"
@@ -411,16 +411,16 @@ function MobileConversationSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Riwayat percakapan APPI"
-        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] flex-col overflow-hidden rounded-t-[1.5rem] border-x border-t border-border bg-background shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[1.5rem] border-x border-t border-border bg-background shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5">
-          <div>
+        <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold">Percakapan</h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               Tersimpan khusus di akun Anda
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"
               variant="ghost"
@@ -447,10 +447,10 @@ function MobileConversationSheet({
             </Button>
           </div>
         </header>
-        <div className="mt-3">
+        <div className="min-w-0 max-w-full pt-3">
           <AiHistoryTabs value={view} onChange={setView} />
         </div>
-        {view === "chats" && <label className="mx-3 mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
+        {view === "chats" && <label className="mx-3 mt-2 flex min-w-0 max-w-[calc(100%-1.5rem)] items-center gap-2 overflow-hidden rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
           <AapmIcon
             name="solar:magnifer-bold-duotone"
             className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -463,10 +463,10 @@ function MobileConversationSheet({
             aria-label="Cari riwayat percakapan"
           />
         </label>}
-        <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+        <ScrollArea className="aapm-ai-history-scroll min-h-0 min-w-0 w-full max-w-full flex-1 px-3 py-3">
           {view === "activity" ? (
-            <AiActivityList activity={activity} loading={activityLoading} />
-          ) : <div className="space-y-1.5">
+            <div className="min-w-0 max-w-full"><AiActivityList activity={activity} loading={activityLoading} /></div>
+          ) : <div className="min-w-0 max-w-full space-y-1.5">
             {loading && (
               <p className="px-2 py-4 text-xs text-muted-foreground">
                 Memuat percakapan…
@@ -486,7 +486,7 @@ function MobileConversationSheet({
             {visibleConversations.map((conversation) => (
               <div
                 key={conversation.id}
-                className={`flex items-center gap-1.5 rounded-xl border p-1.5 transition-colors ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-default"}`}
+                className={`flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded-xl border p-1.5 transition-colors ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-default"}`}
               >
                 <button
                   type="button"

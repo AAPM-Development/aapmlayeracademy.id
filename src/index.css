@@ -735,6 +735,21 @@
     max-width: 100% !important;
   }
 
+  .aapm-ai-history-scroll,
+  .aapm-ai-history-scroll [data-radix-scroll-area-viewport] {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  .aapm-ai-history-scroll [data-radix-scroll-area-viewport] > div {
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   .aapm-ai-response--streaming::after {
     display: inline-block;
     width: 0.12rem;

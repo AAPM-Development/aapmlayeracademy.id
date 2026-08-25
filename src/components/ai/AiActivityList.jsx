@@ -45,22 +45,22 @@ export default function AiActivityList({ activity = [], loading = false }) {
     );
 
   return (
-    <ol className="relative ml-3 border-l border-border/80 pl-4">
+    <ol className="relative ml-3 min-w-0 max-w-full border-l border-border/80 pl-4">
       {activity.map((item) => {
         const meta = activityMeta[item.type] || activityMeta.response;
         return (
-          <li key={item.id} className="relative pb-5 last:pb-1">
+          <li key={item.id} className="relative min-w-0 max-w-full pb-5 last:pb-1">
             <span
               className={`absolute -left-[1.73rem] top-0 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-background ${meta.className}`}
               aria-hidden="true"
             >
               <AapmIcon name={meta.icon} className="h-3.5 w-3.5" />
             </span>
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <p className="min-w-0 text-xs font-semibold text-foreground">
+            <div className="flex min-w-0 max-w-full items-start justify-between gap-2">
+              <p className="min-w-0 max-w-full break-words text-xs font-semibold text-foreground">
                 {item.label}
               </p>
-              <time className="shrink-0 text-[9px] text-muted-foreground">
+              <time className="max-w-[5.5rem] shrink-0 text-right text-[9px] text-muted-foreground">
                 {formatDate(item.createdAt)}
               </time>
             </div>
@@ -78,7 +78,7 @@ export default function AiActivityList({ activity = [], loading = false }) {
 
 export function AiHistoryTabs({ value, onChange }) {
   return (
-    <div className="mx-3 grid grid-cols-2 rounded-lg bg-surface-subtle p-1">
+    <div className="mx-3 grid min-w-0 max-w-[calc(100%-1.5rem)] grid-cols-2 rounded-lg bg-surface-subtle p-1">
       {[
         ["chats", "Percakapan"],
         ["activity", "Aktivitas"],
