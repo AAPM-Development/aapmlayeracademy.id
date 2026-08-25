@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
+import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, Switch } from "@/components/primitives";
@@ -566,8 +567,9 @@ export default function AiAssistant() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
-  const scrollRef = useRef(null);
+  const initialOpenRef = useRef(false);
   const imageInputRef = useRef(null);
+  const location = useLocation();
   const { data: farm = [] } = useFarmData();
   const { data: progress = [] } = useUserProgress();
   const { user } = useAuth();
@@ -578,7 +580,6 @@ export default function AiAssistant() {
     activityLoading,
     activeConversationId,
     messages,
-    isDraft,
     isLoadingConversation,
     isStreaming,
     streamStatus,
@@ -597,12 +598,27 @@ export default function AiAssistant() {
     ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif`
     : "Tanpa konteks KPI";
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isStreaming]);
-  useEffect(() => {
-    if (!isDraft && !activeConversationId && conversations.length > 0)
-      selectConversation(conversations[0].id);
-  }, [activeConversationId, conversations, isDraft, selectConversation]);
+    if (initialOpenRef.current || conversationsLoading) return;
+    initialOpenRef.current = true;
+    const handoffId =
+      location.state?.from === "appi-floating"
+        ? location.state.conversationId
+        : null;
+    const canOpenHandoff = handoffId && conversations.some((item) => item.id === handoffId);
+    if (canOpenHandoff) selectConversation(handoffId);
+    else startNewConversation();
+  }, [conversations, conversationsLoading, location.state, selectConversation, startNewConversation]);
+
+  const {
+    viewportRef: chatViewportRef,
+    endRef: chatEndRef,
+    showJumpToLatest,
+    jumpToLatest,
+  } = useChatScrollFollow({
+    content: messages,
+    activeKey: activeConversationId,
+    isStreaming,
+  });
 
   const handleImageSelection = (event) => {
     const file = event.target.files?.[0];
@@ -726,7 +742,10 @@ export default function AiAssistant() {
           </div>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-          <ScrollArea className="aapm-chat-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-hidden">
+          <ScrollArea
+            viewportRef={chatViewportRef}
+            className="aapm-chat-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
+          >
             <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-28 pt-6 sm:px-8 sm:pb-32 sm:pt-9">
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
@@ -790,9 +809,19 @@ export default function AiAssistant() {
                   )}
                 </div>
               )}
-              <div ref={scrollRef} />
+              <div ref={chatEndRef} />
             </div>
           </ScrollArea>
+          {showJumpToLatest && (
+            <button
+              type="button"
+              onClick={jumpToLatest}
+              className="absolute bottom-3 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] font-semibold text-foreground shadow-[0_8px_24px_hsl(var(--foreground)/0.12)] backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            >
+              <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-brand-orange" />
+              Ke pesan terbaru
+            </button>
+          )}
           <AiCompanionDock
             streaming={isStreaming}
             state={streamPhase}

@@ -7,38 +7,62 @@ const sizes = {
   lg: "h-16 w-16",
 };
 
-// Every state is a deliberate pair: one character expression and one companion decor.
-// This keeps the mascot expressive without multiplying it throughout the conversation.
+// Each frame is one deliberate avatar + decor pair. The component never renders
+// a collage of mascots: it softly cycles through the supplied assets so APPI
+// feels present without taking over the transcript.
 const stateAssets = {
   idle: {
-    avatar: "Asset%201.svg",
-    decor: "Asset%2013.svg",
+    frames: [
+      { avatar: "Asset%201.svg", decor: "Asset%2013.svg" },
+      { avatar: "Asset%202.svg", decor: "Asset%2014.svg" },
+      { avatar: "Asset%203.svg", decor: "Asset%2015.svg" },
+    ],
+    interval: 4800,
     label: "siap membantu",
   },
   thinking: {
-    avatar: "Asset%205.svg",
-    decor: "Asset%2017.svg",
+    frames: [
+      { avatar: "Asset%205.svg", decor: "Asset%2017.svg" },
+      { avatar: "Asset%206.svg", decor: "Asset%2018.svg" },
+      { avatar: "Asset%207.svg", decor: "Asset%2019.svg" },
+    ],
+    interval: 2200,
     label: "menelaah konteks",
   },
   responding: {
-    avatar: "Asset%2012.svg",
-    decor: "Asset%2024.svg",
+    frames: [
+      { avatar: "Asset%208.svg", decor: "Asset%2020.svg" },
+      { avatar: "Asset%209.svg", decor: "Asset%2021.svg" },
+      { avatar: "Asset%2010.svg", decor: "Asset%2022.svg" },
+    ],
+    interval: 1800,
     label: "menyusun jawaban",
   },
   complete: {
-    avatar: "Asset%209.svg",
-    decor: "Asset%2021.svg",
+    frames: [
+      { avatar: "Asset%203.svg", decor: "Asset%2023.svg" },
+      { avatar: "Asset%204.svg", decor: "Asset%2024.svg" },
+    ],
+    interval: 4200,
     label: "jawaban selesai",
   },
   alert: {
-    avatar: "Asset%2011.svg",
-    decor: "Asset%2023.svg",
+    frames: [
+      { avatar: "Asset%2011.svg", decor: "Asset%2023.svg" },
+      { avatar: "Asset%2012.svg", decor: "Asset%2024.svg" },
+    ],
+    interval: 3000,
     label: "perlu perhatian",
   },
 };
 
-function AvatarPair({ state, phase }) {
-  const assets = stateAssets[state] || stateAssets.idle;
+function stateConfig(state) {
+  return stateAssets[state] || stateAssets.idle;
+}
+
+function AvatarPair({ state, frame = 0, phase }) {
+  const config = stateConfig(state);
+  const assets = config.frames[frame % config.frames.length];
   return (
     <>
       <img
@@ -63,10 +87,12 @@ export default function AiAvatar({
 }) {
   const [visibleState, setVisibleState] = useState(state);
   const [leavingState, setLeavingState] = useState(null);
+  const [frameIndex, setFrameIndex] = useState(0);
 
   useEffect(() => {
     if (state === visibleState) return undefined;
     setLeavingState(visibleState);
+    setFrameIndex(0);
     const timer = window.setTimeout(() => {
       setVisibleState(state);
       setLeavingState(null);
@@ -74,12 +100,22 @@ export default function AiAvatar({
     return () => window.clearTimeout(timer);
   }, [state, visibleState]);
 
-  const assets = stateAssets[visibleState] || stateAssets.idle;
+  useEffect(() => {
+    if (state !== visibleState) return undefined;
+    const config = stateConfig(visibleState);
+    if (config.frames.length < 2) return undefined;
+    const timer = window.setInterval(() => {
+      setFrameIndex((current) => (current + 1) % config.frames.length);
+    }, config.interval);
+    return () => window.clearInterval(timer);
+  }, [state, visibleState]);
+
+  const assets = stateConfig(visibleState);
   return (
     <span
       className={`aapm-ai-presence ${sizes[size] || sizes.sm} ${className}`}
       data-state={visibleState}
-      aria-label={decorative ? undefined : `AI AAPM sedang ${assets.label}`}
+      aria-label={decorative ? undefined : `APPI sedang ${assets.label}`}
       aria-hidden={decorative || undefined}
     >
       {leavingState ? (
@@ -90,8 +126,9 @@ export default function AiAvatar({
         />
       ) : (
         <AvatarPair
-          key={`enter-${visibleState}`}
+          key={`enter-${visibleState}-${frameIndex}`}
           state={visibleState}
+          frame={frameIndex}
           phase="enter"
         />
       )}

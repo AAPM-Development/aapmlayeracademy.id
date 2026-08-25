@@ -69,7 +69,7 @@ import solar50 from '@iconify-icons/solar/sidebar-minimalistic-bold-duotone.js';
 import solar51 from '@iconify-icons/solar/sort-vertical-bold-duotone.js';
 import solarMinusCircle from '@iconify-icons/solar/minus-circle-bold.js';
 import solar52 from '@iconify-icons/solar/stars-minimalistic-bold-duotone.js';
-import solarAi from '@iconify-icons/solar/cpu-bolt-bold-duotone.js';
+import solarAi from '@iconify-icons/solar/magic-stick-3-bold-duotone.js';
 import solar53 from '@iconify-icons/solar/sun-2-bold-duotone.js';
 import solar54 from '@iconify-icons/solar/target-bold-duotone.js';
 import solar55 from '@iconify-icons/solar/trash-bin-trash-bold.js';
@@ -155,7 +155,7 @@ export const solarIconData = Object.freeze({
   'solar:sidebar-minimalistic-bold-duotone': solar50,
   'solar:sort-vertical-bold-duotone': solar51,
   'solar:stars-minimalistic-bold-duotone': solar52,
-  'solar:cpu-bolt-bold-duotone': solarAi,
+  'solar:magic-stick-3-bold-duotone': solarAi,
   'solar:sun-2-bold-duotone': solar53,
   'solar:target-bold-duotone': solar54,
   'solar:trash-bin-trash-bold': solar55,

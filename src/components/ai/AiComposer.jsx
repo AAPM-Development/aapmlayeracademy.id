@@ -138,12 +138,12 @@ export default function AiComposer({
             type="button"
             onClick={onSubmit}
             disabled={!hasContent || isStreaming}
-            className="h-9 w-9 shrink-0 rounded-xl bg-brand-orange p-0 text-white shadow-sm hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
+            className="h-9 min-w-[4.75rem] shrink-0 gap-1.5 rounded-xl bg-brand-orange px-3 text-white shadow-sm hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
             aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim pertanyaan"}
             title="Kirim pertanyaan"
           >
-            <AapmIcon name="solar:plain-2-bold" className="h-[17px] w-[17px]" />
-            <span className="sr-only">Kirim</span>
+            <AapmIcon name={isStreaming ? "loading" : "solar:plain-2-bold"} className={`h-[17px] w-[17px] ${isStreaming ? "animate-spin" : ""}`} />
+            <span className="text-xs font-semibold">{isStreaming ? "Menjawab…" : "Kirim"}</span>
           </Button>
         </div>
       </div>

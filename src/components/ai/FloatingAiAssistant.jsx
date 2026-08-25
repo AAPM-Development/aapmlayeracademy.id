@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
+import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog } from "@/components/primitives";
@@ -158,7 +159,6 @@ export default function FloatingAiAssistant() {
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
   const closeTimer = useRef(null);
-  const endRef = useRef(null);
   const imageInputRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -180,11 +180,18 @@ export default function FloatingAiAssistant() {
   const activeConversation = conversations.find(
     (item) => item.id === activeConversationId,
   );
+  const {
+    viewportRef: chatViewportRef,
+    endRef: chatEndRef,
+    showJumpToLatest,
+    jumpToLatest,
+  } = useChatScrollFollow({
+    content: messages,
+    activeKey: activeConversationId,
+    isStreaming,
+  });
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isStreaming]);
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event) => {
@@ -334,7 +341,10 @@ export default function FloatingAiAssistant() {
             </div>
           </header>
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
-            <div className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4">
+            <div
+              ref={chatViewportRef}
+              className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
+            >
               <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
@@ -438,9 +448,19 @@ export default function FloatingAiAssistant() {
                   ),
                 )
               )}
-              <div ref={endRef} />
+              <div ref={chatEndRef} />
               </div>
             </div>
+            {showJumpToLatest && (
+              <button
+                type="button"
+                onClick={jumpToLatest}
+                className="absolute bottom-[5.7rem] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 py-1.5 text-[10px] font-semibold text-foreground shadow-[0_8px_24px_hsl(var(--foreground)/0.14)] backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              >
+                <AapmIcon name="chevronDown" className="h-3 w-3 text-brand-orange" />
+                Ke terbaru
+              </button>
+            )}
             <AiCompanionDock
               compact
               streaming={isStreaming}
@@ -569,6 +589,10 @@ export default function FloatingAiAssistant() {
             <div className="mt-2 flex items-center justify-end gap-2">
               <Link
                 to="/ai-assistant"
+                state={{
+                  from: "appi-floating",
+                  conversationId: activeConversationId || null,
+                }}
                 onClick={closePanel}
                 className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
               >

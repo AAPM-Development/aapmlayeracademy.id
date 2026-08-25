@@ -14,7 +14,7 @@ export const aapmIconSources = Object.freeze({
   users: "solar:users-group-rounded-bold-duotone",
   analytics: "solar:chart-square-bold-duotone",
   kpi: "solar:chart-2-bold-duotone",
-  ai: "solar:cpu-bolt-bold-duotone",
+  ai: "solar:magic-stick-3-bold-duotone",
   certificate: "solar:verified-check-bold",
   media: "solar:gallery-wide-bold",
   menu: "solar:list-bold",
@@ -68,8 +68,24 @@ export const aapmIconSources = Object.freeze({
 
 export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
 
+function AiMark({ className = "", alt = "", ...props }) {
+  return (
+    <span
+      className={cn("aapm-ai-mark", className)}
+      role={alt ? "img" : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : true}
+      {...props}
+    >
+      <span className="aapm-ai-mark__letters">AI</span>
+    </span>
+  );
+}
+
 export default function AapmIcon({ name = "dashboard", className = "", alt = "", ...props }) {
   const icon = aapmIconSources[name] || (name.includes(":") ? name : aapmIconSources.dashboard);
+
+  if (name === "ai") return <AiMark className={className} alt={alt} {...props} />;
 
   return (
     <IconifyIcon
