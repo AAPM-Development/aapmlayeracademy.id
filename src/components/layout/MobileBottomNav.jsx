@@ -17,6 +17,7 @@ export default function MobileBottomNav({ items = [], onOpenMenu = () => {} }) {
           className={({ isActive }) =>
             cn(
               "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[9px] font-semibold leading-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              item.prominent && "relative -mt-4 gap-0.5",
               isActive
                 ? item.accent === "orange"
                   ? "text-brand-orange"
@@ -30,13 +31,17 @@ export default function MobileBottomNav({ items = [], onOpenMenu = () => {} }) {
               <span
                 className={cn(
                   "flex h-7 w-8 items-center justify-center rounded-lg transition-colors",
+                  item.prominent && "h-11 w-11 rounded-full border-4 border-background shadow-[0_5px_16px_hsl(var(--aapm-orange-700)/0.22)]",
                   isActive &&
                     (item.accent === "orange"
-                      ? "bg-tint-orange"
+                      ? item.prominent
+                        ? "bg-brand-orange text-white"
+                        : "bg-tint-orange"
                       : "bg-tint-green"),
+                  item.prominent && !isActive && "bg-tint-orange text-brand-orange",
                 )}
               >
-                <AapmIcon name={item.icon} className="h-4 w-4" />
+                <AapmIcon name={item.icon} className={item.prominent ? "h-5 w-5" : "h-4 w-4"} />
               </span>
               <span className="truncate">{item.label}</span>
             </>

@@ -635,7 +635,7 @@ export default function AiAssistant() {
     setInput("");
     setImageAttachment(null);
     setAttachmentError("");
-    await send(message, { includeFarm, allowWebSearch, image });
+    await send(message, { includeFarm, allowWebSearch, image, pageContext: "ai-assistant" });
   };
 
   return (

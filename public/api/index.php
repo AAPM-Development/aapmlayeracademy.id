@@ -606,11 +606,13 @@ try {
             error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
-        $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        $includeFarmContext = bool_value($input['includeFarmContext'] ?? (is_array($input['farmContext'] ?? null) ? 1 : 0)) === 1;
+        $farmContext = $includeFarmContext ? ai_context_for_user((int) $user['id']) : [];
         $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
         $imageDataUrl = ai_normalize_image_data_url($input['imageDataUrl'] ?? null);
         $pageContext = trim((string) ($input['pageContext'] ?? ''));
         $accountMemory = ai_account_memory_for_user((int) $user['id']);
+        $accountContext = ai_account_context_for_user((int) $user['id']);
         ai_record_chat_message((int) $conversation['id'], 'user', $message);
         ai_record_activity(
             (int) $user['id'],
@@ -624,7 +626,7 @@ try {
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory);
+        $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext);
         ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
         ai_record_activity(
             (int) $user['id'],
@@ -672,14 +674,16 @@ try {
             error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
-        $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        $includeFarmContext = bool_value($input['includeFarmContext'] ?? (is_array($input['farmContext'] ?? null) ? 1 : 0)) === 1;
+        $farmContext = $includeFarmContext ? ai_context_for_user((int) $user['id']) : [];
         $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
         $imageDataUrl = ai_normalize_image_data_url($input['imageDataUrl'] ?? null);
+        $accountContext = ai_account_context_for_user((int) $user['id']);
         ai_sse_start();
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl);
+        ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, '', '', $accountContext);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
     }
@@ -696,9 +700,11 @@ try {
             error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
-        $farmContext = is_array($input['farmContext'] ?? null) ? ai_context_for_user((int) $user['id']) : [];
+        $includeFarmContext = bool_value($input['includeFarmContext'] ?? (is_array($input['farmContext'] ?? null) ? 1 : 0)) === 1;
+        $farmContext = $includeFarmContext ? ai_context_for_user((int) $user['id']) : [];
         $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
-        $response = ai_assistant_reply($message, $farmContext, $allowWebSearch);
+        $accountContext = ai_account_context_for_user((int) $user['id']);
+        $response = ai_assistant_reply($message, $farmContext, $allowWebSearch, $accountContext);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         json_response($response);
     }

@@ -104,8 +104,8 @@ export default function AdminShell() {
           items={[
              { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
              { to: "/admin/courses", label: "Course", icon: "course" },
-             { to: "/admin/users", label: "Pengguna", icon: "users" },
-            { to: "/", label: "Academy", icon: "dashboard" },
+            { to: "/", label: "Academy", icon: "dashboard", prominent: true },
+            { to: "/admin/users", label: "Pengguna", icon: "users" },
           ]}
         />
       </div>

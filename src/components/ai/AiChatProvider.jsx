@@ -174,6 +174,7 @@ export function AiChatProvider({ children }) {
           id: conversation.id,
           message,
           farmContext: includeFarm && farm.length ? farm.slice(-8) : null,
+          includeFarmContext: includeFarm,
           allowWebSearch,
           imageDataUrl: image?.dataUrl ?? null,
           pageContext,

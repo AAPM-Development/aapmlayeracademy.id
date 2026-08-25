@@ -251,7 +251,7 @@ function ai_save_settings(array $input): array
 
 function ai_system_prompt(): string
 {
-    return "Anda adalah APPI (AAPM Predictive & Personal Intelligence) untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika informasi penting belum cukup untuk memberi kesimpulan yang aman, jelaskan data yang kurang dan ajukan maksimal tiga pertanyaan lanjutan yang spesifik, termasuk satuan atau periode data bila relevan. Untuk membandingkan dua atau lebih indikator atau opsi, gunakan tabel Markdown. Untuk alur pemeriksaan atau pohon keputusan yang benar-benar lebih jelas secara visual, gunakan diagram Mermaid dalam code fence `mermaid` dengan maksimal delapan node; jangan membuat diagram dekoratif. Jika pengguna mengirim foto, pisahkan observasi visual dari hal yang belum dapat dipastikan dan sarankan foto/data pelengkap yang relevan. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI yang diberikan adalah data milik pengguna untuk konteks dan tidak boleh dianggap sebagai standar universal. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
+    return "Anda adalah APPI (AAPM Predictive & Personal Intelligence) untuk AAPM Layer Academy, platform pembelajaran manajemen ayam petelur di Indonesia. Jawab dalam bahasa Indonesia yang profesional, praktis, dan ringkas. Fokus pada HDP, FCR, konsumsi pakan dan air, berat telur, mortalitas, biosecurity, lingkungan kandang, dan keputusan operasional. Bedakan fakta dari hipotesis, jangan mengarang angka atau diagnosis. Jika informasi penting belum cukup untuk memberi kesimpulan yang aman, jelaskan data yang kurang dan ajukan maksimal tiga pertanyaan lanjutan yang spesifik, termasuk satuan atau periode data bila relevan. Untuk membandingkan dua atau lebih indikator atau opsi, gunakan tabel Markdown. Untuk alur pemeriksaan atau pohon keputusan yang benar-benar lebih jelas secara visual, gunakan diagram Mermaid dalam code fence `mermaid` dengan maksimal delapan node; jangan membuat diagram dekoratif. Jika pengguna mengirim foto, pisahkan observasi visual dari hal yang belum dapat dipastikan dan sarankan foto/data pelengkap yang relevan. Jika ada kemungkinan penyakit, obat, dosis, atau kondisi darurat, jelaskan batasan Anda dan arahkan pengguna untuk berkonsultasi dengan dokter hewan. Data KPI dan profil belajar pada blok konteks adalah data milik akun yang sedang login, disediakan oleh server pada permintaan ini, dan boleh Anda gunakan sebagai konteks personal; jangan menganggapnya sebagai standar universal. Anda tidak perlu melakukan query database sendiri. Jika blok konteks tersedia, jangan mengatakan bahwa Anda tidak dapat mengakses database—jelaskan bahwa jawaban menggunakan konteks akun yang terbaca pada permintaan ini. Jika blok konteks menyatakan tidak ada data atau konteks KPI dimatikan, sampaikan itu secara spesifik dan minta data yang diperlukan. Berikan hanya jawaban akhir untuk pengguna. Jangan tampilkan proses berpikir, analisis internal, draft jawaban, atau label seperti thinking/reasoning.";
 }
 
 function ai_context_for_user(int $userId): array
@@ -259,6 +259,57 @@ function ai_context_for_user(int $userId): array
     $statement = db()->prepare('SELECT week, hen_day_production, feed_intake, egg_weight, mortality, water_intake, temperature, humidity, revenue, cost, fcr, notes FROM farm_data WHERE user_id = ? ORDER BY week DESC, id DESC LIMIT 8');
     $statement->execute([$userId]);
     return array_reverse($statement->fetchAll());
+}
+
+function ai_account_context_for_user(int $userId): array
+{
+    $userStatement = db()->prepare('SELECT u.full_name, u.role, p.bio FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
+    $userStatement->execute([$userId]);
+    $profile = $userStatement->fetch() ?: [];
+
+    $progressStatement = db()->prepare('SELECT p.module_number, p.completed, p.quiz_score, p.quiz_total, p.practical_done, p.time_spent_minutes, p.updated_at, m.title AS module_title, m.level_name FROM user_progress p LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? ORDER BY p.updated_at DESC, p.module_number ASC LIMIT 16');
+    $progressStatement->execute([$userId]);
+
+    return [
+        'profile' => $profile,
+        'progress' => $progressStatement->fetchAll(),
+    ];
+}
+
+function ai_account_context_text(array $context): string
+{
+    $profile = is_array($context['profile'] ?? null) ? $context['profile'] : [];
+    $progress = is_array($context['progress'] ?? null) ? $context['progress'] : [];
+    $lines = [];
+    $name = trim((string) ($profile['full_name'] ?? ''));
+    $role = trim((string) ($profile['role'] ?? ''));
+    $bio = trim((string) ($profile['bio'] ?? ''));
+    if ($name !== '') $lines[] = 'Nama peserta: ' . substr($name, 0, 160);
+    if ($role !== '') $lines[] = 'Peran akun: ' . ($role === 'admin' ? 'admin' : 'learner');
+    if ($bio !== '') $lines[] = 'Catatan profil: ' . substr($bio, 0, 280);
+
+    if (!$progress) {
+        $lines[] = 'Progress belajar: belum ada catatan progress yang tersimpan.';
+    } else {
+        $completed = 0;
+        $practical = 0;
+        foreach ($progress as $row) {
+            $completed += (int) ($row['completed'] ?? 0) === 1 ? 1 : 0;
+            $practical += (int) ($row['practical_done'] ?? 0) === 1 ? 1 : 0;
+        }
+        $lines[] = 'Progress belajar terbaca: ' . $completed . ' modul selesai dari ' . count($progress) . ' catatan; ' . $practical . ' praktik ditandai selesai.';
+        foreach (array_slice($progress, 0, 8) as $row) {
+            $module = trim((string) ($row['module_title'] ?? ''));
+            $module = $module !== '' ? $module : 'Modul ' . (string) ($row['module_number'] ?? '—');
+            $status = (int) ($row['completed'] ?? 0) === 1 ? 'selesai' : 'berjalan';
+            $score = ($row['quiz_score'] ?? null) !== null && ($row['quiz_total'] ?? null) !== null
+                ? ' | kuis ' . $row['quiz_score'] . '/' . $row['quiz_total']
+                : '';
+            $lines[] = '- ' . substr($module, 0, 140) . ': ' . $status . $score;
+        }
+    }
+
+    return $lines ? implode("\n", $lines) : 'Tidak ada konteks profil atau progress akun yang tersedia pada permintaan ini.';
 }
 
 function ai_context_text(array $rows): string
@@ -287,15 +338,18 @@ function ai_page_context_text(string $pageContext): string
         'exam' => 'Pengguna sedang berada di area ujian akhir. Beri arahan konsep dan cara belajar, bukan jawaban yang menyalahi integritas ujian.',
         'admin' => 'Pengguna sedang berada di area administrasi Academy. Jelaskan dampak operasional secara ringkas dan jangan mengubah pengaturan apa pun.',
         'dashboard' => 'Pengguna sedang berada di dashboard pembelajaran. Kaitkan jawaban dengan data dan langkah berikutnya yang terlihat di workspace.',
+        'ai-assistant' => 'Pengguna sedang berada di ruang kerja APPI. Gunakan konteks akun dan data KPI yang disertakan untuk menjaga kesinambungan percakapan.',
     ];
     return $contexts[$pageContext] ?? '';
 }
 
-function ai_user_prompt(string $message, array $farmContext, string $pageContext = '', string $accountMemory = ''): string
+function ai_user_prompt(string $message, array $farmContext, string $pageContext = '', string $accountMemory = '', array $accountContext = []): string
 {
     $pageText = ai_page_context_text($pageContext);
     return "Pertanyaan pengguna:\n" . substr($message, 0, 3000)
         . ($pageText !== '' ? "\n\nKonteks halaman aktif:\n" . $pageText : '')
+        . "\n\n[KONTEKS AKUN TERVALIDASI OLEH SERVER]\n" . ai_account_context_text($accountContext)
+        . "\n[AKHIR KONTEKS AKUN]\n"
         . ($accountMemory !== '' ? "\n\nMemori percakapan akun (gunakan hanya untuk kesinambungan; jangan anggap sebagai fakta terbaru tanpa konfirmasi):\n" . $accountMemory : '')
         . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext);
 }
@@ -547,7 +601,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     return $responseText;
 }
 
-function ai_assistant_stream(string $message, array $farmContext, bool $allowWebSearch = false, ?string $imageDataUrl = null, string $pageContext = '', string $accountMemory = ''): array
+function ai_assistant_stream(string $message, array $farmContext, bool $allowWebSearch = false, ?string $imageDataUrl = null, string $pageContext = '', string $accountMemory = '', array $accountContext = []): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
@@ -568,18 +622,18 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
         }
         if ($settings['provider'] !== 'openrouter') {
             ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
-            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory));
+            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext));
             ai_sse_emit('delta', ['text' => $reply]);
         } else {
             ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
             try {
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory), $webSearch, $imageDataUrl);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl);
             } catch (RuntimeException $exception) {
                 // Free providers may occasionally reject a single request while
                 // remaining healthy. Retry once before showing a local fallback.
                 error_log('[aapm-ai-provider-retry] ' . $exception->getMessage());
                 ai_sse_emit('status', ['label' => 'APPI menghubungkan ulang provider']);
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory), $webSearch, $imageDataUrl);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl);
             }
         }
         $result = ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null];
@@ -618,7 +672,7 @@ function ai_provider_test_error(RuntimeException $exception): string
     return substr(trim((string) $message), 0, 260);
 }
 
-function ai_assistant_reply(string $message, array $farmContext, bool $allowWebSearch = false): array
+function ai_assistant_reply(string $message, array $farmContext, bool $allowWebSearch = false, array $accountContext = []): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
@@ -633,7 +687,7 @@ function ai_assistant_reply(string $message, array $farmContext, bool $allowWebS
         ];
     }
     try {
-        $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), "Pertanyaan pengguna:\n" . substr($message, 0, 3000) . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext), $allowWebSearch && $settings['provider'] === 'openrouter');
+        $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, '', '', $accountContext), $allowWebSearch && $settings['provider'] === 'openrouter');
         return [
             'reply' => $reply,
             'provider' => $settings['provider'],

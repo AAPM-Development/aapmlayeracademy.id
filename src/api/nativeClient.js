@@ -193,10 +193,10 @@ export const nativeApi = {
       request(`/farm-data?id=${encodeURIComponent(id)}`, { method: "DELETE" }),
   },
   ai: {
-    assistant: ({ message, farmContext }) =>
-      request("/ai-assistant", json({ message, farmContext })),
-    stream: ({ message, farmContext, onEvent }) =>
-      stream("/ai-assistant/stream", { message, farmContext }, onEvent),
+    assistant: ({ message, farmContext, includeFarmContext = true }) =>
+      request("/ai-assistant", json({ message, farmContext, includeFarmContext })),
+    stream: ({ message, farmContext, includeFarmContext = true, onEvent }) =>
+      stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent),
     conversations: {
       list: () => request("/ai/conversations"),
       create: (title = "") => request("/ai/conversations", json({ title })),
@@ -212,11 +212,12 @@ export const nativeApi = {
         allowWebSearch = false,
         imageDataUrl = null,
         pageContext = "",
+        includeFarmContext = true,
         onEvent,
       }) =>
         stream(
           `/ai/conversations/${encodeURIComponent(id)}/stream`,
-          { message, farmContext, allowWebSearch, imageDataUrl, pageContext },
+          { message, farmContext, includeFarmContext, allowWebSearch, imageDataUrl, pageContext },
           onEvent,
         ),
     },

@@ -72,13 +72,14 @@ export default function AcademyShell() {
             items={[
               { to: "/", label: "Beranda", icon: "dashboard", end: true },
               { to: "/modules", label: "Belajar", icon: "course" },
-              { to: "/kpi", label: "KPI", icon: "kpi" },
               {
                 to: "/ai-assistant",
                 label: "APPI",
                 icon: "ai",
                 accent: "orange",
+                prominent: true,
               },
+              { to: "/kpi", label: "KPI", icon: "kpi" },
             ]}
           />
         </div>
