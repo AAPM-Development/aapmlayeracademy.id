@@ -1,6 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/aapp8359/public_html/staging.aapmlayeracademy.id/
+    - export DEPLOYBRANCH="$(git branch --show-current)"
+    - 'if [ "$DEPLOYBRANCH" = "main" ]; then export DEPLOYPATH=/home/aapp8359/public_html/; elif [ "$DEPLOYBRANCH" = "develop" ]; then export DEPLOYPATH=/home/aapp8359/public_html/staging.aapmlayeracademy.id/; else echo "Unsupported deploy branch: $DEPLOYBRANCH"; exit 1; fi'
     - /bin/mkdir -p "$DEPLOYPATH"
     - /bin/cp -R dist/. "$DEPLOYPATH"
