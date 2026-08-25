@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
+import AapmIcon from "@/components/icons/AapmIcon"
 
 import { cn } from "@/lib/utils"
 
@@ -26,7 +26,7 @@ const ContextMenuSubTrigger = React.forwardRef(({ className, inset, children, ..
     )}
     {...props}>
     {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
+    <AapmIcon name="chevronRight" className="ml-auto h-4 w-4" />
   </ContextMenuPrimitive.SubTrigger>
 ))
 ContextMenuSubTrigger.displayName = ContextMenuPrimitive.SubTrigger.displayName
@@ -78,7 +78,7 @@ const ContextMenuCheckboxItem = React.forwardRef(({ className, children, checked
     {...props}>
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <ContextMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <AapmIcon name="check" className="h-4 w-4" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -97,7 +97,7 @@ const ContextMenuRadioItem = React.forwardRef(({ className, children, ...props }
     {...props}>
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <ContextMenuPrimitive.ItemIndicator>
-        <Circle className="h-4 w-4 fill-current" />
+        <AapmIcon name="circle" className="h-4 w-4 fill-current" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
     {children}

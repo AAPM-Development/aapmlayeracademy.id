@@ -38,15 +38,27 @@ export default function KpiDashboard() {
   const submit = async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, key === "notes" ? value : numeric(value)]));
-    await saveFarmData({ id: editing?.id, data });
-    toast({ title: editing ? "Data diperbarui" : "Data farm ditambahkan" });
-    setForm(emptyForm());
-    setEditing(null);
+    try {
+      await saveFarmData({ id: editing?.id ?? null, data });
+      toast({ title: editing ? "Data diperbarui" : "Data farm ditambahkan" });
+      setForm(emptyForm());
+      setEditing(null);
+    } catch (error) {
+      toast({
+        title: "Data belum tersimpan",
+        description: error?.message || "Coba lagi dalam beberapa saat.",
+        variant: "destructive",
+      });
+    }
   };
 
   const startEdit = (row) => {
     setEditing(row);
     setForm({ week: row.week, henDayProduction: row.henDayProduction, feedIntake: row.feedIntake, eggWeight: row.eggWeight, mortality: row.mortality, waterIntake: row.waterIntake, temperature: row.temperature, humidity: row.humidity, revenue: row.revenue, cost: row.cost, fcr: row.fcr, notes: row.notes || "" });
+    window.requestAnimationFrame(() => {
+      document.getElementById("farm-data-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("farm-umur-minggu-")?.focus({ preventScroll: true });
+    });
   };
 
   const remove = async (id) => {
@@ -70,11 +82,11 @@ export default function KpiDashboard() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,2fr)]">
-        <Card className="h-fit border-border bg-card xl:sticky xl:top-5">
-          <CardHeader className="p-5 pb-3"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base">{editing ? "Edit data mingguan" : "Input data mingguan"}</CardTitle><CardDescription className="mt-1">Angka yang rapi membuat tren lebih mudah dibaca.</CardDescription></div><IconTile icon={editing ? "edit" : "finance"} tone={editing ? "orange" : "lime"} size="sm" /></div></CardHeader>
+        <Card id="farm-data-form" className={cn("h-fit scroll-mt-4 border-border bg-card xl:sticky xl:top-5", editing && "border-brand-orange/45 ring-1 ring-brand-orange/15")}>
+          <CardHeader className="p-5 pb-3"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><CardTitle className="text-base">{editing ? "Edit data mingguan" : "Input data mingguan"}</CardTitle>{editing && <span className="rounded-full bg-tint-orange px-2 py-1 text-[10px] font-semibold text-tint-orange-foreground">Minggu {editing.week}</span>}</div><CardDescription className="mt-1">{editing ? "Perbarui angka lalu simpan perubahan Anda." : "Angka yang rapi membuat tren lebih mudah dibaca."}</CardDescription></div><IconTile icon={editing ? "edit" : "finance"} tone={editing ? "orange" : "lime"} size="sm" /></div></CardHeader>
           <CardContent className="p-5 pt-2">
             <form onSubmit={submit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">{numberFields.map((field) => <MetricInput key={field.key} label={field.label} value={form[field.key]} required={field.required} onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))} />)}</div>
+              <div className="grid grid-cols-2 gap-3">{numberFields.map((field) => <MetricInput key={field.key} fieldKey={field.key} label={field.label} value={form[field.key]} required={field.required} onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))} />)}</div>
               <div className="space-y-2"><Label htmlFor="farm-notes" className="text-xs text-muted-foreground">Catatan operasional</Label><Textarea id="farm-notes" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Contoh: perubahan pakan, cuaca, atau kondisi kandang." /></div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">{editing && <Button type="button" variant="outline" onClick={() => { setEditing(null); setForm(emptyForm()); }}>Batal</Button>}<Button type="submit" className="flex-1" disabled={save.isPending}>{editing ? "Simpan perubahan" : "Tambah data"}<AapmIcon name="arrowRight" /></Button></div>
             </form>
@@ -92,7 +104,7 @@ export default function KpiDashboard() {
               <ChartCard title="Revenue vs cost" description="Nilai ditampilkan dalam juta rupiah."><ResponsiveContainer width="100%" height={208}><BarChart data={sorted.map((row) => ({ ...row, revenueM: (row.revenue || 0) / 1e6, costM: (row.cost || 0) / 1e6 }))} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke={chartGrid} strokeDasharray="3 3" vertical={false} /><XAxis dataKey="week" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} /><Tooltip contentStyle={chartTooltip} /><Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} /><Bar dataKey="revenueM" name="Revenue" fill="hsl(var(--brand-aapm-green))" radius={[6, 6, 0, 0]} /><Bar dataKey="costM" name="Cost" fill="hsl(var(--brand-aapm-orange))" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer></ChartCard>
             </div>
 
-            <Card className="overflow-hidden"><CardHeader className="p-5 pb-3"><CardTitle className="text-base">Riwayat input</CardTitle><CardDescription className="mt-1">Kelola dan koreksi data mingguan Anda.</CardDescription></CardHeader><CardContent className="p-0"><Table><TableHeader className="bg-surface-subtle"><TableRow><TableHead>Mgg</TableHead><TableHead className="text-right">HDP</TableHead><TableHead className="text-right">FCR</TableHead><TableHead className="text-right">Feed</TableHead><TableHead className="text-right">Egg W.</TableHead><TableHead className="text-right">Mort.</TableHead><TableHead className="w-24" /></TableRow></TableHeader><TableBody>{sorted.map((row) => <TableRow key={row.id}><TableCell className="font-medium">{row.week}</TableCell><TableCell className="text-right">{formatValue(row.henDayProduction, "%")}</TableCell><TableCell className="text-right">{formatValue(row.fcr)}</TableCell><TableCell className="text-right">{formatValue(row.feedIntake)}</TableCell><TableCell className="text-right">{formatValue(row.eggWeight)}</TableCell><TableCell className="text-right">{formatValue(row.mortality, "%")}</TableCell><TableCell><div className="flex justify-end gap-1"><IconButton label={`Edit minggu ${row.week}`} tooltip="Edit data" variant="ghost" onClick={() => startEdit(row)}><AapmIcon name="edit" className="h-4 w-4" /></IconButton><IconButton label={`Hapus minggu ${row.week}`} tooltip="Hapus data" variant="ghost" className="text-danger hover:bg-danger/10 hover:text-danger" onClick={() => remove(row.id)}><AapmIcon name="delete" className="h-4 w-4" /></IconButton></div></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+            <Card className="overflow-hidden"><CardHeader className="p-5 pb-3"><CardTitle className="text-base">Riwayat input</CardTitle><CardDescription className="mt-1">Kelola dan koreksi data mingguan Anda.</CardDescription></CardHeader><CardContent className="p-0"><Table className="min-w-[42rem]"><TableHeader className="bg-surface-subtle"><TableRow><TableHead>Mgg</TableHead><TableHead className="text-right">HDP</TableHead><TableHead className="text-right">FCR</TableHead><TableHead className="text-right">Feed</TableHead><TableHead className="text-right">Egg W.</TableHead><TableHead className="text-right">Mort.</TableHead><TableHead className="sticky right-0 z-20 w-28 bg-surface-subtle text-right">Aksi</TableHead></TableRow></TableHeader><TableBody>{sorted.map((row) => <TableRow key={row.id} className="group"><TableCell className="font-medium">{row.week}</TableCell><TableCell className="text-right">{formatValue(row.henDayProduction, "%")}</TableCell><TableCell className="text-right">{formatValue(row.fcr)}</TableCell><TableCell className="text-right">{formatValue(row.feedIntake)}</TableCell><TableCell className="text-right">{formatValue(row.eggWeight)}</TableCell><TableCell className="text-right">{formatValue(row.mortality, "%")}</TableCell><TableCell className="sticky right-0 z-10 bg-card text-right shadow-[-10px_0_18px_-16px_hsl(var(--foreground)/0.45)] group-hover:bg-muted/50"><div className="flex justify-end gap-1"><IconButton label={`Edit minggu ${row.week}`} tooltip="Edit data" variant="outline" onClick={() => startEdit(row)}><AapmIcon name="edit" className="h-4 w-4" /></IconButton><IconButton label={`Hapus minggu ${row.week}`} tooltip="Hapus data" variant="ghost" className="text-danger hover:bg-danger/10 hover:text-danger" onClick={() => remove(row.id)}><AapmIcon name="delete" className="h-4 w-4" /></IconButton></div></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
           </>}
         </section>
       </div>
@@ -100,8 +112,8 @@ export default function KpiDashboard() {
   );
 }
 
-function MetricInput({ label, value, required = false, onChange }) {
-  const id = `farm-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+function MetricInput({ fieldKey, label, value, required = false, onChange }) {
+  const id = `farm-${fieldKey}`;
   return <div className="space-y-1.5"><Label htmlFor={id} className="text-[11px] text-muted-foreground">{label}</Label><Input id={id} type="number" inputMode="decimal" value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></div>;
 }
 

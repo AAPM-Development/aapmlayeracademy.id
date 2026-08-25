@@ -7,13 +7,13 @@
   "theme_color": "#318139",
   "icons": [
     {
-      "src": "/brand/aapm/pwa-academy-icon.svg",
+      "src": "/brand/aapm/pwa-academy.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/brand/aapm/pwa-app-icon.svg",
+      "src": "/brand/aapm/pwa-main.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"

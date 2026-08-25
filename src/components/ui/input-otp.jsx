@@ -1,6 +1,6 @@
 import * as React from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
-import { Minus } from "lucide-react"
+import AapmIcon from "@/components/icons/AapmIcon"
 
 import { cn } from "@/lib/utils"
 
@@ -45,7 +45,7 @@ InputOTPSlot.displayName = "InputOTPSlot"
 
 const InputOTPSeparator = React.forwardRef(({ ...props }, ref) => (
   <div ref={ref} role="separator" {...props}>
-    <Minus />
+    <AapmIcon name="minus" />
   </div>
 ))
 InputOTPSeparator.displayName = "InputOTPSeparator"

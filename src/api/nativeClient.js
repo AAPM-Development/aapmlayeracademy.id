@@ -11,6 +11,12 @@ class ApiError extends Error {
 }
 
 async function request(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const writes = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  if (!csrfToken && writes && path !== "/auth/csrf") {
+    await request("/auth/csrf");
+  }
+
   const headers = {
     Accept: "application/json",
     ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -48,6 +54,10 @@ async function request(path, options = {}) {
 }
 
 async function stream(path, body, onEvent) {
+  if (!csrfToken) {
+    await request("/auth/csrf");
+  }
+
   const response = await fetch(`${API_ROOT}${path}`, {
     method: "POST",
     credentials: "same-origin",

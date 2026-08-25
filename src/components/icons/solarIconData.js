@@ -38,12 +38,15 @@ import solarLetterBoldDuotone from '@iconify-icons/solar/letter-bold-duotone.js'
 import solar29 from '@iconify-icons/solar/lightbulb-bolt-bold-duotone.js';
 import solarLeaf from '@iconify-icons/solar/leaf-bold-duotone.js';
 import solar30 from '@iconify-icons/solar/list-bold.js';
+import solarAltArrowDown from '@iconify-icons/solar/alt-arrow-down-linear.js';
+import solarAltArrowUp from '@iconify-icons/solar/alt-arrow-up-linear.js';
 import solar31 from '@iconify-icons/solar/lock-keyhole-minimalistic-unlocked-bold.js';
 import solar32 from '@iconify-icons/solar/lock-password-outline.js';
 import solarLockedKeyhole from '@iconify-icons/solar/lock-keyhole-minimalistic-bold-duotone.js';
 import solar33 from '@iconify-icons/solar/logout-3-bold.js';
 import solarMagnifer from '@iconify-icons/solar/magnifer-bold-duotone.js';
 import solarMapPoint from '@iconify-icons/solar/map-point-bold-duotone.js';
+import solarMenuDots from '@iconify-icons/solar/menu-dots-bold.js';
 import solar34 from '@iconify-icons/solar/medal-ribbon-star-bold.js';
 import solar35 from '@iconify-icons/solar/medal-star-bold.js';
 import solar36 from '@iconify-icons/solar/medical-kit-bold.js';
@@ -64,6 +67,7 @@ import solar48 from '@iconify-icons/solar/scale-bold-duotone.js';
 import solar49 from '@iconify-icons/solar/shield-check-bold.js';
 import solar50 from '@iconify-icons/solar/sidebar-minimalistic-bold-duotone.js';
 import solar51 from '@iconify-icons/solar/sort-vertical-bold-duotone.js';
+import solarMinusCircle from '@iconify-icons/solar/minus-circle-bold.js';
 import solar52 from '@iconify-icons/solar/stars-minimalistic-bold-duotone.js';
 import solarAi from '@iconify-icons/solar/cpu-bolt-bold-duotone.js';
 import solar53 from '@iconify-icons/solar/sun-2-bold-duotone.js';
@@ -83,6 +87,8 @@ export const solarIconData = Object.freeze({
   'solar:add-circle-bold': solar0,
   'solar:alt-arrow-left-linear': solar1,
   'solar:alt-arrow-right-linear': solar2,
+  'solar:alt-arrow-down-linear': solarAltArrowDown,
+  'solar:alt-arrow-up-linear': solarAltArrowUp,
   'solar:arrow-right-up-bold': solar3,
   'solar:arrow-up-bold': solarArrowUp,
   'solar:calculator-bold-duotone': solar4,
@@ -126,6 +132,8 @@ export const solarIconData = Object.freeze({
   'solar:logout-3-bold': solar33,
   'solar:magnifer-bold-duotone': solarMagnifer,
   'solar:map-point-bold-duotone': solarMapPoint,
+  'solar:menu-dots-bold': solarMenuDots,
+  'solar:minus-circle-bold': solarMinusCircle,
   'solar:medal-ribbon-star-bold': solar34,
   'solar:medal-star-bold': solar35,
   'solar:medical-kit-bold': solar36,
