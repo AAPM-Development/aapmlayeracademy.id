@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
-import { Button, ScrollArea, Switch } from "@/components/primitives";
+import { Button, ConfirmDialog, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
@@ -251,6 +251,7 @@ function ConversationList({
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState("chats");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const visibleConversations = filterConversations(conversations, query);
 
   return (
@@ -335,13 +336,7 @@ function ConversationList({
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  if (
-                    window.confirm(
-                      `Hapus percakapan \"${conversation.title}\"? Riwayat ini tidak dapat dipulihkan.`,
-                    )
-                  ) {
-                    onDelete(conversation.id);
-                  }
+                  setPendingDelete(conversation);
                 }}
                 disabled={disabled}
                 className="mr-1 h-7 w-7 shrink-0 border border-border bg-background text-muted-foreground transition-colors hover:border-danger/30 hover:text-danger"
@@ -376,6 +371,24 @@ function ConversationList({
           ))}
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Hapus percakapan?"
+        description={
+          pendingDelete
+            ? `“${pendingDelete.title}” akan dihapus dari riwayat akun Anda dan tidak dapat dipulihkan.`
+            : "Riwayat percakapan ini tidak dapat dipulihkan."
+        }
+        confirmLabel="Hapus percakapan"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={() => {
+          const conversationId = pendingDelete?.id;
+          setPendingDelete(null);
+          if (conversationId) onDelete(conversationId);
+        }}
+      />
     </aside>
   );
 }
@@ -395,6 +408,7 @@ function MobileConversationSheet({
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState("chats");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const visibleConversations = filterConversations(conversations, query);
 
   if (!open) return null;
@@ -506,13 +520,7 @@ function MobileConversationSheet({
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  if (
-                    window.confirm(
-                      `Hapus percakapan \"${conversation.title}\"? Riwayat ini tidak dapat dipulihkan.`,
-                    )
-                  ) {
-                    onDelete(conversation.id);
-                  }
+                  setPendingDelete(conversation);
                 }}
                 disabled={disabled}
                 className="mr-0.5 h-8 w-8 shrink-0 border border-border bg-background text-muted-foreground hover:border-danger/30 hover:text-danger"
@@ -527,6 +535,24 @@ function MobileConversationSheet({
             ))}
           </div>}
         </ScrollArea>
+        <ConfirmDialog
+          open={Boolean(pendingDelete)}
+          onOpenChange={(isOpen) => !isOpen && setPendingDelete(null)}
+          title="Hapus percakapan?"
+          description={
+            pendingDelete
+              ? `“${pendingDelete.title}” akan dihapus dari riwayat akun Anda dan tidak dapat dipulihkan.`
+              : "Riwayat percakapan ini tidak dapat dipulihkan."
+          }
+          confirmLabel="Hapus percakapan"
+          icon="solar:trash-bin-trash-bold"
+          destructive
+          onConfirm={() => {
+            const conversationId = pendingDelete?.id;
+            setPendingDelete(null);
+            if (conversationId) onDelete(conversationId);
+          }}
+        />
       </aside>
     </>
   );
@@ -913,8 +939,8 @@ export default function AiAssistant() {
           setHistoryOpen(false);
         }}
       />
-      <aside className="hidden w-72 shrink-0 border-l border-border bg-surface-subtle/45 2xl:flex 2xl:flex-col">
-        <div className="p-5">
+      <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-border bg-surface-subtle/45 2xl:flex 2xl:flex-col">
+        <div className="p-5 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs font-semibold">Konteks farm</div>
@@ -941,7 +967,7 @@ export default function AiAssistant() {
             </span>
           </div>
         </div>
-        <div className="mt-auto border-t border-border p-5">
+        <div className="border-t border-border p-5">
           <div className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
             CAKUPAN ANALISIS
           </div>

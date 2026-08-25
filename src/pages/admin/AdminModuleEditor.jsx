@@ -6,6 +6,7 @@ import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import {
   Badge,
   Button,
+  ConfirmDialog,
   Input,
   Label,
   Select,
@@ -77,6 +78,7 @@ function QuestionEditor({ moduleId }) {
   const { toast } = useToast();
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyQuestion);
+  const [pendingQuestionDelete, setPendingQuestionDelete] = useState(null);
   const questions = data?.questions || [];
   const edit = (question) => {
     const options = question.options || [];
@@ -126,8 +128,6 @@ function QuestionEditor({ moduleId }) {
     }
   };
   const remove = async (question) => {
-    if (!window.confirm(`Hapus soal ini? Tindakan tidak dapat dipulihkan.`))
-      return;
     try {
       await deleteQuestion.mutateAsync({ moduleId, questionId: question.id });
       if (selected?.id === question.id) {
@@ -146,7 +146,8 @@ function QuestionEditor({ moduleId }) {
   const set = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)]">
+    <>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)]">
       <Surface className="overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
@@ -192,7 +193,7 @@ function QuestionEditor({ moduleId }) {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => remove(question)}
+                    onClick={() => setPendingQuestionDelete(question)}
                     aria-label="Hapus soal"
                   >
                     <AapmIcon name="delete" className="h-4 w-4 text-danger" />
@@ -314,7 +315,22 @@ function QuestionEditor({ moduleId }) {
           </Button>
         </form>
       </Surface>
-    </div>
+      </div>
+      <ConfirmDialog
+        open={Boolean(pendingQuestionDelete)}
+        onOpenChange={(open) => !open && setPendingQuestionDelete(null)}
+        title="Hapus soal?"
+        description="Soal ini akan dihapus dari bank soal modul dan tidak dapat dipulihkan."
+        confirmLabel="Hapus soal"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={() => {
+          const question = pendingQuestionDelete;
+          setPendingQuestionDelete(null);
+          if (question) remove(question);
+        }}
+      />
+    </>
   );
 }
 
@@ -330,6 +346,7 @@ export default function AdminModuleEditor() {
   const updateModule = useUpdateAdminModule();
   const deleteModule = useDeleteAdminModule();
   const [form, setForm] = useState(emptyModule);
+  const [pendingModuleDelete, setPendingModuleDelete] = useState(false);
   useEffect(() => {
     const module = data?.module;
     if (!module) return;
@@ -385,12 +402,6 @@ export default function AdminModuleEditor() {
     }
   };
   const remove = async () => {
-    if (
-      !window.confirm(
-        "Hapus modul dan seluruh bank soalnya? Modul yang telah memiliki progres learner tidak dapat dihapus.",
-      )
-    )
-      return;
     try {
       await deleteModule.mutateAsync(moduleId);
       toast({ title: "Modul dihapus" });
@@ -429,7 +440,7 @@ export default function AdminModuleEditor() {
           {!isNew && (
             <Button
               variant="outline"
-              onClick={remove}
+              onClick={() => setPendingModuleDelete(true)}
               disabled={deleteModule.isPending}
             >
               <AapmIcon name="delete" className="h-4 w-4 text-danger" /> Hapus
@@ -631,6 +642,19 @@ export default function AdminModuleEditor() {
           {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}
         </TabsContent>
       </Tabs>
+      <ConfirmDialog
+        open={pendingModuleDelete}
+        onOpenChange={setPendingModuleDelete}
+        title="Hapus modul?"
+        description="Modul dan seluruh bank soalnya akan dihapus. Modul yang sudah memiliki progres learner tetap akan ditolak oleh sistem."
+        confirmLabel="Hapus modul"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={() => {
+          setPendingModuleDelete(false);
+          remove();
+        }}
+      />
     </AdminPageFrame>
   );
 }

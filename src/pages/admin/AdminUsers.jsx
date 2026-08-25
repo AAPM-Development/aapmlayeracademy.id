@@ -4,6 +4,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import {
   Badge,
   Button,
+  ConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,6 +46,7 @@ function UserDialog({ user, open, onOpenChange }) {
   const [role, setRole] = useState("learner");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [passwordConfirmationOpen, setPasswordConfirmationOpen] = useState(false);
 
   useEffect(() => {
     setName(user?.full_name || "");
@@ -70,9 +72,13 @@ function UserDialog({ user, open, onOpenChange }) {
     }
   };
 
-  const changePassword = async () => {
-    if (!newPassword) return;
-    if (!window.confirm(`Ganti password untuk ${user.full_name || user.email}? Pengguna perlu memakai password baru saat login.`)) return;
+  const changePassword = () => {
+    if (newPassword) setPasswordConfirmationOpen(true);
+  };
+
+  const confirmChangePassword = async () => {
+    setPasswordConfirmationOpen(false);
+    if (!newPassword || !user) return;
     try {
       await resetPassword.mutateAsync({ userId: user.id, password: newPassword });
       setNewPassword("");
@@ -82,7 +88,7 @@ function UserDialog({ user, open, onOpenChange }) {
     }
   };
 
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[min(90dvh,44rem)] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>{isNew ? "Buat akun" : "Kelola akun"}</DialogTitle><DialogDescription>{isNew ? "Buat akses learner atau admin dengan password awal yang Anda tetapkan." : "Email bersifat identitas akun dan tidak dapat diubah dari panel ini."}</DialogDescription></DialogHeader><form className="mt-2 space-y-4" onSubmit={save}><div className="space-y-2"><Label htmlFor="admin-user-name">Nama</Label><Input id="admin-user-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={160} required /></div><div className="space-y-2"><Label htmlFor="admin-user-email">Email</Label><Input id="admin-user-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={!isNew} required /></div><div className="space-y-2"><Label>Role</Label><Select value={role} onValueChange={setRole}><SelectTrigger className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="learner">Learner</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select></div>{isNew && <div className="space-y-2"><Label htmlFor="admin-user-password">Password awal</Label><Input id="admin-user-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} placeholder="Minimal 8 karakter, huruf dan angka" required /><p className="text-[11px] text-muted-foreground">Password tidak akan ditampilkan kembali setelah akun dibuat.</p></div>}<Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>{isNew ? (createUser.isPending ? "Membuat akun…" : "Buat akun") : (updateUser.isPending ? "Menyimpan…" : "Simpan perubahan")}</Button></form>{!isNew && <div className="mt-6 border-t border-border pt-5"><div className="text-sm font-semibold">Ganti password</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Tindakan ini tidak mengirimkan password melalui email. Berikan password baru secara aman kepada pengguna.</p><div className="mt-3 flex gap-2"><Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} placeholder="Password baru" /><Button type="button" variant="outline" onClick={changePassword} disabled={resetPassword.isPending || !newPassword}>{resetPassword.isPending ? "Mengubah…" : "Ganti"}</Button></div></div>}</DialogContent></Dialog>;
+  return <><Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[min(90dvh,44rem)] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>{isNew ? "Buat akun" : "Kelola akun"}</DialogTitle><DialogDescription>{isNew ? "Buat akses learner atau admin dengan password awal yang Anda tetapkan." : "Email bersifat identitas akun dan tidak dapat diubah dari panel ini."}</DialogDescription></DialogHeader><form className="mt-2 space-y-4" onSubmit={save}><div className="space-y-2"><Label htmlFor="admin-user-name">Nama</Label><Input id="admin-user-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={160} required /></div><div className="space-y-2"><Label htmlFor="admin-user-email">Email</Label><Input id="admin-user-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={!isNew} required /></div><div className="space-y-2"><Label>Role</Label><Select value={role} onValueChange={setRole}><SelectTrigger className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="learner">Learner</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select></div>{isNew && <div className="space-y-2"><Label htmlFor="admin-user-password">Password awal</Label><Input id="admin-user-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} placeholder="Minimal 8 karakter, huruf dan angka" required /><p className="text-[11px] text-muted-foreground">Password tidak akan ditampilkan kembali setelah akun dibuat.</p></div>}<Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>{isNew ? (createUser.isPending ? "Membuat akun…" : "Buat akun") : (updateUser.isPending ? "Menyimpan…" : "Simpan perubahan")}</Button></form>{!isNew && <div className="mt-6 border-t border-border pt-5"><div className="text-sm font-semibold">Ganti password</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Tindakan ini tidak mengirimkan password melalui email. Berikan password baru secara aman kepada pengguna.</p><div className="mt-3 flex gap-2"><Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} placeholder="Password baru" /><Button type="button" variant="outline" onClick={changePassword} disabled={resetPassword.isPending || !newPassword}>{resetPassword.isPending ? "Mengubah…" : "Ganti"}</Button></div></div>}</DialogContent></Dialog><ConfirmDialog open={passwordConfirmationOpen} onOpenChange={setPasswordConfirmationOpen} title="Ganti password pengguna?" description={`Password untuk ${user?.full_name || user?.email || "akun ini"} akan diganti dan password lama tidak dapat digunakan lagi.`} confirmLabel="Ganti password" icon="solar:lock-keyhole-bold" onConfirm={confirmChangePassword} /></>;
 }
 
 export default function AdminUsers() {

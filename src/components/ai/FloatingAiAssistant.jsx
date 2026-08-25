@@ -6,7 +6,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
-import { Button, Switch } from "@/components/primitives";
+import { Button, ConfirmDialog, Switch } from "@/components/primitives";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
 const MermaidDiagram = React.lazy(
@@ -153,6 +153,7 @@ export default function FloatingAiAssistant() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyView, setHistoryView] = useState("chats");
   const [historyQuery, setHistoryQuery] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
   const closeTimer = useRef(null);
@@ -527,13 +528,7 @@ export default function FloatingAiAssistant() {
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            if (
-                              window.confirm(
-                                `Hapus percakapan \"${conversation.title}\"? Riwayat ini tidak dapat dipulihkan.`,
-                              )
-                            ) {
-                              deleteConversation(conversation.id);
-                            }
+                            setPendingDelete(conversation);
                           }}
                           disabled={isStreaming}
                           className="h-8 w-8 shrink-0 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
@@ -668,6 +663,24 @@ export default function FloatingAiAssistant() {
           </footer>
         </section>
       )}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(isOpen) => !isOpen && setPendingDelete(null)}
+        title="Hapus percakapan?"
+        description={
+          pendingDelete
+            ? `“${pendingDelete.title}” akan dihapus dari riwayat akun Anda dan tidak dapat dipulihkan.`
+            : "Riwayat percakapan ini tidak dapat dipulihkan."
+        }
+        confirmLabel="Hapus percakapan"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={() => {
+          const conversationId = pendingDelete?.id;
+          setPendingDelete(null);
+          if (conversationId) deleteConversation(conversationId);
+        }}
+      />
       {!open && (
         <button
           type="button"
