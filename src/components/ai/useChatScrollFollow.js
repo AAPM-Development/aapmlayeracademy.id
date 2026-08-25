@@ -1,20 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const BOTTOM_THRESHOLD = 72;
+const BOTTOM_THRESHOLD = 32;
 
-export default function useChatScrollFollow({ content, activeKey = null, isStreaming = false }) {
+export default function useChatScrollFollow({
+  content,
+  activeKey = null,
+  isStreaming = false,
+}) {
   const viewportRef = useRef(null);
   const endRef = useRef(null);
   const shouldFollowRef = useRef(true);
+  const hasContentRef = useRef(Boolean(content?.length));
+  const frameRef = useRef(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const updateScrollState = useCallback(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const distanceFromBottom =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     const atBottom = distanceFromBottom <= BOTTOM_THRESHOLD;
     shouldFollowRef.current = atBottom;
-    setShowJumpToLatest(!atBottom && Boolean(content?.length));
+    const shouldShowJump = !atBottom && hasContentRef.current;
+    setShowJumpToLatest((current) =>
+      current === shouldShowJump ? current : shouldShowJump,
+    );
+  }, []);
+
+  const scrollToLatest = useCallback((behavior = "auto") => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const top = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+    if (typeof viewport.scrollTo === "function") {
+      viewport.scrollTo({ top, behavior });
+    } else {
+      viewport.scrollTop = top;
+    }
+  }, []);
+
+  const scheduleFollow = useCallback(
+    (behavior = "auto") => {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = window.requestAnimationFrame(() => {
+        if (!shouldFollowRef.current) {
+          updateScrollState();
+          return;
+        }
+        scrollToLatest(behavior);
+        updateScrollState();
+      });
+    },
+    [scrollToLatest, updateScrollState],
+  );
+
+  useEffect(() => {
+    hasContentRef.current = Boolean(content?.length);
+    if (!hasContentRef.current) setShowJumpToLatest(false);
   }, [content?.length]);
 
   useEffect(() => {
@@ -28,25 +69,41 @@ export default function useChatScrollFollow({ content, activeKey = null, isStrea
   useEffect(() => {
     shouldFollowRef.current = true;
     setShowJumpToLatest(false);
-  }, [activeKey]);
+    scheduleFollow();
+  }, [activeKey, scheduleFollow]);
 
   useEffect(() => {
-    if (!shouldFollowRef.current) return undefined;
-    const frame = window.requestAnimationFrame(() => {
-      endRef.current?.scrollIntoView({
-        behavior: isStreaming ? "auto" : "smooth",
-        block: "end",
-      });
-      updateScrollState();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [content, isStreaming, updateScrollState]);
+    scheduleFollow("auto");
+    return () => window.cancelAnimationFrame(frameRef.current);
+  }, [content, isStreaming, scheduleFollow]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+
+    const handleResize = () => {
+      if (shouldFollowRef.current) scheduleFollow("auto");
+      else updateScrollState();
+    };
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(handleResize) : null;
+    resizeObserver?.observe(viewport);
+    if (viewport.firstElementChild) resizeObserver?.observe(viewport.firstElementChild);
+
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", handleResize, { passive: true });
+
+    return () => {
+      resizeObserver?.disconnect();
+      visualViewport?.removeEventListener("resize", handleResize);
+    };
+  }, [scheduleFollow, updateScrollState]);
 
   const jumpToLatest = useCallback(() => {
     shouldFollowRef.current = true;
     setShowJumpToLatest(false);
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, []);
+    scrollToLatest(isStreaming ? "auto" : "smooth");
+  }, [isStreaming, scrollToLatest]);
 
   return { viewportRef, endRef, showJumpToLatest, jumpToLatest };
 }

@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
-import AiCompanionDock from "@/components/ai/AiCompanionDock";
+import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
@@ -15,6 +15,9 @@ import {
 import AiComposer from "@/components/ai/AiComposer";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import { Button, ConfirmDialog } from "@/components/primitives";
+import { useAuth } from "@/lib/AuthContext";
+import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
+import { personalizedSuggestions } from "@/lib/aiSuggestions";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
 const MermaidDiagram = React.lazy(
@@ -159,6 +162,10 @@ export default function FloatingAiAssistant() {
   const imageInputRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: farm = [] } = useFarmData();
+  const { data: modules = [] } = useModules();
+  const { data: progress = [] } = useUserProgress();
   const {
     activeConversationId,
     conversations,
@@ -177,6 +184,30 @@ export default function FloatingAiAssistant() {
   const activeConversation = conversations.find(
     (item) => item.id === activeConversationId,
   );
+  const bubbleSuggestions = useMemo(
+    () =>
+      personalizedSuggestions({
+        farm,
+        modules,
+        progress,
+        user,
+        pageContext: pageContextForPath(location.pathname),
+      }),
+    [farm, location.pathname, modules, progress, user],
+  );
+  const bubbleActions = useMemo(() => {
+    const contextual = bubbleSuggestions.slice(0, 2).map((suggestion) => ({
+      kind: "prompt",
+      label: suggestion.label,
+      detail: suggestion.detail,
+      icon: "solar:stars-minimalistic-bold-duotone",
+      prompt: suggestion.prompt,
+    }));
+    const routeAction = quickActions.find(
+      (action) => action.kind === "route" && action.to !== location.pathname,
+    );
+    return routeAction ? [...contextual, routeAction] : contextual;
+  }, [bubbleSuggestions, location.pathname]);
   const {
     viewportRef: chatViewportRef,
     endRef: chatEndRef,
@@ -279,9 +310,9 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
-          className={`aapm-ai-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`aapm-ai-panel aapm-ai-floating-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
-          <header className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <header className="aapm-ai-floating-panel__header flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
               <AiProfileAvatar
                 size="sm"
@@ -342,13 +373,15 @@ export default function FloatingAiAssistant() {
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
             <div
               ref={chatViewportRef}
-              className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
+              role="log"
+              aria-label="Transkrip percakapan APPI cepat"
+              className="aapm-ai-floating-transcript min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
             >
               <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
                   <p className="text-sm font-semibold tracking-[-0.015em]">
-                    Tanya, lalu lanjutkan di mana saja.
+                    Tanya APPI dari {pageContextLabel(location.pathname).toLowerCase()}.
                   </p>
                   <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">
                     KPI aktif dapat ikut dibaca. Percakapan ini tersimpan khusus
@@ -358,7 +391,7 @@ export default function FloatingAiAssistant() {
                     <p className="px-3 py-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
                       AKSI CEPAT
                     </p>
-                    {quickActions.map((action) => (
+                    {bubbleActions.map((action) => (
                       <button
                         key={action.label}
                         type="button"
@@ -411,13 +444,16 @@ export default function FloatingAiAssistant() {
                           className="h-3.5 w-3.5 text-brand-orange"
                         />{" "}
                         APPI
-                        {message.streaming && (
-                          <span className="ml-1 inline-flex items-center gap-1 text-[10px] font-medium text-brand-orange">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" />{" "}
-                            Live
-                          </span>
-                        )}
+                        {message.streaming && <span className="sr-only">sedang menjawab</span>}
                       </div>
+                      {message.streaming && (
+                        <AiStreamActivity
+                          label={streamStatus}
+                          steps={streamSteps}
+                          compact
+                          showSteps={false}
+                        />
+                      )}
                       {message.content && (
                         <div
                           className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
@@ -469,13 +505,6 @@ export default function FloatingAiAssistant() {
                 Ke terbaru
               </button>
             )}
-            <AiCompanionDock
-              compact
-              streaming={isStreaming}
-              state={streamPhase}
-              label={streamStatus}
-              steps={streamSteps}
-            />
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
@@ -547,7 +576,7 @@ export default function FloatingAiAssistant() {
               </aside>
             )}
           </div>
-          <footer className="shrink-0 border-t border-border bg-background p-3">
+          <footer className="aapm-ai-floating-composer shrink-0 border-t border-border bg-background p-3">
             <AiComposer
               input={input}
               setInput={setInput}
@@ -609,7 +638,7 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="fixed bottom-5 right-5 z-[75] hidden h-12 items-center justify-start gap-2 rounded-full border border-border bg-background/95 py-1.5 pl-2 pr-2.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-transform hover:-translate-y-0.5 hover:border-brand-orange/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 lg:inline-flex"
+          className="aapm-ai-launcher fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-orange/30 bg-background/95 p-1.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand-orange/65 hover:shadow-[0_16px_32px_hsl(var(--foreground)/0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:bottom-5 sm:right-5 sm:h-12 sm:w-auto sm:justify-start sm:gap-2 sm:py-1.5 sm:pl-2 sm:pr-2.5"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >

@@ -3,9 +3,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiQuickActions from "@/components/ai/AiQuickActions";
+import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
@@ -14,9 +14,10 @@ import {
   filterAndSortConversations,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
-import { Button, ConfirmDialog, ScrollArea, Switch } from "@/components/primitives";
+import { Button, ConfirmDialog, ScrollArea } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
-import { useFarmData, useUserProgress } from "@/lib/useCourseData";
+import { getNextModule } from "@/lib/academyData";
+import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
 const MermaidDiagram = React.lazy(
@@ -36,46 +37,132 @@ const workspaceTools = [
   { to: "/modules", label: "Materi", icon: "solar:notebook-bold-duotone" },
 ];
 
-function personalizedSuggestions({ farm, progress, user }) {
-  const name = (
-    user?.fullName ||
-    user?.full_name ||
-    user?.email ||
-    "saya"
-  ).split(" ")[0];
+function personalizedSuggestions({ farm = [], progress = [], modules = [], user, pageContext = "" }) {
+  const displayName = user?.fullName || user?.full_name || "Anda";
+  const name = displayName.split(" ")[0] || "Anda";
   const latest = farm.at(-1);
   const previous = farm.at(-2);
-  const completed = progress.filter((item) => item.completed).length;
-
-  if (!latest)
-    return [
-      `${name}, saya belum punya data KPI farm. Bantu saya menentukan lima data baseline yang perlu dicatat minggu ini.`,
-      "Buatkan format catatan harian sederhana untuk HDP, pakan, air, mortalitas, dan berat telur.",
-      completed
-        ? `Saya sudah menyelesaikan ${completed} modul. Topik operasional apa yang paling tepat saya lanjutkan?`
-        : "Saya baru mulai belajar. Urutkan fokus pertama yang paling penting untuk memahami performa layer farm.",
-      "Buatkan checklist biosecurity harian yang praktis untuk closed house layer.",
-    ];
-
-  const hdp = Number(latest.henDayProduction);
+  const completed = progress.filter(
+    (item) => item?.completed && Number(item.moduleNumber) > 0,
+  ).length;
+  const nextModule = getNextModule(modules, progress);
+  const nextModuleLabel = nextModule
+    ? `Modul ${nextModule.moduleNumber}: ${nextModule.title}`
+    : "modul Academy yang belum selesai";
+  const finite = (value) => Number.isFinite(Number(value));
+  const formatValue = (value) =>
+    finite(value)
+      ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(Number(value))
+      : "—";
+  const weekLabel = latest?.week ? `minggu ${latest.week}` : "catatan terbaru";
+  const hdp = Number(latest?.henDayProduction);
   const previousHdp = Number(previous?.henDayProduction);
-  const hdpPrompt = Number.isFinite(hdp)
-    ? `HDP minggu ${latest.week} tercatat ${hdp}%${Number.isFinite(previousHdp) ? `, dari ${previousHdp}% minggu sebelumnya` : ""}. Bantu saya menentukan pemeriksaan prioritas.`
-    : `Bantu saya membaca data operasional minggu ${latest.week} dan menentukan sinyal yang perlu diperiksa lebih dulu.`;
-  const waterPrompt = Number.isFinite(Number(latest.waterIntake))
-    ? `Konsumsi air minggu ${latest.week} adalah ${latest.waterIntake}. Faktor apa yang perlu saya bandingkan sebelum menyimpulkan penyebabnya?`
-    : "Data air belum lengkap. Buatkan cara mencatat konsumsi air yang dapat dibandingkan dengan suhu dan feed intake.";
-  const fcrPrompt = Number.isFinite(Number(latest.fcr))
-    ? `FCR terakhir saya ${latest.fcr}. Jelaskan data pendamping apa yang perlu dibaca agar evaluasinya tidak keliru.`
-    : "Buatkan urutan analisis hubungan feed intake, egg mass, dan FCR untuk data farm saya.";
-  return [
-    hdpPrompt,
-    waterPrompt,
-    fcrPrompt,
-    completed
-      ? `Dengan ${completed} modul selesai, materi mana yang relevan untuk mendukung evaluasi KPI saya saat ini?`
-      : "Hubungkan evaluasi KPI awal saya dengan jalur belajar Academy yang paling relevan.",
-  ];
+  const hdpDelta = finite(hdp) && finite(previousHdp) ? hdp - previousHdp : null;
+  const missingFields = latest
+    ? [
+        ["feedIntake", "pakan"],
+        ["waterIntake", "air"],
+        ["eggWeight", "berat telur"],
+        ["mortality", "mortalitas"],
+        ["temperature", "suhu"],
+        ["humidity", "kelembapan"],
+        ["fcr", "FCR"],
+      ]
+        .filter(([key]) => !finite(latest[key]))
+        .map(([, label]) => label)
+      : [];
+  const suggestions = [];
+  const add = (id, label, detail, prompt) =>
+    suggestions.push({ id, label, detail, prompt });
+
+  if (!latest) {
+    add(
+      "baseline",
+      "Bangun baseline farm",
+      "Tentukan data minimum untuk mulai membaca performa.",
+      `${name}, saya belum memiliki catatan KPI farm. Susun lima data baseline yang perlu saya catat minggu ini, lengkap dengan satuan, periode, dan cara mengecek konsistensinya.`,
+    );
+    add(
+      "daily-log",
+      "Siapkan catatan harian",
+      "Buat format sederhana yang siap dipakai tim lapangan.",
+      "Buatkan format catatan harian farm yang ringkas untuk HDP, pakan, air, berat telur, mortalitas, suhu, dan kelembapan.",
+    );
+  } else {
+    const changeText =
+      hdpDelta === null
+        ? "perbandingan minggu sebelumnya belum tersedia"
+        : `${hdpDelta >= 0 ? "naik" : "turun"} ${formatValue(Math.abs(hdpDelta))} poin dari minggu sebelumnya`;
+    add(
+      "latest-signal",
+      "Baca sinyal terbaru",
+      `${weekLabel} · HDP ${formatValue(hdp)}% · ${changeText}`,
+      finite(hdp)
+        ? `HDP ${weekLabel} saya ${formatValue(hdp)}%${finite(previousHdp) ? `, dibanding ${formatValue(previousHdp)}% pada minggu sebelumnya` : ""}. Susun tiga pemeriksaan prioritas, data pembanding yang perlu saya siapkan, dan batas kesimpulan yang aman.`
+        : `Baca sinyal operasional dari ${weekLabel} dan susun urutan pemeriksaan yang paling masuk akal sebelum saya menarik kesimpulan.`,
+    );
+    add(
+      "context-gap",
+      "Lengkapi konteks KPI",
+      missingFields.length
+        ? `Belum ada: ${missingFields.slice(0, 4).join(", ")}${missingFields.length > 4 ? ", dan lainnya" : ""}.`
+        : "Semua kolom utama sudah terisi; cek konsistensi antarperiode.",
+      missingFields.length
+        ? `Untuk ${weekLabel}, data ${missingFields.join(", ")} belum tercatat. Urutkan data mana yang paling penting dilengkapi lebih dulu dan jelaskan mengapa data itu dibutuhkan untuk membaca HDP atau FCR.`
+        : `Data KPI ${weekLabel} sudah cukup lengkap. Buatkan pemeriksaan konsistensi antarperiode agar angka yang tampak berubah tidak langsung dianggap sebagai masalah farm.`,
+    );
+    add(
+      "feed-output",
+      "Hubungkan pakan dan output",
+      finite(latest.fcr)
+        ? `FCR tercatat ${formatValue(latest.fcr)} · bedakan sinyal dari data yang belum pasti.`
+        : "Gunakan feed intake, egg mass, dan FCR secara berurutan.",
+      finite(latest.fcr)
+        ? `FCR ${formatValue(latest.fcr)} pada ${weekLabel}. Jelaskan data pendamping yang wajib dibaca sebelum menilai efisiensi, termasuk kemungkinan masalah satuan atau pembagian dengan nol.`
+        : `Susun urutan analisis hubungan feed intake, egg mass, dan FCR untuk data farm saya, termasuk data yang masih perlu dicatat.`,
+    );
+  }
+
+  if (pageContext === "kpi") {
+    add(
+      "kpi-decision",
+      "Validasi sebelum bertindak",
+      "Ubah angka KPI menjadi pemeriksaan lapangan yang aman.",
+      "Dari data KPI akun saya, buatkan tabel sinyal, data yang perlu divalidasi, kemungkinan penyebab, dan tindakan pertama. Pisahkan fakta dari hipotesis.",
+    );
+  } else if (pageContext === "calculators") {
+    add(
+      "calculator-check",
+      "Periksa hasil hitung",
+      "Pastikan rumus, satuan, dan keputusan tidak melenceng.",
+      "Bantu saya memeriksa hasil kalkulator yang sedang saya gunakan: jelaskan asumsi rumus, satuan yang harus cocok, dan bagaimana hasilnya diterjemahkan menjadi keputusan farm.",
+    );
+  } else if (pageContext === "learning") {
+    add(
+      "next-learning",
+      "Lanjutkan belajar dengan arah",
+      `${completed} modul selesai · fokus berikutnya: ${nextModuleLabel}.`,
+      `Saya sudah menyelesaikan ${completed} modul. Buatkan rencana belajar singkat untuk melanjutkan ke ${nextModuleLabel}, lalu kaitkan dengan masalah KPI farm yang sedang saya hadapi.`,
+    );
+  } else if (pageContext === "certification" || pageContext === "exam") {
+    add(
+      "readiness",
+      "Ukur kesiapan belajar",
+      `${completed} modul selesai · cari gap yang paling penting.`,
+      `Dengan ${completed} modul selesai, buatkan checklist kesiapan belajar saya untuk sertifikasi/ujian. Tunjukkan gap yang perlu saya tutup tanpa mengarang nilai atau menjanjikan kelulusan.`,
+    );
+  } else {
+    add(
+      "next-action",
+      "Pilih langkah berikutnya",
+      `${completed} modul selesai · tetap selaraskan belajar dengan praktik farm.`,
+      completed
+        ? `Saya sudah menyelesaikan ${completed} modul. Materi atau latihan apa yang paling relevan untuk memperkuat evaluasi KPI saya saat ini? Jelaskan alasannya.`
+        : "Saya baru mulai belajar. Urutkan fokus pertama yang paling penting untuk memahami performa layer farm dan langsung beri satu latihan praktis.",
+    );
+  }
+
+  return suggestions.slice(0, 4);
 }
 
 function MarkdownAnswer({ content }) {
@@ -167,7 +254,7 @@ function AssistantMessage({
   const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
-    <article className="w-full min-w-0 max-w-2xl overflow-hidden">
+    <article className="aapm-ai-message w-full min-w-0 max-w-2xl overflow-hidden">
       <div className="mb-2 flex items-center gap-2">
         <AapmIcon
           name="ai"
@@ -175,6 +262,13 @@ function AssistantMessage({
         />
         <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
       </div>
+      {message.streaming && (
+        <AiStreamActivity
+          label={message.streamStatus}
+          steps={message.streamSteps}
+          showSteps={!message.content}
+        />
+      )}
       {message.content && (
         <>
           <div
@@ -274,7 +368,7 @@ function ConversationList({
   );
 
   return (
-    <aside className="hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border bg-surface-subtle/35 lg:flex lg:flex-col">
+    <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border bg-surface-subtle/25 lg:flex lg:flex-col">
       <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-4">
         <div className="min-w-0">
           <p className="text-xs font-semibold">Percakapan</p>
@@ -538,6 +632,7 @@ export default function AiAssistant() {
   const imageInputRef = useRef(null);
   const location = useLocation();
   const { data: farm = [] } = useFarmData();
+  const { data: modules = [] } = useModules();
   const { data: progress = [] } = useUserProgress();
   const { user } = useAuth();
   const {
@@ -557,9 +652,17 @@ export default function AiAssistant() {
     deleteConversation,
     send,
   } = useAiChat();
+  const suggestionContext = location.state?.pageContext || "ai-assistant";
   const suggestions = useMemo(
-    () => personalizedSuggestions({ farm, progress, user }),
-    [farm, progress, user],
+    () =>
+      personalizedSuggestions({
+        farm,
+        progress,
+        modules,
+        user,
+        pageContext: suggestionContext,
+      }),
+    [farm, modules, progress, suggestionContext, user],
   );
   const contextLabel = includeFarm
     ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif`
@@ -635,7 +738,7 @@ export default function AiAssistant() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="aapm-ai-workspace flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
         activity={activity}
@@ -648,7 +751,7 @@ export default function AiAssistant() {
         onNew={startNewConversation}
       />
       <section className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6 lg:px-8">
+        <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
             <AiProfileAvatar
               size="sm"
@@ -722,9 +825,10 @@ export default function AiAssistant() {
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
           <ScrollArea
             viewportRef={chatViewportRef}
-            className="aapm-chat-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
+            aria-label="Transkrip percakapan APPI"
+            className="aapm-ai-transcript aapm-chat-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
           >
-            <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-28 pt-6 sm:px-8 sm:pb-32 sm:pt-9">
+            <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
                   Memuat percakapan…
@@ -739,20 +843,27 @@ export default function AiAssistant() {
                       {welcomeMessage}
                     </p>
                   </div>
-                  <div className="mt-8 grid gap-2 sm:grid-cols-2">
+                  <div className="aapm-ai-suggestion-grid mt-8 grid gap-2 sm:grid-cols-2">
                     {suggestions.map((suggestion) => (
                       <button
-                        key={suggestion}
+                        key={suggestion.id}
                         type="button"
-                        onClick={() => submit(suggestion)}
-                        className="group rounded-xl border border-border bg-surface-default px-3 py-3 text-left text-xs leading-5 text-muted-foreground transition-colors hover:border-brand-orange/35 hover:bg-tint-orange hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => submit(suggestion.prompt)}
+                        className="group min-w-0 rounded-xl border border-border bg-surface-default px-3.5 py-3 text-left text-xs leading-5 text-muted-foreground transition-[border-color,background-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-orange/35 hover:bg-tint-orange hover:text-foreground hover:shadow-[0_8px_22px_hsl(var(--aapm-orange-700)/0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        <span className="flex gap-2">
+                        <span className="flex min-w-0 items-start gap-2.5">
                           <AapmIcon
-                            name="solar:arrow-right-up-bold"
+                            name="solar:stars-minimalistic-bold-duotone"
                             className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                           />
-                          {suggestion}
+                          <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                            <span className="block font-semibold text-foreground">
+                              {suggestion.label}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
+                              {suggestion.detail}
+                            </span>
+                          </span>
                         </span>
                       </button>
                     ))}
@@ -777,7 +888,7 @@ export default function AiAssistant() {
                     ) : (
                       <AssistantMessage
                         key={message.id}
-                        message={{ ...message, streamStatus }}
+                        message={{ ...message, streamStatus, streamSteps }}
                         retryPrompt={
                           message.fallback ? messages[index - 1]?.content : ""
                         }
@@ -803,14 +914,8 @@ export default function AiAssistant() {
               Ke pesan terbaru
             </button>
           )}
-          <AiCompanionDock
-            streaming={isStreaming}
-            state={streamPhase}
-            label={streamStatus}
-            steps={streamSteps}
-          />
         </div>
-        <div className="min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
+        <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto min-w-0 max-w-3xl">
             <AiComposer
               input={input}
@@ -853,63 +958,6 @@ export default function AiAssistant() {
           setHistoryOpen(false);
         }}
       />
-      <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-border bg-surface-subtle/45 2xl:flex 2xl:flex-col">
-        <div className="p-5 pb-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold">Konteks farm</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Gunakan hingga delapan catatan KPI terakhir.
-              </p>
-            </div>
-            <Switch
-              checked={includeFarm}
-              onCheckedChange={setIncludeFarm}
-              aria-label="Sertakan data KPI Dashboard sebagai konteks"
-            />
-          </div>
-          <div
-            className={`mt-4 rounded-lg px-3 py-2.5 text-[11px] leading-5 ${includeFarm ? "bg-tint-green text-tint-green-foreground" : "bg-surface-default text-muted-foreground"}`}
-          >
-            <span className="block font-semibold">
-              {includeFarm ? "Konteks aktif" : "Konteks nonaktif"}
-            </span>
-            <span className="opacity-80">
-              {includeFarm
-                ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI akan dibaca.`
-                : "Jawaban tidak memakai data Dashboard."}
-            </span>
-          </div>
-        </div>
-        <div className="border-t border-border p-5">
-          <div className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
-            CAKUPAN ANALISIS
-          </div>
-          <ul className="mt-3 space-y-3 text-[11px] leading-5 text-muted-foreground">
-            <li className="flex gap-2">
-              <AapmIcon
-                name="solar:chart-square-bold-duotone"
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange"
-              />
-              Sinyal HDP, FCR, pakan, air, dan berat telur.
-            </li>
-            <li className="flex gap-2">
-              <AapmIcon
-                name="solar:clipboard-check-bold-duotone"
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange"
-              />
-              Urutan tindakan dan checklist lapangan.
-            </li>
-            <li className="flex gap-2">
-              <AapmIcon
-                name="solar:shield-check-bold"
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand-green"
-              />
-              Bukan pengganti diagnosis medis veteriner.
-            </li>
-          </ul>
-        </div>
-      </aside>
     </div>
   );
 }

@@ -7,38 +7,48 @@ export default function AiStreamActivity({
   compact = false,
   showSteps = true,
 }) {
-  const timeline = showSteps ? steps.slice(compact ? -2 : -4) : [];
+  const timeline = showSteps
+    ? [...new Set(steps.map((step) => String(step).trim()).filter(Boolean))].slice(
+        compact ? -2 : -3,
+      )
+    : [];
   const activeLabel = label || "APPI menyiapkan jawaban";
+  const cleanStep = (step) => step.replace(/^APPI\s+/i, "");
 
   return (
     <div
       className={`aapm-ai-activity ${compact ? "aapm-ai-activity--compact" : ""}`}
+      role="status"
       aria-live="polite"
     >
       <div className="min-w-0 flex-1 pt-1">
-        <div className="flex items-center gap-2">
+        <div className="aapm-ai-activity__status">
           <span className="aapm-ai-orbit" aria-hidden="true">
             <span />
             <span />
             <span />
           </span>
-          <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+          <span className="aapm-ai-activity__label">
             {activeLabel}
           </span>
+          <span className="aapm-ai-activity__live">aktif</span>
         </div>
         {timeline.length > 0 && (
-          <ol className="mt-2.5 space-y-1.5 border-l border-border pl-3.5 text-[11px] text-muted-foreground">
+          <ol className="aapm-ai-activity__steps">
             {timeline.map((step, index) => (
-              <li key={`${step}-${index}`} className="relative">
+              <li
+                key={`${step}-${index}`}
+                className={`aapm-ai-activity__step ${index === timeline.length - 1 ? "aapm-ai-activity__step--active" : ""}`}
+              >
                 <AapmIcon
                   name={
                     index === timeline.length - 1
                       ? "solar:refresh-circle-bold-duotone"
                       : "solar:check-circle-bold"
                   }
-                  className={`absolute -left-[1.36rem] top-0.5 h-3 w-3 bg-background ${index === timeline.length - 1 ? "text-brand-orange" : "text-brand-green"}`}
+                  className={`h-3 w-3 shrink-0 ${index === timeline.length - 1 ? "text-brand-orange" : "text-brand-green"}`}
                 />
-                {step}
+                <span>{cleanStep(step)}</span>
               </li>
             ))}
           </ol>
