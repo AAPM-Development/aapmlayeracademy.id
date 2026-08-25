@@ -7,7 +7,12 @@ import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
-import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
+import AiActivityList from "@/components/ai/AiActivityList";
+import {
+  AiConversationRow,
+  AiHistoryToolbar,
+  filterAndSortConversations,
+} from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
@@ -30,16 +35,6 @@ const workspaceTools = [
   },
   { to: "/modules", label: "Materi", icon: "solar:notebook-bold-duotone" },
 ];
-
-function filterConversations(conversations, query) {
-  const keyword = query.trim().toLocaleLowerCase("id-ID");
-  if (!keyword) return conversations;
-  return conversations.filter((conversation) =>
-    `${conversation.title || ""} ${conversation.lastMessagePreview || ""}`
-      .toLocaleLowerCase("id-ID")
-      .includes(keyword),
-  );
-}
 
 function personalizedSuggestions({ farm, progress, user }) {
   const name = (
@@ -270,8 +265,13 @@ function ConversationList({
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState("chats");
+  const [sort, setSort] = useState("updated");
   const [pendingDelete, setPendingDelete] = useState(null);
-  const visibleConversations = filterConversations(conversations, query);
+  const visibleConversations = filterAndSortConversations(
+    conversations,
+    query,
+    sort,
+  );
 
   return (
     <aside className="hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border bg-surface-subtle/35 lg:flex lg:flex-col">
@@ -297,20 +297,20 @@ function ConversationList({
           />
         </Button>
       </div>
-      <AiHistoryTabs value={view} onChange={setView} />
-      {view === "chats" && <label className="mx-4 mb-2 mt-2 flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 focus-within:border-brand-orange/45">
-        <AapmIcon
-          name="solar:magnifer-bold-duotone"
-          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+      <div className="px-3 pb-2 pt-1">
+        <AiHistoryToolbar
+          view={view}
+          onViewChange={setView}
+          query={query}
+          onQueryChange={setQuery}
+          sort={sort}
+          onSortChange={setSort}
+          onClearQuery={() => setQuery("")}
+          conversationCount={conversations.length}
+          activityCount={activity.length}
+          compact
         />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Cari riwayat"
-          className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
-          aria-label="Cari riwayat percakapan"
-        />
-      </label>}
+      </div>
       <ScrollArea className="aapm-ai-history-scroll min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
         {view === "activity" ? (
           <div className="min-w-0 max-w-full px-2 pt-3">
@@ -333,40 +333,14 @@ function ConversationList({
             </p>
           )}
           {visibleConversations.map((conversation) => (
-            <div
+            <AiConversationRow
               key={conversation.id}
-              className={`group flex min-w-0 max-w-full items-center gap-1 overflow-hidden rounded-lg ${conversation.id === activeConversationId ? "bg-tint-orange" : "hover:bg-surface-default"}`}
-            >
-              <button
-                type="button"
-                onClick={() => onSelect(conversation.id)}
-                disabled={disabled}
-                className="min-w-0 flex-1 px-2.5 py-2.5 text-left"
-              >
-                <span className="block truncate text-xs font-medium text-foreground">
-                  {conversation.title}
-                </span>
-                <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
-                  {conversation.lastMessagePreview || "Belum ada pesan"}
-                </span>
-              </button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setPendingDelete(conversation);
-                }}
-                disabled={disabled}
-                className="mr-1 h-7 w-7 shrink-0 border border-border bg-background text-muted-foreground transition-colors hover:border-danger/30 hover:text-danger"
-                aria-label={`Hapus percakapan ${conversation.title}`}
-              >
-                <AapmIcon
-                  name="solar:trash-bin-trash-bold"
-                  className="h-3.5 w-3.5 text-muted-foreground hover:text-danger"
-                />
-              </Button>
-            </div>
+              conversation={conversation}
+              active={conversation.id === activeConversationId}
+              disabled={disabled}
+              onSelect={onSelect}
+              onDelete={setPendingDelete}
+            />
           ))}
         </div>}
       </ScrollArea>
@@ -427,8 +401,13 @@ function MobileConversationSheet({
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState("chats");
+  const [sort, setSort] = useState("updated");
   const [pendingDelete, setPendingDelete] = useState(null);
-  const visibleConversations = filterConversations(conversations, query);
+  const visibleConversations = filterAndSortConversations(
+    conversations,
+    query,
+    sort,
+  );
 
   if (!open) return null;
 
@@ -480,22 +459,19 @@ function MobileConversationSheet({
             </Button>
           </div>
         </header>
-        <div className="min-w-0 max-w-full pt-3">
-          <AiHistoryTabs value={view} onChange={setView} />
+        <div className="min-w-0 max-w-full px-3 pb-1 pt-3">
+          <AiHistoryToolbar
+            view={view}
+            onViewChange={setView}
+            query={query}
+            onQueryChange={setQuery}
+            sort={sort}
+            onSortChange={setSort}
+            onClearQuery={() => setQuery("")}
+            conversationCount={conversations.length}
+            activityCount={activity.length}
+          />
         </div>
-        {view === "chats" && <label className="mx-3 mt-2 flex min-w-0 max-w-[calc(100%-1.5rem)] items-center gap-2 overflow-hidden rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
-          <AapmIcon
-            name="solar:magnifer-bold-duotone"
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-          />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari riwayat"
-            className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-            aria-label="Cari riwayat percakapan"
-          />
-        </label>}
         <ScrollArea className="aapm-ai-history-scroll min-h-0 min-w-0 w-full max-w-full flex-1 px-3 py-3">
           {view === "activity" ? (
             <div className="min-w-0 max-w-full"><AiActivityList activity={activity} loading={activityLoading} /></div>
@@ -517,40 +493,14 @@ function MobileConversationSheet({
               </p>
             )}
             {visibleConversations.map((conversation) => (
-              <div
+              <AiConversationRow
                 key={conversation.id}
-                className={`flex min-w-0 max-w-full items-center gap-1.5 overflow-hidden rounded-xl border p-1.5 transition-colors ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-default"}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => onSelect(conversation.id)}
-                  disabled={disabled}
-                  className="min-w-0 flex-1 px-2.5 py-2.5 text-left"
-                >
-                  <span className="block truncate text-xs font-semibold text-foreground">
-                    {conversation.title}
-                  </span>
-                  <span className="mt-1 block truncate text-[10px] text-muted-foreground">
-                    {conversation.lastMessagePreview || "Belum ada pesan"}
-                  </span>
-                </button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setPendingDelete(conversation);
-                }}
+                conversation={conversation}
+                active={conversation.id === activeConversationId}
                 disabled={disabled}
-                className="mr-0.5 h-8 w-8 shrink-0 border border-border bg-background text-muted-foreground hover:border-danger/30 hover:text-danger"
-                  aria-label={`Hapus percakapan ${conversation.title}`}
-                >
-                  <AapmIcon
-                    name="solar:trash-bin-trash-bold"
-                    className="h-3.5 w-3.5 text-muted-foreground"
-                  />
-                </Button>
-              </div>
+                onSelect={onSelect}
+                onDelete={setPendingDelete}
+              />
             ))}
           </div>}
         </ScrollArea>
