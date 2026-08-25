@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
+import AiQuickActions from "@/components/ai/AiQuickActions";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import AiComposer from "@/components/ai/AiComposer";
@@ -160,7 +161,14 @@ function MarkdownAnswer({ content }) {
   );
 }
 
-function AssistantMessage({ message, retryPrompt, onRetry }) {
+function AssistantMessage({
+  message,
+  retryPrompt,
+  onRetry,
+  onQuickAction,
+  pathname,
+  disabled,
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
@@ -236,6 +244,14 @@ function AssistantMessage({ message, retryPrompt, onRetry }) {
               : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
           </span>
         </div>
+      )}
+      {!message.streaming && !message.error && (
+        <AiQuickActions
+          content={message.content}
+          pathname={pathname}
+          onSelect={onQuickAction}
+          disabled={disabled}
+        />
       )}
     </article>
   );
@@ -816,6 +832,9 @@ export default function AiAssistant() {
                           message.fallback ? messages[index - 1]?.content : ""
                         }
                         onRetry={submit}
+                        onQuickAction={submit}
+                        pathname={location.state?.pageContext || location.pathname}
+                        disabled={isStreaming}
                       />
                     ),
                   )}
