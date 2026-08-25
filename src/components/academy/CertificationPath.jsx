@@ -40,7 +40,7 @@ export default function CertificationPath({ progress = [], certificates = [], on
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Tier {tier.number}</span><Badge variant="outline" className="border-border text-[10px]">{statusLabel}</Badge></div><span className="text-xs font-semibold tabular-nums text-muted-foreground">{percent}%</span></div>
                 <h3 className="mt-2 text-base font-semibold">{tier.name}</h3>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{tier.requiresFinal ? "22 modul + Final Exam" : `${tier.modules.length} modul wajib`}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{tier.requiresFinal ? "22 modul + ujian akhir" : `${tier.modules.length} modul wajib`}</p>
               </div>
             </div>
             <div className="mt-5 flex items-center gap-3"><div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full transition-[width] duration-500", state.status === "completed" ? "bg-success" : state.status === "eligible" ? "bg-brand-orange" : progressTones[tone])} style={{ width: `${percent}%` }} /></div><span className="shrink-0 text-[11px] text-muted-foreground">{state.completed}/{tier.modules.length}</span></div>

@@ -46,6 +46,7 @@ export default function AiComposer({
         id={idPrefix}
         type="file"
         accept="image/jpeg,image/png,image/webp"
+        aria-label="Pilih foto farm untuk dianalisis"
         onChange={onImageSelection}
         className="sr-only"
       />

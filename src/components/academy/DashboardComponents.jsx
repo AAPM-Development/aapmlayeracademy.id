@@ -28,13 +28,13 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-green">
-              Learning path selesai
+              Jalur belajar selesai
             </div>
             <h2 className="text-xl font-semibold tracking-tight">
               Semua modul sudah selesai.
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Tinjau kembali roadmap atau lanjutkan ke Final Exam.
+              Tinjau kembali roadmap atau lanjutkan ke ujian akhir.
             </p>
           </div>
           <Button
@@ -42,7 +42,7 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
             className="shrink-0 bg-brand-green text-white shadow-sm hover:-translate-y-0.5 hover:bg-brand-green/90"
           >
             <Link to="/final-exam">
-              Buka Final Exam <AapmIcon name="arrowRight" />
+              Buka ujian akhir <AapmIcon name="arrowRight" />
             </Link>
           </Button>
         </CardContent>
@@ -76,7 +76,7 @@ export function ContinueLearning({ module = null, progress = null } = {}) {
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button asChild>
                 <Link to={`/modules/${module.moduleNumber}`}>
-                  {progress?.completed ? "Review lesson" : "Buka lesson"}{" "}
+                  {progress?.completed ? "Tinjau materi" : "Buka materi"}{" "}
                   <AapmIcon name="arrowRight" />
                 </Link>
               </Button>
@@ -153,14 +153,14 @@ export function DashboardMetricStrip({
     {
       value: `${completed}/${total}`,
       label: "Modul selesai",
-      detail: "Learning path",
+      detail: "Jalur belajar",
       icon: "check",
       accent: "border-t-brand-green",
       iconClass: "text-brand-green",
     },
     {
       value: `${coursePercent}%`,
-      label: "Progress course",
+      label: "Progress kursus",
       detail: "Ritme belajar",
       icon: "progress",
       accent: "border-t-brand-orange",
@@ -177,7 +177,7 @@ export function DashboardMetricStrip({
     {
       value: activeLevel?.name || "Foundation",
       label: "Level saat ini",
-      detail: "Professional track",
+      detail: "Jalur profesional",
       icon: "solar:cup-star-bold",
       accent: "border-t-brand-orange",
       iconClass: "text-brand-orange",
@@ -281,7 +281,7 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
       <div className="mb-4 flex items-end justify-between gap-3">
         <div>
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-orange">
-            Learning path
+            Jalur belajar
           </div>
           <h2 className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">
             Jalur pembelajaran
@@ -405,7 +405,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Learning progress</CardTitle>
+            <CardTitle className="text-base">Progress belajar</CardTitle>
             <CardDescription className="mt-1">
               Ritme belajar Anda di Academy.
             </CardDescription>
@@ -435,7 +435,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
               to="/modules"
               className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline"
             >
-              Buka Learning Path{" "}
+              Buka jalur belajar{" "}
               <AapmIcon name="arrowRight" className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -469,7 +469,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Learning journey</CardTitle>
+            <CardTitle className="text-base">Perjalanan belajar</CardTitle>
             <CardDescription className="mt-1">
               14 level yang membentuk jalur kompetensi Anda.
             </CardDescription>
@@ -485,12 +485,12 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
         {!modules.length ? (
           <div className="rounded-xl border border-dashed border-border bg-surface-subtle p-4 text-sm text-muted-foreground">
-            Learning journey akan terisi setelah roadmap tersedia.{" "}
+            Perjalanan belajar akan terisi setelah roadmap tersedia.{" "}
             <Link
               to="/modules"
               className="font-semibold text-brand-green hover:underline"
             >
-              Buka path
+              Buka jalur
             </Link>
             .
           </div>
@@ -555,7 +555,7 @@ export function LearningJourney({ modules = [], progress = [] } = {}) {
         )}
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-lime" /> Progress
-          detail tersedia di Learning Path.
+          detail tersedia di jalur belajar.
         </div>
       </CardContent>
     </Card>
@@ -566,7 +566,7 @@ export function QuickToolGrid() {
   const tools = [
     {
       to: "/calculators",
-      label: "Farm Calculators",
+      label: "Kalkulator farm",
       description: "Hitung indikator operasional.",
       icon: "solar:calculator-bold-duotone",
       tone: "lime",
@@ -590,7 +590,7 @@ export function QuickToolGrid() {
   return (
     <Card className="bg-card/95">
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3">
-        <CardTitle className="text-base">Quick tools</CardTitle>
+        <CardTitle className="text-base">Alat cepat</CardTitle>
         <CardDescription className="mt-1">
           Alat bantu saat Anda belajar.
         </CardDescription>
@@ -642,7 +642,7 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
               variant="soft"
               className="border border-white/20 bg-white/10 text-[10px] font-semibold uppercase tracking-[0.14em] text-white shadow-none"
             >
-              <AapmIcon name="ai" className="h-3.5 w-3.5" /> Learning workspace
+              <AapmIcon name="ai" className="h-3.5 w-3.5" /> Ruang belajar
             </Badge>
             <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.05] tracking-[-0.045em] sm:text-[2.55rem]">
               Selamat datang, {name}.
@@ -653,13 +653,13 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
             </p>
             <div className="mt-6 grid max-w-xl grid-cols-3 divide-x divide-white/15 rounded-xl border border-white/15 bg-white/5">
               <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">22</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
-              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">14</div><div className="mt-0.5 text-[10px] text-white/65">learning level</div></div>
+              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">14</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
               <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold text-brand-lime">1</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button asChild className="bg-brand-orange text-white shadow-sm hover:bg-brand-orange/90">
                 <Link to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/modules"}>
-                  <AapmIcon name="course" /> {nextModule ? "Lanjutkan belajar" : "Buka Learning Path"}
+                  <AapmIcon name="course" /> {nextModule ? "Lanjutkan belajar" : "Buka jalur belajar"}
                 </Link>
               </Button>
               <Button asChild variant="ghost" className="border border-white/20 bg-transparent text-white shadow-none hover:bg-white/10 hover:text-white">

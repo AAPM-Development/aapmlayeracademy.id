@@ -103,7 +103,7 @@ function ModuleTile({ module, state }) {
             <ModuleStatus state={state} />
           </div>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{module.summary}</p>
-          {isCurrent && <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-orange">Buka lesson <AapmIcon name="solar:arrow-right-bold" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>}
+          {isCurrent && <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-orange">Buka materi <AapmIcon name="solar:arrow-right-bold" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>}
         </div>
       </div>
     </div>

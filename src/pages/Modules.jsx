@@ -36,18 +36,18 @@ export default function Modules() {
 
   return (
     <ContentContainer>
-      <PageHeader eyebrow="Learning path" title="Jalur pembelajaran" description="Kuasai keputusan farm secara bertahap—dari fondasi flock sampai kepemimpinan operasional." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><AapmIcon name="modules" className="h-3.5 w-3.5 text-brand-orange" /> 22 modul · 14 level</div>} />
+      <PageHeader eyebrow="Jalur belajar" title="Jalur pembelajaran" description="Kuasai keputusan farm secara bertahap—dari fondasi flock sampai kepemimpinan operasional." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><AapmIcon name="modules" className="h-3.5 w-3.5 text-brand-orange" /> 22 modul · 14 level</div>} />
       {isError ? (
         <LearningErrorState
-          title="Learning Path belum dapat dimuat"
+          title="Jalur belajar belum dapat dimuat"
           description="Roadmap atau progress Anda belum berhasil diambil. Coba lagi untuk melihat status lesson terbaru."
           onRetry={retryLearningData}
         />
       ) : isLoading ? (
-        <LearningLoading label="Memuat learning path..." lines={4} />
+        <LearningLoading label="Memuat jalur belajar…" lines={4} />
       ) : !modules.length ? (
         <LearningEmptyState
-          title="Learning Path sedang disiapkan"
+          title="Jalur belajar sedang disiapkan"
           description="Belum ada modul yang tersedia untuk akun ini. Roadmap akan tampil saat materi sudah dipublikasikan."
           actionLabel={null}
           actionTo={null}

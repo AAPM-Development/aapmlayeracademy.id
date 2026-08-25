@@ -39,7 +39,7 @@ export default function Certification() {
         <Surface tone="green" className="relative overflow-hidden p-5 sm:p-7">
           <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border-[16px] border-brand-lime/15" />
           <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-            <div className="max-w-xl"><Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-brand-green">Your progression</Badge><h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Bangun bukti dari setiap keputusan.</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Selesaikan modul yang relevan, jaga kualitas pemahaman, lalu gunakan Final Exam saat fondasi Anda sudah siap.</p></div>
+            <div className="max-w-xl"><Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-brand-green">Perkembangan Anda</Badge><h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Bangun bukti dari setiap keputusan.</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Selesaikan modul yang relevan, jaga kualitas pemahaman, lalu gunakan ujian akhir saat fondasi Anda sudah siap.</p></div>
             <div className="shrink-0 rounded-xl border border-tint-green-border bg-background/80 px-4 py-3"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Curriculum progress</div><div className="mt-1 text-2xl font-semibold tabular-nums">{curriculumPercent}%</div><div className="mt-2 h-1.5 w-36 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-brand-green" style={{ width: `${curriculumPercent}%` }} /></div></div>
           </div>
         </Surface>
@@ -47,7 +47,7 @@ export default function Certification() {
       </section>
 
       <div className="mb-7 grid gap-3 sm:grid-cols-3">
-        <Metric icon="course" label="Learning levels" value="14" detail={`${completedModules} modul selesai`} tone="green" />
+        <Metric icon="course" label="Tingkat belajar" value="14" detail={`${completedModules} modul selesai`} tone="green" />
         <Metric icon="modules" label="Core modules" value="22" detail="Roadmap Academy" tone="blue" />
         <Metric icon="award" label="Professional tiers" value="6" detail={`${certificates.length} sertifikat dimiliki`} tone="orange" />
       </div>

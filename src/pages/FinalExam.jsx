@@ -37,7 +37,7 @@ export default function FinalExam() {
     await save({ moduleNumber: 0, data: { moduleNumber: 0, completed: resultPassed, quizScore: correct, quizTotal: questions.length } });
     if (resultPassed) {
       await issueCertificate({ levelNumber: 6, levelName: "Layer Poultry Farm Expert", score: resultPercent, examType: "final", holderName: "Peserta Layer Farm Academy" });
-      toast({ title: "Final Exam lulus", description: "Sertifikat Expert telah diterbitkan." });
+      toast({ title: "Ujian akhir lulus", description: "Sertifikat Expert telah diterbitkan." });
     } else {
       toast({ title: "Belum lulus", description: "Review learning path lalu coba lagi.", variant: "destructive" });
     }
@@ -52,8 +52,8 @@ export default function FinalExam() {
 
   if (submitted) return <AssessmentFocusShell header={header}><AssessmentResult passed={passed} score={score} total={questions.length} passingGrade={FINAL_PASSING_GRADE} title={passed ? "Anda lulus ujian akhir." : "Ujian akhir belum lulus."}><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{passed ? "Progress tingkat ahli tersimpan dan sertifikat diterbitkan melalui proses yang sama." : "Gunakan hasil ini untuk memilih materi yang perlu Anda ulangi."}</p><div className="mt-6 flex flex-wrap justify-center gap-2">{passed && <Button asChild><Link to="/certification"><AapmIcon name="award" /> Lihat sertifikasi</Link></Button>}<Button type="button" variant="outline" onClick={reset}><AapmIcon name="refresh" /> Ulangi ujian</Button><Button type="button" variant="outline" onClick={() => navigate("/modules")}>Jalur belajar <AapmIcon name="arrowRight" /></Button></div></AssessmentResult></AssessmentFocusShell>;
 
-  return <AssessmentFocusShell header={<><Link to="/certification" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"><AapmIcon name="arrowLeft" className="h-3.5 w-3.5" /> Certification</Link>{header}</>} sidebar={<QuestionNavigator total={questions.length} current={current} answers={answers} flagged={flagged} onSelect={setCurrent} onToggleFlag={(index) => setFlagged((value) => ({ ...value, [index]: !value[index] }))} />}>
-    <AssessmentProgress current={current} total={questions.length} label="Progress Final Exam" />
+  return <AssessmentFocusShell header={<><Link to="/certification" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"><AapmIcon name="arrowLeft" className="h-3.5 w-3.5" /> Sertifikasi</Link>{header}</>} sidebar={<QuestionNavigator total={questions.length} current={current} answers={answers} flagged={flagged} onSelect={setCurrent} onToggleFlag={(index) => setFlagged((value) => ({ ...value, [index]: !value[index] }))} />}>
+    <AssessmentProgress current={current} total={questions.length} label="Progress ujian akhir" />
     <div className="mt-5"><QuizQuestion question={question} number={current + 1} total={questions.length} answer={answers[current]} onAnswer={(answer) => setAnswers((value) => ({ ...value, [current]: answer }))} /></div>
     <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Button type="button" variant="outline" onClick={() => setCurrent((value) => Math.max(0, value - 1))} disabled={current === 0}><AapmIcon name="arrowLeft" /> Sebelumnya</Button>{current < questions.length - 1 ? <Button type="button" onClick={() => setCurrent((value) => value + 1)} disabled={answers[current] === undefined}>Simpan & lanjut <AapmIcon name="arrowRight" /></Button> : <Button type="button" onClick={submit} disabled={answeredCount < questions.length || saveProgress.isPending || issue.isPending}><AapmIcon name="checkRead" /> Periksa & kirim</Button>}</div>
     <div className="mt-4 text-center text-xs leading-5 text-muted-foreground">Semua jawaban harus terisi sebelum dikirim. Jumlah soal mengikuti data terbaru dari Academy.</div>

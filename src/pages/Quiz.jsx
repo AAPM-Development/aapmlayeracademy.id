@@ -39,7 +39,7 @@ export default function Quiz() {
     const resultPercent = questions.length ? Math.round((correct / questions.length) * 100) : 0;
     setSubmitted(true);
     await save({ moduleNumber: number, data: { moduleNumber: number, completed: true, quizScore: correct, quizTotal: questions.length } });
-    toast(resultPercent >= 70 ? { title: "Kuis lulus", description: `Skor ${resultPercent}% tersimpan.` } : { title: "Review lesson sebelum mencoba lagi", description: `Skor ${resultPercent}%. Passing grade 70%.`, variant: "destructive" });
+    toast(resultPercent >= 70 ? { title: "Kuis lulus", description: `Skor ${resultPercent}% tersimpan.` } : { title: "Tinjau materi sebelum mencoba lagi", description: `Skor ${resultPercent}%. Nilai lulus 70%.`, variant: "destructive" });
   };
 
   const reset = () => { setSubmitted(false); setAnswers({}); setFlagged({}); setCurrent(0); };

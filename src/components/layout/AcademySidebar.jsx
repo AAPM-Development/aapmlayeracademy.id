@@ -53,7 +53,7 @@ export default function AcademySidebar({
           />
           {!collapsed && (
             <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Learning workspace
+              Ruang belajar
             </span>
           )}
         </Link>
@@ -100,7 +100,7 @@ export default function AcademySidebar({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="font-semibold text-foreground">
-                      Learning progress
+                      Progress belajar
                     </span>
                     <Badge
                       variant="soft"

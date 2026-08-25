@@ -15,12 +15,12 @@ export default function LearningFocusShell({ header = null, sidebar = null, chil
       {header}
       {sidebar && <div className="mt-6 lg:hidden">
         <Button type="button" variant="soft" className="w-full justify-between" aria-expanded={mapOpen} aria-controls="mobile-lesson-map" onClick={() => setMapOpen(true)}>
-          <span className="inline-flex items-center gap-2"><AapmIcon name="solar:sidebar-minimalistic-bold-duotone" className="h-4 w-4" /> Buka lesson map</span>
+          <span className="inline-flex items-center gap-2"><AapmIcon name="solar:sidebar-minimalistic-bold-duotone" className="h-4 w-4" /> Buka peta materi</span>
           <span className="text-xs text-muted-foreground">Navigasi materi</span>
         </Button>
         <Sheet open={mapOpen} onOpenChange={setMapOpen}>
           <LearningSheetContent id="mobile-lesson-map" side="right" className="w-[min(90vw,360px)] p-0">
-            <LearningSheetHeader className="sr-only"><LearningSheetTitle>Lesson map</LearningSheetTitle></LearningSheetHeader>
+            <LearningSheetHeader className="sr-only"><LearningSheetTitle>Peta materi</LearningSheetTitle></LearningSheetHeader>
             <div className="h-full overflow-y-auto p-4 pt-14">{sidebar}</div>
           </LearningSheetContent>
         </Sheet>
