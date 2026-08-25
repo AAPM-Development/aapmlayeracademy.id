@@ -8,13 +8,14 @@ import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
-  AiConversationRow,
+  AiConversationHistoryResults,
+  AiConversationRenameDialog,
   AiHistoryToolbar,
   filterAndSortConversations,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import AiQuickActions from "@/components/ai/AiQuickActions";
-import { Button, ConfirmDialog } from "@/components/primitives";
+import { Button, ConfirmDialog, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
@@ -147,6 +148,7 @@ function BubbleAnswer({ content }) {
 }
 
 export default function FloatingAiAssistant() {
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [input, setInput] = useState("");
@@ -156,6 +158,8 @@ export default function FloatingAiAssistant() {
   const [historyQuery, setHistoryQuery] = useState("");
   const [historySort, setHistorySort] = useState("updated");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingRename, setPendingRename] = useState(null);
+  const [renaming, setRenaming] = useState(false);
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
   const closeTimer = useRef(null);
@@ -169,6 +173,16 @@ export default function FloatingAiAssistant() {
   const {
     activeConversationId,
     conversations,
+    conversationTotal,
+    conversationsLoading,
+    conversationsRefreshing,
+    conversationsError,
+    hasMoreConversations,
+    isLoadingMoreConversations,
+    loadMoreConversations,
+    refreshHistory,
+    historyError,
+    historySyncState,
     activity,
     activityLoading,
     messages,
@@ -179,6 +193,7 @@ export default function FloatingAiAssistant() {
     startNewConversation,
     selectConversation,
     deleteConversation,
+    renameConversation,
     send,
   } = useAiChat();
   const activeConversation = conversations.find(
@@ -244,6 +259,11 @@ export default function FloatingAiAssistant() {
     historyQuery,
     historySort,
   );
+  const historySyncLabel = {
+    saving: "Menyimpan di akun…",
+    saved: "Tersimpan di akun",
+    attention: "Periksa riwayat",
+  }[historySyncState] || activeConversation?.title || "Siap membantu dari halaman ini";
   const openPanel = () => {
     setClosing(false);
     setOpen(true);
@@ -289,6 +309,26 @@ export default function FloatingAiAssistant() {
     };
     reader.readAsDataURL(file);
   };
+  const handleDeleteConversation = async (id) => {
+    try {
+      await deleteConversation(id);
+      toast({ title: "Chat dihapus", description: "Percakapan telah dihapus dari riwayat akun Anda." });
+      return true;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Chat belum dihapus", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return false;
+    }
+  };
+  const handleRenameConversation = async (id, title) => {
+    try {
+      await renameConversation(id, title);
+      toast({ title: "Judul chat diperbarui", description: "Perubahan tersimpan di riwayat akun Anda." });
+      return true;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Judul belum disimpan", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return false;
+    }
+  };
   const handleAction = (action) => {
     if (action.kind === "prompt") return submit(action.prompt);
     closePanel();
@@ -321,8 +361,7 @@ export default function FloatingAiAssistant() {
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-semibold">APPI</h2>
                 <p className="truncate text-[10px] text-muted-foreground">
-                  {activeConversation?.title ||
-                    "Siap membantu dari halaman ini"}
+                  {historySyncLabel}
                 </p>
               </div>
             </div>
@@ -378,6 +417,12 @@ export default function FloatingAiAssistant() {
               className="aapm-ai-floating-transcript min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
             >
               <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
+              {historyError && !conversationsError && (
+                <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+                  <span className="min-w-0">Riwayat belum tersinkron.</span>
+                  <button type="button" onClick={refreshHistory} className="shrink-0 font-semibold text-brand-orange">Coba lagi</button>
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
                   <p className="text-sm font-semibold tracking-[-0.015em]">
@@ -472,11 +517,20 @@ export default function FloatingAiAssistant() {
                           Permintaan belum dapat diproses.
                         </p>
                       )}
-                      {!message.streaming && message.provider && (
-                        <p className="mt-2 text-[10px] text-muted-foreground">
-                          {message.fallback
-                            ? "Respons lokal tersimpan"
-                            : `${message.provider === "openrouter" ? "OpenRouter" : message.provider} · ${message.model}`}
+                      {!message.streaming && (message.provider || message.persisted) && (
+                        <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <AapmIcon
+                            name={message.persisted ? "solar:check-circle-bold-duotone" : "solar:refresh-circle-bold-duotone"}
+                            className={`h-3 w-3 shrink-0 ${message.persisted ? "text-brand-green" : "text-brand-orange"}`}
+                          />
+                          <span className="truncate">
+                            {message.persisted ? "Tersimpan di riwayat akun" : "Menyiapkan riwayat"}
+                            {message.provider
+                              ? message.fallback
+                                ? " · Respons lokal"
+                                : ` · ${message.provider === "openrouter" ? "OpenRouter" : message.provider}${message.model ? ` · ${message.model}` : ""}`
+                              : ""}
+                          </span>
                         </p>
                       )}
                       {!message.streaming && !message.error && (
@@ -541,7 +595,10 @@ export default function FloatingAiAssistant() {
                     onSortChange={setHistorySort}
                     onClearQuery={() => setHistoryQuery("")}
                     conversationCount={conversations.length}
+                    totalConversationCount={conversationTotal}
                     activityCount={activity.length}
+                    onRefresh={refreshHistory}
+                    isRefreshing={conversationsRefreshing}
                     compact
                   />
                 </div>
@@ -550,28 +607,29 @@ export default function FloatingAiAssistant() {
                     <div className="min-w-0 max-w-full pt-3">
                       <AiActivityList activity={activity} loading={activityLoading} />
                     </div>
-                  ) : <div className="min-w-0 max-w-full space-y-1.5 pt-3">
-                    {visibleConversations.length === 0 && (
-                      <p className="px-2 py-5 text-xs leading-5 text-muted-foreground">
-                        {historyQuery
-                          ? "Tidak ada percakapan yang cocok."
-                          : "Belum ada riwayat percakapan."}
-                      </p>
-                    )}
-                    {visibleConversations.map((conversation) => (
-                      <AiConversationRow
-                        key={conversation.id}
-                        conversation={conversation}
-                        active={conversation.id === activeConversationId}
+                  ) : (
+                    <div className="min-w-0 max-w-full pt-3">
+                      <AiConversationHistoryResults
+                        conversations={visibleConversations}
+                        activeConversationId={activeConversationId}
+                        loading={conversationsLoading}
+                        error={conversationsError}
                         disabled={isStreaming}
+                        onRetry={refreshHistory}
                         onSelect={(conversationId) => {
                           selectConversation(conversationId);
                           setHistoryOpen(false);
                         }}
                         onDelete={setPendingDelete}
+                        onRename={setPendingRename}
+                        hasMore={hasMoreConversations && !historyQuery}
+                        onLoadMore={loadMoreConversations}
+                        isLoadingMore={isLoadingMoreConversations}
+                        emptyMessage="Belum ada riwayat percakapan."
+                        filtered={Boolean(historyQuery)}
                       />
-                    ))}
-                  </div>}
+                    </div>
+                  )}
                 </div>
               </aside>
             )}
@@ -631,7 +689,21 @@ export default function FloatingAiAssistant() {
         onConfirm={() => {
           const conversationId = pendingDelete?.id;
           setPendingDelete(null);
-          if (conversationId) deleteConversation(conversationId);
+          if (conversationId) handleDeleteConversation(conversationId);
+        }}
+      />
+      <AiConversationRenameDialog
+        conversation={pendingRename}
+        onOpenChange={(isOpen) => !isOpen && !renaming && setPendingRename(null)}
+        saving={renaming}
+        onRename={async (id, title) => {
+          setRenaming(true);
+          try {
+            const renamed = await handleRenameConversation(id, title);
+            if (renamed !== false) setPendingRename(null);
+          } finally {
+            setRenaming(false);
+          }
         }}
       />
       {!open && (

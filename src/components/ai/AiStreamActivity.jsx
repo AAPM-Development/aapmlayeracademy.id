@@ -21,17 +21,25 @@ export default function AiStreamActivity({
       role="status"
       aria-live="polite"
     >
-      <div className="min-w-0 flex-1 pt-1">
+      <div className="min-w-0 flex-1">
         <div className="aapm-ai-activity__status">
           <span className="aapm-ai-orbit" aria-hidden="true">
             <span />
             <span />
             <span />
           </span>
-          <span className="aapm-ai-activity__label">
-            {activeLabel}
+          <span className="aapm-ai-activity__copy">
+            <span className="aapm-ai-activity__label">{activeLabel}</span>
+            {!compact && (
+              <span className="aapm-ai-activity__hint">
+                Respons ditampilkan bertahap dan disimpan ke riwayat akun setelah selesai.
+              </span>
+            )}
           </span>
-          <span className="aapm-ai-activity__live">aktif</span>
+          <span className="aapm-ai-activity__live">
+            <span aria-hidden="true" />
+            langsung
+          </span>
         </div>
         {timeline.length > 0 && (
           <ol className="aapm-ai-activity__steps">

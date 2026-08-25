@@ -1,7 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import {
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -96,6 +108,38 @@ export function filterAndSortConversations(
     .map(({ conversation }) => conversation);
 }
 
+export function groupConversationsByPeriod(conversations = []) {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - 7);
+  const groups = new Map([
+    ["Hari ini", []],
+    ["Kemarin", []],
+    ["7 hari terakhir", []],
+    ["Sebelumnya", []],
+  ]);
+
+  conversations.forEach((conversation) => {
+    const timestamp = getConversationTimestamp(conversation);
+    const bucket =
+      timestamp >= startOfToday.getTime()
+        ? "Hari ini"
+        : timestamp >= startOfYesterday.getTime()
+          ? "Kemarin"
+          : timestamp >= startOfWeek.getTime()
+            ? "7 hari terakhir"
+            : "Sebelumnya";
+    groups.get(bucket).push(conversation);
+  });
+
+  return [...groups.entries()]
+    .filter(([, items]) => items.length)
+    .map(([label, items]) => ({ label, items }));
+}
+
 export function AiHistoryToolbar({
   view,
   onViewChange,
@@ -105,7 +149,10 @@ export function AiHistoryToolbar({
   onSortChange,
   onClearQuery,
   conversationCount = 0,
+  totalConversationCount = conversationCount,
   activityCount = 0,
+  onRefresh,
+  isRefreshing = false,
   compact = false,
 }) {
   return (
@@ -119,7 +166,7 @@ export function AiHistoryToolbar({
               className={`min-w-0 rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${view === "chats" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
               aria-pressed={view === "chats"}
             >
-              Chat <span className="ml-0.5 tabular-nums opacity-65">{conversationCount}</span>
+              Chat <span className="ml-0.5 tabular-nums opacity-65">{totalConversationCount}</span>
             </button>
             <button
               type="button"
@@ -175,6 +222,23 @@ export function AiHistoryToolbar({
               ))}
             </SelectContent>
           </Select>
+          {onRefresh && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="h-[2.15rem] w-[2.15rem] shrink-0 text-muted-foreground hover:text-brand-orange"
+              aria-label="Muat ulang riwayat chat"
+              title="Muat ulang riwayat"
+            >
+              <AapmIcon
+                name="solar:refresh-circle-bold-duotone"
+                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+            </Button>
+          )}
         </div>
       ) : (
         <p className="px-0.5 text-[10px] text-muted-foreground">
@@ -191,6 +255,7 @@ export function AiConversationRow({
   disabled = false,
   onSelect,
   onDelete,
+  onRename,
 }) {
   const title = getConversationTitle(conversation);
 
@@ -222,17 +287,202 @@ export function AiConversationRow({
           {conversation.lastMessagePreview || "Belum ada pesan"}
         </span>
       </button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => onDelete(conversation)}
-        disabled={disabled}
-        className="mr-1 h-7 w-7 shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-danger sm:opacity-0 sm:group-hover:opacity-100"
-        aria-label={`Hapus percakapan ${title}`}
-      >
-        <AapmIcon name="solar:trash-bin-trash-bold" className="h-3.5 w-3.5" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            className="mr-1 h-7 w-7 shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+            aria-label={`Kelola percakapan ${title}`}
+          >
+            <AapmIcon name="solar:menu-dots-bold" className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onSelect={() => onRename?.(conversation)}>
+            <AapmIcon name="solar:pen-new-square-bold" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
+            Ubah judul
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => onDelete(conversation)}
+            className="text-danger focus:text-danger"
+          >
+            <AapmIcon name="solar:trash-bin-trash-bold" className="mr-2 h-3.5 w-3.5" />
+            Hapus chat
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
+  );
+}
+
+export function AiConversationHistoryResults({
+  conversations = [],
+  activeConversationId = null,
+  loading = false,
+  error = null,
+  disabled = false,
+  onRetry,
+  onSelect,
+  onDelete,
+  onRename,
+  hasMore = false,
+  onLoadMore,
+  isLoadingMore = false,
+  emptyMessage = "Belum ada riwayat percakapan.",
+  noResultsMessage = "Tidak ada percakapan yang cocok.",
+  filtered = false,
+}) {
+  if (loading) {
+    return <p className="px-2 py-4 text-xs text-muted-foreground">Memuat percakapan…</p>;
+  }
+
+  if (error && !conversations.length) {
+    return (
+      <div className="mx-1 rounded-xl border border-tint-orange-border bg-tint-orange px-3 py-3 text-xs leading-5 text-tint-orange-foreground">
+        <div className="flex items-start gap-2">
+          <AapmIcon name="solar:info-circle-bold-duotone" className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
+          <div className="min-w-0">
+            <p className="font-semibold text-foreground">Riwayat belum dapat dimuat</p>
+            <p className="mt-0.5">Data chat tidak dihapus. Coba muat ulang untuk mengambilnya lagi dari akun Anda.</p>
+            {onRetry && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onRetry}
+                className="mt-2 h-7 px-0 text-[11px] font-semibold text-brand-orange hover:bg-transparent hover:text-brand-orange/75"
+              >
+                <AapmIcon name="solar:refresh-circle-bold-duotone" className="mr-1 h-3.5 w-3.5" />
+                Muat ulang
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!conversations.length) {
+    return <p className="px-2 py-4 text-xs leading-5 text-muted-foreground">{filtered ? noResultsMessage : emptyMessage}</p>;
+  }
+
+  const groups = groupConversationsByPeriod(conversations);
+  return (
+    <div className="min-w-0 max-w-full">
+      {error && (
+        <div className="mx-1 mb-2 flex min-w-0 items-center justify-between gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+          <span className="min-w-0">Riwayat terbaru belum tersinkron. Data yang sudah tampil tetap aman.</span>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="shrink-0 font-semibold text-brand-orange hover:text-brand-orange/75">
+              Coba lagi
+            </button>
+          )}
+        </div>
+      )}
+      {groups.map((group) => (
+        <section key={group.label} className="min-w-0 max-w-full">
+          <p className="px-2 pb-1 pt-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground first:pt-1">
+            {group.label}
+          </p>
+          <div className="overflow-hidden rounded-xl border border-border/70 bg-background/55">
+            {group.items.map((conversation) => (
+              <AiConversationRow
+                key={conversation.id}
+                conversation={conversation}
+                active={conversation.id === activeConversationId}
+                disabled={disabled}
+                onSelect={onSelect}
+                onDelete={onDelete}
+                onRename={onRename}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+      {hasMore && onLoadMore && (
+        <div className="px-2 pb-1 pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onLoadMore}
+            disabled={isLoadingMore || disabled}
+            className="h-8 w-full text-[11px]"
+          >
+            <AapmIcon
+              name={isLoadingMore ? "loading" : "solar:history-2-bold-duotone"}
+              className={`mr-1.5 h-3.5 w-3.5 text-brand-orange ${isLoadingMore ? "animate-spin" : ""}`}
+            />
+            {isLoadingMore ? "Memuat riwayat…" : "Muat riwayat sebelumnya"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AiConversationRenameDialog({
+  conversation,
+  onOpenChange,
+  onRename,
+  saving = false,
+}) {
+  const [title, setTitle] = useState("");
+  const open = Boolean(conversation);
+
+  useEffect(() => {
+    if (conversation) setTitle(getConversationTitle(conversation));
+  }, [conversation]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const nextTitle = title.trim();
+    if (!conversation || !nextTitle || saving) return;
+    await onRename(conversation.id, nextTitle);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={submit}>
+          <DialogHeader>
+            <DialogTitle>Ubah judul chat</DialogTitle>
+            <DialogDescription>
+              Judul hanya tersimpan di riwayat akun Anda dan membantu pencarian chat berikutnya.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-5">
+            <label className="sr-only" htmlFor="appi-conversation-title">
+              Judul chat
+            </label>
+            <Input
+              id="appi-conversation-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={180}
+              autoFocus
+              className="h-11"
+              placeholder="Judul percakapan"
+            />
+          </div>
+          <DialogFooter className="mt-5">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              disabled={!title.trim() || saving}
+              className="bg-brand-orange text-white hover:bg-brand-orange/90"
+            >
+              {saving ? "Menyimpan…" : "Simpan judul"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

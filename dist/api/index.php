@@ -582,9 +582,42 @@ try {
 
     if ($path === 'ai/conversations' && $method === 'GET') {
         $user = require_user();
-        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 40');
-        $stmt->execute([(int) $user['id']]);
-        json_response(array_map('present_ai_conversation', $stmt->fetchAll()));
+        $paged = (string) ($_GET['format'] ?? '') === 'paged';
+        $limit = max(10, min(80, (int) ($_GET['limit'] ?? 40)));
+        $cursor = ai_conversation_cursor_decode((string) ($_GET['cursor'] ?? ''));
+        $where = 'WHERE user_id = ?';
+        $params = [(int) $user['id']];
+        if ($cursor !== null) {
+            $where .= ' AND (updated_at < ? OR (updated_at = ? AND id < ?))';
+            $params[] = $cursor['updatedAt'];
+            $params[] = $cursor['updatedAt'];
+            $params[] = $cursor['id'];
+        }
+
+        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations ' . $where . ' ORDER BY updated_at DESC, id DESC LIMIT ' . ($limit + 1));
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        $hasMore = count($rows) > $limit;
+        if ($hasMore) {
+            array_pop($rows);
+        }
+        $items = array_map('present_ai_conversation', $rows);
+
+        // Keep the original array response for an already-deployed frontend.
+        // The paged contract lets current clients keep the complete account
+        // history reachable without loading every conversation at once.
+        if (!$paged) {
+            json_response($items);
+        }
+
+        $totalStmt = db()->prepare('SELECT COUNT(*) FROM ai_conversations WHERE user_id = ?');
+        $totalStmt->execute([(int) $user['id']]);
+        $lastRow = $rows ? $rows[count($rows) - 1] : null;
+        json_response([
+            'items' => $items,
+            'total' => (int) $totalStmt->fetchColumn(),
+            'nextCursor' => $hasMore && is_array($lastRow) ? ai_conversation_cursor_encode($lastRow) : null,
+        ]);
     }
 
     if ($path === 'ai/activity' && $method === 'GET') {
@@ -605,6 +638,24 @@ try {
         $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
         $stmt->execute([$id, (int) $user['id']]);
         json_response(present_ai_conversation($stmt->fetch()), 201);
+    }
+
+    if (preg_match('#^ai/conversations/(\d+)$#', $path, $matches) && $method === 'PATCH') {
+        $user = require_user();
+        require_csrf();
+        $conversation = ai_conversation_for_user((int) $matches[1], (int) $user['id']);
+        if (!$conversation) {
+            error_response('Percakapan tidak ditemukan.', 404, 'not_found');
+        }
+        $input = request_json();
+        if (!array_key_exists('title', $input)) {
+            error_response('Judul percakapan wajib diisi.', 422, 'validation_error');
+        }
+        $title = ai_conversation_title((string) $input['title']);
+        $update = db()->prepare('UPDATE ai_conversations SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
+        $update->execute([$title, (int) $conversation['id'], (int) $user['id']]);
+        $updated = ai_conversation_for_user((int) $conversation['id'], (int) $user['id']);
+        json_response(present_ai_conversation($updated ?: $conversation));
     }
 
     if (preg_match('#^ai/conversations/(\d+)/stream$#', $path, $matches) && $method === 'POST') {
@@ -643,16 +694,68 @@ try {
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext);
-        ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
-        ai_record_activity(
-            (int) $user['id'],
-            (int) $conversation['id'],
-            (bool) $response['fallback'] ? 'fallback' : 'response',
-            (bool) $response['fallback'] ? 'Respons lokal disimpan' : 'Jawaban APPI selesai',
-            trim((string) ($response['provider'] ?? '')) . (trim((string) ($response['model'] ?? '')) !== '' ? ' · ' . trim((string) $response['model']) : '')
-        );
-        ai_touch_conversation((int) $conversation['id'], ai_conversation_title($message), (string) $response['reply'], false);
+        // Continue persisting after a user closes the panel or moves from the
+        // bubble to the workspace. The browser may stop reading SSE, but the
+        // account history must remain durable.
+        @ignore_user_abort(true);
+        try {
+            $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext);
+        } catch (Throwable $exception) {
+            error_log('[aapm-ai-stream] ' . $exception->getMessage());
+            $response = [
+                'reply' => native_ai_reply($message, $farmContext),
+                'provider' => 'local',
+                'model' => null,
+                'fallback' => true,
+                'notice' => 'Provider AI terputus pada permintaan ini. Respons lokal tetap disimpan di riwayat akun.',
+            ];
+            ai_sse_emit('notice', ['text' => $response['notice']]);
+            ai_sse_emit('delta', ['text' => $response['reply']]);
+        }
+        ai_sse_emit('status', ['label' => 'APPI menyimpan percakapan']);
+        $savedConversation = null;
+        try {
+            $database = db();
+            $database->beginTransaction();
+            ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
+            ai_record_activity(
+                (int) $user['id'],
+                (int) $conversation['id'],
+                (bool) $response['fallback'] ? 'fallback' : 'response',
+                (bool) $response['fallback'] ? 'Respons lokal disimpan' : 'Jawaban APPI selesai',
+                trim((string) ($response['provider'] ?? '')) . (trim((string) ($response['model'] ?? '')) !== '' ? ' · ' . trim((string) $response['model']) : '')
+            );
+            ai_touch_conversation((int) $conversation['id'], ai_conversation_title($message), (string) $response['reply'], false);
+            $database->commit();
+            $savedConversation = ai_conversation_for_user((int) $conversation['id'], (int) $user['id']);
+        } catch (Throwable $exception) {
+            if (isset($database) && $database instanceof PDO && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            error_log('[aapm-ai-history] ' . $exception->getMessage());
+            ai_sse_emit('persistence_error', [
+                'message' => 'Jawaban APPI belum dapat disimpan ke riwayat akun. Coba kirim ulang atau muat ulang riwayat.',
+            ]);
+            ai_sse_emit('done', [
+                'provider' => $response['provider'],
+                'model' => $response['model'],
+                'fallback' => (bool) $response['fallback'],
+                'persisted' => false,
+                'conversation' => null,
+            ]);
+            rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
+            exit;
+        }
+        ai_sse_emit('persisted', [
+            'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null,
+        ]);
+        ai_sse_emit('done', [
+            'provider' => $response['provider'],
+            'model' => $response['model'],
+            'fallback' => (bool) $response['fallback'],
+            'persisted' => true,
+            'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null,
+        ]);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
     }
@@ -700,7 +803,12 @@ try {
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, '', '', $accountContext);
+        $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, '', '', $accountContext);
+        ai_sse_emit('done', [
+            'provider' => $response['provider'],
+            'model' => $response['model'],
+            'fallback' => (bool) $response['fallback'],
+        ]);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
     }
@@ -747,6 +855,39 @@ function ai_conversation_preview(string $value): string
     $value = trim((string) preg_replace('/\s+/u', ' ', $value));
     $value = function_exists('mb_substr') ? mb_substr($value, 0, 280, 'UTF-8') : substr($value, 0, 280);
     return $value;
+}
+
+function ai_conversation_cursor_encode(array $row): string
+{
+    $payload = json_encode([
+        'updatedAt' => (string) ($row['updated_at'] ?? ''),
+        'id' => (int) ($row['id'] ?? 0),
+    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    if (!is_string($payload)) {
+        return '';
+    }
+    return rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+}
+
+function ai_conversation_cursor_decode(string $cursor): ?array
+{
+    $cursor = trim($cursor);
+    if ($cursor === '' || strlen($cursor) > 180) {
+        return null;
+    }
+    $normalized = strtr($cursor, '-_', '+/');
+    $normalized .= str_repeat('=', (4 - strlen($normalized) % 4) % 4);
+    $decoded = base64_decode($normalized, true);
+    $data = is_string($decoded) ? json_decode($decoded, true) : null;
+    if (!is_array($data)) {
+        return null;
+    }
+    $updatedAt = trim((string) ($data['updatedAt'] ?? ''));
+    $id = (int) ($data['id'] ?? 0);
+    if ($updatedAt === '' || $id < 1 || !preg_match('/\A\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\z/', $updatedAt)) {
+        return null;
+    }
+    return ['updatedAt' => $updatedAt, 'id' => $id];
 }
 
 function ai_conversation_for_user(int $conversationId, int $userId): ?array

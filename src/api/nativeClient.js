@@ -126,6 +126,7 @@ async function stream(path, body, onEvent) {
     }
     if (done) break;
   }
+  if (buffer.trim()) dispatch(buffer);
 }
 
 const json = (body) => ({ method: "POST", body: JSON.stringify(body) });
@@ -203,9 +204,27 @@ export const nativeApi = {
     stream: ({ message, farmContext, includeFarmContext = true, onEvent }) =>
       stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent),
     conversations: {
-      list: () => request("/ai/conversations"),
+      list: async ({ cursor = "", limit = 40 } = {}) => {
+        const safeLimit = Math.max(10, Math.min(80, Number(limit) || 40));
+        const params = new URLSearchParams({
+          format: "paged",
+          limit: String(safeLimit),
+        });
+        if (cursor) params.set("cursor", cursor);
+        const result = await request(`/ai/conversations?${params.toString()}`);
+        // During a rolling cPanel deployment an older API can briefly return
+        // the legacy array shape. Normalize it so history remains readable.
+        return Array.isArray(result)
+          ? { items: result, total: result.length, nextCursor: null }
+          : result;
+      },
       create: (title = "") => request("/ai/conversations", json({ title })),
       detail: (id) => request(`/ai/conversations/${encodeURIComponent(id)}`),
+      update: (id, data) =>
+        request(`/ai/conversations/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        }),
       delete: (id) =>
         request(`/ai/conversations/${encodeURIComponent(id)}`, {
           method: "DELETE",

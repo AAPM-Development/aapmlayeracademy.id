@@ -148,6 +148,14 @@
     --hero-end: var(--aapm-green-900);
     --hero-accent: var(--aapm-lime-500);
     --hero-shadow: 0 24px 46px -28px rgba(24, 91, 48, 0.58);
+    /* APPI streaming component tokens. */
+    --ai-stream-bg: var(--surface-subtle);
+    --ai-stream-border: var(--surface-border);
+    --ai-stream-foreground: var(--muted-foreground);
+    --ai-stream-accent: var(--aapm-orange-700);
+    --ai-stream-success: var(--aapm-green-700);
+    --ai-stream-radius: var(--radius-md);
+    --ai-stream-shadow: 0 10px 24px -22px rgba(19, 64, 35, 0.42);
     /* Toast component tokens — status is communicated by icon, label, and accent. */
     --toast-bg: var(--surface-elevated);
     --toast-foreground: var(--foreground);
@@ -256,6 +264,12 @@
     --hero-end: 144 48% 10%;
     --hero-accent: 77 100% 55%;
     --hero-shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.75);
+    --ai-stream-bg: var(--surface-subtle);
+    --ai-stream-border: var(--surface-border);
+    --ai-stream-foreground: var(--muted-foreground);
+    --ai-stream-accent: 24 90% 60%;
+    --ai-stream-success: 142 55% 45%;
+    --ai-stream-shadow: 0 10px 24px -20px rgba(0, 0, 0, 0.55);
     --toast-bg: var(--surface-elevated);
     --toast-foreground: var(--foreground);
     --toast-border: var(--surface-border);
@@ -1087,53 +1101,87 @@
   }
 
   .aapm-ai-activity {
-    max-width: 28rem;
-    padding: 0.35rem 0;
+    max-width: 32rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid hsl(var(--ai-stream-border) / 0.82);
+    border-radius: var(--ai-stream-radius);
+    background: hsl(var(--ai-stream-bg) / 0.76);
+    box-shadow: var(--ai-stream-shadow);
     animation: aapm-ai-activity-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .aapm-ai-activity--compact {
     max-width: none;
-    padding: 0.15rem 0;
+    padding: 0.3rem 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
   }
 
   .aapm-ai-activity__status {
     display: flex;
     min-width: 0;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .aapm-ai-activity__copy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.14rem;
   }
 
   .aapm-ai-activity__label {
     min-width: 0;
-    flex: 1;
     overflow: hidden;
-    color: hsl(var(--muted-foreground));
+    color: hsl(var(--foreground));
     font-size: 0.75rem;
-    font-weight: 550;
+    font-weight: 600;
     line-height: 1.35;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .aapm-ai-activity__hint {
+    color: hsl(var(--ai-stream-foreground));
+    font-size: 0.62rem;
+    line-height: 1.4;
+  }
+
   .aapm-ai-activity__live {
+    display: inline-flex;
     flex: none;
-    color: hsl(var(--aapm-orange-700));
-    font-size: 0.55rem;
+    align-items: center;
+    gap: 0.25rem;
+    padding-top: 0.1rem;
+    color: hsl(var(--ai-stream-accent));
+    font-size: 0.53rem;
     font-weight: 700;
     letter-spacing: 0.12em;
     line-height: 1;
     text-transform: uppercase;
   }
 
+  .aapm-ai-activity__live > span {
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 0 hsl(var(--ai-stream-accent) / 0.38);
+    animation: aapm-ai-live-pulse 1.7s ease-out infinite;
+  }
+
   .aapm-ai-activity__steps {
     display: flex;
     min-width: 0;
     flex-wrap: wrap;
-    gap: 0.35rem 0.65rem;
-    margin: 0.6rem 0 0;
-    padding: 0;
-    color: hsl(var(--muted-foreground));
+    gap: 0.3rem 0.6rem;
+    margin: 0.65rem 0 0;
+    padding: 0.55rem 0 0;
+    border-top: 1px solid hsl(var(--ai-stream-border) / 0.72);
+    color: hsl(var(--ai-stream-foreground));
     font-size: 0.65rem;
     line-height: 1.35;
     list-style: none;
@@ -1156,14 +1204,31 @@
 
   .aapm-ai-activity__step--active {
     color: hsl(var(--foreground));
+    font-weight: 600;
   }
 
   .aapm-ai-activity--compact .aapm-ai-activity__label {
     font-size: 0.68rem;
   }
 
+  .aapm-ai-activity--compact .aapm-ai-activity__hint {
+    display: none;
+  }
+
   .aapm-ai-activity--compact .aapm-ai-activity__live {
     font-size: 0.5rem;
+  }
+
+  @keyframes aapm-ai-live-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--ai-stream-accent) / 0.34);
+      opacity: 0.85;
+    }
+    46% {
+      box-shadow: 0 0 0 0.28rem hsl(var(--ai-stream-accent) / 0);
+      opacity: 1;
+    }
   }
 
   .aapm-ai-companion-dock {

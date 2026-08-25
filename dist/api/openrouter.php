@@ -496,6 +496,10 @@ function ai_provider_completion(array $settings, string $apiKey, string $systemP
 
 function ai_sse_start(): void
 {
+    // A streamed answer may outlive the visible panel. Keep the server-side
+    // request alive so the conversation and final APPI response are recorded
+    // even when the learner navigates away before the connection closes.
+    @ignore_user_abort(true);
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
@@ -644,24 +648,20 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
                 $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl);
             }
         }
-        $result = ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null];
-        ai_sse_emit('done', ['provider' => $result['provider'], 'model' => $result['model'], 'fallback' => false]);
-        return $result;
-    } catch (RuntimeException $exception) {
+        return ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null];
+    } catch (Throwable $exception) {
         error_log('[aapm-ai-provider] ' . $exception->getMessage());
         if ($imageDataUrl !== null) {
             $notice = 'Foto tidak dianalisis karena model aktif belum mendukung input gambar atau provider menolaknya.';
             $reply = 'APPI belum dapat membaca foto ini dengan model aktif. Pilih model OpenRouter yang mendukung input gambar di pengaturan admin, lalu coba lagi. Foto tidak disimpan di riwayat percakapan.';
             ai_sse_emit('notice', ['text' => $notice]);
             ai_sse_emit('delta', ['text' => $reply]);
-            ai_sse_emit('done', ['provider' => 'local', 'model' => null, 'fallback' => true]);
             return ['reply' => $reply, 'provider' => 'local', 'model' => null, 'fallback' => true, 'notice' => $notice];
         }
         $reply = native_ai_reply($message, $farmContext);
         $notice = ai_provider_fallback_notice();
         ai_sse_emit('notice', ['text' => $notice]);
         ai_sse_emit('delta', ['text' => $reply]);
-        ai_sse_emit('done', ['provider' => 'local', 'model' => null, 'fallback' => true]);
         return ['reply' => $reply, 'provider' => 'local', 'model' => null, 'fallback' => true, 'notice' => $notice];
     }
 }
