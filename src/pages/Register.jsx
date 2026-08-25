@@ -85,7 +85,7 @@ export default function Register() {
         </div>
         <PasswordField
           id="password"
-          label="Password"
+           label="Kata sandi"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -94,7 +94,7 @@ export default function Register() {
         <p className="-mt-2 text-xs text-muted-foreground">Minimal 8 karakter dan harus memuat huruf serta angka.</p>
         <PasswordField
           id="confirm"
-          label="Konfirmasi password"
+           label="Konfirmasi kata sandi"
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}

@@ -7,7 +7,7 @@ import { adminPrimaryNavigation, adminSecondaryNavigation } from "./adminNavigat
 
 export default function AdminNavigation({ onNavigate = () => {} } = {}) {
   return (
-    <nav className="space-y-6 px-3 py-5" aria-label="Admin navigation">
+    <nav className="space-y-6 px-3 py-5" aria-label="Navigasi admin">
       <div className="space-y-1">
         {adminPrimaryNavigation.map((item) => (
           <NavLink
@@ -25,7 +25,7 @@ export default function AdminNavigation({ onNavigate = () => {} } = {}) {
         ))}
       </div>
       <div>
-        <div className="px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Workspace</div>
+        <div className="px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ruang kerja</div>
         <div className="mt-2 space-y-1">
           {adminSecondaryNavigation.map((item) => (
             <NavLink

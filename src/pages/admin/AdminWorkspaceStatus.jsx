@@ -8,25 +8,25 @@ import { adminPlannedCapabilities } from "@/components/admin/adminNavigationItem
 const activeAreas = [
   {
     to: "/admin/courses",
-    label: "Course management",
+    label: "Manajemen course",
     detail: "Mengelola modul, urutan kurikulum, konten, dan bank soal.",
     icon: "course",
   },
   {
     to: "/admin/users",
-    label: "User management",
+    label: "Manajemen pengguna",
     detail: "Membuat akun, menetapkan admin, dan mengganti password pengguna.",
     icon: "users",
   },
   {
     to: "/admin/learners",
-    label: "Learners",
+    label: "Peserta belajar",
     detail: "Mencari akun, progres, serta sertifikat per learner.",
     icon: "users",
   },
   {
     to: "/admin/ai-settings",
-    label: "APPI settings",
+    label: "Pengaturan APPI",
     detail: "Mengelola provider, model, credential, dan test koneksi.",
     icon: "ai",
   },
@@ -35,8 +35,8 @@ const activeAreas = [
 export default function AdminWorkspaceStatus() {
   return (
     <AdminPageFrame
-      eyebrow="Administration"
-      title="Workspace status"
+      eyebrow="Ruang admin"
+      title="Status ruang kerja"
       description="Peta kemampuan admin berdasarkan endpoint native yang tersedia saat ini. Menu tidak berpura-pura dapat melakukan aksi yang belum didukung server."
     >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.78fr)]">
@@ -88,7 +88,7 @@ export default function AdminWorkspaceStatus() {
             ))}
           </div>
           <Button asChild variant="outline" className="mt-6 w-full">
-            <Link to="/admin">Kembali ke overview</Link>
+             <Link to="/admin">Kembali ke ringkasan</Link>
           </Button>
         </Surface>
       </div>

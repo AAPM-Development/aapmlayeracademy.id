@@ -1,17 +1,17 @@
 export const academyNavigation = [
   {
-    label: "Learn",
+    label: "Belajar",
     items: [
-      { to: "/", label: "Dashboard", icon: "dashboard", end: true },
-      { to: "/modules", label: "Learning Path", icon: "course" },
+      { to: "/", label: "Beranda", icon: "dashboard", end: true },
+      { to: "/modules", label: "Jalur belajar", icon: "course" },
     ],
   },
   {
-    label: "Tools",
+    label: "Alat farm",
     items: [
       {
         to: "/calculators",
-        label: "Farm Calculators",
+        label: "Kalkulator farm",
         icon: "solar:calculator-bold-duotone",
       },
       { to: "/kpi", label: "Farm KPI", icon: "kpi" },
@@ -23,11 +23,11 @@ export const academyNavigation = [
     ],
   },
   {
-    label: "Achievement",
+    label: "Prestasi",
     items: [
-      { to: "/profile", label: "Profile & Prestasi", icon: "solar:user-circle-bold-duotone" },
-      { to: "/certification", label: "Certification", icon: "certificate" },
-      { to: "/final-exam", label: "Final Exam", icon: "solar:cup-star-bold" },
+      { to: "/profile", label: "Profil & prestasi", icon: "solar:user-circle-bold-duotone" },
+      { to: "/certification", label: "Sertifikasi", icon: "certificate" },
+      { to: "/final-exam", label: "Ujian akhir", icon: "solar:cup-star-bold" },
     ],
   },
 ];
@@ -40,5 +40,5 @@ export function getNavigationMeta(pathname = "/") {
     if (item) return { ...item, group: group.label };
   }
 
-  return { label: "Academy", group: "Learn" };
+  return { label: "Academy", group: "Belajar" };
 }

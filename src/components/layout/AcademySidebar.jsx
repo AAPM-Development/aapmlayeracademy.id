@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, NavLink } from "react-router-dom";
 import AppBrand from "@/components/AppBrand";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconButton } from "@/components/primitives";
 import { academyNavigation } from "./academyNavigation";
@@ -205,9 +206,7 @@ export default function AcademySidebar({
             collapsed && "justify-center",
           )}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-xs font-semibold text-brand-green">
-            {displayName.slice(0, 1).toUpperCase()}
-          </div>
+          <ProfileAvatar user={user} name={displayName} className="h-9 w-9" />
           {!collapsed && (
             <Link to="/profile" onClick={onNavigate} className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div className="truncate text-xs font-semibold text-foreground">

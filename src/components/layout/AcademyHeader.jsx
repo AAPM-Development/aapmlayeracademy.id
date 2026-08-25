@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, IconButton } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import { getNavigationMeta } from "./academyNavigation";
 
 export default function AcademyHeader({
@@ -37,7 +38,7 @@ export default function AcademyHeader({
       <div className="flex items-center gap-1.5 sm:gap-2">
         <Badge variant="soft" className="hidden gap-2 bg-surface-subtle text-xs font-medium text-muted-foreground lg:inline-flex">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-          Academy workspace
+           Ruang Academy
         </Badge>
         <IconButton variant="ghost" onClick={onToggleTheme} label={themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}>
           <AapmIcon name={themeMode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" />
@@ -45,14 +46,14 @@ export default function AcademyHeader({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" className="h-9 gap-2 px-2 sm:px-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-green/10 text-xs font-semibold text-brand-green">{displayName.slice(0, 1).toUpperCase()}</span>
+              <ProfileAvatar user={user} name={displayName} className="h-7 w-7" />
               <span className="hidden max-w-[140px] truncate text-xs font-medium sm:inline">{displayName}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel className="font-normal">
               <div className="truncate text-sm font-semibold">{displayName}</div>
-              <div className="mt-1 truncate text-xs text-muted-foreground">Layer Farm learner</div>
+               <div className="mt-1 truncate text-xs text-muted-foreground">Peserta Layer Farm</div>
             </DropdownMenuLabel>
             {user?.role === "admin" && <><DropdownMenuSeparator /><DropdownMenuItem asChild><Link to="/admin"><AapmIcon name="dashboard" className="mr-2 h-4 w-4" /> Panel Admin</Link></DropdownMenuItem></>}
             <DropdownMenuSeparator />

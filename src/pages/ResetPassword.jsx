@@ -36,7 +36,7 @@ export default function ResetPassword() {
     return (
       <AuthLayout
         title="Tautan reset tidak valid"
-        subtitle="Tautan password ini tidak lengkap atau sudah tidak berlaku."
+         subtitle="Tautan kata sandi ini tidak lengkap atau sudah tidak berlaku."
         footer={
           <Link to="/forgot-password" className="text-primary font-medium hover:underline">
             Minta tautan baru
@@ -51,7 +51,7 @@ export default function ResetPassword() {
   }
 
   return (
-      <AuthLayout title="Buat password baru" subtitle="Gunakan password baru untuk mengamankan akun Academy.">
+      <AuthLayout title="Buat kata sandi baru" subtitle="Gunakan kata sandi baru untuk mengamankan akun Academy.">
       {error && (
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           <AapmIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -61,7 +61,7 @@ export default function ResetPassword() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <PasswordField
           id="password"
-          label="Password baru"
+          label="Kata sandi baru"
           autoComplete="new-password"
           autoFocus
           value={newPassword}
@@ -71,7 +71,7 @@ export default function ResetPassword() {
         <p className="-mt-2 text-xs text-muted-foreground">Minimal 8 karakter dan harus memuat huruf serta angka.</p>
         <PasswordField
           id="confirm"
-          label="Konfirmasi password"
+          label="Konfirmasi kata sandi"
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}

@@ -149,7 +149,7 @@ try {
         session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        json_response(['user' => present_authenticated_user($user), 'csrfToken' => csrf_token()]);
+        json_response(['user' => current_user() ?? present_authenticated_user($user), 'csrfToken' => csrf_token()]);
     }
 
     if ($path === 'auth/register' && $method === 'POST') {

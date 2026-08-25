@@ -128,13 +128,14 @@ function ensure_schema(PDO $pdo, string $driver): void
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )',
-            'CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id INTEGER PRIMARY KEY,
-                bio TEXT NOT NULL DEFAULT \'\',
-                hall_of_fame_opt_in INTEGER NOT NULL DEFAULT 0,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            )',
+             'CREATE TABLE IF NOT EXISTS user_profiles (
+                 user_id INTEGER PRIMARY KEY,
+                 bio TEXT NOT NULL DEFAULT \'\',
+                 hall_of_fame_opt_in INTEGER NOT NULL DEFAULT 0,
+                 avatar_data TEXT NOT NULL DEFAULT \'\',
+                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+             )',
             'CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key TEXT PRIMARY KEY,
                 attempts INTEGER NOT NULL DEFAULT 0,
@@ -272,13 +273,14 @@ function ensure_schema(PDO $pdo, string $driver): void
                 PRIMARY KEY (id),
                 UNIQUE KEY users_email_unique (email)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
-            'CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id BIGINT UNSIGNED NOT NULL,
-                bio TEXT NOT NULL,
-                hall_of_fame_opt_in TINYINT(1) NOT NULL DEFAULT 0,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (user_id),
-                CONSTRAINT user_profiles_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+             'CREATE TABLE IF NOT EXISTS user_profiles (
+                 user_id BIGINT UNSIGNED NOT NULL,
+                 bio TEXT NOT NULL,
+                 hall_of_fame_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+                 avatar_data MEDIUMTEXT NOT NULL,
+                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                 PRIMARY KEY (user_id),
+                 CONSTRAINT user_profiles_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             'CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key VARCHAR(190) NOT NULL,
@@ -427,7 +429,28 @@ function ensure_schema(PDO $pdo, string $driver): void
     }
 
     ensure_course_module_video_url($pdo, $driver);
+    ensure_user_profile_avatar($pdo, $driver);
     ensure_default_course_module_videos($pdo);
+}
+
+function ensure_user_profile_avatar(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $columns = $pdo->query('PRAGMA table_info(user_profiles)')->fetchAll();
+        foreach ($columns as $column) {
+            if (($column['name'] ?? '') === 'avatar_data') {
+                return;
+            }
+        }
+        $pdo->exec("ALTER TABLE user_profiles ADD COLUMN avatar_data TEXT NOT NULL DEFAULT ''");
+        return;
+    }
+
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['user_profiles', 'avatar_data']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE user_profiles ADD COLUMN avatar_data MEDIUMTEXT NOT NULL AFTER hall_of_fame_opt_in');
+    }
 }
 
 function ensure_course_module_video_url(PDO $pdo, string $driver): void
@@ -599,7 +622,7 @@ function current_user(): ?array
         return null;
     }
 
-    $stmt = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $stmt = db()->prepare('SELECT u.id, u.email, u.full_name, u.role, u.created_at, COALESCE(p.avatar_data, \'\') AS avatar_data FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
     $stmt->execute([(int) $_SESSION['user_id']]);
     $user = $stmt->fetch();
     return $user ? present_authenticated_user($user) : null;
@@ -644,6 +667,7 @@ function present_authenticated_user(array $user): array
         'email' => (string) ($user['email'] ?? ''),
         'full_name' => (string) ($user['full_name'] ?? ''),
         'role' => effective_user_role($user),
+        'avatar' => (string) ($user['avatar_data'] ?? $user['avatar'] ?? ''),
         'created_at' => $user['created_at'] ?? null,
     ];
 }
@@ -1142,12 +1166,34 @@ function profile_text($value, int $limit): string
     return substr($text, 0, $limit);
 }
 
+function profile_avatar_data($value): string
+{
+    $avatar = trim((string) $value);
+    if ($avatar === '') {
+        return '';
+    }
+
+    if (strlen($avatar) > 180000 || !preg_match('#^data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=\r\n]+$#', $avatar)) {
+        error_response('Foto profil harus berupa JPG, PNG, atau WebP dengan ukuran yang wajar.', 422, 'avatar_invalid');
+    }
+
+    $encoded = substr($avatar, strpos($avatar, ',') + 1);
+    $binary = base64_decode($encoded, true);
+    $image = $binary !== false ? @getimagesizefromstring($binary) : false;
+    $mime = is_array($image) ? (string) ($image['mime'] ?? '') : '';
+    if ($binary === false || strlen($binary) > 135000 || !in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        error_response('Foto profil tidak dapat dibaca. Pilih gambar JPG, PNG, atau WebP yang lebih kecil.', 422, 'avatar_invalid');
+    }
+
+    return $avatar;
+}
+
 function profile_row(int $userId): array
 {
-    $statement = db()->prepare('SELECT bio, hall_of_fame_opt_in, updated_at FROM user_profiles WHERE user_id = ? LIMIT 1');
+    $statement = db()->prepare('SELECT bio, hall_of_fame_opt_in, avatar_data, updated_at FROM user_profiles WHERE user_id = ? LIMIT 1');
     $statement->execute([$userId]);
     $row = $statement->fetch();
-    return $row ?: ['bio' => '', 'hall_of_fame_opt_in' => 0, 'updated_at' => null];
+    return $row ?: ['bio' => '', 'hall_of_fame_opt_in' => 0, 'avatar_data' => '', 'updated_at' => null];
 }
 
 function profile_learning_summary(int $userId): array
@@ -1211,6 +1257,7 @@ function profile_data(array $user): array
         'profile' => [
             'bio' => (string) ($profile['bio'] ?? ''),
             'hallOfFameOptIn' => (bool) ($profile['hall_of_fame_opt_in'] ?? false),
+            'avatar' => (string) ($profile['avatar_data'] ?? ''),
             'updatedAt' => $profile['updated_at'] ?? null,
         ],
         'learning' => profile_learning_summary((int) $user['id']),
@@ -1226,13 +1273,17 @@ function update_profile_data(array $user, array $input): array
     }
     $bio = profile_text($input['bio'] ?? '', 600);
     $optIn = bool_value($input['hallOfFameOptIn'] ?? $input['hall_of_fame_opt_in'] ?? false) ? 1 : 0;
+    $existingProfile = profile_row((int) $user['id']);
+    $avatarData = array_key_exists('avatarData', $input) || array_key_exists('avatar', $input)
+        ? profile_avatar_data($input['avatarData'] ?? $input['avatar'] ?? '')
+        : (string) ($existingProfile['avatar_data'] ?? '');
     db()->prepare('UPDATE users SET full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$fullName, (int) $user['id']]);
     $existing = db()->prepare('SELECT user_id FROM user_profiles WHERE user_id = ? LIMIT 1');
     $existing->execute([(int) $user['id']]);
     if ($existing->fetch()) {
-        db()->prepare('UPDATE user_profiles SET bio = ?, hall_of_fame_opt_in = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')->execute([$bio, $optIn, (int) $user['id']]);
+        db()->prepare('UPDATE user_profiles SET bio = ?, hall_of_fame_opt_in = ?, avatar_data = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')->execute([$bio, $optIn, $avatarData, (int) $user['id']]);
     } else {
-        db()->prepare('INSERT INTO user_profiles (user_id, bio, hall_of_fame_opt_in) VALUES (?, ?, ?)')->execute([(int) $user['id'], $bio, $optIn]);
+        db()->prepare('INSERT INTO user_profiles (user_id, bio, hall_of_fame_opt_in, avatar_data) VALUES (?, ?, ?, ?)')->execute([(int) $user['id'], $bio, $optIn, $avatarData]);
     }
     return profile_data(current_user() ?? $user);
 }

@@ -33,10 +33,10 @@ export default function ForgotPassword() {
     <AuthLayout
       iconName="mail"
       title="Atur ulang password"
-      subtitle="Kami akan mengirim tautan untuk membuat password baru."
+      subtitle="Kami akan mengirim tautan untuk membuat kata sandi baru."
       footer={
-        <Link to="/login" className="text-primary font-medium hover:underline">
-          <AapmIcon name="arrowLeft" className="mr-1 inline h-3 w-3" />Kembali ke login
+          <Link to="/login" className="text-primary font-medium hover:underline">
+           <AapmIcon name="arrowLeft" className="mr-1 inline h-3 w-3" />Kembali ke halaman masuk
         </Link>
       }
     >

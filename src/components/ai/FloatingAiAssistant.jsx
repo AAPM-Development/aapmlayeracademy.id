@@ -6,7 +6,8 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiAvatar from "@/components/ai/AiAvatar";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
-import { Button, ConfirmDialog, Switch } from "@/components/primitives";
+import AiComposer from "@/components/ai/AiComposer";
+import { Button, ConfirmDialog } from "@/components/primitives";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
 const MermaidDiagram = React.lazy(
@@ -57,7 +58,7 @@ function pageContextLabel(pathname) {
     kpi: "KPI farm",
     learning: "Materi belajar",
     certification: "Sertifikasi",
-    exam: "Final exam",
+     exam: "Ujian akhir",
     admin: "Administrasi Academy",
     dashboard: "Dashboard Academy",
   };
@@ -547,106 +548,24 @@ export default function FloatingAiAssistant() {
             )}
           </div>
           <footer className="shrink-0 border-t border-border bg-background p-3">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleImageSelection}
-              className="sr-only"
+            <AiComposer
+              input={input}
+              setInput={setInput}
+              onSubmit={() => submit()}
+              isStreaming={isStreaming}
+              imageInputRef={imageInputRef}
+              onImageSelection={handleImageSelection}
+              imageAttachment={imageAttachment}
+              onRemoveImage={() => setImageAttachment(null)}
+              attachmentError={attachmentError}
+              allowWebSearch={allowWebSearch}
+              onAllowWebSearchChange={setAllowWebSearch}
+              contextLabel={pageContextLabel(location.pathname)}
+              placeholder="Tanyakan situasi di halaman ini…"
+              compact
+              showFarmToggle={false}
+              idPrefix="appi-quick-photo"
             />
-            {imageAttachment && (
-              <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-2.5 py-2">
-                <img
-                  src={imageAttachment.dataUrl}
-                  alt="Pratinjau foto lampiran"
-                  className="h-8 w-8 rounded-lg object-cover"
-                />
-                <span className="min-w-0 flex-1 truncate text-[10px] font-medium">
-                  {imageAttachment.name}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setImageAttachment(null)}
-                  className="h-7 w-7 shrink-0"
-                  aria-label="Hapus foto"
-                >
-                  <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-            <div className="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[10px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5">
-                <AapmIcon
-                  name="solar:map-point-bold-duotone"
-                  className="h-3.5 w-3.5 text-brand-orange"
-                />
-                {pageContextLabel(location.pathname)}
-              </span>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 font-medium">
-                <Switch
-                  checked={allowWebSearch}
-                  onCheckedChange={setAllowWebSearch}
-                  disabled={isStreaming}
-                  aria-label="Izinkan APPI mencari referensi web"
-                  className="scale-75"
-                />
-                <AapmIcon
-                  name="solar:global-bold-duotone"
-                  className="h-3.5 w-3.5 text-brand-orange"
-                />
-                Cari web
-              </label>
-            </div>
-            <div className="flex items-end gap-1.5 rounded-xl border border-input bg-surface-elevated p-1.5 transition-colors focus-within:border-brand-orange">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isStreaming}
-                className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground hover:text-brand-orange"
-                aria-label="Lampirkan foto farm"
-              >
-                <AapmIcon
-                  name="solar:gallery-add-bold-duotone"
-                  className="h-4 w-4"
-                />
-              </Button>
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    submit();
-                  }
-                }}
-                rows={1}
-                placeholder="Tanyakan kondisi farm…"
-                className="max-h-24 min-h-[2.25rem] min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-xs leading-5 outline-none"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => submit()}
-                disabled={(!input.trim() && !imageAttachment) || isStreaming}
-                className="h-8 w-8 shrink-0 rounded-lg text-brand-orange hover:bg-tint-orange hover:text-brand-orange"
-              >
-                <AapmIcon
-                  name="solar:plain-2-bold"
-                  className="h-4 w-4"
-                />
-                <span className="sr-only">Kirim</span>
-              </Button>
-            </div>
-            {attachmentError && (
-              <p className="mt-1.5 text-[10px] font-medium text-danger">
-                {attachmentError}
-              </p>
-            )}
             <div className="mt-2 flex items-center justify-end gap-2">
               <Link
                 to="/ai-assistant"

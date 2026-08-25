@@ -93,7 +93,7 @@ export default function Login() {
         <div className="space-y-2">
           <PasswordField
             id="password"
-            label="Password"
+             label="Kata sandi"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -103,7 +103,7 @@ export default function Login() {
               to="/forgot-password"
               className="text-sm font-medium text-brand-green underline-offset-4 hover:underline"
             >
-              Lupa password?
+               Lupa kata sandi?
             </Link>
           </div>
         </div>

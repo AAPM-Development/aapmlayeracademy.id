@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
+import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, Switch } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useUserProgress } from "@/lib/useCourseData";
@@ -801,122 +802,25 @@ export default function AiAssistant() {
         </div>
         <div className="min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto min-w-0 max-w-3xl">
-            <div className="min-w-0">
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleImageSelection}
-                className="sr-only"
-              />
-              {imageAttachment && (
-                <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-surface-subtle px-2.5 py-2">
-                  <img
-                    src={imageAttachment.dataUrl}
-                    alt="Pratinjau foto lampiran"
-                    className="h-9 w-9 rounded-lg object-cover"
-                  />
-                  <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground">
-                    {imageAttachment.name}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setImageAttachment(null)}
-                    className="h-7 w-7 shrink-0"
-                    aria-label="Hapus foto"
-                  >
-                    <AapmIcon
-                      name="solar:close-circle-bold"
-                      className="h-3.5 w-3.5"
-                    />
-                  </Button>
-                </div>
-              )}
-              <div className="aapm-field flex items-end gap-2 rounded-2xl border border-input bg-surface-elevated p-2 shadow-sm transition-shadow focus-within:shadow-md">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={isStreaming}
-                  className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground hover:text-brand-orange"
-                  aria-label="Lampirkan foto farm"
-                >
-                  <AapmIcon
-                    name="solar:gallery-add-bold-duotone"
-                    className="h-4 w-4"
-                  />
-                </Button>
-                <textarea
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      submit();
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Tanyakan situasi yang sedang terjadi di farm…"
-                  className="max-h-32 min-h-[2.5rem] min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => submit()}
-                  disabled={isStreaming || (!input.trim() && !imageAttachment)}
-                  className="h-9 w-9 shrink-0 rounded-xl text-brand-orange hover:bg-tint-orange hover:text-brand-orange"
-                >
-                  <AapmIcon
-                    name="solar:plain-2-bold"
-                    className="h-[18px] w-[18px]"
-                  />
-                  <span className="sr-only">Kirim pertanyaan</span>
-                </Button>
-              </div>
-              {attachmentError && (
-                <p className="mt-1.5 text-[10px] font-medium text-danger">
-                  {attachmentError}
-                </p>
-              )}
-              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <p className="flex items-center gap-1.5 text-[10px] leading-4 text-muted-foreground">
-                  <AapmIcon
-                    name="solar:medical-kit-bold"
-                    className="h-3.5 w-3.5 shrink-0 text-brand-orange"
-                  />{" "}
-                  Untuk diagnosis penyakit dan dosis obat, konsultasikan dengan
-                  dokter hewan.
-                </p>
-                <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-                  <Switch
-                    checked={includeFarm}
-                    onCheckedChange={setIncludeFarm}
-                    aria-label="Sertakan data KPI sebagai konteks"
-                    disabled={isStreaming}
-                    className="scale-75"
-                  />
-                  Pakai KPI
-                </label>
-                <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-                  <Switch
-                    checked={allowWebSearch}
-                    onCheckedChange={setAllowWebSearch}
-                    aria-label="Izinkan APPI mencari referensi web"
-                    disabled={isStreaming}
-                    className="scale-75"
-                  />
-                  <AapmIcon
-                    name="solar:global-bold-duotone"
-                    className="h-3.5 w-3.5 text-brand-orange"
-                  />
-                  Cari web
-                </label>
-              </div>
-            </div>
+            <AiComposer
+              input={input}
+              setInput={setInput}
+              onSubmit={() => submit()}
+              isStreaming={isStreaming}
+              imageInputRef={imageInputRef}
+              onImageSelection={handleImageSelection}
+              imageAttachment={imageAttachment}
+              onRemoveImage={() => setImageAttachment(null)}
+              attachmentError={attachmentError}
+              includeFarm={includeFarm}
+              onIncludeFarmChange={setIncludeFarm}
+              allowWebSearch={allowWebSearch}
+              onAllowWebSearchChange={setAllowWebSearch}
+              contextLabel={contextLabel}
+              showFarmToggle
+              showPrivacy
+              idPrefix="appi-workspace-photo"
+            />
           </div>
         </div>
       </section>
