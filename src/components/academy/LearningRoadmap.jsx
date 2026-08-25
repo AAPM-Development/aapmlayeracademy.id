@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives";
 import { LearningEmptyState } from "@/components/academy/LearningStates";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +24,30 @@ const accentStyles = {
   violet: { section: "border-tint-violet-border bg-tint-violet/30", icon: "bg-tint-violet text-tint-violet-foreground", line: "bg-violet-500" },
 };
 
+const moduleIdentity = {
+  1: { icon: "solar:leaf-bold-duotone", tone: "green" },
+  2: { icon: "modules", tone: "green" },
+  3: { icon: "progress", tone: "orange" },
+  4: { icon: "egg", tone: "orange" },
+  5: { icon: "solar:waterdrops-bold-duotone", tone: "blue" },
+  6: { icon: "solar:wind-bold-duotone", tone: "blue" },
+  7: { icon: "solar:medical-kit-bold", tone: "orange" },
+  8: { icon: "shield", tone: "green" },
+  9: { icon: "solar:clipboard-check-bold-duotone", tone: "orange" },
+  10: { icon: "kpi", tone: "blue" },
+  11: { icon: "finance", tone: "violet" },
+  12: { icon: "course", tone: "green" },
+  13: { icon: "analytics", tone: "violet" },
+  14: { icon: "award", tone: "violet" },
+};
+
+const moduleIdentityStyles = {
+  green: "bg-tint-green text-tint-green-foreground",
+  orange: "bg-tint-orange text-tint-orange-foreground",
+  blue: "bg-tint-blue text-tint-blue-foreground",
+  violet: "bg-tint-violet text-tint-violet-foreground",
+};
+
 const statusMeta = {
   completed: { label: "Selesai", icon: "solar:check-circle-bold", className: "bg-success/10 text-success" },
   current: { label: "Lanjutkan", icon: "solar:play-circle-bold-duotone", className: "bg-tint-orange text-tint-orange-foreground" },
@@ -43,6 +68,7 @@ function ModuleStatus({ state }) {
 function ModuleTile({ module, state }) {
   if (!module) return null;
   const isCurrent = state === "current";
+  const identity = moduleIdentity[module.level] || moduleIdentity[1];
   const tile = (
     <div className={cn(
       "group relative min-w-0 overflow-hidden rounded-xl border p-3.5 transition-[border-color,box-shadow,transform,background-color] sm:p-4",
@@ -66,7 +92,12 @@ function ModuleTile({ module, state }) {
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Modul {module.moduleNumber} · {module.category}</p>
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <span className={cn("inline-flex h-5 w-5 items-center justify-center rounded-md", moduleIdentityStyles[identity.tone])}>
+                  <AapmIcon name={identity.icon} className="h-3 w-3" />
+                </span>
+                <span className="truncate">Modul {module.moduleNumber} · {module.category}</span>
+              </p>
               <h4 className="mt-1 line-clamp-2 text-sm font-semibold tracking-[-0.015em] text-foreground">{module.title}</h4>
             </div>
             <ModuleStatus state={state} />
@@ -88,8 +119,8 @@ function LevelCard({ level, modules, allModules, completedSet, accent }) {
   const hasCurrent = moduleStates.includes("current");
 
   return (
-    <article id={`level-${level.number}`} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-background shadow-sm", hasCurrent && "ring-1 ring-brand-orange/20 lg:col-span-2")}>
-      <header className="relative overflow-hidden border-b border-border px-4 py-4 sm:px-5">
+    <AccordionItem id={`level-${level.number}`} value={`level-${level.number}`} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-background shadow-sm", hasCurrent && "ring-1 ring-brand-orange/20 lg:col-span-2")}>
+      <AccordionTrigger className="group/header relative w-full px-4 py-4 hover:no-underline sm:px-5 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-muted-foreground">
         <span className={cn("absolute inset-y-0 left-0 w-1", accent.line)} />
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
@@ -104,11 +135,13 @@ function LevelCard({ level, modules, allModules, completedSet, accent }) {
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`Progress ${level.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.percent}>
           <div className={cn("h-full rounded-full transition-[width]", accent.line)} style={{ width: `${stats.percent}%` }} />
         </div>
-      </header>
-      <div className="grid min-w-0 gap-2.5 p-3.5 sm:p-4 md:grid-cols-2">
-        {modules.map((module, index) => <ModuleTile key={module.id || module.moduleNumber} module={module} state={moduleStates[index]} />)}
-      </div>
-    </article>
+      </AccordionTrigger>
+      <AccordionContent className="border-t border-border">
+        <div className="grid min-w-0 gap-2.5 p-3.5 sm:p-4 md:grid-cols-2">
+          {modules.map((module, index) => <ModuleTile key={module.id || module.moduleNumber} module={module} state={moduleStates[index]} />)}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -137,13 +170,13 @@ export default function LearningRoadmap({ modules = [], progress = [] }) {
               </div>
               <span className="shrink-0 self-start rounded-full bg-background/80 px-3 py-1.5 text-[10px] font-semibold text-foreground shadow-sm sm:self-auto">{trackCompleted}/{trackModules.length} modul selesai</span>
             </div>
-            <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+            <Accordion type="multiple" defaultValue={[]} className="grid min-w-0 gap-3 lg:grid-cols-2" aria-label={`${track.title} learning levels`}>
               {levels.map((level) => {
                 const levelModules = sortedModules.filter((module) => module.level === level.number);
                 if (!levelModules.length) return null;
                 return <LevelCard key={level.number} level={level} modules={levelModules} allModules={sortedModules} completedSet={completedSet} accent={accent} />;
               })}
-            </div>
+            </Accordion>
           </section>
         );
       })}
