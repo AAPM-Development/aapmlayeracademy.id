@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
+import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
 import AiComposer from "@/components/ai/AiComposer";
@@ -602,12 +603,25 @@ export default function AiAssistant() {
     initialOpenRef.current = true;
     const handoffId =
       location.state?.from === "appi-floating"
-        ? location.state.conversationId
-        : null;
-    const canOpenHandoff = handoffId && conversations.some((item) => item.id === handoffId);
-    if (canOpenHandoff) selectConversation(handoffId);
-    else startNewConversation();
-  }, [conversations, conversationsLoading, location.state, selectConversation, startNewConversation]);
+        ? String(location.state.conversationId || "")
+        : "";
+    if (handoffId) {
+      // The floating surface and workspace share one provider. If the same
+      // conversation is already active, keep its in-memory streaming answer;
+      // reloading the detail here could race the final assistant insert.
+      if (String(activeConversationId || "") !== handoffId) {
+        selectConversation(handoffId);
+      }
+      return;
+    }
+    startNewConversation();
+  }, [
+    activeConversationId,
+    conversationsLoading,
+    location.state,
+    selectConversation,
+    startNewConversation,
+  ]);
 
   const {
     viewportRef: chatViewportRef,
@@ -670,12 +684,10 @@ export default function AiAssistant() {
       <section className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
-              <AapmIcon
-                name="ai"
-                className="h-4 w-4"
-              />
-            </span>
+            <AiProfileAvatar
+              size="sm"
+              state={isStreaming ? streamPhase : "idle"}
+            />
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold tracking-[-0.015em]">
                 APPI

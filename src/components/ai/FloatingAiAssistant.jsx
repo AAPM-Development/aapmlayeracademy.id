@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import AiAvatar from "@/components/ai/AiAvatar";
+import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
@@ -282,12 +282,10 @@ export default function FloatingAiAssistant() {
         >
           <header className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
-                <AapmIcon
-                  name="ai"
-                  className="h-4 w-4"
-                />
-              </span>
+              <AiProfileAvatar
+                size="sm"
+                state={isStreaming ? streamPhase : "idle"}
+              />
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-semibold">APPI</h2>
                 <p className="truncate text-[10px] text-muted-foreground">
@@ -632,7 +630,7 @@ export default function FloatingAiAssistant() {
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >
-          <AiAvatar size="md" state="idle" decorative />
+          <AiProfileAvatar size="sm" state="idle" label="" />
           <span className="hidden flex-col sm:flex">
             <span className="text-sm font-semibold leading-4">Tanya APPI</span>
             <span className="mt-0.5 text-[10px] text-brand-orange/80">
