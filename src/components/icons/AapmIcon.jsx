@@ -1,0 +1,114 @@
+import React from "react";
+import { Icon as IconifyIcon } from "@iconify/react";
+import { cn } from "@/lib/utils";
+import { solarIconData } from "./solarIconData";
+
+// Minimal UI's sidebar uses the Solar collection through Iconify. Keeping the
+// semantic names here avoids scattering provider-specific icon strings across
+// Academy features while preserving the intended duotone visual family.
+export const aapmIconSources = Object.freeze({
+  dashboard: "solar:home-angle-bold-duotone",
+  course: "solar:notebook-bold-duotone",
+  modules: "solar:notes-bold-duotone",
+  assessment: "solar:file-text-bold",
+  users: "solar:users-group-rounded-bold-duotone",
+  analytics: "solar:chart-square-bold-duotone",
+  kpi: "solar:chart-2-bold-duotone",
+  ai: "solar:magic-stick-3-bold-duotone",
+  certificate: "solar:verified-check-bold",
+  media: "solar:gallery-wide-bold",
+  menu: "solar:list-bold",
+  close: "solar:close-circle-bold",
+  chevronLeft: "solar:alt-arrow-left-linear",
+  chevronRight: "solar:alt-arrow-right-linear",
+  chevronDown: "solar:alt-arrow-down-linear",
+  chevronUp: "solar:alt-arrow-up-linear",
+  arrowLeft: "solar:alt-arrow-left-linear",
+  arrowRight: "solar:alt-arrow-right-linear",
+  logout: "solar:logout-3-bold",
+  progress: "solar:chart-square-bold-duotone",
+  themeLight: "solar:sun-2-bold-duotone",
+  themeDark: "solar:moon-bold-duotone",
+  lock: "solar:lock-keyhole-minimalistic-bold-duotone",
+  mail: "solar:letter-bold-duotone",
+  eye: "solar:eye-bold",
+  eyeOff: "solar:eye-closed-bold",
+  loading: "solar:restart-bold",
+  add: "solar:add-circle-bold",
+  search: "solar:card-search-bold-duotone",
+  alert: "solar:danger-triangle-bold",
+  alertCircle: "solar:danger-circle-bold",
+  check: "solar:check-circle-bold",
+  checkRead: "solar:check-read-bold-duotone",
+  closeCircle: "solar:close-circle-bold",
+  more: "solar:menu-dots-bold",
+  minus: "solar:minus-circle-bold",
+  sidebar: "solar:sidebar-minimalistic-bold-duotone",
+  grip: "solar:sort-vertical-bold-duotone",
+  flag: "solar:flag-2-bold",
+  award: "solar:medal-ribbon-star-bold",
+  graduation: "solar:medal-star-bold",
+  refresh: "solar:restart-bold",
+  edit: "solar:pen-new-square-bold",
+  delete: "solar:trash-bin-trash-bold",
+  egg: "solar:chart-2-bold-duotone",
+  weight: "solar:scale-bold-duotone",
+  finance: "solar:wallet-money-bold-duotone",
+  trend: "solar:graph-up-bold-duotone",
+  target: "solar:target-bold-duotone",
+  shield: "solar:shield-check-bold",
+  circle: "solar:record-circle-bold-duotone",
+  play: "solar:play-circle-bold",
+  download: "solar:download-minimalistic-bold",
+  info: "solar:info-circle-bold",
+  clock: "solar:clock-circle-bold",
+  reorder: "solar:sort-vertical-bold-duotone",
+  fileCheck: "solar:file-check-bold-duotone",
+});
+
+export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
+
+function AiMark({ className = "", alt = "", ...props }) {
+  // AI is an inline wordmark rather than a square icon. Remove legacy sizing
+  // utilities so the letters can keep their natural width in every shell.
+  const markClassName = className
+    .split(/\s+/)
+    .filter((token) => token && !/^(?:h|w|size)-/.test(token))
+    .join(" ");
+
+  return (
+    <span
+      className={cn("aapm-ai-mark", markClassName)}
+      role={alt ? "img" : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : true}
+      {...props}
+    >
+      <span className="aapm-ai-mark__letters">AI</span>
+      <IconifyIcon
+        icon={
+          solarIconData["solar:stars-minimalistic-bold"] ||
+          "solar:stars-minimalistic-bold"
+        }
+        className="aapm-ai-mark__spark"
+        aria-hidden="true"
+      />
+    </span>
+  );
+}
+
+export default function AapmIcon({ name = "dashboard", className = "", alt = "", ...props }) {
+  const icon = aapmIconSources[name] || (name.includes(":") ? name : aapmIconSources.dashboard);
+
+  if (name === "ai") return <AiMark className={className} alt={alt} {...props} />;
+
+  return (
+    <IconifyIcon
+      icon={solarIconData[icon] || icon}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : true}
+      className={cn("h-5 w-5 shrink-0", className)}
+      {...props}
+    />
+  );
+}

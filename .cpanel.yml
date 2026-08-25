@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/aapp8359/public_html/
+    - export DEPLOYPATH=/home/aapp8359/public_html/staging.aapmlayeracademy.id/
     - /bin/mkdir -p "$DEPLOYPATH"
-    - /bin/cp -R ./* "$DEPLOYPATH"
+    - /bin/cp -R dist/. "$DEPLOYPATH"

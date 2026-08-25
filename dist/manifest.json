@@ -1,0 +1,22 @@
+{
+  "name": "AAPM Layer Academy",
+  "short_name": "AAPM Academy",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#318139",
+  "icons": [
+    {
+      "src": "/brand/aapm/pwa-academy.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/aapm/pwa-main.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

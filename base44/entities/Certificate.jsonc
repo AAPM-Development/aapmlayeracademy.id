@@ -1,0 +1,46 @@
+{
+  "name": "Certificate",
+  "type": "object",
+  "properties": {
+    "levelNumber": {
+      "type": "number"
+    },
+    "levelName": {
+      "type": "string"
+    },
+    "score": {
+      "type": "number"
+    },
+    "examType": {
+      "type": "string",
+      "enum": [
+        "module",
+        "level",
+        "final"
+      ]
+    },
+    "holderName": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "levelNumber",
+    "levelName",
+    "score",
+    "examType"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

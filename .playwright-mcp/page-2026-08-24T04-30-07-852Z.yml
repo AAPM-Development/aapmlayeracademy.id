@@ -1,0 +1,27 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img "AAPM Layer Academy" [ref=e7]
+      - heading "Welcome back" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Log in to your account
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - text: Email
+        - textbox "Email" [active] [ref=e17]:
+          - /placeholder: you@example.com
+      - generic [ref=e18]:
+        - link "Forgot password?" [ref=e20] [cursor=pointer]:
+          - /url: /forgot-password
+        - generic [ref=e21]:
+          - text: Password
+          - generic [ref=e22]:
+            - textbox "Password" [ref=e26]:
+              - /placeholder: ••••••••
+            - button "Tampilkan password" [ref=e27] [cursor=pointer]
+      - button "Log in" [ref=e31] [cursor=pointer]
+    - paragraph [ref=e32]:
+      - text: Don't have an account?
+      - link "Create one" [ref=e33] [cursor=pointer]:
+        - /url: /register
+  - region "Notifications (F8)":
+    - list
