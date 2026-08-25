@@ -80,7 +80,9 @@ The `develop` branch deploys the Vite artifact in `dist/` to
    `config.native.example.php` as the template. Both the main and staging API
    layouts resolve this account-level file first, so they use the same MySQL
    database instead of silently creating separate SQLite stores. Do not copy
-   the local `config.php` into either deployed document root.
+   the local `config.php` into either deployed document root. The API derives
+   the runtime label from the request host, so this shared file does not need
+   separate `app_env` values for production and staging.
 3. Set the staging domain to PHP 8.4 and enable `pdo_mysql`.
 4. Leave `app_url` empty when the same config file serves both domains; the API
    derives the current HTTPS host for reset links and OAuth callbacks. Set

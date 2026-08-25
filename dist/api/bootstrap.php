@@ -82,6 +82,17 @@ function app_config(): array
         break;
     }
 
+    // The same private config intentionally serves both public hosts. Keep
+    // the runtime label host-aware so production does not inherit a staging
+    // label from the shared file while both environments still use one DB.
+    $requestHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $requestHost = (string) preg_replace('/:\\d+$/', '', $requestHost);
+    if (in_array($requestHost, ['aapmlayeracademy.id', 'www.aapmlayeracademy.id'], true)) {
+        $config['app_env'] = 'production';
+    } elseif ($requestHost === 'staging.aapmlayeracademy.id') {
+        $config['app_env'] = 'staging';
+    }
+
     if ($config['db_driver'] === 'sqlite' && !$config['db_path']) {
         $config['db_path'] = dirname(__DIR__, 2) . '/storage/aapmlayeracademy.sqlite';
     }
