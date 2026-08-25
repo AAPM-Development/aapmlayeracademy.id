@@ -45,13 +45,30 @@ function app_config(): array
     ];
 
     $configuredPath = getenv('AAPLAYERACADEMY_CONFIG');
-    $candidatePaths = array_filter([
-        $configuredPath ?: null,
-        dirname(__DIR__, 2) . '/config.php',
-        dirname(__DIR__, 2) . '/config.local.php',
-        dirname(__DIR__, 3) . '/aapmlayeracademy-config.php',
-        dirname(__DIR__, 4) . '/aapmlayeracademy-config.php',
-    ]);
+    // cPanel deploys main to the account root's public_html and staging one
+    // directory deeper. Resolve the shared private file from both layouts
+    // before checking domain-local fallbacks; otherwise production can silently
+    // fall back to SQLite while staging reads MySQL.
+    $sharedConfigRoots = array_values(array_unique([
+        dirname(__DIR__, 3),
+        dirname(__DIR__, 2),
+        dirname(__DIR__, 1),
+        dirname(__DIR__, 4),
+    ]));
+    $sharedConfigPaths = array_map(
+        static fn (string $root): string => $root . '/aapmlayeracademy-config.php',
+        $sharedConfigRoots
+    );
+    $candidatePaths = array_filter(array_merge(
+        [$configuredPath ?: null],
+        $sharedConfigPaths,
+        [
+            dirname(__DIR__, 2) . '/config.php',
+            dirname(__DIR__, 2) . '/config.local.php',
+            dirname(__DIR__, 1) . '/config.php',
+            dirname(__DIR__, 1) . '/config.local.php',
+        ]
+    ));
 
     foreach ($candidatePaths as $path) {
         if (!is_file($path)) {
