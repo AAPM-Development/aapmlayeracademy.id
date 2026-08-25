@@ -176,6 +176,12 @@ export function useSaveAdminAiSettings() {
 
 export function useTestAdminAiSettings() {
   return useMutation({
-    mutationFn: () => nativeApi.admin.aiSettings.test(),
+    mutationFn: (data) => nativeApi.admin.aiSettings.test(data),
+  });
+}
+
+export function useDiscoverAdminAiModels() {
+  return useMutation({
+    mutationFn: (data) => nativeApi.admin.aiSettings.discoverModels(data),
   });
 }

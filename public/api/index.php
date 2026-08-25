@@ -279,6 +279,17 @@ try {
         json_response(hall_of_fame_data());
     }
 
+    if ($path === 'ai-settings' && $method === 'GET') {
+        $user = require_user();
+        json_response(ai_user_ai_public_settings((int) $user['id']));
+    }
+
+    if ($path === 'ai-settings' && $method === 'PUT') {
+        $user = require_user();
+        require_csrf();
+        json_response(ai_user_ai_save((int) $user['id'], request_json()));
+    }
+
     if ($path === 'admin/overview' && $method === 'GET') {
         require_admin();
         json_response(admin_overview_data());
@@ -398,7 +409,7 @@ try {
 
     if ($path === 'admin/ai-settings' && $method === 'GET') {
         require_admin();
-        json_response(ai_settings_status());
+        json_response(ai_registry_admin_status());
     }
 
     if ($path === 'admin/ai-settings' && $method === 'PUT') {
@@ -410,7 +421,13 @@ try {
     if ($path === 'admin/ai-settings/test' && $method === 'POST') {
         require_admin();
         require_csrf();
-        json_response(ai_test_connection());
+        json_response(ai_registry_test_connection(request_json()));
+    }
+
+    if ($path === 'admin/ai-settings/models' && $method === 'POST') {
+        require_admin();
+        require_csrf();
+        json_response(ai_registry_discover_models(request_json()));
     }
 
     if ($path === 'modules' && $method === 'GET') {

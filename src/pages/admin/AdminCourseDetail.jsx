@@ -39,7 +39,7 @@ export default function AdminCourseDetail() {
   const handleDragEnd = async ({ source, destination }) => {
     if (!destination) return;
     if (source.droppableId !== destination.droppableId) {
-      toast({ title: "Level tidak dipindahkan", description: "Ubah level modul lewat editor agar prasyarat dan metadata tetap jelas." });
+      toast({ variant: "warning", title: "Level tidak dipindahkan", description: "Ubah level modul lewat editor agar prasyarat dan metadata tetap jelas." });
       return;
     }
     const levelNumber = Number(source.droppableId.replace("level-", ""));

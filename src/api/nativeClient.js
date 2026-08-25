@@ -184,6 +184,11 @@ export const nativeApi = {
       request("/profile", { method: "PUT", body: JSON.stringify(data) }),
     hallOfFame: () => request("/hall-of-fame"),
   },
+  aiSettings: {
+    get: () => request("/ai-settings"),
+    update: (data) =>
+      request("/ai-settings", { method: "PUT", body: JSON.stringify(data) }),
+  },
   farmData: {
     list: () => request("/farm-data"),
     create: (data) => request("/farm-data", json(data)),
@@ -297,7 +302,9 @@ export const nativeApi = {
           method: "PUT",
           body: JSON.stringify(data),
         }),
-      test: () => request("/admin/ai-settings/test", json({})),
+      test: (data = {}) => request("/admin/ai-settings/test", json(data)),
+      discoverModels: (data = {}) =>
+        request("/admin/ai-settings/models", json(data)),
     },
   },
 };

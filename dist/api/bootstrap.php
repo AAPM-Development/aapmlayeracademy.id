@@ -164,6 +164,27 @@ function ensure_schema(PDO $pdo, string $driver): void
                  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
              )',
+            'CREATE TABLE IF NOT EXISTS user_ai_settings (
+                user_id INTEGER PRIMARY KEY,
+                mode TEXT NOT NULL DEFAULT \'global\',
+                provider_id TEXT NOT NULL DEFAULT \'\',
+                model TEXT NOT NULL DEFAULT \'\',
+                base_url TEXT NOT NULL DEFAULT \'\',
+                adapter TEXT NOT NULL DEFAULT \'openai-compatible\',
+                auth_mode TEXT NOT NULL DEFAULT \'bearer\',
+                api_key_encrypted TEXT NOT NULL DEFAULT \'\',
+                headers_encrypted TEXT NOT NULL DEFAULT \'\',
+                oauth_provider TEXT NOT NULL DEFAULT \'\',
+                oauth_access_token_encrypted TEXT NOT NULL DEFAULT \'\',
+                oauth_refresh_token_encrypted TEXT NOT NULL DEFAULT \'\',
+                oauth_expires_at TEXT NULL,
+                 allow_local INTEGER NOT NULL DEFAULT 0,
+                 supports_vision INTEGER NOT NULL DEFAULT 0,
+                 enabled INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )',
             'CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key TEXT PRIMARY KEY,
                 attempts INTEGER NOT NULL DEFAULT 0,
@@ -309,6 +330,28 @@ function ensure_schema(PDO $pdo, string $driver): void
                  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                  PRIMARY KEY (user_id),
                  CONSTRAINT user_profiles_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+            'CREATE TABLE IF NOT EXISTS user_ai_settings (
+                user_id BIGINT UNSIGNED NOT NULL,
+                mode VARCHAR(24) NOT NULL DEFAULT \'global\',
+                provider_id VARCHAR(80) NOT NULL DEFAULT \'\',
+                model VARCHAR(220) NOT NULL DEFAULT \'\',
+                base_url VARCHAR(500) NOT NULL DEFAULT \'\',
+                adapter VARCHAR(32) NOT NULL DEFAULT \'openai-compatible\',
+                auth_mode VARCHAR(20) NOT NULL DEFAULT \'bearer\',
+                api_key_encrypted LONGTEXT NOT NULL,
+                headers_encrypted LONGTEXT NOT NULL,
+                oauth_provider VARCHAR(80) NOT NULL DEFAULT \'\',
+                oauth_access_token_encrypted LONGTEXT NOT NULL,
+                oauth_refresh_token_encrypted LONGTEXT NOT NULL,
+                oauth_expires_at DATETIME NULL,
+                 allow_local TINYINT(1) NOT NULL DEFAULT 0,
+                 supports_vision TINYINT(1) NOT NULL DEFAULT 0,
+                 enabled TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id),
+                CONSTRAINT user_ai_settings_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             'CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket_key VARCHAR(190) NOT NULL,
@@ -458,6 +501,7 @@ function ensure_schema(PDO $pdo, string $driver): void
 
     ensure_course_module_video_url($pdo, $driver);
     ensure_user_profile_avatar($pdo, $driver);
+    ensure_user_ai_supports_vision($pdo, $driver);
     ensure_default_course_module_videos($pdo);
 }
 
@@ -478,6 +522,24 @@ function ensure_user_profile_avatar(PDO $pdo, string $driver): void
     $column->execute(['user_profiles', 'avatar_data']);
     if (!$column->fetchColumn()) {
         $pdo->exec('ALTER TABLE user_profiles ADD COLUMN avatar_data MEDIUMTEXT NOT NULL AFTER hall_of_fame_opt_in');
+    }
+}
+
+function ensure_user_ai_supports_vision(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $columns = $pdo->query('PRAGMA table_info(user_ai_settings)')->fetchAll();
+        foreach ($columns as $column) {
+            if (($column['name'] ?? '') === 'supports_vision') return;
+        }
+        $pdo->exec("ALTER TABLE user_ai_settings ADD COLUMN supports_vision INTEGER NOT NULL DEFAULT 0");
+        return;
+    }
+
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['user_ai_settings', 'supports_vision']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE user_ai_settings ADD COLUMN supports_vision TINYINT(1) NOT NULL DEFAULT 0 AFTER allow_local');
     }
 }
 

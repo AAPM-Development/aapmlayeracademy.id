@@ -24,6 +24,29 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   CONSTRAINT user_profiles_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS user_ai_settings (
+  user_id BIGINT UNSIGNED NOT NULL,
+  mode VARCHAR(24) NOT NULL DEFAULT 'global',
+  provider_id VARCHAR(80) NOT NULL DEFAULT '',
+  model VARCHAR(220) NOT NULL DEFAULT '',
+  base_url VARCHAR(500) NOT NULL DEFAULT '',
+  adapter VARCHAR(32) NOT NULL DEFAULT 'openai-compatible',
+  auth_mode VARCHAR(20) NOT NULL DEFAULT 'bearer',
+  api_key_encrypted LONGTEXT NOT NULL,
+  headers_encrypted LONGTEXT NOT NULL,
+  oauth_provider VARCHAR(80) NOT NULL DEFAULT '',
+  oauth_access_token_encrypted LONGTEXT NOT NULL,
+  oauth_refresh_token_encrypted LONGTEXT NOT NULL,
+  oauth_expires_at DATETIME NULL,
+  allow_local TINYINT(1) NOT NULL DEFAULT 0,
+  supports_vision TINYINT(1) NOT NULL DEFAULT 0,
+  enabled TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id),
+  CONSTRAINT user_ai_settings_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS auth_rate_limits (
   bucket_key VARCHAR(190) NOT NULL,
   attempts INT UNSIGNED NOT NULL DEFAULT 0,

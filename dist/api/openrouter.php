@@ -25,6 +25,8 @@ function app_setting_set(string $key, string $value): void
     db()->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)')->execute([$key, $value]);
 }
 
+require_once __DIR__ . '/aiProviders.php';
+
 function ai_provider_catalog(): array
 {
     return [
@@ -122,7 +124,9 @@ function ai_private_config(): array
         $provider = 'openrouter';
         $apiKey = trim((string) $config['openrouter_api_key']);
     }
-    if ($apiKey === '' || !isset(ai_provider_catalog()[$provider])) {
+    $catalog = function_exists('ai_registry_catalog') ? ai_registry_catalog() : ai_provider_catalog();
+    $definition = $catalog[$provider] ?? null;
+    if (!is_array($definition) || ($apiKey === '' && !empty($definition['keyRequired']))) {
         return ['provider' => '', 'apiKey' => '', 'model' => '', 'baseUrl' => '', 'allowLocal' => false];
     }
     return [
@@ -181,6 +185,10 @@ function ai_normalize_base_url(string $provider, string $baseUrl, bool $allowLoc
 
 function ai_settings_status(): array
 {
+    $user = function_exists('current_user') ? current_user() : null;
+    return ai_user_ai_runtime_status((int) ($user['id'] ?? 0));
+
+    // Legacy single-provider implementation kept below for rolling deploys.
     $private = ai_private_config();
     $provider = $private['apiKey'] !== '' ? $private['provider'] : ai_stored_provider();
     $definition = ai_provider_definition($provider);
@@ -210,6 +218,9 @@ function ai_settings_status(): array
 
 function ai_api_key(array $settings): string
 {
+    return ai_registry_api_key($settings);
+
+    // Legacy single-provider implementation kept below for rolling deploys.
     $private = ai_private_config();
     if ($private['apiKey'] !== '' && $private['provider'] === $settings['provider']) return $private['apiKey'];
     return ai_stored_secret((string) $settings['provider']);
@@ -226,6 +237,9 @@ function ai_validate_api_key(string $apiKey): string
 
 function ai_save_settings(array $input): array
 {
+    return ai_registry_save_settings($input);
+
+    // Legacy single-provider implementation kept below for rolling deploys.
     if (ai_private_config()['apiKey'] !== '') {
         error_response('Provider dan API key dikelola dari konfigurasi server privat dan tidak dapat ditimpa dari Admin.', 409, 'ai_managed_in_config');
     }
@@ -418,16 +432,12 @@ function ai_openai_content(array $decoded, string $providerLabel): string
 
 function ai_openai_compatible_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
 {
-    $headers = $apiKey !== '' ? ['Authorization: Bearer ' . $apiKey] : [];
-    if ($settings['provider'] === 'openrouter') {
-        $headers[] = 'X-OpenRouter-Title: AAPM Layer Academy';
-        $origin = app_base_url();
-        if ($origin !== '') $headers[] = 'HTTP-Referer: ' . $origin;
-    }
+    $headers = ai_registry_auth_headers($settings, $apiKey);
     $body = [
         'model' => $settings['model'],
         'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl),
-        'temperature' => 0.3, 'max_tokens' => AAPM_AI_MAX_TOKENS,
+        'temperature' => $settings['temperature'] ?? 0.3,
+        'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS,
     ];
     if ($settings['provider'] === 'openrouter') {
         // Reasoning-capable free models may expose an intermediate trace.
@@ -440,16 +450,16 @@ function ai_openai_compatible_completion(array $settings, string $apiKey, string
             ]];
         }
     }
-    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions', $headers, $body, (string) $settings['providerLabel']);
+    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . ($settings['chatPath'] ?? '/chat/completions'), $headers, $body, (string) $settings['providerLabel']);
     return ai_openai_content($decoded, (string) $settings['providerLabel']);
 }
 
 function ai_gemini_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
 {
-    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/models/' . rawurlencode((string) $settings['model']) . ':generateContent', ['x-goog-api-key: ' . $apiKey], [
+    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/models/' . rawurlencode((string) $settings['model']) . ':generateContent', array_merge(['x-goog-api-key: ' . $apiKey], ai_registry_extra_header_lines($settings)), [
         'systemInstruction' => ['parts' => [['text' => $systemPrompt]],],
         'contents' => [['role' => 'user', 'parts' => [['text' => $userPrompt]]]],
-        'generationConfig' => ['temperature' => 0.3, 'maxOutputTokens' => AAPM_AI_MAX_TOKENS],
+        'generationConfig' => ['temperature' => $settings['temperature'] ?? 0.3, 'maxOutputTokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS],
     ], (string) $settings['providerLabel']);
     $parts = $decoded['candidates'][0]['content']['parts'] ?? [];
     $content = implode("\n", array_filter(array_map(static fn ($part): string => is_array($part) ? trim((string) ($part['text'] ?? '')) : '', is_array($parts) ? $parts : [])));
@@ -459,8 +469,8 @@ function ai_gemini_completion(array $settings, string $apiKey, string $systemPro
 
 function ai_anthropic_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
 {
-    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/messages', ['x-api-key: ' . $apiKey, 'anthropic-version: 2023-06-01'], [
-        'model' => $settings['model'], 'max_tokens' => AAPM_AI_MAX_TOKENS, 'temperature' => 0.3, 'system' => $systemPrompt,
+    $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/messages', array_merge(['x-api-key: ' . $apiKey, 'anthropic-version: 2023-06-01'], ai_registry_extra_header_lines($settings)), [
+        'model' => $settings['model'], 'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS, 'temperature' => $settings['temperature'] ?? 0.3, 'system' => $systemPrompt,
         'messages' => [['role' => 'user', 'content' => $userPrompt]],
     ], (string) $settings['providerLabel']);
     $parts = is_array($decoded['content'] ?? null) ? $decoded['content'] : [];
@@ -508,21 +518,19 @@ function ai_sse_emit(string $event, array $payload = []): void
 
 function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
 {
-    $headers = ['Authorization: Bearer ' . $apiKey, 'X-OpenRouter-Title: AAPM Layer Academy'];
-    $origin = app_base_url();
-    if ($origin !== '') {
-        $headers[] = 'HTTP-Referer: ' . $origin;
-    }
+    $headers = ai_registry_auth_headers($settings, $apiKey);
     $requestBody = [
         'model' => $settings['model'],
         'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl),
-        'temperature' => 0.3,
-        'max_tokens' => AAPM_AI_MAX_TOKENS,
+        'temperature' => $settings['temperature'] ?? 0.3,
+        'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS,
         'stream' => true,
-        // Only public output is sent to the browser. Provider reasoning is never relayed.
-        'reasoning' => ['effort' => 'none', 'exclude' => true],
     ];
-    if ($allowWebSearch) {
+    if ($settings['provider'] === 'openrouter') {
+        // Only public output is sent to the browser. Provider reasoning is never relayed.
+        $requestBody['reasoning'] = ['effort' => 'none', 'exclude' => true];
+    }
+    if ($allowWebSearch && $settings['provider'] === 'openrouter') {
         // OpenRouter runs this server-side tool only when the model needs current
         // information. The low cap keeps the learner-facing mode predictable.
         $requestBody['tools'] = [[
@@ -539,12 +547,12 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     $receivedText = false;
     $responseText = '';
     $streamError = '';
-    $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . '/chat/completions');
+    $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . ($settings['chatPath'] ?? '/chat/completions'));
     curl_setopt_array($handle, [
         CURLOPT_RETURNTRANSFER => false,
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_TIMEOUT => 70,
+        CURLOPT_TIMEOUT => max(15, min(180, (int) ($settings['timeoutSeconds'] ?? 70))),
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_USERAGENT => 'AAPM-Layer-Academy/1.0',
@@ -595,7 +603,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     curl_close($handle);
     if ($ok === false || $status < 200 || $status >= 300 || $streamError !== '' || !$receivedText) {
         $detail = $streamError !== '' ? $streamError : ($curlError !== '' ? $curlError : 'provider tidak mengirim jawaban streaming');
-        throw new RuntimeException('OpenRouter: ' . substr($detail, 0, 220));
+        throw new RuntimeException((string) $settings['providerLabel'] . ': ' . substr($detail, 0, 220));
     }
 
     return $responseText;
@@ -614,13 +622,13 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
             ai_sse_emit('status', ['label' => 'APPI mengingat konteks percakapan']);
         }
         $webSearch = $allowWebSearch && $settings['provider'] === 'openrouter';
-        if ($imageDataUrl !== null && $settings['provider'] !== 'openrouter') {
-            throw new RuntimeException('Analisis foto saat ini memerlukan provider OpenRouter dengan model vision-capable.');
+        if ($imageDataUrl !== null && empty($settings['supportsVision'])) {
+            throw new RuntimeException('Provider atau model aktif belum ditandai mendukung input gambar.');
         }
         if ($webSearch) {
             ai_sse_emit('status', ['label' => 'APPI menyiapkan referensi web']);
         }
-        if ($settings['provider'] !== 'openrouter') {
+        if ($settings['adapter'] !== 'openai-compatible' || empty($settings['supportsStreaming'])) {
             ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
             $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext));
             ai_sse_emit('delta', ['text' => $reply]);

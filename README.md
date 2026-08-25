@@ -125,3 +125,35 @@ the callback URL as:
 `https://staging.aapmlayeracademy.id/api/auth/google/callback`
 
 Never commit those values. Email/password remains available as the fallback.
+
+## AI provider registry
+
+Admin → APPI settings supports a multi-provider registry instead of a single
+hard-coded connection. The registry supports OpenRouter, OpenAI-compatible
+gateways, Gemini, Anthropic, Ollama, LM Studio, LocalAI, vLLM, and custom
+OpenAI-compatible endpoints. Each connection can have its own model, base URL,
+authentication mode, custom headers, streaming/vision capability, endpoint
+paths, token limit, temperature, and timeout. The model discovery action reads
+`/models` when the provider exposes it; native Anthropic connections require a
+manually entered model ID.
+
+Provider API keys and custom headers are encrypted with AES-256-GCM in the
+existing `app_settings` table. Set `ai_settings_encryption_key` in the private
+cPanel config before saving credentials from Admin. Existing single-provider
+settings are migrated lazily into the registry and the legacy scalar settings
+are kept in sync during the rolling deploy.
+
+Learners can open Profile → Preferensi APPI and choose the global AAPM
+provider, another provider made available by Admin, or a private BYOK/local
+OpenAI-compatible endpoint. Account overrides and their credential are isolated
+to that account; the global provider remains the safe default and fallback.
+Google OAuth is already available for account login when configured. AI OAuth is
+not universal across providers: it must be implemented as a provider-specific
+authorization flow when that provider exposes OAuth, while API-key/BYOK support
+works with the generic contract above.
+
+For local AI, remember that the request originates from the PHP/cPanel server,
+not from the administrator's laptop. Use `localhost` only when the model runs
+on the same server; use an HTTPS endpoint or explicitly enabled private-network
+endpoint when the model runs on another machine. Public HTTP endpoints remain
+blocked to reduce SSRF risk.
