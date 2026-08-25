@@ -32,7 +32,7 @@ export default function AcademySidebar({
     >
       <div
         className={cn(
-          "flex h-[73px] shrink-0 items-center border-b border-[hsl(var(--surface-border))]",
+          "relative flex h-[73px] shrink-0 items-center border-b border-[hsl(var(--surface-border))]",
           collapsed
             ? "justify-center gap-1 px-2"
             : "justify-between gap-3 px-5",
@@ -61,12 +61,16 @@ export default function AcademySidebar({
           <IconButton
             onClick={onToggle}
             size="sm"
-            className={cn("h-8 w-8 shrink-0 rounded-lg border border-border/70 bg-background/80 text-muted-foreground hover:bg-surface-hover hover:text-foreground", collapsed && "h-7 w-7")}
+            className={cn(
+              "h-8 w-8 shrink-0 rounded-lg border border-border/70 bg-background/80 text-muted-foreground transition-[background-color,border-color,opacity,color] hover:bg-surface-hover hover:text-foreground",
+              collapsed &&
+                "absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border-border/45 bg-transparent p-0 opacity-60 hover:border-border/75 hover:bg-background/85 hover:opacity-100",
+            )}
             label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
           >
             <AapmIcon
               name={collapsed ? "chevronRight" : "chevronLeft"}
-              className="h-4 w-4"
+              className={collapsed ? "h-3.5 w-3.5" : "h-4 w-4"}
             />
           </IconButton>
         )}
