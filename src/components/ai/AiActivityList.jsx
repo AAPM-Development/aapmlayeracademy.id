@@ -76,23 +76,3 @@ export default function AiActivityList({ activity = [], loading = false }) {
   );
 }
 
-export function AiHistoryTabs({ value, onChange }) {
-  return (
-    <div className="mx-3 grid min-w-0 max-w-[calc(100%-1.5rem)] grid-cols-2 rounded-lg bg-surface-subtle p-1">
-      {[
-        ["chats", "Percakapan"],
-        ["activity", "Aktivitas"],
-      ].map(([option, label]) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onChange(option)}
-          className={`rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors ${value === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          aria-pressed={value === option}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}

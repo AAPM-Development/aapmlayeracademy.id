@@ -6,7 +6,12 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiCompanionDock from "@/components/ai/AiCompanionDock";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
-import AiActivityList, { AiHistoryTabs } from "@/components/ai/AiActivityList";
+import AiActivityList from "@/components/ai/AiActivityList";
+import {
+  AiConversationRow,
+  AiHistoryToolbar,
+  filterAndSortConversations,
+} from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import { Button, ConfirmDialog } from "@/components/primitives";
@@ -65,16 +70,6 @@ function pageContextLabel(pathname) {
     dashboard: "Dashboard Academy",
   };
   return labels[pageContextForPath(pathname)] || "Academy";
-}
-
-function filterConversations(conversations, query) {
-  const keyword = query.trim().toLocaleLowerCase("id-ID");
-  if (!keyword) return conversations;
-  return conversations.filter((conversation) =>
-    `${conversation.title || ""} ${conversation.lastMessagePreview || ""}`
-      .toLocaleLowerCase("id-ID")
-      .includes(keyword),
-  );
 }
 
 function BubbleAnswer({ content }) {
@@ -156,6 +151,7 @@ export default function FloatingAiAssistant() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyView, setHistoryView] = useState("chats");
   const [historyQuery, setHistoryQuery] = useState("");
+  const [historySort, setHistorySort] = useState("updated");
   const [pendingDelete, setPendingDelete] = useState(null);
   const [imageAttachment, setImageAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState("");
@@ -212,7 +208,11 @@ export default function FloatingAiAssistant() {
 
   if (location.pathname === "/ai-assistant") return null;
 
-  const visibleConversations = filterConversations(conversations, historyQuery);
+  const visibleConversations = filterAndSortConversations(
+    conversations,
+    historyQuery,
+    historySort,
+  );
   const openPanel = () => {
     setClosing(false);
     setOpen(true);
@@ -502,22 +502,20 @@ export default function FloatingAiAssistant() {
                     />
                   </Button>
                 </div>
-                <div className="min-w-0 max-w-full pt-3">
-                  <AiHistoryTabs value={historyView} onChange={setHistoryView} />
+                <div className="min-w-0 max-w-full px-3 pb-1 pt-3">
+                  <AiHistoryToolbar
+                    view={historyView}
+                    onViewChange={setHistoryView}
+                    query={historyQuery}
+                    onQueryChange={setHistoryQuery}
+                    sort={historySort}
+                    onSortChange={setHistorySort}
+                    onClearQuery={() => setHistoryQuery("")}
+                    conversationCount={conversations.length}
+                    activityCount={activity.length}
+                    compact
+                  />
                 </div>
-                {historyView === "chats" && <label className="mx-3 mt-2 flex min-w-0 max-w-[calc(100%-1.5rem)] items-center gap-2 overflow-hidden rounded-xl border border-border bg-surface-subtle px-3 py-2.5 focus-within:border-brand-orange/45">
-                  <AapmIcon
-                    name="solar:magnifer-bold-duotone"
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
-                  />
-                  <input
-                    value={historyQuery}
-                    onChange={(event) => setHistoryQuery(event.target.value)}
-                    placeholder="Cari riwayat"
-                    className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-                    aria-label="Cari riwayat percakapan"
-                  />
-                </label>}
                 <div className="aapm-ai-history-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
                   {historyView === "activity" ? (
                     <div className="min-w-0 max-w-full pt-3">
@@ -532,43 +530,17 @@ export default function FloatingAiAssistant() {
                       </p>
                     )}
                     {visibleConversations.map((conversation) => (
-                      <div
+                      <AiConversationRow
                         key={conversation.id}
-                        className={`group flex min-w-0 max-w-full items-center gap-1 overflow-hidden rounded-xl border p-1.5 ${conversation.id === activeConversationId ? "border-brand-orange/35 bg-tint-orange" : "border-transparent hover:border-border hover:bg-surface-subtle"}`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            selectConversation(conversation.id);
-                            setHistoryOpen(false);
-                          }}
-                          disabled={isStreaming}
-                          className="min-w-0 flex-1 px-2 py-2 text-left"
-                        >
-                          <span className="block truncate text-xs font-semibold">
-                            {conversation.title}
-                          </span>
-                          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
-                            {conversation.lastMessagePreview || "Belum ada pesan"}
-                          </span>
-                        </button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setPendingDelete(conversation);
-                          }}
-                          disabled={isStreaming}
-                          className="h-8 w-8 shrink-0 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-                          aria-label={`Hapus percakapan ${conversation.title}`}
-                        >
-                          <AapmIcon
-                            name="solar:trash-bin-trash-bold"
-                            className="h-3.5 w-3.5 text-muted-foreground hover:text-danger"
-                          />
-                        </Button>
-                      </div>
+                        conversation={conversation}
+                        active={conversation.id === activeConversationId}
+                        disabled={isStreaming}
+                        onSelect={(conversationId) => {
+                          selectConversation(conversationId);
+                          setHistoryOpen(false);
+                        }}
+                        onDelete={setPendingDelete}
+                      />
                     ))}
                   </div>}
                 </div>
