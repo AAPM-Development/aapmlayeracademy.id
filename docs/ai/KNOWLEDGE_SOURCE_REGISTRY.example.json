@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "mode": "example_only",
+  "policy": {
+    "missing_metadata_audience": "internal",
+    "missing_metadata_external_safe": false,
+    "require_external_review": true,
+    "snapshot_only": true
+  },
+  "sources": [
+    {
+      "source_id": "workflow-governance",
+      "source_type": "github_governance",
+      "repository": "erp-aapm/Workflow_Governance",
+      "ref_policy": "approved-ref-configured-by-owner",
+      "enabled": false,
+      "default_domain": "aapm",
+      "default_audience_scope": "internal",
+      "default_authority": "aapm_canonical",
+      "default_external_safe": false,
+      "include_paths": [
+        "GOVERNANCE.md",
+        "DOMAIN_MODEL.md",
+        "APPLICATION_ARCHITECTURE.md",
+        "EXECUTION_WORKFLOWS.md",
+        "Modules/**"
+      ],
+      "exclude_paths": [
+        "**/development/**",
+        "**/handoff/**",
+        "**/incident/**"
+      ],
+      "notes": "Opt-in example. Do not enable until owner, ref, credential, and review policy are configured."
+    }
+  ]
+}
