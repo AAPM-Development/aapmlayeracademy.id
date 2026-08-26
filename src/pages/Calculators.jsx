@@ -27,7 +27,7 @@ export default function Calculators() {
   return (
     <ContentContainer className="max-w-6xl">
       <PageHeader
-        eyebrow="Farm tools"
+        eyebrow="Alat farm"
         title="Kalkulator interaktif"
         description="Ubah catatan harian menjadi sinyal keputusan yang bisa langsung dibaca tim farm."
         actions={
@@ -45,7 +45,7 @@ export default function Calculators() {
         <Surface tone="orange" className="relative overflow-hidden p-5 sm:p-6">
           <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border-[16px] border-brand-orange/10" />
           <div className="relative">
-            <Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-tint-orange-foreground">Decision tools</Badge>
+            <Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-tint-orange-foreground">Alat keputusan</Badge>
             <h2 className="mt-4 max-w-xl text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Hitung sebelum mengambil keputusan.</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Mulai dari angka yang paling mudah Anda catat. Hasilnya bukan pengganti observasi kandang—tetapi titik awal untuk bertanya dengan lebih tepat.</p>
             <div className="mt-5 grid gap-2 sm:grid-cols-3">

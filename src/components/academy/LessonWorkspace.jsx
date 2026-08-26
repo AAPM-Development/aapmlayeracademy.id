@@ -172,7 +172,7 @@ export function LessonSidebar({
     <Card className="shadow-none lg:sticky lg:top-6" aria-label="Lesson map">
       <CardContent className="p-3">
         <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Lesson map
+          Peta materi
         </div>
         <div className="space-y-1">
           {lessonSections.map((section) => {

@@ -30,3 +30,12 @@ export const adminPlannedCapabilities = [
     icon: "analytics",
   },
 ];
+
+export function getAdminNavigationMeta(pathname = "/admin") {
+  const items = [...adminPrimaryNavigation, ...adminSecondaryNavigation];
+  const item = items.find((entry) =>
+    entry.end ? pathname === entry.to : pathname.startsWith(entry.to),
+  );
+
+  return item || { label: "Ringkasan", icon: "dashboard" };
+}

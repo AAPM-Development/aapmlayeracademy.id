@@ -119,7 +119,7 @@ function LevelCard({ level, modules, allModules, completedSet, accent }) {
   const hasCurrent = moduleStates.includes("current");
 
   return (
-    <AccordionItem id={`level-${level.number}`} value={`level-${level.number}`} className={cn("min-w-0 overflow-hidden rounded-2xl border bg-background shadow-sm", hasCurrent && "ring-1 ring-brand-orange/20 lg:col-span-2")}>
+    <AccordionItem id={`level-${level.number}`} value={`level-${level.number}`} className={cn("group/level h-fit min-w-0 self-start overflow-hidden rounded-2xl border bg-background shadow-sm transition-[border-color,box-shadow]", hasCurrent && "ring-1 ring-brand-orange/20 lg:col-span-2", "data-[state=open]:border-brand-green/35 data-[state=open]:shadow-[var(--surface-shadow-hover)]")}>
       <AccordionTrigger className="group/header relative w-full px-4 py-4 hover:no-underline sm:px-5 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-muted-foreground">
         <span className={cn("absolute inset-y-0 left-0 w-1", accent.line)} />
         <div className="flex min-w-0 items-start justify-between gap-3">
@@ -170,7 +170,7 @@ export default function LearningRoadmap({ modules = [], progress = [] }) {
               </div>
               <span className="shrink-0 self-start rounded-full bg-background/80 px-3 py-1.5 text-[10px] font-semibold text-foreground shadow-sm sm:self-auto">{trackCompleted}/{trackModules.length} modul selesai</span>
             </div>
-            <Accordion type="multiple" defaultValue={[]} className="grid min-w-0 gap-3 lg:grid-cols-2" aria-label={`${track.title} learning levels`}>
+            <Accordion type="multiple" defaultValue={[]} className="grid min-w-0 items-start gap-3 lg:auto-rows-max lg:grid-cols-2" aria-label={`${track.title} learning levels`}>
               {levels.map((level) => {
                 const levelModules = sortedModules.filter((module) => module.level === level.number);
                 if (!levelModules.length) return null;

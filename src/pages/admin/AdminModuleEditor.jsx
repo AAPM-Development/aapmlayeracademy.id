@@ -537,7 +537,7 @@ export default function AdminModuleEditor() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Media</div>
-                  <h2 className="text-sm font-semibold">Video lesson</h2>
+                  <h2 className="text-sm font-semibold">Video materi</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Simpan tautan YouTube, Vimeo, atau file MP4/WebM. Tautan
                     YouTube otomatis memakai embed yang aman.

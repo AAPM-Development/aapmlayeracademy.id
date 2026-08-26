@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/lib/AuthContext";
 import { useThemeMode } from "@/lib/useThemeMode";
 import AdminNavigation from "@/components/admin/AdminNavigation";
+import { getAdminNavigationMeta } from "@/components/admin/adminNavigationItems";
 import MobileBottomNav from "./MobileBottomNav";
 
 function AdminSidebar({ onNavigate = () => {}, onLogout = () => {}, user = null }) {
@@ -64,6 +65,7 @@ export default function AdminShell() {
   const { mode, toggleTheme } = useThemeMode();
   const location = useLocation();
   const displayName = user?.full_name || user?.email || "Admin";
+  const page = getAdminNavigationMeta(location.pathname);
 
   return (
     <div className="academy-shell flex h-screen overflow-hidden bg-background text-foreground">
@@ -73,7 +75,7 @@ export default function AdminShell() {
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-[73px] shrink-0 items-center justify-between border-b border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ruang admin</div><div className="truncate text-sm font-semibold">{location.pathname === "/admin" ? "Ringkasan" : "Manajemen Academy"}</div></div></div>
+          <div className="flex min-w-0 items-center gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ruang admin</div><div className="truncate text-sm font-semibold">{page.label}</div></div></div>
           <div className="flex items-center gap-1.5">
             <Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/"><AapmIcon name="dashboard" className="h-4 w-4" /> Buka Academy</Link></Button>
             <IconButton variant="ghost" onClick={toggleTheme} label={mode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}><AapmIcon name={mode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" /></IconButton>

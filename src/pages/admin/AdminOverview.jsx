@@ -19,12 +19,12 @@ export default function AdminOverview() {
   const { data, isLoading, error, refetch } = useAdminOverview();
 
   return (
-    <AdminPageFrame title="Academy overview" description="Pantau data pembelajaran yang tersedia di API native tanpa mengubah data produksi.">
+    <AdminPageFrame title="Ringkasan Academy" description="Pantau data pembelajaran yang tersedia di API native tanpa mengubah data produksi.">
       {isLoading ? <AdminLoading /> : error ? <AdminError error={error} onRetry={refetch} /> : <div className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {(data?.metrics || []).map((metric) => {
             const appearance = metricAppearance[metric.key] || metricAppearance.analytics;
-            return <Surface key={metric.key} tone={appearance.tone} className="relative isolate overflow-hidden p-4 shadow-none"><span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-9 h-24 w-24 rounded-full border-[10px] border-current opacity-20" /><span aria-hidden="true" className="pointer-events-none absolute -bottom-8 -right-2 h-16 w-16 rounded-full border border-current opacity-10" /><div className="relative z-10 flex items-start justify-between gap-3"><IconTile icon={appearance.icon} tone={appearance.tone} size="sm" /><span className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">Live data</span></div><div className="relative z-10 mt-5 text-3xl font-semibold tracking-[-0.05em] tabular-nums">{metric.value}{metric.suffix || ""}</div><div className="relative z-10 mt-1 text-sm font-semibold">{metric.label}</div><div className="relative z-10 mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</div></Surface>;
+            return <Surface key={metric.key} tone={appearance.tone} className="relative isolate overflow-hidden p-4 shadow-none"><span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-9 h-24 w-24 rounded-full border-[10px] border-current opacity-20" /><span aria-hidden="true" className="pointer-events-none absolute -bottom-8 -right-2 h-16 w-16 rounded-full border border-current opacity-10" /><div className="relative z-10 flex items-start justify-between gap-3"><IconTile icon={appearance.icon} tone={appearance.tone} size="sm" /><span className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">Data langsung</span></div><div className="relative z-10 mt-5 text-3xl font-semibold tracking-[-0.05em] tabular-nums">{metric.value}{metric.suffix || ""}</div><div className="relative z-10 mt-1 text-sm font-semibold">{metric.label}</div><div className="relative z-10 mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</div></Surface>;
           })}
         </div>
 
