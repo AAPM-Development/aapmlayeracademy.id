@@ -181,30 +181,47 @@ export default function AdminAiSettings() {
   const persist = async ({ testAfter = false, discoverAfter = false } = {}) => {
     let config;
     try { config = configPayload(); } catch (exception) { toast({ variant: "destructive", title: "Konfigurasi belum valid", description: exception.message }); return null; }
+
+    let result;
     try {
-      const result = await save.mutateAsync({ action: "saveProvider", config });
-      const savedId = config.id || result.activeProviderId;
-      setSelectedId(savedId);
-      setIsCreating(false);
-      setDirty(false);
-      setForm((previous) => ({ ...previous, id: savedId, apiKey: "", clearApiKey: false }));
-      if (testAfter) {
-        const connection = await test.mutateAsync({ providerId: savedId });
-        setTestResult(connection);
-        toast({ title: "Provider siap digunakan", description: `${connection.providerLabel} · ${connection.model}` });
-      } else if (discoverAfter) {
-        const resultModels = await discover.mutateAsync({ providerId: savedId });
-        setDiscoveredModels(resultModels.models || []);
-        setDiscoveryNote(resultModels.note || "");
-        toast({ title: "Model berhasil dibaca", description: resultModels.note });
-      } else {
-        toast({ title: "Provider AI tersimpan", description: `${config.label} dapat dipilih sebagai koneksi aktif.` });
-      }
-      return savedId;
+      result = await save.mutateAsync({ action: "saveProvider", config });
     } catch (exception) {
       toast({ variant: "destructive", title: "Provider belum tersimpan", description: exception.message || "Periksa endpoint dan konfigurasi provider." });
       return null;
     }
+
+    const savedId = config.id || result.activeProviderId;
+    setSelectedId(savedId);
+    setIsCreating(false);
+    setDirty(false);
+    setForm((previous) => ({ ...previous, id: savedId, apiKey: "", clearApiKey: false }));
+
+    if (!testAfter && !discoverAfter) {
+      toast({ title: "Provider AI tersimpan", description: `${config.label} dapat dipilih sebagai koneksi aktif.` });
+      return savedId;
+    }
+
+    try {
+      if (testAfter) {
+        const connection = await test.mutateAsync({ providerId: savedId });
+        setTestResult(connection);
+        toast({ title: "Provider siap digunakan", description: `${connection.providerLabel} · ${connection.model}` });
+      } else {
+        const resultModels = await discover.mutateAsync({ providerId: savedId });
+        setDiscoveredModels(resultModels.models || []);
+        setDiscoveryNote(resultModels.note || "");
+        toast({ title: "Model berhasil dibaca", description: resultModels.note });
+      }
+    } catch (exception) {
+      if (testAfter) setTestResult(null);
+      toast({
+        variant: "destructive",
+        title: testAfter ? "Provider tersimpan, test gagal" : "Provider tersimpan, discovery gagal",
+        description: exception.message || "Provider tersimpan, tetapi endpoint belum dapat dijangkau dari server cPanel.",
+      });
+    }
+
+    return savedId;
   };
 
   const setActive = async (providerId) => {

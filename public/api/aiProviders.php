@@ -181,6 +181,7 @@ function ai_registry_is_private_host(string $host): bool
             || ($long >= 2886729728 && $long <= 2886794751) // 172.16.0.0/12
             || ($long >= 3232235520 && $long <= 3232301055) // 192.168.0.0/16
             || ($long >= 2851995648 && $long <= 2852061183) // 169.254.0.0/16
+            || ($long >= 1681915904 && $long <= 1686110207) // 100.64.0.0/10 shared/Tailscale
             || ($long >= 2130706432 && $long <= 2147483647); // 127.0.0.0/8
     }
     return strpos($host, '::1') === 0 || strpos($host, 'fc') === 0 || strpos($host, 'fd') === 0 || strpos($host, 'fe80:') === 0;
