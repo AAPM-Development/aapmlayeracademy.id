@@ -4,10 +4,11 @@ import { NavLink } from "react-router-dom";
 import { Icon } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { adminPrimaryNavigation, adminSecondaryNavigation } from "./adminNavigationItems";
+import { preloadRoute } from "@/lib/routePreloaders";
 
 export default function AdminNavigation({ onNavigate = () => {} } = {}) {
   return (
-    <nav className="space-y-6 px-3 py-5" aria-label="Navigasi admin">
+    <nav className="space-y-6 px-3 py-5 pb-12" aria-label="Navigasi admin">
       <div className="space-y-1">
         {adminPrimaryNavigation.map((item) => (
           <NavLink
@@ -15,6 +16,8 @@ export default function AdminNavigation({ onNavigate = () => {} } = {}) {
             to={item.to}
             end={item.end}
             onClick={onNavigate}
+            onMouseEnter={() => void preloadRoute(item.to)}
+            onFocus={() => void preloadRoute(item.to)}
             className={({ isActive }) => cn(
               "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isActive ? "bg-brand-green text-white shadow-sm" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
@@ -32,6 +35,8 @@ export default function AdminNavigation({ onNavigate = () => {} } = {}) {
               key={item.to}
               to={item.to}
               onClick={onNavigate}
+              onMouseEnter={() => void preloadRoute(item.to)}
+              onFocus={() => void preloadRoute(item.to)}
               className={({ isActive }) => cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive ? "bg-tint-orange text-tint-orange-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",

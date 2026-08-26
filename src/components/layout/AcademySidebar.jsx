@@ -7,6 +7,7 @@ import { Badge, IconButton } from "@/components/primitives";
 import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
 import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
+import { preloadRoute } from "@/lib/routePreloaders";
 
 export default function AcademySidebar({
   collapsed = false,
@@ -130,7 +131,7 @@ export default function AcademySidebar({
       </div>
 
       <nav
-        className="aapm-scroll-fade aapm-scroll-fade--subtle min-h-0 flex-1 overflow-y-auto px-3 py-5"
+        className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5 pb-12"
         aria-label="Navigasi utama"
       >
         {academyNavigation.map((group) => (
@@ -148,6 +149,8 @@ export default function AcademySidebar({
                     to={item.to}
                     end={item.end}
                     onClick={onNavigate}
+                    onMouseEnter={() => void preloadRoute(item.to)}
+                    onFocus={() => void preloadRoute(item.to)}
                     title={collapsed ? item.label : undefined}
                     className={({ isActive }) =>
                       cn(

@@ -507,6 +507,10 @@
   /* Scrollable surfaces keep the same soft edge treatment as the APPI dock. */
   .aapm-scroll-fade {
     position: relative;
+  }
+
+  .aapm-scroll-fade,
+  .aapm-scrollbar {
     scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
     scrollbar-width: thin;
   }
@@ -549,17 +553,20 @@
   }
 
   .aapm-scroll-fade::-webkit-scrollbar,
+  .aapm-scrollbar::-webkit-scrollbar,
   .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar {
     width: 0.55rem;
     height: 0.55rem;
   }
 
   .aapm-scroll-fade::-webkit-scrollbar-track,
+  .aapm-scrollbar::-webkit-scrollbar-track,
   .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-track {
     background: transparent;
   }
 
   .aapm-scroll-fade::-webkit-scrollbar-thumb,
+  .aapm-scrollbar::-webkit-scrollbar-thumb,
   .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb {
     border: 0.18rem solid transparent;
     border-radius: 999px;
@@ -568,6 +575,7 @@
   }
 
   .aapm-scroll-fade::-webkit-scrollbar-thumb:hover,
+  .aapm-scrollbar::-webkit-scrollbar-thumb:hover,
   .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--aapm-orange-700) / 0.55);
     background-clip: padding-box;

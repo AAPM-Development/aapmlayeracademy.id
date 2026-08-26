@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -9,44 +9,61 @@ import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
+import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
 
-const Layout = lazy(() => import('@/components/Layout'));
-const AdminShell = lazy(() => import('@/components/layout/AdminShell'));
-const Home = lazy(() => import('@/pages/Home'));
-const Modules = lazy(() => import('@/pages/Modules'));
-const ModuleDetail = lazy(() => import('@/pages/ModuleDetail'));
-const Quiz = lazy(() => import('@/pages/Quiz'));
-const Calculators = lazy(() => import('@/pages/Calculators'));
-const KpiDashboard = lazy(() => import('@/pages/KpiDashboard'));
-const AiAssistant = lazy(() => import('@/pages/AiAssistant'));
-const Certification = lazy(() => import('@/pages/Certification'));
-const Profile = lazy(() => import('@/pages/Profile'));
-const FinalExam = lazy(() => import('@/pages/FinalExam'));
-const Login = lazy(() => import('@/pages/Login'));
-const Register = lazy(() => import('@/pages/Register'));
-const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
-const AdminOverview = lazy(() => import('@/pages/admin/AdminOverview'));
-const AdminCourses = lazy(() => import('@/pages/admin/AdminCourses'));
-const AdminCourseDetail = lazy(() => import('@/pages/admin/AdminCourseDetail'));
-const AdminLearners = lazy(() => import('@/pages/admin/AdminLearners'));
-const AdminLearnerDetail = lazy(() => import('@/pages/admin/AdminLearnerDetail'));
-const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'));
-const AdminModuleEditor = lazy(() => import('@/pages/admin/AdminModuleEditor'));
-const AdminAiSettings = lazy(() => import('@/pages/admin/AdminAiSettings'));
-const AdminWorkspaceStatus = lazy(() => import('@/pages/admin/AdminWorkspaceStatus'));
+const Layout = lazy(() => loadRouteModule('layout'));
+const AdminShell = lazy(() => loadRouteModule('adminShell'));
+const Home = lazy(() => loadRouteModule('home'));
+const Modules = lazy(() => loadRouteModule('modules'));
+const ModuleDetail = lazy(() => loadRouteModule('moduleDetail'));
+const Quiz = lazy(() => loadRouteModule('quiz'));
+const Calculators = lazy(() => loadRouteModule('calculators'));
+const KpiDashboard = lazy(() => loadRouteModule('kpi'));
+const AiAssistant = lazy(() => loadRouteModule('aiAssistant'));
+const Certification = lazy(() => loadRouteModule('certification'));
+const Profile = lazy(() => loadRouteModule('profile'));
+const FinalExam = lazy(() => loadRouteModule('finalExam'));
+const Login = lazy(() => loadRouteModule('login'));
+const Register = lazy(() => loadRouteModule('register'));
+const ForgotPassword = lazy(() => loadRouteModule('forgotPassword'));
+const ResetPassword = lazy(() => loadRouteModule('resetPassword'));
+const AdminOverview = lazy(() => loadRouteModule('adminOverview'));
+const AdminCourses = lazy(() => loadRouteModule('adminCourses'));
+const AdminCourseDetail = lazy(() => loadRouteModule('adminCourseDetail'));
+const AdminLearners = lazy(() => loadRouteModule('adminLearners'));
+const AdminLearnerDetail = lazy(() => loadRouteModule('adminLearnerDetail'));
+const AdminUsers = lazy(() => loadRouteModule('adminUsers'));
+const AdminModuleEditor = lazy(() => loadRouteModule('adminModuleEditor'));
+const AdminAiSettings = lazy(() => loadRouteModule('adminAiSettings'));
+const AdminWorkspaceStatus = lazy(() => loadRouteModule('adminWorkspaceStatus'));
 
 function RouteLoading() {
   return (
-    <div className="flex min-h-[100svh] items-center justify-center bg-background px-6 text-sm text-muted-foreground" role="status" aria-live="polite">
-      <span className="mr-3 h-2 w-2 animate-pulse rounded-full bg-brand-orange" aria-hidden="true" />
-      Memuat halaman…
+    <div className="flex min-h-[14rem] items-center justify-center bg-background px-6 text-sm text-muted-foreground" role="status" aria-live="polite">
+      <span className="mr-3 flex items-center gap-1" aria-hidden="true">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange [animation-delay:-0.2s]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange [animation-delay:-0.1s]" />
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" />
+      </span>
+      Menyiapkan halaman…
     </div>
   );
 }
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const timer = window.setTimeout(() => {
+      ["/", "/modules", "/calculators", "/profile", "/ai-assistant"].forEach(
+        (path) => void preloadRoute(path),
+      );
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [isAuthenticated]);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
