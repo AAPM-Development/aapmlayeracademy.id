@@ -1,15 +1,22 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
 
-const Table = React.forwardRef(({ className, ...props }, ref) => (
-  <div className="aapm-scrollbar relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props} />
-  </div>
-))
+const Table = React.forwardRef(({ className, ...props }, ref) => {
+  const scrollRef = useScrollEdgeFade()
+
+  return (
+    <div
+      ref={scrollRef}
+      className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar relative w-full overflow-auto">
+      <table
+        ref={ref}
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props} />
+    </div>
+  )
+})
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef(({ className, ...props }, ref) => (

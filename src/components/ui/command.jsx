@@ -4,6 +4,7 @@ import AapmIcon from "@/components/icons/AapmIcon"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
 
 const Command = React.forwardRef(({ className, ...props }, ref) => (
   <CommandPrimitive
@@ -47,12 +48,27 @@ const CommandInput = React.forwardRef(({ className, ...props }, ref) => (
 
 CommandInput.displayName = CommandPrimitive.Input.displayName
 
-const CommandList = React.forwardRef(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("aapm-scrollbar max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props} />
-))
+const CommandList = React.forwardRef(({ className, ...props }, ref) => {
+  const scrollRef = useScrollEdgeFade()
+  const setListRef = React.useCallback(
+    (node) => {
+      scrollRef(node)
+      if (typeof ref === "function") {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    },
+    [ref, scrollRef],
+  )
+
+  return (
+    <CommandPrimitive.List
+      ref={setListRef}
+      className={cn("aapm-scroll-fade aapm-scrollbar max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+      {...props} />
+  )
+})
 
 CommandList.displayName = CommandPrimitive.List.displayName
 

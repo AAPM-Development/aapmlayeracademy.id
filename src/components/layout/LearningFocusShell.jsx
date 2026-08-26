@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
 const LearningSheetContent = /** @type {any} */ (SheetContent);
 const LearningSheetHeader = /** @type {any} */ (SheetHeader);
@@ -9,6 +10,7 @@ const LearningSheetTitle = /** @type {any} */ (SheetTitle);
 
 export default function LearningFocusShell({ header = null, sidebar = null, children = null, footer = null, className = "" } = {}) {
   const [mapOpen, setMapOpen] = useState(false);
+  const mapScrollRef = useScrollEdgeFade();
 
   return (
     <div className={cn("mx-auto flex w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8", className)}>
@@ -21,7 +23,7 @@ export default function LearningFocusShell({ header = null, sidebar = null, chil
         <Sheet open={mapOpen} onOpenChange={setMapOpen}>
           <LearningSheetContent id="mobile-lesson-map" side="right" className="w-[min(90vw,360px)] p-0">
             <LearningSheetHeader className="sr-only"><LearningSheetTitle>Peta materi</LearningSheetTitle></LearningSheetHeader>
-            <div className="aapm-scrollbar h-full overflow-y-auto p-4 pt-14">{sidebar}</div>
+            <div ref={mapScrollRef} className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar h-full overflow-y-auto p-4 pt-14">{sidebar}</div>
           </LearningSheetContent>
         </Sheet>
       </div>}

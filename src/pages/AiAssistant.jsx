@@ -426,7 +426,7 @@ function ConversationList({
           compact
         />
       </div>
-      <ScrollArea className="aapm-ai-history-scroll min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
+      <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
         {view === "activity" ? (
           <div className="min-w-0 max-w-full px-2 pt-3">
             <AiActivityList activity={activity} loading={activityLoading} />
@@ -607,7 +607,7 @@ function MobileConversationSheet({
             isRefreshing={refreshing}
           />
         </div>
-        <ScrollArea className="aapm-ai-history-scroll min-h-0 min-w-0 w-full max-w-full flex-1 px-3 py-3">
+        <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 px-3 py-3">
           {view === "activity" ? (
             <div className="min-w-0 max-w-full"><AiActivityList activity={activity} loading={activityLoading} /></div>
           ) : (
@@ -920,7 +920,7 @@ export default function AiAssistant() {
           <ScrollArea
             viewportRef={chatViewportRef}
             aria-label="Transkrip percakapan APPI"
-            className="aapm-ai-transcript aapm-chat-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
+            className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
           >
             <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
               {historyError && !conversationsError && (

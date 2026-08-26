@@ -5,6 +5,7 @@ import AapmIcon from "@/components/icons/AapmIcon"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -332,12 +333,25 @@ const SidebarSeparator = React.forwardRef(({ className, ...props }, ref) => {
 SidebarSeparator.displayName = "SidebarSeparator"
 
 const SidebarContent = React.forwardRef(({ className, ...props }, ref) => {
+  const scrollRef = useScrollEdgeFade()
+  const setContentRef = React.useCallback(
+    (node) => {
+      scrollRef(node)
+      if (typeof ref === "function") {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    },
+    [ref, scrollRef],
+  )
+
   return (
     (<div
-      ref={ref}
+      ref={setContentRef}
       data-sidebar="content"
       className={cn(
-        "aapm-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
         className
       )}
       {...props} />)

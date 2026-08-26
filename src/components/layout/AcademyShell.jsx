@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useUserProgress } from "@/lib/useCourseData";
 import { useThemeMode } from "@/lib/useThemeMode";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AcademyHeader from "./AcademyHeader";
 import AcademySidebar from "./AcademySidebar";
 import MobileBottomNav from "./MobileBottomNav";
@@ -17,6 +18,7 @@ export default function AcademyShell() {
   const { data: progress = [] } = useUserProgress();
   const { user, logout } = useAuth();
   const { mode: themeMode, toggleTheme } = useThemeMode();
+  const mainScrollRef = useScrollEdgeFade();
   const isAiWorkspace = location.pathname === "/ai-assistant";
   const effectiveSidebarCollapsed = isAiWorkspace || sidebarCollapsed;
 
@@ -64,7 +66,7 @@ export default function AcademyShell() {
             onLogout={handleLogout}
             user={user}
           />
-          <main className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <main ref={mainScrollRef} className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
             <Outlet />
           </main>
           <MobileBottomNav

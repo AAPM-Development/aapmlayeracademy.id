@@ -8,6 +8,7 @@ import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
 import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
 import { preloadRoute } from "@/lib/routePreloaders";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
 export default function AcademySidebar({
   collapsed = false,
@@ -22,6 +23,7 @@ export default function AcademySidebar({
   const percent = Math.round((completed / TOTAL_MODULES) * 100);
   const displayName = user?.full_name || user?.email || "Peserta";
   const isAdmin = user?.role === "admin";
+  const navScrollRef = useScrollEdgeFade();
 
   return (
     <aside
@@ -131,7 +133,8 @@ export default function AcademySidebar({
       </div>
 
       <nav
-        className="aapm-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5"
+        ref={navScrollRef}
+        className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5"
         aria-label="Navigasi utama"
       >
         {academyNavigation.map((group) => (

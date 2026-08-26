@@ -2,20 +2,73 @@ import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 
 import { cn } from "@/lib/utils"
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
 
 const ScrollArea = React.forwardRef(({ className, children, viewportRef = null, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root
-    ref={ref}
-    className={cn("relative overflow-hidden", className)}
-    {...props}>
-    <ScrollAreaPrimitive.Viewport ref={viewportRef} className="h-full w-full rounded-[inherit]">
-      {children}
-    </ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
-    <ScrollAreaPrimitive.Corner />
-  </ScrollAreaPrimitive.Root>
+  <ScrollAreaWithEdgeFade
+    className={className}
+    forwardedRef={ref}
+    viewportRef={viewportRef}
+    {...props}
+  >
+    {children}
+  </ScrollAreaWithEdgeFade>
 ))
 ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
+
+function setRef(ref, value) {
+  if (typeof ref === "function") {
+    ref(value)
+  } else if (ref) {
+    ref.current = value
+  }
+}
+
+function ScrollAreaWithEdgeFade({
+  className,
+  forwardedRef,
+  viewportRef,
+  children,
+  ...props
+}) {
+  const rootRef = React.useRef(null)
+  const hasEdgeFade =
+    typeof className === "string" && className.includes("aapm-scroll-fade")
+  const viewportEdgeRef = useScrollEdgeFade({
+    stateRef: rootRef,
+    enabled: hasEdgeFade,
+  })
+
+  const setRootRef = React.useCallback(
+    (node) => {
+      rootRef.current = node
+      setRef(forwardedRef, node)
+    },
+    [forwardedRef],
+  )
+  const setViewportRef = React.useCallback(
+    (node) => {
+      setRef(viewportEdgeRef, node)
+      setRef(viewportRef, node)
+    },
+    [viewportEdgeRef, viewportRef],
+  )
+
+  return (
+    <ScrollAreaPrimitive.Root
+      ref={setRootRef}
+      className={cn("relative overflow-hidden", className)}
+      {...props}>
+      <ScrollAreaPrimitive.Viewport
+        ref={setViewportRef}
+        className="h-full w-full rounded-[inherit]">
+        {children}
+      </ScrollAreaPrimitive.Viewport>
+      <ScrollBar />
+      <ScrollAreaPrimitive.Corner />
+    </ScrollAreaPrimitive.Root>
+  )
+}
 
 const ScrollBar = React.forwardRef(({ className, orientation = "vertical", ...props }, ref) => (
   <ScrollAreaPrimitive.ScrollAreaScrollbar

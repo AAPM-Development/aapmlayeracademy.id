@@ -6,6 +6,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
   AiConversationHistoryResults,
@@ -233,6 +234,7 @@ export default function FloatingAiAssistant() {
     activeKey: activeConversationId,
     isStreaming,
   });
+  const historyScrollRef = useScrollEdgeFade();
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   useEffect(() => {
@@ -602,7 +604,7 @@ export default function FloatingAiAssistant() {
                     compact
                   />
                 </div>
-                <div className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
+                <div ref={historyScrollRef} className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
                   {historyView === "activity" ? (
                     <div className="min-w-0 max-w-full pt-3">
                       <AiActivityList activity={activity} loading={activityLoading} />

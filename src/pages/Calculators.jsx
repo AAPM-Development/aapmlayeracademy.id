@@ -3,6 +3,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import { Badge, IconTile, Surface } from "@/components/primitives";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
 const tools = [
   { id: "fcr", name: "FCR", icon: "solar:chart-square-bold-duotone", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
@@ -22,6 +23,7 @@ const tools = [
 
 export default function Calculators() {
   const [active, setActive] = useState("fcr");
+  const toolScrollRef = useScrollEdgeFade();
   const activeTool = tools.find((tool) => tool.id === active) || tools[0];
 
   return (
@@ -62,7 +64,7 @@ export default function Calculators() {
       <section className="grid min-w-0 gap-5 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
         <Surface className="min-w-0 p-3 lg:sticky lg:top-5 lg:self-start">
           <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pilih alat</div>
-          <div className="aapm-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
+          <div ref={toolScrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
             {tools.map((tool) => <button key={tool.id} type="button" onClick={() => setActive(tool.id)} className={`group flex min-w-[11.5rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full ${active === tool.id ? "border-brand-orange/45 bg-tint-orange text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-subtle hover:text-foreground"}`}><IconTile icon={tool.icon} tone={active === tool.id ? tool.tone : "neutral"} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{tool.name}</span><span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{tool.description}</span></span><AapmIcon name="chevronRight" className={`h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${active === tool.id ? "text-brand-orange" : "text-muted-foreground/50"}`} /></button>)}
           </div>
         </Surface>

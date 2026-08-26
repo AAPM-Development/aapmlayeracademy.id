@@ -17,9 +17,17 @@ export default function useChatScrollFollow({
   const updateScrollState = useCallback(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    const maxTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+    const maxLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
     const distanceFromBottom =
       viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     const atBottom = distanceFromBottom <= BOTTOM_THRESHOLD;
+    viewport.dataset.scrollTop = viewport.scrollTop > 2 ? "true" : "false";
+    viewport.dataset.scrollBottom =
+      viewport.scrollTop < maxTop - 2 ? "true" : "false";
+    viewport.dataset.scrollLeft = viewport.scrollLeft > 2 ? "true" : "false";
+    viewport.dataset.scrollRight =
+      viewport.scrollLeft < maxLeft - 2 ? "true" : "false";
     shouldFollowRef.current = atBottom;
     const shouldShowJump = !atBottom && hasContentRef.current;
     setShowJumpToLatest((current) =>

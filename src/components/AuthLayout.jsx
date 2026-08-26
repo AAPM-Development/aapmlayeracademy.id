@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import AppBrand from "@/components/AppBrand";
 import AapmIcon from "@/components/icons/AapmIcon";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
 const academyInsights = [
   "Di balik hasil yang konsisten, ada keputusan kecil yang diamati, dicatat, dan dijalankan dengan disiplin.",
@@ -142,9 +143,10 @@ function DefaultAuthLayout(props) {
 /** @param {any} props */
 function LoginAuthLayout(props) {
   const { title, subtitle, footer, children } = props;
+  const mainScrollRef = useScrollEdgeFade();
   return (
     <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
-      <main className="auth-pane aapm-scrollbar relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
+      <main ref={mainScrollRef} className="auth-pane aapm-scroll-fade aapm-scrollbar relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
         <div className="w-full max-w-[420px]">
           <div className="mb-10 flex justify-center">
             <AppBrand

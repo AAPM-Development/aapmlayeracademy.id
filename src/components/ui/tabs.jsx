@@ -2,18 +2,34 @@ import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
 import { cn } from "@/lib/utils"
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
 
 const Tabs = TabsPrimitive.Root
 
-const TabsList = React.forwardRef(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
-      className
-    )}
-    {...props} />
-))
+const TabsList = React.forwardRef(({ className, ...props }, ref) => {
+  const scrollRef = useScrollEdgeFade()
+  const setListRef = React.useCallback(
+    (node) => {
+      scrollRef(node)
+      if (typeof ref === "function") {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    },
+    [ref, scrollRef],
+  )
+
+  return (
+    <TabsPrimitive.List
+      ref={setListRef}
+      className={cn(
+        "aapm-scroll-fade aapm-scroll-fade--x inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+        className
+      )}
+      {...props} />
+  )
+})
 TabsList.displayName = TabsPrimitive.List.displayName
 
 const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
