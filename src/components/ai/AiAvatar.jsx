@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 
-const STATE_TRANSITION_MS = 360;
-const FRAME_TRANSITION_MS = 340;
+const STATE_EXIT_MS = 260;
+const STATE_ENTER_MS = 380;
+const FRAME_EXIT_MS = 180;
+const FRAME_ENTER_MS = 320;
 
 const sizes = {
   xs: "h-6 w-6",
@@ -93,33 +95,52 @@ export default function AiAvatar({
   decorative = false,
 }) {
   const [visibleState, setVisibleState] = useState(state);
-  const [leavingState, setLeavingState] = useState(null);
+  const visibleStateRef = useRef(state);
+  const [stateTransition, setStateTransition] = useState(null);
   const [frameIndex, setFrameIndex] = useState(0);
   const [frameTransition, setFrameTransition] = useState(null);
   const frameIndexRef = useRef(0);
+  const stateExitTimerRef = useRef(null);
+  const stateEnterTimerRef = useRef(null);
+  const frameExitTimerRef = useRef(null);
+  const frameEnterTimerRef = useRef(null);
 
   useEffect(() => {
-    if (state === visibleState) return undefined;
+    if (state === visibleStateRef.current) {
+      window.clearTimeout(stateExitTimerRef.current);
+      window.clearTimeout(stateEnterTimerRef.current);
+      setStateTransition(null);
+      return undefined;
+    }
 
-    setLeavingState(visibleState);
-    setVisibleState(state);
-    frameIndexRef.current = 0;
-    setFrameIndex(0);
+    const from = visibleStateRef.current;
+    window.clearTimeout(stateExitTimerRef.current);
+    window.clearTimeout(stateEnterTimerRef.current);
+    window.clearTimeout(frameExitTimerRef.current);
+    window.clearTimeout(frameEnterTimerRef.current);
+    setStateTransition({ phase: "exit", from, to: state });
     setFrameTransition(null);
-    return undefined;
-  }, [state, visibleState]);
+
+    stateExitTimerRef.current = window.setTimeout(() => {
+      visibleStateRef.current = state;
+      frameIndexRef.current = 0;
+      setVisibleState(state);
+      setFrameIndex(0);
+      setStateTransition({ phase: "enter", from: null, to: state });
+      stateEnterTimerRef.current = window.setTimeout(
+        () => setStateTransition(null),
+        STATE_ENTER_MS,
+      );
+    }, STATE_EXIT_MS);
+
+    return () => {
+      window.clearTimeout(stateExitTimerRef.current);
+      window.clearTimeout(stateEnterTimerRef.current);
+    };
+  }, [state]);
 
   useEffect(() => {
-    if (!leavingState) return undefined;
-    const timer = window.setTimeout(
-      () => setLeavingState(null),
-      STATE_TRANSITION_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [leavingState]);
-
-  useEffect(() => {
-    if (state !== visibleState || leavingState) return undefined;
+    if (state !== visibleState || stateTransition) return undefined;
     const config = stateConfig(visibleState);
     if (config.frames.length < 2) return undefined;
 
@@ -127,23 +148,47 @@ export default function AiAvatar({
       const from = frameIndexRef.current;
       const to = (from + 1) % config.frames.length;
       frameIndexRef.current = to;
-      setFrameTransition({ from, to });
-      setFrameIndex(to);
+
+      window.clearTimeout(frameExitTimerRef.current);
+      window.clearTimeout(frameEnterTimerRef.current);
+      setFrameTransition({ phase: "exit", from, to });
+      frameExitTimerRef.current = window.setTimeout(() => {
+        setFrameIndex(to);
+        setFrameTransition({ phase: "enter", from, to });
+        frameEnterTimerRef.current = window.setTimeout(
+          () => setFrameTransition(null),
+          FRAME_ENTER_MS,
+        );
+      }, FRAME_EXIT_MS);
     }, config.interval);
     return () => window.clearInterval(timer);
-  }, [leavingState, state, visibleState]);
+  }, [state, stateTransition, visibleState]);
 
-  useEffect(() => {
-    if (!frameTransition) return undefined;
-    const timer = window.setTimeout(
-      () => setFrameTransition(null),
-      FRAME_TRANSITION_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [frameTransition]);
+  useEffect(
+    () => () => {
+      window.clearTimeout(stateExitTimerRef.current);
+      window.clearTimeout(stateEnterTimerRef.current);
+      window.clearTimeout(frameExitTimerRef.current);
+      window.clearTimeout(frameEnterTimerRef.current);
+    },
+    [],
+  );
 
   const assets = stateConfig(visibleState);
-  const isStateTransitioning = Boolean(leavingState);
+  const isStateTransitioning = Boolean(stateTransition);
+  const isFrameTransitioning = !isStateTransitioning && Boolean(frameTransition);
+  const shownState =
+    stateTransition?.phase === "exit" ? stateTransition.from : visibleState;
+  const shownFrame = isStateTransitioning
+    ? 0
+    : frameTransition?.phase === "exit"
+      ? frameTransition.from
+      : frameTransition?.to ?? frameIndex;
+  const shownPhase = isStateTransitioning
+    ? stateTransition.phase
+    : isFrameTransitioning
+      ? `frame-${frameTransition.phase}`
+      : "active";
   return (
     <span
       className={`aapm-ai-presence ${sizes[size] || sizes.sm} ${className}`}
@@ -151,36 +196,12 @@ export default function AiAvatar({
       aria-label={decorative ? undefined : `APPI sedang ${assets.label}`}
       aria-hidden={decorative || undefined}
     >
-      {leavingState && (
-        <AvatarPair
-          key={`exit-${leavingState}`}
-          state={leavingState}
-          phase="exit"
-        />
-      )}
-      {!isStateTransitioning && frameTransition && (
-        <AvatarPair
-          key={`frame-exit-${visibleState}-${frameTransition.from}`}
-          state={visibleState}
-          frame={frameTransition.from}
-          phase="frame-exit"
-        />
-      )}
-      {frameTransition && !isStateTransitioning ? (
-        <AvatarPair
-          key={`frame-enter-${visibleState}-${frameTransition.to}`}
-          state={visibleState}
-          frame={frameTransition.to}
-          phase="frame-enter"
-        />
-      ) : (
-        <AvatarPair
-          key={`${isStateTransitioning ? "state-enter" : "active"}-${visibleState}`}
-          state={visibleState}
-          frame={frameIndex}
-          phase={isStateTransitioning ? "enter" : "active"}
-        />
-      )}
+      <AvatarPair
+        key={`${shownPhase}-${shownState}-${shownFrame}`}
+        state={shownState}
+        frame={shownFrame}
+        phase={shownPhase}
+      />
     </span>
   );
 }
