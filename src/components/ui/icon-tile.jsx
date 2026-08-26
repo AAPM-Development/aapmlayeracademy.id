@@ -5,17 +5,17 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 const iconTileVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-xl border border-transparent transition-colors",
+  "aapm-icon-tile relative isolate inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-transparent transition-colors",
   {
     variants: {
       tone: {
-        neutral: "bg-surface-inset text-muted-foreground",
+        neutral: "border-border/60 bg-surface-inset text-muted-foreground",
         green: "border-tint-green-border/60 bg-tint-green text-tint-green-foreground",
         lime: "border-tint-lime-border/70 bg-tint-lime text-tint-lime-foreground",
-        orange: "bg-tint-orange text-tint-orange-foreground",
-        blue: "bg-tint-blue text-tint-blue-foreground",
-        violet: "bg-tint-violet text-tint-violet-foreground",
-        slate: "bg-tint-slate text-tint-slate-foreground",
+        orange: "border-tint-orange-border/70 bg-tint-orange text-tint-orange-foreground",
+        blue: "border-tint-blue-border/70 bg-tint-blue text-tint-blue-foreground",
+        violet: "border-tint-violet-border/70 bg-tint-violet text-tint-violet-foreground",
+        slate: "border-tint-slate-border/70 bg-tint-slate text-tint-slate-foreground",
       },
       size: {
         sm: "h-8 w-8 [&_svg]:size-4",

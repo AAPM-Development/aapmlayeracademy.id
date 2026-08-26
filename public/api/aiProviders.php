@@ -661,7 +661,15 @@ function ai_registry_resolve_test_settings(array $input): array
 {
     $config = is_array($input['config'] ?? null) ? $input['config'] : null;
     if ($config !== null) {
-        $record = ai_registry_build_record($config, null);
+        // Preserve an existing provider credential when model discovery runs
+        // before the admin saves the current form. A blank browser field means
+        // preserve, not remove.
+        $existing = null;
+        $configId = trim((string) ($config['id'] ?? ''));
+        if ($configId !== '') {
+            $existing = ai_registry_find(ai_registry_records(), ai_registry_validate_id($configId));
+        }
+        $record = ai_registry_build_record($config, $existing);
         $settings = ai_registry_record_settings($record, array_key_exists('apiKey', $config) ? trim((string) $config['apiKey']) : null);
         if (array_key_exists('apiKey', $config)) $settings['_testApiKey'] = trim((string) $config['apiKey']);
         return $settings;

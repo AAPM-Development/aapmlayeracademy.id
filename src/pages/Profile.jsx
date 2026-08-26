@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Input,
+  IconTile,
   Label,
   Select,
   SelectContent,
@@ -135,7 +136,7 @@ function AiAccountPreferences() {
 
   return (
     <Surface className="p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-orange text-brand-orange"><AapmIcon name="ai" className="h-4.5 w-4.5" /></span><div><h2 className="text-base font-semibold">Preferensi APPI</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Pilih provider global Academy atau gunakan koneksi AI milik Anda sendiri.</p></div></div><Badge variant="soft" className="shrink-0 bg-tint-green text-tint-green-foreground">Per akun</Badge></div>
+      <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><IconTile icon="ai" tone="orange" size="sm" /><div><h2 className="text-base font-semibold">Preferensi APPI</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Pilih provider global Academy atau gunakan koneksi AI milik Anda sendiri.</p></div></div><Badge variant="soft" className="shrink-0 bg-tint-green text-tint-green-foreground">Per akun</Badge></div>
       <div className="mt-5 space-y-4"><div className="space-y-2"><Label htmlFor="account-ai-mode">Sumber provider</Label><Select value={mode} onValueChange={(value) => { setMode(value); if (value === "global") { setProviderId(data?.globalProviderId || ""); setModel(""); } }}><SelectTrigger id="account-ai-mode" className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="global">Global AAPM Provider · default</SelectItem><SelectItem value="provider">Pilih provider global lain</SelectItem><SelectItem value="custom">Provider saya sendiri · BYOK</SelectItem></SelectContent></Select><p className="text-[11px] leading-5 text-muted-foreground">{data?.note}</p></div>
         {mode === "provider" && <div className="space-y-2"><Label htmlFor="account-ai-provider">Provider global</Label><Select value={providerId} onValueChange={setProviderId}><SelectTrigger id="account-ai-provider" className="h-11"><SelectValue placeholder="Pilih provider" /></SelectTrigger><SelectContent>{(data?.globalProviders || []).map((provider) => <SelectItem key={provider.id} value={provider.id}>{provider.label} · {provider.model}</SelectItem>)}</SelectContent></Select></div>}
         {(mode === "global" || mode === "provider") && <div className="space-y-2"><Label htmlFor="account-ai-model">Model override <span className="font-normal text-muted-foreground">(opsional)</span></Label><Input id="account-ai-model" value={model} onChange={(event) => setModel(event.target.value)} placeholder={selectedProvider?.model || data?.globalModel || "Biarkan memakai model global"} className="h-11" /><p className="text-[11px] leading-5 text-muted-foreground">Kosongkan agar mengikuti model yang dipilih admin. Isi ID model hanya jika provider tersebut mendukungnya.</p></div>}

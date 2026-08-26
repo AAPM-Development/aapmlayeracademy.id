@@ -1,0 +1,1 @@
+function i(t,r={}){if(!t)return"—";const n=new Date(t);return Number.isNaN(n.getTime())?String(t):new Intl.DateTimeFormat("id-ID",{day:"2-digit",month:"short",year:"numeric",...r}).format(n)}function o(t){const r=Number(t||0);if(!r)return"—";const n=Math.floor(r/60),e=r%60;return n?`${n}j ${e}m`:`${e}m`}export{o as a,i as f};

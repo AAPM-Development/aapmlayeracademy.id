@@ -21,7 +21,7 @@ export default function LearningFocusShell({ header = null, sidebar = null, chil
         <Sheet open={mapOpen} onOpenChange={setMapOpen}>
           <LearningSheetContent id="mobile-lesson-map" side="right" className="w-[min(90vw,360px)] p-0">
             <LearningSheetHeader className="sr-only"><LearningSheetTitle>Peta materi</LearningSheetTitle></LearningSheetHeader>
-            <div className="h-full overflow-y-auto p-4 pt-14">{sidebar}</div>
+            <div className="aapm-scroll-fade h-full overflow-y-auto p-4 pt-14">{sidebar}</div>
           </LearningSheetContent>
         </Sheet>
       </div>}

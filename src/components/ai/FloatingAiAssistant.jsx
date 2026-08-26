@@ -414,7 +414,7 @@ export default function FloatingAiAssistant() {
               ref={chatViewportRef}
               role="log"
               aria-label="Transkrip percakapan APPI cepat"
-              className="aapm-ai-floating-transcript min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
+              className="aapm-ai-floating-transcript aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
             >
               <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
               {historyError && !conversationsError && (
@@ -602,7 +602,7 @@ export default function FloatingAiAssistant() {
                     compact
                   />
                 </div>
-                <div className="aapm-ai-history-scroll min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
+                <div className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
                   {historyView === "activity" ? (
                     <div className="min-w-0 max-w-full pt-3">
                       <AiActivityList activity={activity} loading={activityLoading} />

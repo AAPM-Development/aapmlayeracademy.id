@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, Surface } from "@/components/primitives";
+import { Button, IconTile, Surface } from "@/components/primitives";
 import { AdminPageFrame } from "@/components/admin/AdminPage";
 import { adminPlannedCapabilities } from "@/components/admin/adminNavigationItems";
 
@@ -42,9 +42,7 @@ export default function AdminWorkspaceStatus() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.78fr)]">
         <Surface className="p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green">
-              <AapmIcon name="checkRead" className="h-5 w-5" />
-            </span>
+            <IconTile icon="checkRead" tone="green" size="md" />
             <div>
               <h2 className="text-base font-semibold">Siap digunakan sekarang</h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">

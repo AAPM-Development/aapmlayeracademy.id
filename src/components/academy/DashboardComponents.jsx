@@ -155,32 +155,36 @@ export function DashboardMetricStrip({
       label: "Modul selesai",
       detail: "Jalur belajar",
       icon: "check",
+      iconTone: "green",
       accent: "border-t-brand-green",
-      iconClass: "text-brand-green",
+      ring: "border-brand-green",
     },
     {
       value: `${coursePercent}%`,
       label: "Progress kursus",
       detail: "Ritme belajar",
       icon: "progress",
+      iconTone: "orange",
       accent: "border-t-brand-orange",
-      iconClass: "text-brand-orange",
+      ring: "border-brand-orange",
     },
     {
       value: `${average}%`,
       label: "Rata-rata nilai kuis",
       detail: `${scored.length} kuis tersimpan`,
       icon: "solar:target-bold-duotone",
+      iconTone: "blue",
       accent: "border-t-info",
-      iconClass: "text-info",
+      ring: "border-info",
     },
     {
       value: activeLevel?.name || "Foundation",
       label: "Level saat ini",
       detail: "Jalur profesional",
       icon: "solar:cup-star-bold",
+      iconTone: "violet",
       accent: "border-t-brand-orange",
-      iconClass: "text-brand-orange",
+      ring: "border-brand-orange",
     },
   ];
 
@@ -191,24 +195,35 @@ export function DashboardMetricStrip({
           <div
             key={metric.label}
             className={cn(
-              "academy-enter aapm-interactive-card rounded-[var(--card-radius)] border border-border border-t-[3px] bg-card p-4",
+              "academy-enter aapm-interactive-card relative isolate overflow-hidden rounded-[var(--card-radius)] border border-border border-t-[3px] bg-card p-4",
               metric.accent,
             )}
             style={{ animationDelay: `${index * 70}ms` }}
           >
-            <div className="flex items-start justify-between gap-3">
-              <AapmIcon
-                name={metric.icon}
-                className={cn("h-5 w-5", metric.iconClass)}
-              />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute -right-8 -top-9 h-24 w-24 rounded-full border-[10px] opacity-25",
+                metric.ring,
+              )}
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute -bottom-8 -right-2 h-16 w-16 rounded-full border opacity-10",
+                metric.ring,
+              )}
+            />
+            <div className="relative z-10 flex items-start justify-between gap-3">
+              <IconTile icon={metric.icon} tone={metric.iconTone} size="sm" />
               <span className="text-[10px] font-medium text-muted-foreground">
                 {metric.detail}
               </span>
             </div>
-            <div className="mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">
+            <div className="relative z-10 mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">
               {metric.value}
             </div>
-            <div className="mt-1 text-xs font-medium text-foreground/80">
+            <div className="relative z-10 mt-1 text-xs font-medium text-foreground/80">
               {metric.label}
             </div>
           </div>
@@ -410,7 +425,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
               Ritme belajar Anda di Academy.
             </CardDescription>
           </div>
-          <AapmIcon name="progress" className="h-5 w-5 text-brand-green" />
+          <IconTile icon="progress" tone="green" size="sm" />
         </div>
       </CardHeader>
       <CardContent className="p-5 pt-2 sm:p-6 sm:pt-2">
@@ -680,7 +695,7 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Rute sesi ini</div>
               <div className="mt-1 text-base font-semibold text-foreground">Satu keputusan, satu langkah.</div>
             </div>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-orange text-brand-orange"><AapmIcon name="solar:route-bold-duotone" className="h-5 w-5" /></span>
+            <IconTile icon="solar:route-bold-duotone" tone="orange" size="sm" />
           </div>
           <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange p-3.5">
             <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-tint-orange-foreground/75">Fokus berikutnya</div>

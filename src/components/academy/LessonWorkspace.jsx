@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Checkbox,
+  IconTile,
 } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
@@ -100,9 +101,7 @@ export function LessonMedia({ module = null } = {}) {
   return (
     <Card className="border-tint-orange-border bg-tint-orange/45 shadow-none">
       <CardContent className="flex items-start gap-3 p-4 sm:p-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-tint-orange text-tint-orange-foreground">
-          <AapmIcon name="solar:play-circle-bold" className="h-5 w-5" />
-        </div>
+        <IconTile icon="solar:play-circle-bold" tone="orange" size="md" />
         <div className="min-w-0">
           <Badge
             variant="soft"

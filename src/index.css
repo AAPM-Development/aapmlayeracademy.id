@@ -504,6 +504,106 @@
     background: hsl(var(--background));
   }
 
+  /* Scrollable surfaces keep the same soft edge treatment as the APPI dock. */
+  .aapm-scroll-fade {
+    position: relative;
+    scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
+    scrollbar-width: thin;
+  }
+
+  .aapm-scroll-fade::after {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 20;
+    height: 1.9rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      hsl(var(--background) / 0.94),
+      hsl(var(--background) / 0)
+    );
+    content: "";
+  }
+
+  .aapm-scroll-fade--subtle::after {
+    background: linear-gradient(
+      to top,
+      hsl(var(--surface-subtle) / 0.96),
+      hsl(var(--surface-subtle) / 0)
+    );
+  }
+
+  .aapm-scroll-fade--x::after {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: 1.75rem;
+    height: auto;
+    background: linear-gradient(
+      to left,
+      hsl(var(--background) / 0.94),
+      hsl(var(--background) / 0)
+    );
+  }
+
+  .aapm-scroll-fade::-webkit-scrollbar,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar {
+    width: 0.55rem;
+    height: 0.55rem;
+  }
+
+  .aapm-scroll-fade::-webkit-scrollbar-track,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .aapm-scroll-fade::-webkit-scrollbar-thumb,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb {
+    border: 0.18rem solid transparent;
+    border-radius: 999px;
+    background: hsl(var(--foreground) / 0.18);
+    background-clip: padding-box;
+  }
+
+  .aapm-scroll-fade::-webkit-scrollbar-thumb:hover,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--aapm-orange-700) / 0.55);
+    background-clip: padding-box;
+  }
+
+  .aapm-icon-tile {
+    box-shadow: inset 0 1px 0 hsl(var(--background) / 0.58),
+      0 4px 10px hsl(var(--foreground) / 0.04);
+    transition-property: background-color, border-color, box-shadow, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .aapm-icon-tile::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--background) / 0.52),
+      hsl(var(--background) / 0) 64%
+    );
+    content: "";
+  }
+
+  .aapm-icon-tile > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .aapm-icon-tile:hover {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-1px);
+  }
+
   .aapm-interactive-card {
     transition-property: background-color, border-color, box-shadow, transform;
     transition-duration: var(--duration-normal);

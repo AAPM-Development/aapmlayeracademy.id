@@ -11,16 +11,26 @@ const academyInsights = [
 function AcademyVideoPanel() {
   const videoRef = useRef(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const [insightIndex, setInsightIndex] = useState(0);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const updateMediaState = () => {
+      setPrefersReducedMotion(motionQuery.matches);
+      setIsDesktop(desktopQuery.matches);
+    };
 
-    updatePreference();
-    mediaQuery.addEventListener?.("change", updatePreference);
+    updateMediaState();
+    motionQuery.addEventListener?.("change", updateMediaState);
+    desktopQuery.addEventListener?.("change", updateMediaState);
 
-    return () => mediaQuery.removeEventListener?.("change", updatePreference);
+    return () => {
+      motionQuery.removeEventListener?.("change", updateMediaState);
+      desktopQuery.removeEventListener?.("change", updateMediaState);
+    };
   }, []);
 
   useEffect(() => {
@@ -28,6 +38,23 @@ function AcademyVideoPanel() {
       videoRef.current?.pause();
     }
   }, [prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!isDesktop || prefersReducedMotion) {
+      setShouldLoadVideo(false);
+      return undefined;
+    }
+
+    const loadVideo = () => setShouldLoadVideo(true);
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(loadVideo, { timeout: 1800 });
+      return () => window.cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = window.setTimeout(loadVideo, 1200);
+    return () => window.clearTimeout(timeoutId);
+  }, [isDesktop, prefersReducedMotion]);
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -46,12 +73,13 @@ function AcademyVideoPanel() {
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
-        src="/assets/Video-Web_3.mp4"
-        autoPlay={!prefersReducedMotion}
+        src={shouldLoadVideo ? "/assets/Video-Web_3.mp4" : undefined}
+        poster="/assets/Video-Web_3-poster.webp"
+        autoPlay={shouldLoadVideo && !prefersReducedMotion}
         muted
         loop
         playsInline
-        preload={prefersReducedMotion ? "none" : "metadata"}
+        preload={shouldLoadVideo ? "metadata" : "none"}
         aria-hidden="true"
       />
       <div
@@ -116,7 +144,7 @@ function LoginAuthLayout(props) {
   const { title, subtitle, footer, children } = props;
   return (
     <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
-      <main className="auth-pane relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
+      <main className="auth-pane aapm-scroll-fade relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
         <div className="w-full max-w-[420px]">
           <div className="mb-10 flex justify-center">
             <AppBrand
