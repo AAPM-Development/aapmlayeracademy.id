@@ -8,7 +8,7 @@ import { preloadRoute } from "@/lib/routePreloaders";
 
 export default function AdminNavigation({ onNavigate = () => {} } = {}) {
   return (
-    <nav className="space-y-6 px-3 py-5 pb-12" aria-label="Navigasi admin">
+    <nav className="space-y-6 px-3 py-5" aria-label="Navigasi admin">
       <div className="space-y-1">
         {adminPrimaryNavigation.map((item) => (
           <NavLink

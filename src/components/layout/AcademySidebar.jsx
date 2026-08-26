@@ -131,7 +131,7 @@ export default function AcademySidebar({
       </div>
 
       <nav
-        className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5 pb-12"
+        className="aapm-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5"
         aria-label="Navigasi utama"
       >
         {academyNavigation.map((group) => (

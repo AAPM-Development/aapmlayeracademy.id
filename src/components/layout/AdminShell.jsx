@@ -31,7 +31,7 @@ function AdminSidebar({ onNavigate = () => {}, onLogout = () => {}, user = null 
         <AppBrand product="aapm" variant="logo" className="h-auto w-[150px] max-w-full" />
         <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Ruang admin</span>
       </Link>
-      <div className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar min-h-0 flex-1 overflow-y-auto"><AdminNavigation onNavigate={onNavigate} /></div>
+      <div className="aapm-scrollbar min-h-0 flex-1 overflow-y-auto"><AdminNavigation onNavigate={onNavigate} /></div>
       <div className="shrink-0 border-t border-[hsl(var(--surface-border))] p-3">
         <div className="flex items-center gap-2.5 rounded-xl bg-background/70 px-2.5 py-2">
           <ProfileAvatar user={user} name={displayName} className="h-8 w-8" />
@@ -98,7 +98,7 @@ export default function AdminShell() {
             </DropdownMenu>
           </div>
         </header>
-        <main className="aapm-scroll-fade min-h-0 flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"><Outlet /></main>
+        <main className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"><Outlet /></main>
         <MobileBottomNav
           onOpenMenu={() => setMobileOpen(true)}
           items={[

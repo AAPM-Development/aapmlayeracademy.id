@@ -62,7 +62,7 @@ export default function Calculators() {
       <section className="grid min-w-0 gap-5 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
         <Surface className="min-w-0 p-3 lg:sticky lg:top-5 lg:self-start">
           <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pilih alat</div>
-          <div className="aapm-scroll-fade aapm-scroll-fade--x flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
+          <div className="aapm-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
             {tools.map((tool) => <button key={tool.id} type="button" onClick={() => setActive(tool.id)} className={`group flex min-w-[11.5rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full ${active === tool.id ? "border-brand-orange/45 bg-tint-orange text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-subtle hover:text-foreground"}`}><IconTile icon={tool.icon} tone={active === tool.id ? tool.tone : "neutral"} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{tool.name}</span><span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{tool.description}</span></span><AapmIcon name="chevronRight" className={`h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${active === tool.id ? "text-brand-orange" : "text-muted-foreground/50"}`} /></button>)}
           </div>
         </Surface>
@@ -82,14 +82,14 @@ export default function Calculators() {
 
 function Card({ title, formula, children, result }) {
   return (
-    <div className="relative overflow-hidden rounded-[var(--card-radius)] border border-border bg-card p-5 shadow-[var(--surface-shadow)] sm:p-6">
+    <div className="relative min-w-0 max-w-full overflow-hidden rounded-[var(--card-radius)] border border-border bg-card p-5 shadow-[var(--surface-shadow)] sm:p-6">
       <div className="absolute inset-x-0 top-0 h-1 bg-brand-orange" />
       <div className="mb-4 flex items-start gap-3">
         <IconTile icon="solar:calculator-bold-duotone" tone="orange" size="md" />
         <div className="min-w-0"><h2 className="font-semibold">{title}</h2><p className="mt-1 text-xs text-muted-foreground">Masukkan angka aktual untuk mendapatkan indikator awal.</p></div>
       </div>
       {formula && (
-        <div className="mb-4 rounded-xl border border-border bg-surface-subtle px-3 py-2.5 font-mono text-xs leading-5 text-muted-foreground">
+        <div className="mb-4 min-w-0 max-w-full overflow-x-auto rounded-xl border border-border bg-surface-subtle px-3 py-2.5 font-mono text-xs leading-5 text-muted-foreground whitespace-nowrap">
           {formula}
         </div>
       )}

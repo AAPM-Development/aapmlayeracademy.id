@@ -450,7 +450,7 @@ export default function AdminModuleEditor() {
       }
     >
       <Tabs defaultValue="content">
-        <TabsList className="aapm-scroll-fade aapm-scroll-fade--x w-full justify-start overflow-x-auto">
+        <TabsList className="aapm-scrollbar w-full justify-start overflow-x-auto">
           <TabsTrigger value="content">Konten modul</TabsTrigger>
           <TabsTrigger value="assessment" disabled={isNew}>
             Bank soal
