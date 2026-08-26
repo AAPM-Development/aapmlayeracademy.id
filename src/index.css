@@ -717,14 +717,11 @@
   @keyframes aapm-ai-presence-enter {
     0% {
       opacity: 0;
-      transform: translateY(10%) scale(0.76) rotate(-3deg);
+      transform: translateY(5%) scale(0.94) rotate(-1deg);
     }
-    58% {
+    62% {
       opacity: 1;
-      transform: translateY(-4%) scale(1.07) rotate(1deg);
-    }
-    78% {
-      transform: translateY(1%) scale(0.985) rotate(-0.5deg);
+      transform: translateY(-0.8%) scale(1.012) rotate(0.25deg);
     }
     100% {
       opacity: 1;
@@ -739,18 +736,18 @@
     }
     100% {
       opacity: 0;
-      transform: translateY(-7%) scale(0.82) rotate(3deg);
+      transform: translateY(-2%) scale(0.96) rotate(0.4deg);
     }
   }
 
   @keyframes aapm-ai-decor-enter {
     0% {
       opacity: 0;
-      transform: translate(-18%, 18%) scale(0.4);
+      transform: translate(-8%, 8%) scale(0.82);
     }
-    70% {
+    65% {
       opacity: 1;
-      transform: translate(2%, -2%) scale(1.1);
+      transform: translate(1%, -1%) scale(1.03);
     }
     100% {
       opacity: 1;
@@ -765,7 +762,29 @@
     }
     100% {
       opacity: 0;
-      transform: translate(15%, -16%) scale(0.45);
+      transform: translate(7%, -8%) scale(0.88);
+    }
+  }
+
+  @keyframes aapm-ai-frame-in {
+    from {
+      opacity: 0;
+      transform: translateY(1%) scale(0.975);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes aapm-ai-frame-out {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-1%) scale(0.985);
     }
   }
 
@@ -866,13 +885,13 @@
   @keyframes aapm-ai-avatar-thinking {
     0%,
     100% {
-      transform: translateY(0) rotate(-1deg) scale(1);
+      transform: translateY(0) rotate(-0.4deg) scale(1);
     }
     35% {
-      transform: translateY(-4%) rotate(2deg) scale(1.035);
+      transform: translateY(-2%) rotate(0.7deg) scale(1.015);
     }
     68% {
-      transform: translateY(1%) rotate(-2deg) scale(0.985);
+      transform: translateY(0.5%) rotate(-0.8deg) scale(0.995);
     }
   }
 
@@ -882,13 +901,13 @@
       transform: translateY(0) rotate(0deg) scale(1);
     }
     22% {
-      transform: translateY(-2%) rotate(-2deg) scale(1.045);
+      transform: translateY(-1.2%) rotate(-1deg) scale(1.025);
     }
     48% {
-      transform: translateY(0) rotate(2deg) scale(1.01);
+      transform: translateY(0) rotate(1deg) scale(1.008);
     }
     72% {
-      transform: translateY(-1%) rotate(-1deg) scale(1.025);
+      transform: translateY(-0.6%) rotate(-0.6deg) scale(1.016);
     }
   }
 
@@ -898,10 +917,10 @@
       transform: translateY(0) rotate(0deg) scale(1);
     }
     38% {
-      transform: translateY(-4%) rotate(-2deg) scale(1.06);
+      transform: translateY(-2%) rotate(-0.8deg) scale(1.035);
     }
     64% {
-      transform: translateY(0) rotate(2deg) scale(0.995);
+      transform: translateY(0) rotate(0.8deg) scale(0.998);
     }
   }
 
@@ -911,13 +930,13 @@
       transform: translateX(0) rotate(0deg) scale(1);
     }
     26% {
-      transform: translateX(-3%) rotate(-2deg) scale(1.02);
+      transform: translateX(-1.5%) rotate(-1deg) scale(1.01);
     }
     52% {
-      transform: translateX(3%) rotate(2deg) scale(1.02);
+      transform: translateX(1.5%) rotate(1deg) scale(1.01);
     }
     78% {
-      transform: translateX(-1%) rotate(-1deg) scale(1);
+      transform: translateX(-0.5%) rotate(-0.5deg) scale(1);
     }
   }
 
@@ -932,10 +951,26 @@
   }
 
   .aapm-ai-presence__avatar,
-  .aapm-ai-presence__decor {
+  .aapm-ai-presence__decor,
+  .aapm-ai-presence__pair {
     position: absolute;
     display: block;
     pointer-events: none;
+  }
+
+  .aapm-ai-presence__pair {
+    inset: 0;
+  }
+
+  .aapm-ai-presence__pair--exit,
+  .aapm-ai-presence__pair--frame-exit {
+    z-index: 0;
+  }
+
+  .aapm-ai-presence__pair--enter,
+  .aapm-ai-presence__pair--frame-enter,
+  .aapm-ai-presence__pair--active {
+    z-index: 1;
   }
 
   .aapm-ai-presence__avatar {
@@ -961,86 +996,151 @@
   }
 
   .aapm-ai-presence__avatar--enter {
-    animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
-      aapm-ai-avatar-ambient 7.2s 600ms ease-in-out infinite;
+    animation: aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1)
+      both;
   }
   .aapm-ai-presence__decor--enter {
-    animation: aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1)
+    animation: aapm-ai-decor-enter 360ms 35ms cubic-bezier(0.22, 1, 0.36, 1)
+      both;
+  }
+  .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-ambient 8.2s 500ms ease-in-out infinite;
+  }
+  .aapm-ai-presence__decor--active {
+    animation: aapm-ai-decor-drift 7.2s 500ms ease-in-out infinite;
+  }
+  .aapm-ai-presence__avatar--frame-enter {
+    animation: aapm-ai-frame-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .aapm-ai-presence__decor--frame-enter {
+    animation: aapm-ai-frame-in 340ms 20ms cubic-bezier(0.22, 1, 0.36, 1)
+      both;
+  }
+  .aapm-ai-presence__avatar--frame-exit {
+    animation: aapm-ai-frame-out 340ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .aapm-ai-presence__decor--frame-exit {
+    animation: aapm-ai-frame-out 340ms 20ms cubic-bezier(0.4, 0, 0.2, 1)
       both;
   }
   .aapm-ai-presence__avatar--exit {
-    animation: aapm-ai-presence-exit 190ms cubic-bezier(0.7, 0, 0.84, 0) both;
+    animation: aapm-ai-presence-exit 330ms cubic-bezier(0.4, 0, 0.2, 1) both;
   }
   .aapm-ai-presence__decor--exit {
-    animation: aapm-ai-decor-exit 140ms cubic-bezier(0.7, 0, 0.84, 0) both;
+    animation: aapm-ai-decor-exit 290ms 20ms cubic-bezier(0.4, 0, 0.2, 1)
+      both;
   }
 
   .aapm-ai-presence[data-state="idle"] .aapm-ai-presence__avatar--enter {
     animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
+      aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-avatar-idle 9.6s 560ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="idle"] .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-idle 9.6s 560ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="thinking"] .aapm-ai-presence__avatar--enter {
     animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
+      aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-avatar-thinking 2.7s 420ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="thinking"] .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-thinking 2.7s 420ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="responding"] .aapm-ai-presence__avatar--enter {
     animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
+      aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-avatar-responding 2.1s 360ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="responding"] .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-responding 2.1s 360ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="complete"] .aapm-ai-presence__avatar--enter {
     animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
+      aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-avatar-complete 3.6s 520ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="complete"] .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-complete 3.6s 520ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="success"] .aapm-ai-presence__avatar--enter {
     animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
+      aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-avatar-complete 3.8s 520ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="success"] .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-complete 3.8s 520ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="alert"] .aapm-ai-presence__avatar--enter {
     animation:
-      aapm-ai-presence-enter 500ms cubic-bezier(0.16, 1.34, 0.3, 1) both,
+      aapm-ai-presence-enter 390ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-avatar-alert 2.8s 340ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="alert"] .aapm-ai-presence__avatar--active {
+    animation: aapm-ai-avatar-alert 2.8s 340ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="idle"] .aapm-ai-presence__decor--enter {
     animation:
-      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-enter 360ms 35ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-decor-drift 7.2s 520ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="idle"] .aapm-ai-presence__decor--active {
+    animation: aapm-ai-decor-drift 7.2s 520ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="thinking"] .aapm-ai-presence__decor--enter {
     animation:
-      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-enter 360ms 35ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-decor-drift 4.8s 520ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="thinking"] .aapm-ai-presence__decor--active {
+    animation: aapm-ai-decor-drift 4.8s 520ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="responding"] .aapm-ai-presence__decor--enter {
     animation:
-      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-enter 360ms 35ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-decor-pulse 2.2s 580ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="responding"] .aapm-ai-presence__decor--active {
+    animation: aapm-ai-decor-pulse 2.2s 580ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="complete"] .aapm-ai-presence__decor--enter,
   .aapm-ai-presence[data-state="success"] .aapm-ai-presence__decor--enter {
     animation:
-      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-enter 360ms 35ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-decor-celebrate 3.6s 560ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="complete"] .aapm-ai-presence__decor--active,
+  .aapm-ai-presence[data-state="success"] .aapm-ai-presence__decor--active {
+    animation: aapm-ai-decor-celebrate 3.6s 560ms ease-in-out infinite;
   }
 
   .aapm-ai-presence[data-state="alert"] .aapm-ai-presence__decor--enter {
     animation:
-      aapm-ai-decor-enter 440ms 80ms cubic-bezier(0.16, 1.28, 0.3, 1) both,
+      aapm-ai-decor-enter 360ms 35ms cubic-bezier(0.22, 1, 0.36, 1) both,
       aapm-ai-decor-alert 2.8s 420ms ease-in-out infinite;
+  }
+
+  .aapm-ai-presence[data-state="alert"] .aapm-ai-presence__decor--active {
+    animation: aapm-ai-decor-alert 2.8s 420ms ease-in-out infinite;
   }
 
   .aapm-ai-mark {
@@ -1083,13 +1183,13 @@
     transform-origin: 50% 88%;
     will-change: transform, filter;
     transition:
-      transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
-      filter 360ms ease;
+      transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 420ms ease;
   }
 
   .aapm-ai-profile-avatar[data-state="thinking"] > .aapm-ai-presence,
   .aapm-ai-profile-avatar[data-state="responding"] > .aapm-ai-presence {
-    animation: aapm-ai-profile-working 3.2s 120ms ease-in-out infinite;
+    animation: aapm-ai-profile-working 2.8s 120ms ease-in-out infinite;
     filter: drop-shadow(0 4px 5px hsl(var(--aapm-orange-700) / 0.2));
   }
 
@@ -1120,15 +1220,15 @@
   }
 
   @keyframes aapm-ai-profile-working {
-    0% {
+    0%,
+    100% {
       transform: translateY(0) scale(1);
     }
-    12% {
-      transform: translateY(-4px) scale(1.14);
+    38% {
+      transform: translateY(-1px) scale(1.025);
     }
-    24%,
-    100% {
-      transform: translateY(-2px) scale(1.1);
+    68% {
+      transform: translateY(0) scale(1.01);
     }
   }
 
@@ -1151,11 +1251,11 @@
   @keyframes aapm-ai-panel-in {
     0% {
       opacity: 0;
-      transform: translateY(18px) scale(0.96);
+      transform: translateY(12px) scale(0.985);
     }
-    72% {
+    64% {
       opacity: 1;
-      transform: translateY(-2px) scale(1.012);
+      transform: translateY(-1px) scale(1.002);
     }
     100% {
       opacity: 1;
@@ -1170,16 +1270,42 @@
     }
     to {
       opacity: 0;
-      transform: translateY(12px) scale(0.97);
+      transform: translateY(8px) scale(0.985);
     }
   }
 
   .aapm-ai-panel--enter {
-    animation: aapm-ai-panel-in 360ms cubic-bezier(0.16, 1.18, 0.3, 1) both;
+    animation: aapm-ai-panel-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .aapm-ai-panel--exit {
-    animation: aapm-ai-panel-out 180ms cubic-bezier(0.7, 0, 0.84, 0) both;
+    animation: aapm-ai-panel-out 280ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  @keyframes aapm-ai-backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes aapm-ai-backdrop-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  .aapm-ai-floating-backdrop {
+    animation: aapm-ai-backdrop-in 300ms ease-out both;
+  }
+
+  .aapm-ai-floating-backdrop--exit {
+    animation: aapm-ai-backdrop-out 260ms ease-in both;
   }
 
   @keyframes aapm-ai-history-in {
@@ -1194,7 +1320,7 @@
   }
 
   .aapm-ai-history-sheet {
-    animation: aapm-ai-history-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: aapm-ai-history-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   @keyframes aapm-ai-answer-caret {
@@ -1215,7 +1341,7 @@
     border-radius: var(--ai-stream-radius);
     background: hsl(var(--ai-stream-bg) / 0.76);
     box-shadow: var(--ai-stream-shadow);
-    animation: aapm-ai-activity-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: aapm-ai-activity-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .aapm-ai-activity--compact {
@@ -1434,7 +1560,7 @@
   }
 
   .aapm-ai-message {
-    animation: aapm-ai-response-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: aapm-ai-response-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .aapm-ai-floating-panel {
@@ -1500,24 +1626,19 @@
   @keyframes aapm-ai-activity-in {
     from {
       opacity: 0;
-      transform: translateY(5px);
+      transform: translateY(3px) scale(0.99);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 
   @keyframes aapm-ai-response-in {
     from {
       opacity: 0;
-      transform: translateY(7px);
-      filter: blur(2px);
-    }
-    72% {
-      opacity: 1;
-      transform: translateY(-1px);
-      filter: blur(0);
+      transform: translateY(4px);
+      filter: blur(1px);
     }
     to {
       opacity: 1;
@@ -1674,6 +1795,7 @@
     .aapm-ai-profile-avatar > .aapm-ai-presence,
     .aapm-ai-panel--enter,
     .aapm-ai-panel--exit,
+    .aapm-ai-floating-backdrop,
     .aapm-ai-history-sheet,
     .aapm-ai-activity,
     .aapm-ai-response,

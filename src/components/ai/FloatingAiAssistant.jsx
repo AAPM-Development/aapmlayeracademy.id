@@ -248,7 +248,7 @@ export default function FloatingAiAssistant() {
     closeTimer.current = window.setTimeout(() => {
       setOpen(false);
       setClosing(false);
-    }, 180);
+    }, 300);
     return () => window.clearTimeout(closeTimer.current);
   }, [closing]);
 
@@ -342,7 +342,7 @@ export default function FloatingAiAssistant() {
           type="button"
           aria-label="Tutup APPI"
           onClick={closePanel}
-          className="fixed inset-0 z-[79] bg-foreground/20 backdrop-blur-[1px] sm:hidden"
+          className={`aapm-ai-floating-backdrop fixed inset-0 z-[79] bg-foreground/20 backdrop-blur-[1px] sm:hidden ${closing ? "aapm-ai-floating-backdrop--exit" : ""}`}
         />
       )}
       {open && (
