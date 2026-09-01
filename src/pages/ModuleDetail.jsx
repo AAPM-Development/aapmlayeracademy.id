@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { Card, CardContent, useToast } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { EditorialContent } from "@/components/academy/EditorialContent";
 import LearningFocusShell from "@/components/layout/LearningFocusShell";
 import {
   LessonChecklist,
@@ -87,7 +87,11 @@ export default function ModuleDetail() {
     >
       <div className="space-y-10">
         <LessonSection id="content" title="Materi" icon="solar:file-text-bold">
-          <div className="markdown-body"><ReactMarkdown>{module.content || "Konten modul sedang disiapkan."}</ReactMarkdown></div>
+          <EditorialContent
+            document={module.editorialContent}
+            fallback={module.content}
+            title={module.title}
+          />
         </LessonSection>
 
         <LessonSection id="video" title="Video materi" icon="solar:play-circle-bold">

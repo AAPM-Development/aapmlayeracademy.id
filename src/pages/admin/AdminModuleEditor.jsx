@@ -2,7 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
+import EditorialComposer from "@/components/admin/EditorialComposer";
 import {
   Badge,
   Button,
@@ -45,6 +47,7 @@ const emptyModule = {
   category: "",
   summary: "",
   content: "",
+  editorialContent: null,
   videoUrl: "",
   videoScript: "",
   learningObjectives: "",
@@ -358,6 +361,7 @@ export default function AdminModuleEditor() {
       category: module.category || "",
       summary: module.summary || "",
       content: module.content || "",
+      editorialContent: module.editorialContent || null,
       videoUrl: module.videoUrl || "",
       videoScript: module.videoScript || "",
       learningObjectives: listToText(module.learningObjectives),
@@ -452,6 +456,7 @@ export default function AdminModuleEditor() {
       <Tabs defaultValue="content">
         <TabsList className="aapm-scrollbar w-full justify-start overflow-x-auto">
           <TabsTrigger value="content">Konten modul</TabsTrigger>
+          <TabsTrigger value="preview">Pratinjau learner</TabsTrigger>
           <TabsTrigger value="assessment" disabled={isNew}>
             Bank soal
           </TabsTrigger>
@@ -582,17 +587,21 @@ export default function AdminModuleEditor() {
               )}
             </Surface>
             <Surface className="p-5">
-              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">03 · Learning content</div><h2 className="mt-1 text-base font-semibold">Materi dan outcome</h2></div>
-              <div className="space-y-2">
-                <Label>Isi materi</Label>
+              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">03 · Learning content</div><h2 className="mt-1 text-base font-semibold">Materi editorial dan outcome</h2></div>
+              <EditorialComposer
+                value={form.editorialContent}
+                onChange={(editorialContent) => set("editorialContent", editorialContent)}
+              />
+              <div className="mt-5 border-t border-border pt-5">
+                <Label>Konten Markdown lama (fallback)</Label>
                 <Textarea
-                  rows={14}
+                  className="mt-2"
+                  rows={8}
                   value={form.content}
                   onChange={(event) => set("content", event.target.value)}
-                  required
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Konten dapat memakai paragraf dan Markdown sederhana.
+                  Dipakai untuk modul lama atau saat kanvas editorial belum memiliki blok. Markdown tetap aman dan mendukung teks dasar, daftar, tabel, serta tautan.
                 </p>
               </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -635,6 +644,18 @@ export default function AdminModuleEditor() {
             </Surface>
             <Surface variant="muted" className="sticky bottom-3 z-20 flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name="checkRead" className="h-4 w-4 text-brand-green" /> Perubahan hanya aktif setelah disimpan.</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
           </form>
+        </TabsContent>
+        <TabsContent value="preview" className="mt-5">
+          <Surface className="p-5 sm:p-7">
+            <div className="mx-auto max-w-4xl">
+              <div className="mb-6 border-b border-border pb-5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Viewport learner</div>
+                <h2 className="mt-1 text-xl font-semibold">{form.title || "Pratinjau materi"}</h2>
+                {form.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.summary}</p>}
+              </div>
+              <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
+            </div>
+          </Surface>
         </TabsContent>
         <TabsContent value="assessment" className="mt-5">
           {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}

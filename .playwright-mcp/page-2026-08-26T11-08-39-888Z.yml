@@ -1,0 +1,372 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - banner [ref=f1e3]:
+      - generic [ref=f1e4]:
+        - link "AAPM UI beranda" [ref=f1e5] [cursor=pointer]:
+          - /url: "#overview"
+          - img "AAPM" [ref=f1e6]
+          - generic [ref=f1e7]:
+            - strong [ref=f1e8]: AAPM UI
+            - generic [ref=f1e9]: Design system
+        - navigation "Navigasi katalog" [ref=f1e10]:
+          - link "Templates" [ref=f1e11] [cursor=pointer]:
+            - /url: "#templates"
+          - link "Iconify" [ref=f1e12] [cursor=pointer]:
+            - /url: "#icons"
+          - link "Patterns" [ref=f1e13] [cursor=pointer]:
+            - /url: "#patterns"
+          - link "Foundation" [ref=f1e14] [cursor=pointer]:
+            - /url: ./index.html
+        - generic [ref=f1e15]:
+          - link "Buka dokumentasi AAPM UI" [ref=f1e16] [cursor=pointer]:
+            - /url: ../readme.md
+            - generic [ref=f1e24]: Docs
+          - button "Aktifkan dark mode" [ref=f1e25] [cursor=pointer]
+          - button "Ubah density" [ref=f1e31] [cursor=pointer]
+    - main [ref=f1e42]:
+      - region [ref=f1e43]:
+        - generic [ref=f1e44]:
+          - generic [ref=f1e45]: AAPM UI · live catalog
+          - heading [level=1] [ref=f1e47]:
+            - text: Satu sistem.
+            - emphasis [ref=f1e48]: Banyak produk.
+          - paragraph [ref=f1e49]: Mulai dari learning workspace, Ebook library, reader, sampai dashboard operasional. Komposisi berubah sesuai konteks; token, shell, dan ikon tetap satu bahasa.
+          - generic [ref=f1e50]:
+            - link "Jelajahi template" [ref=f1e51] [cursor=pointer]:
+              - /url: "#templates"
+            - link "Lihat foundation" [ref=f1e55] [cursor=pointer]:
+              - /url: ./index.html
+          - generic "Ringkasan sistem" [ref=f1e56]:
+            - generic [ref=f1e57]:
+              - strong [ref=f1e58]: "290"
+              - generic [ref=f1e59]: semantic icon keys
+            - generic [ref=f1e60]:
+              - strong [ref=f1e61]: "79"
+              - generic [ref=f1e62]: React modules
+            - generic [ref=f1e63]:
+              - strong [ref=f1e64]: "1"
+              - generic [ref=f1e65]: token language
+        - generic "Preview aplikasi AAPM UI" [ref=f1e66]:
+          - generic [ref=f1e68]:
+            - generic [ref=f1e69]: academy.aapm / dashboard
+            - generic [ref=f1e81]:
+              - complementary [ref=f1e82]
+              - generic [ref=f1e94]:
+                - generic [ref=f1e95]:
+                  - generic [ref=f1e96]:
+                    - generic [ref=f1e97]: LEARNING WORKSPACE
+                    - strong [ref=f1e98]: Dashboard
+                  - generic [ref=f1e99]: F
+                - generic [ref=f1e100]:
+                  - generic [ref=f1e101]:
+                    - generic [ref=f1e102]: Modul selesai
+                    - strong [ref=f1e103]: 8/22
+                  - generic [ref=f1e105]:
+                    - generic [ref=f1e106]: Rata-rata kuis
+                    - strong [ref=f1e107]: 75%
+                - generic [ref=f1e120]:
+                  - generic [ref=f1e121]: LANJUTKAN BELAJAR
+                  - strong [ref=f1e122]: Siklus hidup ayam petelur
+                - generic [ref=f1e126]:
+                  - generic [ref=f1e127]: Progress
+                  - generic [ref=f1e131]: APPI ready
+          - generic [ref=f1e137]: Built from the same AAPM foundation
+      - region [ref=f1e141]:
+        - generic [ref=f1e142]:
+          - generic [ref=f1e143]:
+            - generic [ref=f1e144]: Template library
+            - heading "Pilih starting point yang sesuai." [level=2] [ref=f1e146]
+            - paragraph [ref=f1e147]: Setiap demo memperlihatkan struktur nyata, bukan placeholder kosong. Buka preview untuk melihat responsive behavior dan pola komponennya.
+          - generic [ref=f1e148]: 6 templates
+        - generic "Filter template" [ref=f1e149]:
+          - generic [ref=f1e150]:
+            - generic [ref=f1e158]: Cari template
+            - searchbox "Cari template" [ref=f1e159]
+          - group "Kategori template" [ref=f1e160]:
+            - button "Semua" [pressed] [ref=f1e161] [cursor=pointer]
+            - button "Learning" [ref=f1e162] [cursor=pointer]
+            - button "Publishing" [ref=f1e163] [cursor=pointer]
+            - button "Operations" [ref=f1e164] [cursor=pointer]
+            - button "AI" [ref=f1e165] [cursor=pointer]
+            - button "Auth" [ref=f1e166] [cursor=pointer]
+        - generic [ref=f1e167]:
+          - article [ref=f1e168]:
+            - generic [ref=f1e170]:
+              - generic [ref=f1e171]: app / learning
+              - generic [ref=f1e184]:
+                - generic [ref=f1e185]: Learning workspace
+                - heading "Dashboard" [level=4] [ref=f1e186]
+                - generic [ref=f1e187]:
+                  - generic [ref=f1e188]:
+                    - strong [ref=f1e197]: Modul selesai
+                    - generic [ref=f1e198]: 24 item
+                  - generic [ref=f1e199]:
+                    - strong [ref=f1e205]: Rata-rata kuis
+                    - generic [ref=f1e206]: 75% score
+            - generic [ref=f1e209]:
+              - generic [ref=f1e210]:
+                - generic [ref=f1e211]: Learning workspace
+                - generic [ref=f1e213]: Live demo
+              - heading "Layer Academy" [level=3] [ref=f1e214]
+              - paragraph [ref=f1e215]: Roadmap, progress, lesson, quiz, certification, dan APPI dalam satu learning shell.
+              - generic [ref=f1e216]:
+                - generic [ref=f1e217]:
+                  - generic [ref=f1e218]: Dashboard
+                  - generic [ref=f1e219]: Learning path
+                  - generic [ref=f1e220]: APPI
+                - button "Lihat demo" [ref=f1e221] [cursor=pointer]
+          - article [ref=f1e222]:
+            - generic [ref=f1e224]:
+              - generic [ref=f1e225]: app / publishing
+              - generic [ref=f1e238]:
+                - generic [ref=f1e239]: Publishing
+                - heading "Ebook library" [level=4] [ref=f1e240]
+                - generic [ref=f1e241]:
+                  - generic [ref=f1e242]:
+                    - strong [ref=f1e250]: Terbaru
+                    - generic [ref=f1e251]: 24 item
+                  - generic [ref=f1e252]:
+                    - strong [ref=f1e258]: Bookmark
+                    - generic [ref=f1e259]: Lihat semua
+            - generic [ref=f1e262]:
+              - generic [ref=f1e263]:
+                - generic [ref=f1e264]: Publishing
+                - generic [ref=f1e266]: Live demo
+              - heading "Ebook library" [level=3] [ref=f1e267]
+              - paragraph [ref=f1e268]: Discovery-first library untuk katalog Ebook, topik, bookmark, dan rekomendasi bacaan.
+              - generic [ref=f1e269]:
+                - generic [ref=f1e270]:
+                  - generic [ref=f1e271]: Library
+                  - generic [ref=f1e272]: Search
+                  - generic [ref=f1e273]: Bookmark
+                - button "Lihat demo" [ref=f1e274] [cursor=pointer]
+          - article [ref=f1e275]:
+            - generic [ref=f1e277]:
+              - generic [ref=f1e278]: reader / chapter-01
+              - generic [ref=f1e294]:
+                - text: CHAPTER 01
+                - heading "Memahami flock yang sehat" [level=4] [ref=f1e295]
+                - paragraph [ref=f1e296]: Progress membaca, catatan, dan navigasi bab tetap terlihat.
+            - generic [ref=f1e298]:
+              - generic [ref=f1e299]:
+                - generic [ref=f1e300]: Long-form content
+                - generic [ref=f1e302]: Live demo
+              - heading "Book reader" [level=3] [ref=f1e303]
+              - paragraph [ref=f1e304]: Reader yang tenang dengan hierarchy teks, progress membaca, dan navigasi bab yang jelas.
+              - generic [ref=f1e305]:
+                - generic [ref=f1e306]:
+                  - generic [ref=f1e307]: Reader
+                  - generic [ref=f1e308]: Article
+                  - generic [ref=f1e309]: Progress
+                - button "Lihat demo" [ref=f1e310] [cursor=pointer]
+          - article [ref=f1e311]:
+            - generic [ref=f1e313]:
+              - generic [ref=f1e314]: app / operations
+              - generic [ref=f1e327]:
+                - generic [ref=f1e328]: Operations
+                - heading "Control room" [level=4] [ref=f1e329]
+                - generic [ref=f1e330]:
+                  - generic [ref=f1e331]:
+                    - strong [ref=f1e339]: KPI farm
+                    - generic [ref=f1e340]: 92% live
+                  - generic [ref=f1e341]:
+                    - strong [ref=f1e345]: Alert
+                    - generic [ref=f1e346]: Lihat semua
+            - generic [ref=f1e349]:
+              - generic [ref=f1e350]:
+                - generic [ref=f1e351]: Operations
+                - generic [ref=f1e353]: Live demo
+              - heading "Control room" [level=3] [ref=f1e354]
+              - paragraph [ref=f1e355]: Dashboard operasional untuk KPI, status lifecycle, alert, dan data yang padat namun terarah.
+              - generic [ref=f1e356]:
+                - generic [ref=f1e357]:
+                  - generic [ref=f1e358]: Metrics
+                  - generic [ref=f1e359]: Data table
+                  - generic [ref=f1e360]: Status
+                - button "Lihat demo" [ref=f1e361] [cursor=pointer]
+          - article [ref=f1e362]:
+            - generic [ref=f1e364]:
+              - generic [ref=f1e365]: academy / sign-in
+              - generic [ref=f1e371]: AAPM UI
+            - generic [ref=f1e382]:
+              - generic [ref=f1e383]:
+                - generic [ref=f1e384]: Auth & onboarding
+                - generic [ref=f1e386]: Live demo
+              - heading "Clean sign in" [level=3] [ref=f1e387]
+              - paragraph [ref=f1e388]: Auth shell yang bersih untuk login, create account, reset password, dan provider OAuth.
+              - generic [ref=f1e389]:
+                - generic [ref=f1e390]:
+                  - generic [ref=f1e391]: Sign in
+                  - generic [ref=f1e392]: Form
+                  - generic [ref=f1e393]: Recovery
+                - button "Lihat demo" [ref=f1e394] [cursor=pointer]
+          - article [ref=f1e395]:
+            - generic [ref=f1e397]:
+              - generic [ref=f1e398]: workspace / copilot
+              - generic [ref=f1e404]:
+                - generic [ref=f1e405]:
+                  - generic [ref=f1e406]: AI
+                  - generic [ref=f1e407]: AI copilot
+                - generic [ref=f1e408]: Baca konteks halaman dan bantu susun langkah berikutnya.
+                - generic [ref=f1e409]: Tanyakan sesuatu...
+            - generic [ref=f1e412]:
+              - generic [ref=f1e413]:
+                - generic [ref=f1e414]: AI workspace
+                - generic [ref=f1e416]: Live demo
+              - heading "AI copilot" [level=3] [ref=f1e417]
+              - paragraph [ref=f1e418]: Chat workspace dengan context, quick action, streaming state, dan composer yang fokus.
+              - generic [ref=f1e419]:
+                - generic [ref=f1e420]:
+                  - generic [ref=f1e421]: Chat
+                  - generic [ref=f1e422]: Context
+                  - generic [ref=f1e423]: Tools
+                - button "Lihat demo" [ref=f1e424] [cursor=pointer]
+      - region [ref=f1e425]:
+        - generic [ref=f1e426]:
+          - generic [ref=f1e427]:
+            - generic [ref=f1e428]: Iconify surface
+            - heading "Ikon yang konsisten, dari Academy sampai Ebook." [level=2] [ref=f1e430]
+            - paragraph [ref=f1e431]: Feature code memakai nama semantik. Registry memegang family, fallback, dan keputusan domain agar icon tidak blank atau berganti gaya tanpa alasan.
+          - link "Baca contract" [ref=f1e432] [cursor=pointer]:
+            - /url: ../guidelines/iconography.md
+        - generic [ref=f1e436]:
+          - generic [ref=f1e437]:
+            - generic [ref=f1e438]:
+              - strong [ref=f1e439]: "290"
+              - generic [ref=f1e440]: semantic keys
+            - generic [ref=f1e441]:
+              - generic [ref=f1e442]: Solar · default
+              - generic [ref=f1e444]: Phosphor · objects
+              - generic [ref=f1e446]: Domain · poultry
+            - paragraph [ref=f1e448]: Unknown key selalu mendapat fallback info yang terlihat. Reliability lebih penting daripada glyph literal yang kosong.
+          - generic [ref=f1e449]:
+            - generic [ref=f1e456]:
+              - strong [ref=f1e457]: dashboard
+              - generic [ref=f1e458]: Workspace · Solar
+            - generic [ref=f1e467]:
+              - strong [ref=f1e468]: library
+              - generic [ref=f1e469]: Publishing · Solar
+            - generic [ref=f1e479]:
+              - strong [ref=f1e480]: bookOpen
+              - generic [ref=f1e481]: Reading · Solar
+            - generic [ref=f1e488]:
+              - strong [ref=f1e489]: bookmark
+              - generic [ref=f1e490]: Reading · Solar
+            - generic [ref=f1e499]:
+              - strong [ref=f1e500]: article
+              - generic [ref=f1e501]: Content · Solar
+            - generic [ref=f1e509]:
+              - strong [ref=f1e510]: audio
+              - generic [ref=f1e511]: Media · Solar
+            - generic [ref=f1e516]:
+              - strong [ref=f1e517]: video
+              - generic [ref=f1e518]: Media · Solar
+            - generic [ref=f1e527]:
+              - strong [ref=f1e528]: search
+              - generic [ref=f1e529]: Discovery · Solar
+            - generic [ref=f1e538]:
+              - strong [ref=f1e539]: category
+              - generic [ref=f1e540]: Discovery · Solar
+            - generic [ref=f1e548]:
+              - strong [ref=f1e549]: tag
+              - generic [ref=f1e550]: Discovery · Solar
+            - generic [ref=f1e559]:
+              - strong [ref=f1e560]: analytics
+              - generic [ref=f1e561]: Analytics · Solar
+            - generic [ref=f1e570]:
+              - strong [ref=f1e571]: report
+              - generic [ref=f1e572]: Analytics · Solar
+            - generic [ref=f1e579]:
+              - strong [ref=f1e580]: warehouse
+              - generic [ref=f1e581]: Operations · Phosphor
+            - generic [ref=f1e590]:
+              - strong [ref=f1e591]: cart
+              - generic [ref=f1e592]: Commerce · Solar
+            - generic [ref=f1e601]:
+              - strong [ref=f1e602]: order
+              - generic [ref=f1e603]: Commerce · Solar
+            - generic [ref=f1e610]:
+              - strong [ref=f1e611]: farm
+              - generic [ref=f1e612]: Farm · Solar
+            - generic [ref=f1e619]:
+              - strong [ref=f1e620]: egg
+              - generic [ref=f1e621]: Farm · Phosphor
+            - generic [ref=f1e626]:
+              - strong [ref=f1e627]: chicken
+              - generic [ref=f1e628]: Poultry · Domain
+            - generic [ref=f1e641]:
+              - strong [ref=f1e642]: calculator
+              - generic [ref=f1e643]: Tools · Solar
+            - generic [ref=f1e651]:
+              - strong [ref=f1e652]: user
+              - generic [ref=f1e653]: Account · Solar
+            - generic [ref=f1e660]:
+              - strong [ref=f1e661]: settings
+              - generic [ref=f1e662]: Account · Solar
+            - generic [ref=f1e667]:
+              - strong [ref=f1e668]: login
+              - generic [ref=f1e669]: Auth · Solar
+            - generic [ref=f1e677]:
+              - strong [ref=f1e678]: ai
+              - generic [ref=f1e679]: AI · Solar
+            - generic [ref=f1e684]:
+              - strong [ref=f1e685]: help
+              - generic [ref=f1e686]: Support · Solar
+      - region [ref=f1e687]:
+        - generic [ref=f1e689]:
+          - generic [ref=f1e690]: Composition patterns
+          - heading "Bangun halaman tanpa membuat bahasa baru." [level=2] [ref=f1e692]
+          - paragraph [ref=f1e693]: Gunakan pola sesuai pekerjaan pengguna. Konten boleh berbeda; hierarchy, spacing, state, dan feedback tetap familiar.
+        - generic [ref=f1e694]:
+          - article [ref=f1e695]:
+            - generic [ref=f1e696]: "01"
+            - heading "Shell & navigation" [level=3] [ref=f1e704]
+            - paragraph [ref=f1e705]: Sidebar, topbar, bottom nav, breadcrumbs, dan responsive drawer untuk workspace dengan banyak modul.
+            - generic [ref=f1e706]:
+              - generic [ref=f1e707]: AppShell
+              - generic [ref=f1e708]: BottomNav
+              - generic [ref=f1e709]: CommandMenu
+          - article [ref=f1e710]:
+            - generic [ref=f1e711]: "02"
+            - heading "Metrics & data" [level=3] [ref=f1e721]
+            - paragraph [ref=f1e722]: Metric card, table, chart, status, dan filter yang tetap terbaca ketika data bertambah padat.
+            - generic [ref=f1e723]:
+              - generic [ref=f1e724]: DashboardGrid
+              - generic [ref=f1e725]: DataTable
+              - generic [ref=f1e726]: Trend
+          - article [ref=f1e727]:
+            - generic [ref=f1e728]: "03"
+            - heading "AI & guided work" [level=3] [ref=f1e737]
+            - paragraph [ref=f1e738]: Workspace percakapan, quick actions, context panel, streaming state, dan empty state yang jelas.
+            - generic [ref=f1e739]:
+              - generic [ref=f1e740]: AI surface
+              - generic [ref=f1e741]: Feedback
+              - generic [ref=f1e742]: Activity
+          - article [ref=f1e743]:
+            - generic [ref=f1e744]: "04"
+            - heading "Content & reading" [level=3] [ref=f1e754]
+            - paragraph [ref=f1e755]: Library, discovery, detail, bookmark, reader, dan long-form content untuk produk pengetahuan.
+            - generic [ref=f1e756]:
+              - generic [ref=f1e757]: Library
+              - generic [ref=f1e758]: Reader
+              - generic [ref=f1e759]: Article
+      - region [ref=f1e760]:
+        - generic [ref=f1e761]:
+          - generic [ref=f1e762]: Ready to compose
+          - heading "Mulai dari token. Selesai sebagai produk." [level=2] [ref=f1e764]
+          - paragraph [ref=f1e765]: Ambil template sebagai referensi, lalu compose dengan komponen React, assets, dan contract yang sudah ada.
+        - generic [ref=f1e766]:
+          - link "Buka foundation" [ref=f1e767] [cursor=pointer]:
+            - /url: ./index.html
+          - link "Lihat Academy kit" [ref=f1e768] [cursor=pointer]:
+            - /url: ../ui_kits/academy/index.html
+    - contentinfo [ref=f1e772]:
+      - generic [ref=f1e773]:
+        - generic [ref=f1e774]: AAPM UI · v0.2.0 · local Inter Variable
+        - generic [ref=f1e775]:
+          - link "Architecture notes" [ref=f1e776] [cursor=pointer]:
+            - /url: ../readme.md
+          - generic [ref=f1e777]: ·
+          - link "Manifest" [ref=f1e778] [cursor=pointer]:
+            - /url: ../aapm-ui.manifest.json
+  - status

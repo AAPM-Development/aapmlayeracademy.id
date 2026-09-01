@@ -1,0 +1,5 @@
+- generic [active] [ref=f1e1]:
+  - generic:
+    - generic [ref=f1e2]: Permintaan gagal.
+    - region "Notifications (F8)":
+      - list

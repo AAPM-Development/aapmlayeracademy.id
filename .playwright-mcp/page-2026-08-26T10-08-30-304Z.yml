@@ -1,0 +1,257 @@
+- generic [ref=f1e2]:
+  - complementary "Navigasi katalog" [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - link "AAPM UI beranda" [ref=f1e5] [cursor=pointer]:
+        - /url: "#overview"
+        - img "AAPM Layer Academy" [ref=f1e6]
+      - button "Ringkas navigasi" [ref=f1e7] [cursor=pointer]
+    - generic [ref=f1e11]:
+      - generic [ref=f1e12]:
+        - generic [ref=f1e13]: Katalog
+        - navigation "Katalog komponen" [ref=f1e14]:
+          - link "Overview" [ref=f1e15] [cursor=pointer]:
+            - /url: "#overview"
+          - link "Dashboard" [ref=f1e22] [cursor=pointer]:
+            - /url: "#dashboard"
+          - link "Forms" [ref=f1e31] [cursor=pointer]:
+            - /url: "#forms"
+          - link "Data & charts" [ref=f1e39] [cursor=pointer]:
+            - /url: "#data"
+          - link "Feedback" [ref=f1e47] [cursor=pointer]:
+            - /url: "#feedback"
+      - generic [ref=f1e53]:
+        - generic [ref=f1e54]: Kits
+        - navigation "UI kits" [ref=f1e55]:
+          - link "Academy kit" [ref=f1e56] [cursor=pointer]:
+            - /url: ../ui_kits/academy/index.html
+          - link "ERP kit" [ref=f1e66] [cursor=pointer]:
+            - /url: ../ui_kits/erp/index.html
+    - generic [ref=f1e73]:
+      - generic [ref=f1e74]:
+        - text: AAPM UI
+        - strong [ref=f1e75]: v0.2
+      - generic [ref=f1e76]: Inter Variable · local
+  - generic [ref=f1e77]:
+    - banner [ref=f1e78]:
+      - button "Buka navigasi" [ref=f1e79] [cursor=pointer]
+      - generic [ref=f1e83]:
+        - generic [ref=f1e84]: Design foundation
+        - heading "AAPM UI" [level=1] [ref=f1e85]
+      - generic [ref=f1e86]:
+        - button "Density" [ref=f1e87] [cursor=pointer]
+        - button "Dark" [ref=f1e94] [cursor=pointer]
+        - link "Docs" [ref=f1e102] [cursor=pointer]:
+          - /url: ../readme.md
+    - main [ref=f1e111]:
+      - generic [ref=f1e112]:
+        - generic [ref=f1e113]:
+          - generic [ref=f1e114]:
+            - generic [ref=f1e115]: AAPM UI · review surface
+            - heading "Foundation untuk produk yang rapi, bukan sekadar cantik." [level=2] [ref=f1e116]
+            - paragraph [ref=f1e117]: Token, shell, data, forms, dan feedback yang siap dipakai lintas Academy, ERP, dan operational tools—dengan Inter lokal dan canvas light yang bersih.
+          - generic [ref=f1e118]:
+            - generic [ref=f1e119]: Ready for review
+            - generic [ref=f1e121]: Light default · Dark semantic
+        - region [ref=f1e122]:
+          - generic [ref=f1e123]:
+            - generic [ref=f1e124]: Application layer
+            - heading "Satu bahasa visual untuk setiap ruang kerja AAPM." [level=2] [ref=f1e125]
+            - paragraph [ref=f1e126]: Shell yang adaptif, komponen yang punya hierarki, dan warna yang dipakai dengan maksud—dari halaman belajar sampai dashboard operasional.
+            - generic [ref=f1e127]:
+              - link [ref=f1e128] [cursor=pointer]:
+                - /url: "#dashboard"
+              - button "Preview feedback" [ref=f1e132] [cursor=pointer]
+        - region [ref=f1e134]:
+          - generic [ref=f1e135]:
+            - generic [ref=f1e136]:
+              - generic [ref=f1e137]: 01 · Dashboard
+              - heading "Signal sebelum decoration." [level=2] [ref=f1e138]
+            - generic [ref=f1e139]: Tints category · no card gradient
+          - generic [ref=f1e140]:
+            - article [ref=f1e141]:
+              - generic [ref=f1e142]: +8,4%
+              - generic [ref=f1e152]: Learner aktif
+              - strong [ref=f1e153]: "1.248"
+              - generic [ref=f1e154]: 30 hari terakhir
+            - article [ref=f1e157]:
+              - generic [ref=f1e158]: +12,1%
+              - generic [ref=f1e167]: Modul selesai
+              - strong [ref=f1e168]: "684"
+              - generic [ref=f1e169]: Dari 1.420 enrolment
+            - article [ref=f1e172]:
+              - generic [ref=f1e173]: 0,0%
+              - generic [ref=f1e183]: Rata-rata progres
+              - strong [ref=f1e184]: 48,6%
+              - generic [ref=f1e185]: Seluruh jalur belajar
+            - article [ref=f1e188]:
+              - generic [ref=f1e189]: +4,7%
+              - generic [ref=f1e197]: Completion rate
+              - strong [ref=f1e198]: 76,2%
+              - generic [ref=f1e199]: Target kuartal ini
+          - generic [ref=f1e202]:
+            - article [ref=f1e203]:
+              - generic [ref=f1e204]:
+                - generic [ref=f1e205]:
+                  - heading "Aktivitas pembelajaran" [level=3] [ref=f1e206]
+                  - paragraph [ref=f1e207]: Pergerakan learner dan modul sepanjang minggu.
+                - button "Opsi panel" [ref=f1e208] [cursor=pointer]
+              - img "Contoh grafik aktivitas pembelajaran" [ref=f1e209]:
+                - generic [ref=f1e210]:
+                  - generic [ref=f1e211]: "100"
+                  - generic [ref=f1e212]: "75"
+                  - generic [ref=f1e213]: "50"
+                  - generic [ref=f1e214]: "25"
+                  - generic [ref=f1e215]: "0"
+              - generic [ref=f1e221]:
+                - generic [ref=f1e222]: Learner aktif
+                - generic [ref=f1e224]: Modul selesai
+            - article [ref=f1e226]:
+              - generic [ref=f1e227]:
+                - generic [ref=f1e228]:
+                  - heading "Prioritas hari ini" [level=3] [ref=f1e229]
+                  - paragraph [ref=f1e230]: Exception-first, bukan noise.
+                - generic [ref=f1e231]: "4"
+              - list [ref=f1e232]:
+                - listitem [ref=f1e233]:
+                  - generic [ref=f1e235]:
+                    - strong [ref=f1e236]: 3 learner tertahan
+                    - generic [ref=f1e237]: Menunggu verifikasi progres
+                - listitem [ref=f1e238]:
+                  - generic [ref=f1e240]:
+                    - strong [ref=f1e241]: Review batch mingguan
+                    - generic [ref=f1e242]: Jadwal 15:00 WIB
+                - listitem [ref=f1e243]:
+                  - generic [ref=f1e245]:
+                    - strong [ref=f1e246]: 12 sertifikat siap
+                    - generic [ref=f1e247]: Menunggu publikasi
+        - region [ref=f1e248]:
+          - generic [ref=f1e249]:
+            - generic [ref=f1e250]:
+              - generic [ref=f1e251]: 02 · Forms
+              - heading "Input yang terasa seimbang." [level=2] [ref=f1e252]
+            - generic [ref=f1e253]: Label · hint · state · action
+          - article [ref=f1e254]:
+            - generic [ref=f1e255]:
+              - generic [ref=f1e256]:
+                - heading "Konfigurasi provider" [level=3] [ref=f1e257]
+                - paragraph [ref=f1e258]: Field konsisten untuk setting Academy atau ERP.
+              - generic [ref=f1e259]: Draft
+            - generic [ref=f1e261]:
+              - generic [ref=f1e262]:
+                - generic [ref=f1e263]: Nama koneksi
+                - textbox "Nama koneksi" [ref=f1e264]: AAPM Provider
+              - generic [ref=f1e265]:
+                - generic [ref=f1e266]: Preset / protokol
+                - combobox "Preset / protokol" [ref=f1e267]:
+                  - option "OpenAI-compatible" [selected]
+                  - option "Local gateway"
+              - generic [ref=f1e268]:
+                - generic [ref=f1e269]: Base URL API
+                - textbox "Base URL API" [ref=f1e270]: https://api.example.test/v1
+              - generic [ref=f1e271]:
+                - generic [ref=f1e272]: Model default
+                - textbox "Model default Combobox mendukung pencarian dan keyboard." [ref=f1e274]:
+                  - /placeholder: Cari model...
+                - generic [ref=f1e275]: Combobox mendukung pencarian dan keyboard.
+              - generic [ref=f1e276]:
+                - generic [ref=f1e277]: Mode respons
+                - generic [ref=f1e278]:
+                  - button "Mode respons Batch" [ref=f1e279] [cursor=pointer]: Streaming
+                  - button "Batch" [ref=f1e280] [cursor=pointer]
+            - generic [ref=f1e281]:
+              - generic [ref=f1e282]: Credential disimpan server-side.
+              - generic [ref=f1e283]:
+                - button "Batal" [ref=f1e284] [cursor=pointer]
+                - button "Simpan konfigurasi" [ref=f1e285] [cursor=pointer]
+        - region [ref=f1e286]:
+          - generic [ref=f1e287]:
+            - generic [ref=f1e288]:
+              - generic [ref=f1e289]: 03 · Data
+              - heading "Dense, tapi tetap terbaca." [level=2] [ref=f1e290]
+            - generic [ref=f1e291]: Table · status · action
+          - article [ref=f1e292]:
+            - generic [ref=f1e293]:
+              - generic [ref=f1e294]:
+                - heading "Daftar enrolment" [level=3] [ref=f1e295]
+                - paragraph [ref=f1e296]: Contoh table dengan status lifecycle.
+              - generic [ref=f1e297]:
+                - button "Filter" [ref=f1e298] [cursor=pointer]
+                - button "Tambah" [ref=f1e299] [cursor=pointer]
+            - table [ref=f1e301]:
+              - rowgroup [ref=f1e302]:
+                - row [ref=f1e303]:
+                  - columnheader "Learner" [ref=f1e304]
+                  - columnheader "Jalur" [ref=f1e305]
+                  - columnheader "Progres" [ref=f1e306]
+                  - columnheader "Status" [ref=f1e307]
+                  - columnheader "Terakhir aktif" [ref=f1e308]
+                  - columnheader "Aksi" [ref=f1e309]
+              - rowgroup [ref=f1e311]:
+                - row [ref=f1e312]:
+                  - cell "FA Fahzi Putraj fahzi@example.id" [ref=f1e313]:
+                    - generic [ref=f1e314]:
+                      - generic [ref=f1e315]: FA
+                      - generic [ref=f1e316]:
+                        - strong [ref=f1e317]: Fahzi Putraj
+                        - generic [ref=f1e318]: fahzi@example.id
+                  - cell "Layer Management" [ref=f1e319]
+                  - cell [ref=f1e320]
+                  - cell "Aktif" [ref=f1e323]
+                  - cell "Hari ini, 09:42" [ref=f1e326]
+                  - cell [ref=f1e327]:
+                    - button "Opsi Fahzi Putraj" [ref=f1e328] [cursor=pointer]
+                - row [ref=f1e329]:
+                  - cell "AN Adjie Nugraha adjie@example.id" [ref=f1e330]:
+                    - generic [ref=f1e331]:
+                      - generic [ref=f1e332]: AN
+                      - generic [ref=f1e333]:
+                        - strong [ref=f1e334]: Adjie Nugraha
+                        - generic [ref=f1e335]: adjie@example.id
+                  - cell "Foundation" [ref=f1e336]
+                  - cell [ref=f1e337]
+                  - cell "Review" [ref=f1e340]
+                  - cell "Kemarin, 16:08" [ref=f1e343]
+                  - cell [ref=f1e344]:
+                    - button "Opsi Adjie Nugraha" [ref=f1e345] [cursor=pointer]
+                - row [ref=f1e346]:
+                  - cell "NR Nadia Rahma nadia@example.id" [ref=f1e347]:
+                    - generic [ref=f1e348]:
+                      - generic [ref=f1e349]: NR
+                      - generic [ref=f1e350]:
+                        - strong [ref=f1e351]: Nadia Rahma
+                        - generic [ref=f1e352]: nadia@example.id
+                  - cell "Biosecurity" [ref=f1e353]
+                  - cell [ref=f1e354]
+                  - cell "Verifikasi" [ref=f1e357]
+                  - cell "12 Agu 2026" [ref=f1e360]
+                  - cell [ref=f1e361]:
+                    - button "Opsi Nadia Rahma" [ref=f1e362] [cursor=pointer]
+        - region [ref=f1e363]:
+          - generic [ref=f1e364]:
+            - generic [ref=f1e365]:
+              - generic [ref=f1e366]: 04 · Feedback
+              - heading "Outcome yang tidak membuat pengguna menebak." [level=2] [ref=f1e367]
+            - generic [ref=f1e368]: Toast · confirmation · state
+          - generic [ref=f1e369]:
+            - article [ref=f1e370]:
+              - generic [ref=f1e372]:
+                - heading "State view" [level=3] [ref=f1e373]
+                - paragraph [ref=f1e374]: Empty dan error punya arah lanjut.
+              - generic [ref=f1e375]:
+                - strong [ref=f1e377]: Belum ada data tersimpan
+                - paragraph [ref=f1e378]: Tambahkan koneksi pertama untuk mulai menguji workflow.
+                - button "Tambah koneksi" [ref=f1e379] [cursor=pointer]
+            - article [ref=f1e380]:
+              - generic [ref=f1e382]:
+                - heading "Confirmation" [level=3] [ref=f1e383]
+                - paragraph [ref=f1e384]: Dialog desain untuk tindakan berisiko.
+              - generic [ref=f1e387]:
+                - strong [ref=f1e388]: Hapus draft provider?
+                - paragraph [ref=f1e389]: Perubahan yang belum disimpan akan hilang. Pengguna tetap punya jalan keluar yang jelas.
+                - generic [ref=f1e390]:
+                  - button "Batal" [ref=f1e391] [cursor=pointer]
+                  - button "Hapus draft" [ref=f1e392] [cursor=pointer]
+        - generic [ref=f1e393]:
+          - generic [ref=f1e394]: AAPM UI · built from Academy foundation
+          - link "Baca architecture notes" [ref=f1e395] [cursor=pointer]:
+            - /url: ../readme.md

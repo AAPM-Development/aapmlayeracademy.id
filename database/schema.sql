@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS course_modules (
   category VARCHAR(160) NOT NULL DEFAULT '',
   summary TEXT NOT NULL,
   content MEDIUMTEXT NOT NULL,
+  editorial_content MEDIUMTEXT NULL,
   video_script TEXT NOT NULL,
   video_url TEXT NULL,
   learning_objectives LONGTEXT NOT NULL,

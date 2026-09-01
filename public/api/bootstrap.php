@@ -201,6 +201,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 category TEXT NOT NULL DEFAULT \'\',
                 summary TEXT NOT NULL DEFAULT \'\',
                 content TEXT NOT NULL,
+                editorial_content TEXT NULL,
                 video_script TEXT NOT NULL DEFAULT \'\',
                 video_url TEXT NOT NULL DEFAULT \'\',
                 learning_objectives TEXT NOT NULL DEFAULT \'[]\',
@@ -370,6 +371,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 category VARCHAR(160) NOT NULL DEFAULT \'\',
                 summary TEXT NOT NULL,
                 content MEDIUMTEXT NOT NULL,
+                editorial_content MEDIUMTEXT NULL,
                 video_script TEXT NOT NULL,
                 video_url TEXT NULL,
                 learning_objectives LONGTEXT NOT NULL,
@@ -499,6 +501,7 @@ function ensure_schema(PDO $pdo, string $driver): void
         $pdo->exec($statement);
     }
 
+    ensure_course_module_editorial_content($pdo, $driver);
     ensure_course_module_video_url($pdo, $driver);
     ensure_user_profile_avatar($pdo, $driver);
     ensure_user_ai_supports_vision($pdo, $driver);
@@ -540,6 +543,26 @@ function ensure_user_ai_supports_vision(PDO $pdo, string $driver): void
     $column->execute(['user_ai_settings', 'supports_vision']);
     if (!$column->fetchColumn()) {
         $pdo->exec('ALTER TABLE user_ai_settings ADD COLUMN supports_vision TINYINT(1) NOT NULL DEFAULT 0 AFTER allow_local');
+    }
+}
+
+function ensure_course_module_editorial_content(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $columns = $pdo->query('PRAGMA table_info(course_modules)')->fetchAll();
+        foreach ($columns as $column) {
+            if (($column['name'] ?? '') === 'editorial_content') {
+                return;
+            }
+        }
+        $pdo->exec('ALTER TABLE course_modules ADD COLUMN editorial_content TEXT NULL');
+        return;
+    }
+
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['course_modules', 'editorial_content']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE course_modules ADD COLUMN editorial_content MEDIUMTEXT NULL AFTER content');
     }
 }
 
@@ -1015,6 +1038,18 @@ function decode_json_field($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function decode_editorial_content($value): ?array
+{
+    if (!is_string($value) || trim($value) === '') {
+        return null;
+    }
+    $decoded = json_decode($value, true);
+    if (!is_array($decoded) || !isset($decoded['blocks']) || !is_array($decoded['blocks'])) {
+        return null;
+    }
+    return $decoded;
+}
+
 function present_module(array $row): array
 {
     return [
@@ -1026,6 +1061,7 @@ function present_module(array $row): array
         'category' => $row['category'],
         'summary' => $row['summary'],
         'content' => $row['content'],
+        'editorialContent' => decode_editorial_content($row['editorial_content'] ?? null),
         'videoScript' => $row['video_script'],
         'videoUrl' => $row['video_url'] ?? '',
         'learningObjectives' => decode_json_field($row['learning_objectives']),
@@ -1534,25 +1570,68 @@ function admin_module_from_id(int $moduleId): ?array
     return $row ?: null;
 }
 
+function normalise_editorial_internal_path($value): ?string
+{
+    $path = trim((string) $value);
+    if ($path === '' || substr($path, 0, 1) !== '/' || substr($path, 0, 2) === '//') {
+        return null;
+    }
+    if (strpos($path, '\\') !== false || preg_match('/[\x00-\x1F\x7F]/', $path) || preg_match('#(?:^|/)\.\.?(?:/|$)#', $path)) {
+        return null;
+    }
+    return $path;
+}
+
+function normalise_editorial_link_url($value): string
+{
+    $url = trim((string) $value);
+    if (strlen($url) > 2048) {
+        error_response('Tautan editorial terlalu panjang.', 422, 'invalid_editorial_url');
+    }
+    $internal = normalise_editorial_internal_path($url);
+    if ($internal !== null) {
+        return $internal;
+    }
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        error_response('Tautan editorial harus berupa URL HTTPS atau path internal yang aman.', 422, 'invalid_editorial_url');
+    }
+    $parts = parse_url($url);
+    $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+    $host = (string) ($parts['host'] ?? '');
+    if ($scheme !== 'https' || $host === '' || isset($parts['user']) || isset($parts['pass'])) {
+        error_response('Tautan editorial harus menggunakan HTTPS tanpa kredensial.', 422, 'invalid_editorial_url');
+    }
+    return $url;
+}
+
+function normalise_editorial_image_url($value): string
+{
+    $url = normalise_editorial_link_url($value);
+    $parts = parse_url($url);
+    $path = (string) ($parts['path'] ?? $url);
+    if (preg_match('/\.svg$/i', $path)) {
+        error_response('Gambar editorial tidak mendukung SVG. Gunakan PNG, JPG, WebP, AVIF, atau GIF.', 422, 'invalid_editorial_image');
+    }
+    return $url;
+}
+
 function normalise_lesson_video_url($value): string
 {
     $url = trim((string) $value);
     if ($url === '') {
         return '';
     }
-    if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
-        return $url;
-    }
-    if (!filter_var($url, FILTER_VALIDATE_URL)) {
-        error_response('URL video harus berupa tautan HTTPS/HTTP yang valid atau path media internal.', 422, 'invalid_video_url');
+    $internal = normalise_editorial_internal_path($url);
+    if ($internal !== null) {
+        if (!preg_match('/\.(mp4|webm|ogg|m4v)(?:[?#]|$)/i', $internal)) {
+            error_response('Video internal harus memakai file MP4, WebM, OGG, atau M4V.', 422, 'invalid_video_url');
+        }
+        return $internal;
     }
 
+    $url = normalise_editorial_link_url($url);
     $parts = parse_url($url);
-    $scheme = strtolower((string) ($parts['scheme'] ?? ''));
     $host = strtolower((string) ($parts['host'] ?? ''));
-    if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
-        error_response('URL video harus menggunakan HTTPS atau HTTP.', 422, 'invalid_video_url');
-    }
     $host = preg_replace('/^www\./', '', $host) ?: $host;
     $path = (string) ($parts['path'] ?? '');
     $query = [];
@@ -1572,11 +1651,128 @@ function normalise_lesson_video_url($value): string
         return 'https://www.youtube-nocookie.com/embed/' . $youtubeId . '?rel=0';
     }
 
-    if ($host === 'vimeo.com' && preg_match('#/(\d+)(?:/|$)#', $path, $matches)) {
+    if (($host === 'vimeo.com' || preg_match('/(^|\.)vimeo\.com$/', $host)) && preg_match('#/(\d+)(?:/|$)#', $path, $matches)) {
         return 'https://player.vimeo.com/video/' . $matches[1];
     }
 
-    return $url;
+    if (preg_match('/\.(mp4|webm|ogg|m4v)$/i', $path)) {
+        return $url;
+    }
+
+    error_response('Video harus memakai YouTube, Vimeo, atau file HTTPS MP4, WebM, OGG, atau M4V.', 422, 'invalid_video_url');
+}
+
+function normalise_editorial_content($value): string
+{
+    if ($value === null || $value === '' || $value === []) {
+        return '';
+    }
+    if (is_string($value)) {
+        $document = json_decode($value, true);
+    } else {
+        $document = $value;
+    }
+    if (!is_array($document) || !isset($document['blocks']) || !is_array($document['blocks'])) {
+        error_response('Dokumen editorial tidak valid.', 422, 'invalid_editorial_content');
+    }
+    if (count($document['blocks']) > 80) {
+        error_response('Dokumen editorial maksimal berisi 80 blok.', 422, 'invalid_editorial_content');
+    }
+
+    $allowedTypes = ['richText', 'heading', 'image', 'video', 'link', 'cta', 'callout', 'divider'];
+    $allowedRatios = ['natural', 'wide', 'standard', 'square'];
+    $allowedWidths = ['standard', 'wide'];
+    $allowedVariants = ['primary', 'secondary', 'outline'];
+    $allowedTones = ['info', 'practice', 'warning'];
+    $blocks = [];
+    $ids = [];
+    $totalLength = 0;
+    $hasContent = false;
+
+    foreach ($document['blocks'] as $index => $block) {
+        if (!is_array($block)) {
+            error_response('Blok editorial tidak valid.', 422, 'invalid_editorial_content');
+        }
+        $type = (string) ($block['type'] ?? '');
+        if (!in_array($type, $allowedTypes, true)) {
+            error_response('Jenis blok editorial tidak didukung.', 422, 'invalid_editorial_content');
+        }
+        $id = (string) ($block['id'] ?? '');
+        if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $id) || isset($ids[$id])) {
+            error_response('ID blok editorial tidak valid.', 422, 'invalid_editorial_content');
+        }
+        $ids[$id] = true;
+        $normalised = ['id' => $id, 'type' => $type];
+
+        if ($type === 'richText') {
+            $content = profile_text($block['content'] ?? '', 24000);
+            if ($content === '') error_response('Blok teks editorial tidak boleh kosong.', 422, 'invalid_editorial_content');
+            $normalised['content'] = $content;
+            $totalLength += strlen($content);
+            $hasContent = true;
+        } elseif ($type === 'heading') {
+            $content = profile_text($block['content'] ?? '', 500);
+            $level = (int) ($block['level'] ?? 2);
+            if ($content === '' || !in_array($level, [2, 3, 4], true)) error_response('Judul editorial tidak valid.', 422, 'invalid_editorial_content');
+            $normalised['content'] = $content;
+            $normalised['level'] = $level;
+            $totalLength += strlen($content);
+            $hasContent = true;
+        } elseif ($type === 'image') {
+            $normalised['src'] = normalise_editorial_image_url($block['src'] ?? '');
+            $normalised['alt'] = profile_text($block['alt'] ?? '', 280);
+            $normalised['caption'] = profile_text($block['caption'] ?? '', 600);
+            $ratio = (string) ($block['ratio'] ?? 'natural');
+            $width = (string) ($block['width'] ?? 'standard');
+            if (!in_array($ratio, $allowedRatios, true) || !in_array($width, $allowedWidths, true)) error_response('Tampilan gambar editorial tidak valid.', 422, 'invalid_editorial_content');
+            $normalised['ratio'] = $ratio;
+            $normalised['width'] = $width;
+            $totalLength += strlen($normalised['alt']) + strlen($normalised['caption']);
+            $hasContent = true;
+        } elseif ($type === 'video') {
+            $normalised['url'] = normalise_lesson_video_url($block['url'] ?? '');
+            $normalised['caption'] = profile_text($block['caption'] ?? '', 600);
+            if ($normalised['url'] === '') error_response('Blok video editorial harus memiliki tautan.', 422, 'invalid_editorial_content');
+            $totalLength += strlen($normalised['caption']);
+            $hasContent = true;
+        } elseif ($type === 'link') {
+            $normalised['label'] = profile_text($block['label'] ?? '', 160);
+            $normalised['url'] = normalise_editorial_link_url($block['url'] ?? '');
+            $normalised['description'] = profile_text($block['description'] ?? '', 600);
+            if ($normalised['label'] === '') error_response('Tautan editorial harus memiliki label.', 422, 'invalid_editorial_content');
+            $totalLength += strlen($normalised['label']) + strlen($normalised['description']);
+            $hasContent = true;
+        } elseif ($type === 'cta') {
+            $normalised['label'] = profile_text($block['label'] ?? '', 120);
+            $normalised['url'] = normalise_editorial_link_url($block['url'] ?? '');
+            $variant = (string) ($block['variant'] ?? 'primary');
+            if ($normalised['label'] === '' || !in_array($variant, $allowedVariants, true)) error_response('Tombol editorial tidak valid.', 422, 'invalid_editorial_content');
+            $normalised['variant'] = $variant;
+            $totalLength += strlen($normalised['label']);
+            $hasContent = true;
+        } elseif ($type === 'callout') {
+            $normalised['title'] = profile_text($block['title'] ?? '', 160);
+            $normalised['content'] = profile_text($block['content'] ?? '', 2400);
+            $tone = (string) ($block['tone'] ?? 'info');
+            if (($normalised['title'] === '' && $normalised['content'] === '') || !in_array($tone, $allowedTones, true)) error_response('Sorotan editorial tidak valid.', 422, 'invalid_editorial_content');
+            $normalised['tone'] = $tone;
+            $totalLength += strlen($normalised['title']) + strlen($normalised['content']);
+            $hasContent = true;
+        }
+
+        if ($totalLength > 120000) {
+            error_response('Dokumen editorial terlalu panjang.', 422, 'invalid_editorial_content');
+        }
+        $blocks[] = $normalised;
+    }
+
+    if (!$blocks) return '';
+    if (!$hasContent) error_response('Dokumen editorial harus memiliki materi.', 422, 'invalid_editorial_content');
+    $encoded = json_encode(['version' => 1, 'blocks' => $blocks], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if (!is_string($encoded)) {
+        error_response('Dokumen editorial tidak dapat disimpan.', 422, 'invalid_editorial_content');
+    }
+    return $encoded;
 }
 
 function admin_module_input(array $input, ?array $existing = null): array
@@ -1588,6 +1784,10 @@ function admin_module_input(array $input, ?array $existing = null): array
     $category = profile_text($input['category'] ?? $existing['category'] ?? '', 160);
     $summary = profile_text($input['summary'] ?? $existing['summary'] ?? '', 2000);
     $content = trim((string) ($input['content'] ?? $existing['content'] ?? ''));
+    $editorialValue = array_key_exists('editorialContent', $input)
+        ? $input['editorialContent']
+        : (array_key_exists('editorial_content', $input) ? $input['editorial_content'] : ($existing['editorial_content'] ?? ''));
+    $editorialContent = normalise_editorial_content($editorialValue);
     $videoScript = profile_text($input['videoScript'] ?? $input['video_script'] ?? $existing['video_script'] ?? '', 12000);
     $videoUrl = normalise_lesson_video_url($input['videoUrl'] ?? $input['video_url'] ?? $existing['video_url'] ?? '');
     $practicalAssignment = profile_text($input['practicalAssignment'] ?? $input['practical_assignment'] ?? $existing['practical_assignment'] ?? '', 3000);
@@ -1598,8 +1798,8 @@ function admin_module_input(array $input, ?array $existing = null): array
     if ($levelNumber < 1 || $levelNumber > 20 || $moduleNumber < 1 || $moduleNumber > 999) {
         error_response('Level dan nomor modul tidak valid.', 422, 'validation_error');
     }
-    if ($levelName === '' || $title === '' || $content === '') {
-        error_response('Level, judul, dan isi modul wajib diisi.', 422, 'validation_error');
+    if ($levelName === '' || $title === '' || ($content === '' && $editorialContent === '')) {
+        error_response('Level, judul, dan materi modul wajib diisi.', 422, 'validation_error');
     }
     if (strlen($content) > 100000) {
         error_response('Isi modul terlalu panjang.', 422, 'validation_error');
@@ -1612,6 +1812,7 @@ function admin_module_input(array $input, ?array $existing = null): array
         'category' => $category,
         'summary' => $summary,
         'content' => $content,
+        'editorialContent' => $editorialContent,
         'videoScript' => $videoScript,
         'videoUrl' => $videoUrl,
         'learningObjectives' => json_encode($objectives, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -1633,8 +1834,8 @@ function admin_create_module(array $input): array
     if ($data['sortOrder'] === 0) {
         $data['sortOrder'] = ((int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM course_modules')->fetchColumn()) + 1;
     }
-    $insert = db()->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, video_url, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $insert->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder']]);
+    $insert = db()->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, editorial_content, video_script, video_url, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $insert->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['editorialContent'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder']]);
     return present_module(admin_module_from_id((int) db()->lastInsertId()) ?: []);
 }
 
@@ -1657,8 +1858,8 @@ function admin_update_module(int $moduleId, array $input): array
             error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
         }
     }
-    $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
+    $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, editorial_content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['editorialContent'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
     return present_module(admin_module_from_id($moduleId) ?: []);
 }
 

@@ -28,32 +28,54 @@ export const lessonSections = [
   },
 ];
 
-function embeddableVideoUrl(value) {
+function safeInternalVideoPath(value) {
+  if (typeof value !== "string") return null;
+  const path = value.trim();
+  if (!path.startsWith("/") || path.startsWith("//")) return null;
+  if (path.includes("\\") || /(?:^|\/)\.\.?($|\/)/.test(path)) return null;
+  return /\.(mp4|webm|ogg|m4v)(?:[?#]|$)/i.test(path) ? path : null;
+}
+
+export function trustedVideoSource(value) {
+  const internalPath = safeInternalVideoPath(value);
+  if (internalPath) return { kind: "file", src: internalPath };
+
   try {
-    const source = new URL(value, "https://academy.invalid");
+    const source = new URL(value);
+    if (source.protocol !== "https:" || !source.hostname || source.username || source.password) {
+      return null;
+    }
     const hostname = source.hostname.replace(/^www\./, "").toLowerCase();
 
     if (hostname === "youtu.be") {
       const id = source.pathname.split("/").filter(Boolean)[0];
-      return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : value;
+      return id && /^[A-Za-z0-9_-]{6,}$/.test(id)
+        ? { kind: "embed", src: `https://www.youtube-nocookie.com/embed/${id}?rel=0` }
+        : null;
     }
 
-    if (hostname === "youtube.com" || hostname === "youtube-nocookie.com") {
+    if (hostname === "youtube.com" || hostname === "m.youtube.com" || hostname === "youtube-nocookie.com") {
       const id =
         source.searchParams.get("v") ||
         source.pathname.match(/^\/(?:embed|shorts)\/([^/?#]+)/)?.[1];
-      return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : value;
+      return id && /^[A-Za-z0-9_-]{6,}$/.test(id)
+        ? { kind: "embed", src: `https://www.youtube-nocookie.com/embed/${id}?rel=0` }
+        : null;
     }
 
     if (hostname === "vimeo.com" || hostname.endsWith(".vimeo.com")) {
       const id = source.pathname.match(/\/(\d+)(?:\/|$)/)?.[1];
-      return id ? `https://player.vimeo.com/video/${id}` : value;
+      return id ? { kind: "embed", src: `https://player.vimeo.com/video/${id}` } : null;
+    }
+
+    if (/\.(mp4|webm|ogg|m4v)$/i.test(source.pathname)) {
+      return { kind: "file", src: source.toString() };
     }
   } catch {
-    return value;
+    return null;
   }
 
-  return value;
+  return null;
 }
 
 export function LessonMedia({ module = null } = {}) {
@@ -66,27 +88,23 @@ export function LessonMedia({ module = null } = {}) {
         : typeof module.video === "string" && module.video.trim()
           ? module.video
           : null;
-  const isVideoFile = Boolean(
-    mediaUrl && /\.(mp4|webm|ogg)(\?|#|$)/i.test(mediaUrl),
-  );
-  const playerUrl =
-    mediaUrl && !isVideoFile ? embeddableVideoUrl(mediaUrl) : mediaUrl;
+  const source = trustedVideoSource(mediaUrl);
 
-  if (mediaUrl) {
+  if (source) {
     return (
       <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-black shadow-sm">
-        {isVideoFile ? (
+        {source.kind === "file" ? (
           <video
             className="absolute inset-0 h-full w-full object-contain"
             controls
             playsInline
             preload="metadata"
-            src={mediaUrl}
+            src={source.src}
           />
         ) : (
           <iframe
             className="absolute inset-0 h-full w-full"
-            src={playerUrl}
+            src={source.src}
             title={`Video lesson ${module.title}`}
             loading="lazy"
             referrerPolicy="strict-origin-when-cross-origin"
@@ -95,6 +113,21 @@ export function LessonMedia({ module = null } = {}) {
           />
         )}
       </div>
+    );
+  }
+
+  if (mediaUrl) {
+    return (
+      <Card className="border-amber-500/25 bg-amber-500/5 shadow-none">
+        <CardContent className="flex items-start gap-3 p-4 sm:p-5">
+          <IconTile icon="solar:shield-warning-bold" tone="orange" size="md" />
+          <div className="min-w-0">
+            <Badge variant="soft" className="bg-card/70 text-[10px] uppercase tracking-[0.14em] text-foreground">Media dibatasi</Badge>
+            <h3 className="mt-2 text-sm font-semibold text-foreground">Tautan video tidak dapat ditampilkan</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">Untuk menjaga keamanan lesson, gunakan YouTube, Vimeo, atau file video HTTPS/internal dengan format MP4, WebM, OGG, atau M4V.</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
