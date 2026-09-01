@@ -384,6 +384,9 @@ export default function AdminModuleEditor() {
       keyTakeaways: textToList(form.keyTakeaways),
       checklist: textToList(form.checklist),
     };
+    if (!isNew && payload.videoUrl === (data?.module?.videoUrl || "")) {
+      delete payload.videoUrl;
+    }
     try {
       const result = isNew
         ? await createModule.mutateAsync(payload)

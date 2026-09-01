@@ -1,4 +1,32 @@
 export const EDITORIAL_DOCUMENT_VERSION = 1;
+export const EDITORIAL_TEXT_LIMIT = 120000;
+
+const textFieldsByBlockType = {
+  richText: ["content"],
+  heading: ["content"],
+  image: ["alt", "caption"],
+  video: ["caption"],
+  link: ["label", "description"],
+  cta: ["label"],
+  callout: ["title", "content"],
+  divider: [],
+};
+
+const textByteLength = (value) => {
+  const textValue = typeof value === "string" ? value : "";
+  if (typeof TextEncoder !== "undefined") {
+    return new TextEncoder().encode(textValue).length;
+  }
+  return unescape(encodeURIComponent(textValue)).length;
+};
+
+export function editorialTextLength(blocks = []) {
+  if (!Array.isArray(blocks)) return 0;
+  return blocks.reduce((total, block) => {
+    const fields = textFieldsByBlockType[block?.type] || [];
+    return total + fields.reduce((blockTotal, field) => blockTotal + textByteLength(block?.[field]), 0);
+  }, 0);
+}
 
 export const editorialBlockLibrary = [
   {

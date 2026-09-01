@@ -555,15 +555,35 @@ function ensure_course_module_editorial_content(PDO $pdo, string $driver): void
                 return;
             }
         }
-        $pdo->exec('ALTER TABLE course_modules ADD COLUMN editorial_content TEXT NULL');
+        try {
+            $pdo->exec('ALTER TABLE course_modules ADD COLUMN editorial_content TEXT NULL');
+        } catch (PDOException $exception) {
+            if (!is_duplicate_column_exception($exception)) {
+                throw $exception;
+            }
+        }
         return;
     }
 
     $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
     $column->execute(['course_modules', 'editorial_content']);
     if (!$column->fetchColumn()) {
-        $pdo->exec('ALTER TABLE course_modules ADD COLUMN editorial_content MEDIUMTEXT NULL AFTER content');
+        try {
+            $pdo->exec('ALTER TABLE course_modules ADD COLUMN editorial_content MEDIUMTEXT NULL AFTER content');
+        } catch (PDOException $exception) {
+            if (!is_duplicate_column_exception($exception)) {
+                throw $exception;
+            }
+        }
     }
+}
+
+function is_duplicate_column_exception(PDOException $exception): bool
+{
+    $code = (string) $exception->getCode();
+    $message = strtolower($exception->getMessage());
+    return in_array($code, ['42S21', 'HY000'], true)
+        && (strpos($message, 'duplicate column') !== false || strpos($message, 'duplicate field') !== false);
 }
 
 function ensure_course_module_video_url(PDO $pdo, string $driver): void
@@ -1789,7 +1809,10 @@ function admin_module_input(array $input, ?array $existing = null): array
         : (array_key_exists('editorial_content', $input) ? $input['editorial_content'] : ($existing['editorial_content'] ?? ''));
     $editorialContent = normalise_editorial_content($editorialValue);
     $videoScript = profile_text($input['videoScript'] ?? $input['video_script'] ?? $existing['video_script'] ?? '', 12000);
-    $videoUrl = normalise_lesson_video_url($input['videoUrl'] ?? $input['video_url'] ?? $existing['video_url'] ?? '');
+    $hasVideoUrl = array_key_exists('videoUrl', $input) || array_key_exists('video_url', $input);
+    $videoUrl = $hasVideoUrl
+        ? normalise_lesson_video_url($input['videoUrl'] ?? $input['video_url'] ?? '')
+        : (string) ($existing['video_url'] ?? '');
     $practicalAssignment = profile_text($input['practicalAssignment'] ?? $input['practical_assignment'] ?? $existing['practical_assignment'] ?? '', 3000);
     $objectives = admin_string_list($input['learningObjectives'] ?? $input['learning_objectives'] ?? decode_json_field($existing['learning_objectives'] ?? '[]'));
     $takeaways = admin_string_list($input['keyTakeaways'] ?? $input['key_takeaways'] ?? decode_json_field($existing['key_takeaways'] ?? '[]'));

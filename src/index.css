@@ -1926,7 +1926,7 @@
     @apply border-l-4 border-amber-300 pl-3 italic text-muted-foreground my-3;
   }
   .markdown-body table {
-    @apply w-full border-collapse my-3 text-sm;
+    @apply min-w-full w-max border-collapse text-sm;
   }
   .markdown-body th {
     @apply bg-muted font-medium px-3 py-2 text-left border border-border;

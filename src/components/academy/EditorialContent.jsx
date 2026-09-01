@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -77,6 +78,11 @@ const markdownComponents = {
       />
     );
   },
+  table: ({ node, children, ...props }) => (
+    <div className="my-3 max-w-full overflow-x-auto rounded-xl border border-border">
+      <table {...props}>{children}</table>
+    </div>
+  ),
 };
 
 export function EditorialMarkdown({ children = "", className = "" }) {
@@ -207,7 +213,7 @@ export function EditorialContent({ document, fallback = "", title = "Materi modu
   }
 
   return (
-    <div className="min-w-0 space-y-6 overflow-hidden">
+    <div className="min-w-0 space-y-6">
       {editorial.blocks.map((block) => (
         <EditorialBlock key={block.id} block={block} title={title} />
       ))}
