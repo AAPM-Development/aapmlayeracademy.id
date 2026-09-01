@@ -505,13 +505,26 @@
   }
 
   /*
-   * Scrollable surfaces use a state-aware edge treatment. The fade is hidden
-   * until the matching data attribute says there is more content in that
-   * direction, so it cannot sit over the final row of a page or card.
+   * Scrollable surfaces use a state-aware edge treatment. Keep the fade on
+   * the scrollport itself instead of adding children to its scrollable
+   * content; inset shadows stay pinned to the viewport while the content
+   * moves underneath them.
    */
   .aapm-scroll-fade {
     isolation: isolate;
     position: relative;
+    --scroll-fade-size: 1.35rem;
+    --scroll-fade-color: hsl(var(--background) / 0.76);
+    --scroll-fade-shadow-top: inset 0 0 0 transparent;
+    --scroll-fade-shadow-right: inset 0 0 0 transparent;
+    --scroll-fade-shadow-bottom: inset 0 0 0 transparent;
+    --scroll-fade-shadow-left: inset 0 0 0 transparent;
+    box-shadow:
+      var(--scroll-fade-shadow-top),
+      var(--scroll-fade-shadow-right),
+      var(--scroll-fade-shadow-bottom),
+      var(--scroll-fade-shadow-left);
+    transition: box-shadow var(--duration-fast) ease;
   }
 
   .aapm-scroll-fade,
@@ -520,89 +533,24 @@
     scrollbar-width: thin;
   }
 
-  .aapm-scroll-fade::before,
-  .aapm-scroll-fade::after {
-    position: absolute;
-    inset-inline: 0;
-    z-index: 20;
-    height: 1.35rem;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity var(--duration-fast) ease;
-    content: "";
+  .aapm-scroll-fade--subtle {
+    --scroll-fade-color: hsl(var(--surface-subtle) / 0.78);
   }
 
-  .aapm-scroll-fade::before {
-    top: 0;
-    background: linear-gradient(
-      to bottom,
-      hsl(var(--background) / 0.92),
-      hsl(var(--background) / 0)
-    );
+  .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-top="true"] {
+    --scroll-fade-shadow-top: inset 0 var(--scroll-fade-size) var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
   }
 
-  .aapm-scroll-fade::after {
-    bottom: 0;
-    background: linear-gradient(
-      to top,
-      hsl(var(--background) / 0.94),
-      hsl(var(--background) / 0)
-    );
+  .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-bottom="true"] {
+    --scroll-fade-shadow-bottom: inset 0 calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
   }
 
-  .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-top="true"]::before,
-  .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-bottom="true"]::after {
-    opacity: 1;
+  .aapm-scroll-fade--x[data-scroll-left="true"] {
+    --scroll-fade-shadow-left: inset var(--scroll-fade-size) 0 var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
   }
 
-  .aapm-scroll-fade--subtle::before {
-    background: linear-gradient(
-      to bottom,
-      hsl(var(--surface-subtle) / 0.94),
-      hsl(var(--surface-subtle) / 0)
-    );
-  }
-
-  .aapm-scroll-fade--subtle::after {
-    background: linear-gradient(
-      to top,
-      hsl(var(--surface-subtle) / 0.96),
-      hsl(var(--surface-subtle) / 0)
-    );
-  }
-
-  .aapm-scroll-fade--x::after {
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: auto;
-    width: 1.75rem;
-    height: auto;
-    opacity: 0;
-    background: linear-gradient(
-      to left,
-      hsl(var(--background) / 0.94),
-      hsl(var(--background) / 0)
-    );
-  }
-
-  .aapm-scroll-fade--x::before {
-    top: 0;
-    right: auto;
-    bottom: 0;
-    left: 0;
-    width: 1.75rem;
-    height: auto;
-    background: linear-gradient(
-      to right,
-      hsl(var(--background) / 0.94),
-      hsl(var(--background) / 0)
-    );
-  }
-
-  .aapm-scroll-fade--x[data-scroll-left="true"]::before,
-  .aapm-scroll-fade--x[data-scroll-right="true"]::after {
-    opacity: 1;
+  .aapm-scroll-fade--x[data-scroll-right="true"] {
+    --scroll-fade-shadow-right: inset calc(-1 * var(--scroll-fade-size)) 0 var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
   }
 
   .aapm-scroll-fade::-webkit-scrollbar,
@@ -635,8 +583,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .aapm-scroll-fade::before,
-    .aapm-scroll-fade::after {
+    .aapm-scroll-fade {
       transition: none;
     }
   }
