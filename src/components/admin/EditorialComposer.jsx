@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
   createEditorialBlock,
   createEditorialDocument,
+  createEditorialSlide,
   EDITORIAL_TEXT_LIMIT,
   editorialBlockLibrary,
   editorialTextLength,
@@ -32,6 +33,132 @@ function Field({ label, children, hint = "" }) {
       <Label>{label}</Label>
       {children}
       {hint && <p className="text-[11px] leading-5 text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function moveInList(items, sourceIndex, destinationIndex) {
+  if (destinationIndex < 0 || destinationIndex >= items.length || sourceIndex === destinationIndex) return items;
+  const next = [...items];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(destinationIndex, 0, moved);
+  return next;
+}
+
+function TableBlockFields({ block, onChange }) {
+  const columns = Array.isArray(block.columns) ? block.columns : [];
+  const rows = Array.isArray(block.rows) ? block.rows : [];
+  const setColumns = (nextColumns) => {
+    onChange({
+      columns: nextColumns,
+      rows: rows.map((row) => nextColumns.map((_, index) => row?.[index] || "")),
+    });
+  };
+  const updateRow = (rowIndex, columnIndex, value) => {
+    onChange({
+      rows: rows.map((row, currentRow) => currentRow === rowIndex ? row.map((cell, currentColumn) => currentColumn === columnIndex ? value : cell) : row),
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Field label="Judul tabel (opsional)">
+        <Input value={block.title} onChange={(event) => onChange({ title: event.target.value })} placeholder="Contoh: Target pemeriksaan harian" />
+      </Field>
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs font-semibold">Struktur tabel</div>
+          <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">Maksimal 8 kolom dan 20 baris. Learner dapat menggeser tabel secara horizontal pada layar kecil.</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button type="button" size="sm" variant="outline" disabled={columns.length >= 8} onClick={() => setColumns([...columns, `Kolom ${columns.length + 1}`])}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah kolom</Button>
+          <Button type="button" size="sm" variant="outline" disabled={columns.length <= 1} onClick={() => setColumns(columns.slice(0, -1))}><AapmIcon name="minus" className="h-3.5 w-3.5" />Kurangi kolom</Button>
+        </div>
+      </div>
+      <div className="max-w-full overflow-x-auto rounded-xl border border-border bg-background">
+        <div className="min-w-[42rem] space-y-3 p-3">
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(11rem, 1fr))` }}>
+            {columns.map((column, index) => (
+              <Field key={`column-${index}`} label={`Kolom ${index + 1}`}>
+                <Input value={column} maxLength={160} onChange={(event) => setColumns(columns.map((item, currentIndex) => currentIndex === index ? event.target.value : item))} />
+              </Field>
+            ))}
+          </div>
+          <div className="space-y-3 border-t border-border pt-3">
+            {rows.map((row, rowIndex) => (
+              <div key={`row-${rowIndex}`} className="rounded-lg border border-border p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-muted-foreground">Baris {rowIndex + 1}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={rowIndex === 0} onClick={() => onChange({ rows: moveInList(rows, rowIndex, rowIndex - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" />Naik</Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={rowIndex === rows.length - 1} onClick={() => onChange({ rows: moveInList(rows, rowIndex, rowIndex + 1) })}>Turun<AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-danger hover:bg-danger/5 hover:text-danger" disabled={rows.length <= 1} onClick={() => onChange({ rows: rows.filter((_, currentIndex) => currentIndex !== rowIndex) })}><AapmIcon name="delete" className="h-3.5 w-3.5" />Hapus</Button>
+                  </div>
+                </div>
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(11rem, 1fr))` }}>
+                  {columns.map((column, columnIndex) => (
+                    <Field key={`row-${rowIndex}-column-${columnIndex}`} label={column || `Kolom ${columnIndex + 1}`}>
+                      <Textarea rows={2} maxLength={3000} value={row?.[columnIndex] || ""} onChange={(event) => updateRow(rowIndex, columnIndex, event.target.value)} />
+                    </Field>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <Button type="button" size="sm" variant="outline" className="w-full" disabled={rows.length >= 20} onClick={() => onChange({ rows: [...rows, columns.map(() => "")] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah baris</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SlidesBlockFields({ block, onChange }) {
+  const slides = Array.isArray(block.slides) ? block.slides : [];
+  const updateSlide = (index, patch) => onChange({ slides: slides.map((slide, currentIndex) => currentIndex === index ? { ...slide, ...patch } : slide) });
+  return (
+    <div className="space-y-4">
+      <Field label="Judul rangkaian slide (opsional)">
+        <Input value={block.title} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Contoh: Alur pemeriksaan kandang" />
+      </Field>
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-xs font-semibold">Rangkaian slide</div>
+          <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">Setiap slide dapat berupa gambar, teks, atau keduanya. Navigasi learner tetap satu kolom dan responsif.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" disabled={slides.length >= 12} onClick={() => onChange({ slides: [...slides, createEditorialSlide(slides.length + 1)] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah slide</Button>
+      </div>
+      <div className="space-y-3">
+        {slides.map((slide, index) => (
+          <article key={slide.id} className="rounded-xl border border-border bg-background p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <span className="text-xs font-semibold">Slide {index + 1} dari {slides.length}</span>
+              <div className="flex flex-wrap gap-1.5">
+                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={index === 0} onClick={() => onChange({ slides: moveInList(slides, index, index - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" />Naik</Button>
+                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={index === slides.length - 1} onClick={() => onChange({ slides: moveInList(slides, index, index + 1) })}>Turun<AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></Button>
+                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-danger hover:bg-danger/5 hover:text-danger" disabled={slides.length <= 1} onClick={() => onChange({ slides: slides.filter((_, currentIndex) => currentIndex !== index) })}><AapmIcon name="delete" className="h-3.5 w-3.5" />Hapus</Button>
+              </div>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Field label="Judul slide">
+                <Input value={slide.title} maxLength={180} onChange={(event) => updateSlide(index, { title: event.target.value })} />
+              </Field>
+              <Field label="URL gambar (opsional)" hint="Gunakan HTTPS atau /assets/, /media/, /uploads/; SVG dan data URL ditolak.">
+                <Input type="text" inputMode="url" autoCapitalize="off" spellCheck={false} value={slide.src} onChange={(event) => updateSlide(index, { src: event.target.value })} placeholder="https://cdn.example.com/slide-01.png" />
+              </Field>
+              <div className="lg:col-span-2">
+                <Field label="Isi slide (opsional)">
+                  <Textarea rows={3} maxLength={3000} value={slide.content} onChange={(event) => updateSlide(index, { content: event.target.value })} />
+                </Field>
+              </div>
+              <div className="lg:col-span-2">
+                <Field label="Alt text gambar (opsional)">
+                  <Input value={slide.alt} maxLength={280} onChange={(event) => updateSlide(index, { alt: event.target.value })} />
+                </Field>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -73,10 +200,12 @@ function BlockFields({ block, onChange }) {
           </Field>
         </div>
       );
+    case "table":
+      return <TableBlockFields block={block} onChange={onChange} />;
     case "image":
       return (
         <div className="space-y-3">
-          <Field label="URL gambar / GIF" hint="Gunakan HTTPS atau path internal seperti /assets/... . SVG dan data URL ditolak demi keamanan.">
+          <Field label="URL gambar / GIF" hint="Gunakan HTTPS atau path internal /assets/, /media/, /uploads/. SVG dan data URL ditolak demi keamanan.">
             <Input type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://cdn.example.com/observasi-kandang.gif" value={block.src} onChange={(event) => set("src", event.target.value)} />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -111,10 +240,12 @@ function BlockFields({ block, onChange }) {
           </div>
         </div>
       );
+    case "slides":
+      return <SlidesBlockFields block={block} onChange={onChange} />;
     case "video":
       return (
         <div className="space-y-3">
-          <Field label="Tautan video" hint="Hanya YouTube, Vimeo, atau path/file video internal HTTPS yang dapat dipublikasikan.">
+          <Field label="Tautan video" hint="Hanya YouTube, Vimeo, file HTTPS, atau file internal pada /assets/, /media/, /uploads/ yang dapat dipublikasikan.">
             <Input type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/... atau /media/lesson-01.mp4" value={block.url} onChange={(event) => set("url", event.target.value)} />
           </Field>
           <Field label="Keterangan (opsional)">
@@ -200,26 +331,33 @@ function BlockCard({ block, index, total, onChange, onMove, onRemove, dragHandle
         isDragging && "shadow-lg ring-2 ring-brand-orange/25",
       )}
     >
-      <div className="mb-4 flex min-w-0 items-start gap-2">
-        <button
-          type="button"
-          aria-label={`Seret blok ${meta?.label || block.type}`}
-          className="mt-1 cursor-grab rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
-          {...dragHandleProps}
-        >
-          <AapmIcon name="solar:hamburger-menu-bold" className="h-4 w-4" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-brand-orange/25 bg-brand-orange/5 text-brand-orange">{meta?.label || block.type}</Badge>
-            <span className="text-[11px] text-muted-foreground">Blok {index + 1}</span>
+      <div className="mb-4 flex min-w-0 flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-2">
+          <button
+            type="button"
+            aria-label={`Seret blok ${meta?.label || block.type} untuk mengubah urutan`}
+            title="Seret untuk mengubah urutan"
+            className="mt-0.5 inline-flex h-8 shrink-0 cursor-grab items-center gap-1.5 rounded-md border border-border bg-surface-subtle px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+            {...dragHandleProps}
+          >
+            <AapmIcon name="grip" className="h-4 w-4" />
+            <span>Seret</span>
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-brand-orange/25 bg-brand-orange/5 text-brand-orange">{meta?.label || block.type}</Badge>
+              <span className="text-[11px] text-muted-foreground">Posisi {index + 1} dari {total}</span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{meta?.description}</p>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{meta?.description}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Button type="button" size="icon" variant="ghost" aria-label="Pindah blok ke atas" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="arrowUp" className="h-4 w-4" /></Button>
-          <Button type="button" size="icon" variant="ghost" aria-label="Pindah blok ke bawah" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="arrowDown" className="h-4 w-4" /></Button>
-          <Button type="button" size="icon" variant="ghost" aria-label="Hapus blok" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-4 w-4 text-danger" /></Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+          <span className="text-[11px] font-medium text-muted-foreground">Pindahkan</span>
+          <div className="inline-flex overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <Button type="button" size="sm" variant="ghost" className="h-8 rounded-none px-2 text-xs" title="Naik satu posisi" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" />Naik</Button>
+            <Button type="button" size="sm" variant="ghost" className="h-8 rounded-none border-l border-border px-2 text-xs" title="Turun satu posisi" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}>Turun<AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></Button>
+          </div>
+          <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5 border-danger/20 px-2 text-xs text-danger hover:bg-danger/5 hover:text-danger" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" />Hapus</Button>
         </div>
       </div>
       <BlockFields block={block} onChange={onChange} />

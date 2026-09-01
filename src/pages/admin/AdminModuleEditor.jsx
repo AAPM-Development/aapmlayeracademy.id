@@ -435,6 +435,7 @@ export default function AdminModuleEditor() {
     );
   return (
     <AdminPageFrame
+      wide
       title={isNew ? "Tambah modul" : `Edit modul ${form.moduleNumber || ""}`}
       description="Kelola konten belajar, susunan, video, serta evaluasi dengan aman."
       actions={

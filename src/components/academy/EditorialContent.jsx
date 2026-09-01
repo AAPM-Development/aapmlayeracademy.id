@@ -29,12 +29,17 @@ function safeHttpsUrl(value) {
   }
 }
 
+function safeInternalMediaPath(value) {
+  const path = safeInternalPath(value);
+  return path && /^\/(?:assets|media|uploads)(?:\/|$)/.test(path) ? path : null;
+}
+
 export function safeEditorialLink(value) {
   return safeInternalPath(value) || safeHttpsUrl(value);
 }
 
 export function safeEditorialImage(value) {
-  const safe = safeEditorialLink(value);
+  const safe = safeInternalMediaPath(value) || safeHttpsUrl(value);
   if (!safe || /\.svg(?:[?#]|$)/i.test(safe)) return null;
   return safe;
 }
@@ -127,6 +132,71 @@ function ImageBlock({ block }) {
   );
 }
 
+function TableBlock({ block }) {
+  const columns = Array.isArray(block.columns) ? block.columns : [];
+  const rows = Array.isArray(block.rows) ? block.rows : [];
+  if (!columns.length || !rows.length) return null;
+  return (
+    <section className="max-w-4xl">
+      {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
+      <div className="max-w-full overflow-x-auto rounded-xl border border-border bg-background">
+        <table className="min-w-full w-max border-collapse text-sm">
+          <thead className="bg-surface-subtle">
+            <tr>
+              {columns.map((column, index) => <th key={`heading-${index}`} className="min-w-32 border border-border px-3 py-2 text-left font-semibold text-foreground">{column}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={`row-${rowIndex}`} className="align-top even:bg-surface-subtle/55">
+                {columns.map((_, columnIndex) => <td key={`cell-${rowIndex}-${columnIndex}`} className="min-w-32 whitespace-pre-wrap break-words border border-border px-3 py-2 leading-6 text-foreground">{row?.[columnIndex] || ""}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SlidesBlock({ block }) {
+  const slides = Array.isArray(block.slides) ? block.slides : [];
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  if (!slides.length) return null;
+  const safeIndex = Math.min(activeIndex, slides.length - 1);
+  const slide = slides[safeIndex];
+  const image = safeEditorialImage(slide.src);
+  const canGoBack = safeIndex > 0;
+  const canGoForward = safeIndex < slides.length - 1;
+  return (
+    <section className="max-w-4xl">
+      {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle shadow-sm">
+        <div className={cn("grid min-w-0", image && "lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]")}>
+          {image && <div className="aspect-video min-w-0 bg-muted"><img src={image} alt={slide.alt || ""} loading="lazy" decoding="async" className="h-full w-full object-cover" /></div>}
+          <div className="flex min-h-48 min-w-0 flex-col p-5 sm:p-6">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Slide {safeIndex + 1} dari {slides.length}</div>
+            {slide.title && <h4 className="mt-2 break-words text-lg font-semibold tracking-[-0.015em] text-foreground">{slide.title}</h4>}
+            {slide.content && <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{slide.content}</p>}
+            {!slide.title && !slide.content && !image && <p className="text-sm text-muted-foreground">Slide belum memiliki isi.</p>}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/70 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="outline" disabled={!canGoBack} onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}><AapmIcon name="chevronLeft" className="h-3.5 w-3.5" />Sebelumnya</Button>
+            <Button type="button" size="sm" variant="outline" disabled={!canGoForward} onClick={() => setActiveIndex((current) => Math.min(slides.length - 1, current + 1))}>Berikutnya<AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Button>
+          </div>
+          <div className="flex max-w-full flex-wrap justify-end gap-1" aria-label="Pilih slide">
+            {slides.map((item, index) => (
+              <button key={item.id || `slide-${index}`} type="button" aria-label={`Tampilkan slide ${index + 1}`} aria-current={index === safeIndex ? "step" : undefined} onClick={() => setActiveIndex(index)} className={cn("h-2.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", index === safeIndex ? "w-6 bg-brand-orange" : "w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/55")} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CtaBlock({ block }) {
   const href = safeEditorialLink(block.url);
   if (!href || !block.label) return null;
@@ -184,8 +254,12 @@ function EditorialBlock({ block, title }) {
       const Heading = `h${block.level || 2}`;
       return block.content ? <Heading className="max-w-3xl break-words font-semibold tracking-[-0.015em] text-foreground first:mt-0 [&:not(:first-child)]:mt-8">{block.content}</Heading> : null;
     }
+    case "table":
+      return <TableBlock block={block} />;
     case "image":
       return <ImageBlock block={block} />;
+    case "slides":
+      return <SlidesBlock block={block} />;
     case "video":
       return (
         <div className="max-w-4xl">

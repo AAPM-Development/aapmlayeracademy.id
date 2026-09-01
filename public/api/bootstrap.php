@@ -506,6 +506,7 @@ function ensure_schema(PDO $pdo, string $driver): void
     ensure_user_profile_avatar($pdo, $driver);
     ensure_user_ai_supports_vision($pdo, $driver);
     ensure_default_course_module_videos($pdo);
+    ensure_editorial_course_module_videos($pdo);
 }
 
 function ensure_user_profile_avatar(PDO $pdo, string $driver): void
@@ -607,6 +608,34 @@ function ensure_course_module_video_url(PDO $pdo, string $driver): void
 }
 
 function default_course_module_video_urls(): array
+{
+    return [
+        1 => 'https://www.youtube.com/watch?v=kvz8QQG_mXU',
+        2 => 'https://www.youtube.com/watch?v=hsvid7YhOXU',
+        3 => 'https://www.youtube.com/watch?v=nd5-NiPIC0I',
+        4 => 'https://www.youtube.com/watch?v=Z_YYierQRas',
+        5 => 'https://www.youtube.com/watch?v=DfI-cjQxIos',
+        6 => 'https://www.youtube.com/watch?v=SD72BnoRSck',
+        7 => 'https://www.youtube.com/watch?v=FRGJnDn8BGU',
+        8 => 'https://www.youtube.com/watch?v=QOd_27gFlGk',
+        9 => 'https://www.youtube.com/watch?v=Ust1NkPfzMw',
+        10 => 'https://www.youtube.com/watch?v=Q9UpOZ_t6eg',
+        11 => 'https://www.youtube.com/watch?v=8FCC6XPLfqw',
+        12 => 'https://www.youtube.com/watch?v=gJYgqGw8ljw',
+        13 => 'https://www.youtube.com/watch?v=bE5vhWqDiqU',
+        14 => 'https://www.youtube.com/watch?v=ibl923M0i2E',
+        15 => 'https://www.youtube.com/watch?v=RSMWvFUNd8o',
+        16 => 'https://www.youtube.com/watch?v=v8TZ3Gx5edk',
+        17 => 'https://www.youtube.com/watch?v=Urx09wfnosE',
+        18 => 'https://www.youtube.com/watch?v=2aNSaA4RTec',
+        19 => 'https://www.youtube.com/watch?v=x0xbE03LZxk',
+        20 => 'https://www.youtube.com/watch?v=5QkDT-aCwVk',
+        21 => 'https://www.youtube.com/watch?v=NyoRSGe7SBE',
+        22 => 'https://www.youtube.com/watch?v=I-2NsGXXDnM',
+    ];
+}
+
+function legacy_course_module_video_urls(): array
 {
     return [
         1 => 'https://www.youtube.com/watch?v=CCzevPhnGug',
@@ -1056,6 +1085,37 @@ function decode_json_field($value): array
 {
     $decoded = json_decode((string) $value, true);
     return is_array($decoded) ? $decoded : [];
+}
+
+function ensure_editorial_course_module_videos(PDO $pdo): void
+{
+    $migrationKey = 'course_module_video_editorial_refresh_20260901';
+    $existing = $pdo->prepare('SELECT 1 FROM app_settings WHERE setting_key = ? LIMIT 1');
+    $existing->execute([$migrationKey]);
+    if ($existing->fetchColumn()) {
+        return;
+    }
+
+    $legacy = legacy_course_module_video_urls();
+    foreach (default_course_module_video_urls() as $moduleNumber => $videoUrl) {
+        $legacyUrl = $legacy[$moduleNumber] ?? '';
+        $legacyValues = array_values(array_unique(array_filter([
+            $legacyUrl,
+            $legacyUrl !== '' ? normalise_lesson_video_url($legacyUrl) : '',
+        ])));
+        $placeholders = implode(', ', array_fill(0, count($legacyValues), '?'));
+        $update = $pdo->prepare("UPDATE course_modules SET video_url = ? WHERE module_number = ? AND (video_url IS NULL OR TRIM(video_url) = '' OR video_url IN ({$placeholders}))");
+        $update->execute(array_merge([$videoUrl, $moduleNumber], $legacyValues));
+    }
+
+    $marker = $pdo->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)');
+    try {
+        $marker->execute([$migrationKey, 'complete']);
+    } catch (PDOException $exception) {
+        if ((string) $exception->getCode() !== '23000') {
+            throw $exception;
+        }
+    }
 }
 
 function decode_editorial_content($value): ?array
@@ -1602,6 +1662,15 @@ function normalise_editorial_internal_path($value): ?string
     return $path;
 }
 
+function normalise_editorial_internal_media_path($value): ?string
+{
+    $path = normalise_editorial_internal_path($value);
+    if ($path === null || !preg_match('#^/(?:assets|media|uploads)(?:/|$)#', $path)) {
+        return null;
+    }
+    return $path;
+}
+
 function normalise_editorial_link_url($value): string
 {
     $url = trim((string) $value);
@@ -1626,7 +1695,12 @@ function normalise_editorial_link_url($value): string
 
 function normalise_editorial_image_url($value): string
 {
-    $url = normalise_editorial_link_url($value);
+    $rawUrl = trim((string) $value);
+    $internal = normalise_editorial_internal_path($rawUrl);
+    if ($internal !== null && normalise_editorial_internal_media_path($internal) === null) {
+        error_response('Gambar internal editorial hanya boleh memakai /assets/, /media/, atau /uploads/.', 422, 'invalid_editorial_image');
+    }
+    $url = $internal !== null ? $internal : normalise_editorial_link_url($rawUrl);
     $parts = parse_url($url);
     $path = (string) ($parts['path'] ?? $url);
     if (preg_match('/\.svg$/i', $path)) {
@@ -1643,6 +1717,9 @@ function normalise_lesson_video_url($value): string
     }
     $internal = normalise_editorial_internal_path($url);
     if ($internal !== null) {
+        if (normalise_editorial_internal_media_path($internal) === null) {
+            error_response('Video internal hanya boleh memakai /assets/, /media/, atau /uploads/.', 422, 'invalid_video_url');
+        }
         if (!preg_match('/\.(mp4|webm|ogg|m4v)(?:[?#]|$)/i', $internal)) {
             error_response('Video internal harus memakai file MP4, WebM, OGG, atau M4V.', 422, 'invalid_video_url');
         }
@@ -1699,7 +1776,7 @@ function normalise_editorial_content($value): string
         error_response('Dokumen editorial maksimal berisi 80 blok.', 422, 'invalid_editorial_content');
     }
 
-    $allowedTypes = ['richText', 'heading', 'image', 'video', 'link', 'cta', 'callout', 'divider'];
+    $allowedTypes = ['richText', 'heading', 'table', 'image', 'slides', 'video', 'link', 'cta', 'callout', 'divider'];
     $allowedRatios = ['natural', 'wide', 'standard', 'square'];
     $allowedWidths = ['standard', 'wide'];
     $allowedVariants = ['primary', 'secondary', 'outline'];
@@ -1738,6 +1815,35 @@ function normalise_editorial_content($value): string
             $normalised['level'] = $level;
             $totalLength += strlen($content);
             $hasContent = true;
+        } elseif ($type === 'table') {
+            $normalised['title'] = profile_text($block['title'] ?? '', 160);
+            $columns = $block['columns'] ?? null;
+            $rows = $block['rows'] ?? null;
+            if (!is_array($columns) || count($columns) < 1 || count($columns) > 8 || !is_array($rows) || count($rows) < 1 || count($rows) > 20) {
+                error_response('Tabel editorial harus memiliki 1–8 kolom dan 1–20 baris.', 422, 'invalid_editorial_content');
+            }
+            $normalised['columns'] = [];
+            foreach ($columns as $column) {
+                $columnText = profile_text($column, 160);
+                if ($columnText === '') error_response('Judul kolom tabel editorial wajib diisi.', 422, 'invalid_editorial_content');
+                $normalised['columns'][] = $columnText;
+                $totalLength += strlen($columnText);
+            }
+            $normalised['rows'] = [];
+            foreach ($rows as $row) {
+                if (!is_array($row) || count($row) !== count($normalised['columns'])) {
+                    error_response('Setiap baris tabel editorial harus sesuai jumlah kolom.', 422, 'invalid_editorial_content');
+                }
+                $normalisedRow = [];
+                foreach (array_values($row) as $cell) {
+                    $cellText = profile_text($cell, 3000);
+                    $normalisedRow[] = $cellText;
+                    $totalLength += strlen($cellText);
+                }
+                $normalised['rows'][] = $normalisedRow;
+            }
+            $totalLength += strlen($normalised['title']);
+            $hasContent = true;
         } elseif ($type === 'image') {
             $normalised['src'] = normalise_editorial_image_url($block['src'] ?? '');
             $normalised['alt'] = profile_text($block['alt'] ?? '', 280);
@@ -1748,6 +1854,42 @@ function normalise_editorial_content($value): string
             $normalised['ratio'] = $ratio;
             $normalised['width'] = $width;
             $totalLength += strlen($normalised['alt']) + strlen($normalised['caption']);
+            $hasContent = true;
+        } elseif ($type === 'slides') {
+            $normalised['title'] = profile_text($block['title'] ?? '', 160);
+            $slides = $block['slides'] ?? null;
+            if (!is_array($slides) || count($slides) < 1 || count($slides) > 12) {
+                error_response('Rangkaian editorial harus memiliki 1–12 slide.', 422, 'invalid_editorial_content');
+            }
+            $normalised['slides'] = [];
+            $slideIds = [];
+            foreach ($slides as $slide) {
+                if (!is_array($slide)) error_response('Slide editorial tidak valid.', 422, 'invalid_editorial_content');
+                $slideId = (string) ($slide['id'] ?? '');
+                if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $slideId) || isset($slideIds[$slideId])) {
+                    error_response('ID slide editorial tidak valid.', 422, 'invalid_editorial_content');
+                }
+                $slideIds[$slideId] = true;
+                $slideTitle = profile_text($slide['title'] ?? '', 180);
+                $slideContent = profile_text($slide['content'] ?? '', 3000);
+                $slideSource = trim((string) ($slide['src'] ?? ''));
+                $slideAlt = profile_text($slide['alt'] ?? '', 280);
+                if ($slideSource !== '') {
+                    $slideSource = normalise_editorial_image_url($slideSource);
+                }
+                if ($slideTitle === '' && $slideContent === '' && $slideSource === '') {
+                    error_response('Setiap slide editorial harus memiliki gambar, judul, atau isi.', 422, 'invalid_editorial_content');
+                }
+                $normalised['slides'][] = [
+                    'id' => $slideId,
+                    'title' => $slideTitle,
+                    'content' => $slideContent,
+                    'src' => $slideSource,
+                    'alt' => $slideAlt,
+                ];
+                $totalLength += strlen($slideTitle) + strlen($slideContent) + strlen($slideAlt);
+            }
+            $totalLength += strlen($normalised['title']);
             $hasContent = true;
         } elseif ($type === 'video') {
             $normalised['url'] = normalise_lesson_video_url($block['url'] ?? '');

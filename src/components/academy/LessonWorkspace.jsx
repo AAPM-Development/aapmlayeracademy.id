@@ -33,6 +33,7 @@ function safeInternalVideoPath(value) {
   const path = value.trim();
   if (!path.startsWith("/") || path.startsWith("//")) return null;
   if (path.includes("\\") || /(?:^|\/)\.\.?($|\/)/.test(path)) return null;
+  if (!/^\/(?:assets|media|uploads)(?:\/|$)/.test(path)) return null;
   return /\.(mp4|webm|ogg|m4v)(?:[?#]|$)/i.test(path) ? path : null;
 }
 
