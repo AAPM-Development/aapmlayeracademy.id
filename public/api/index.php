@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/editorialMedia.php';
 require_once __DIR__ . '/openrouter.php';
 
 apply_security_headers();
@@ -346,6 +347,24 @@ try {
         $input = request_json();
         admin_reset_user_password((int) $matches[1], (string) ($input['password'] ?? ''));
         json_response(['ok' => true]);
+    }
+
+    if ($path === 'admin/media/images' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $identity = 'editorial-media-' . (int) ($actor['id'] ?? 0);
+        rate_limit_guard('editorial_upload', $identity, 100, 900, 900);
+        rate_limit_failure('editorial_upload', $identity, 100, 900, 900);
+        json_response(['media' => admin_upload_editorial_image()], 201);
+    }
+
+    if ($path === 'admin/media/presentations' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $identity = 'editorial-media-' . (int) ($actor['id'] ?? 0);
+        rate_limit_guard('editorial_upload', $identity, 100, 900, 900);
+        rate_limit_failure('editorial_upload', $identity, 100, 900, 900);
+        json_response(['presentation' => admin_upload_editorial_presentation()], 201);
     }
 
     if ($path === 'admin/modules' && $method === 'POST') {

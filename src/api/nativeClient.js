@@ -10,8 +10,9 @@ class ApiError extends Error {
   }
 }
 
-async function request(path, options = {}) {
-  const method = (options.method || "GET").toUpperCase();
+async function request(path, options = /** @type {any} */ ({})) {
+  const { multipart = false, ...fetchOptions } = options;
+  const method = (fetchOptions.method || "GET").toUpperCase();
   const writes = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
   if (!csrfToken && writes && path !== "/auth/csrf") {
     await request("/auth/csrf");
@@ -19,13 +20,15 @@ async function request(path, options = {}) {
 
   const headers = {
     Accept: "application/json",
-    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(fetchOptions.body && !multipart
+      ? { "Content-Type": "application/json" }
+      : {}),
     ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
     ...(options.headers || {}),
   };
 
   const response = await fetch(`${API_ROOT}${path}`, {
-    ...options,
+    ...fetchOptions,
     credentials: "same-origin",
     headers,
   });
@@ -127,6 +130,14 @@ async function stream(path, body, onEvent) {
     if (done) break;
   }
   if (buffer.trim()) dispatch(buffer);
+}
+
+async function upload(path, formData) {
+  return request(path, {
+    method: "POST",
+    body: formData,
+    multipart: true,
+  });
 }
 
 const json = (body) => ({ method: "POST", body: JSON.stringify(body) });
@@ -313,6 +324,18 @@ export const nativeApi = {
           `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
           { method: "DELETE" },
         ),
+    },
+    media: {
+      uploadImage: (file) => {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        return upload("/admin/media/images", formData);
+      },
+      uploadPresentation: (file) => {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        return upload("/admin/media/presentations", formData);
+      },
     },
     aiSettings: {
       get: () => request("/admin/ai-settings"),

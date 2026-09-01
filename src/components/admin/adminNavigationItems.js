@@ -21,7 +21,7 @@ export const adminPlannedCapabilities = [
   },
   {
     label: "Pustaka media",
-    detail: "Upload dan manajemen media perlu penyimpanan server yang dikelola secara terpisah.",
+    detail: "Gambar dan presentasi PPTX dapat diunggah langsung dari editor modul; pustaka lintas-modul masih bertahap.",
     icon: "media",
   },
   {

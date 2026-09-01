@@ -38,6 +38,7 @@ import {
   useSaveAdminQuestion,
   useUpdateAdminModule,
 } from "@/lib/useAdminData";
+import { createEditorialBlock, createEditorialDocument, ensureEditorialDocument, hasEditorialVideo } from "@/lib/editorialDocument";
 
 const emptyModule = {
   levelNumber: 1,
@@ -350,6 +351,7 @@ export default function AdminModuleEditor() {
   const deleteModule = useDeleteAdminModule();
   const [form, setForm] = useState(emptyModule);
   const [pendingModuleDelete, setPendingModuleDelete] = useState(false);
+  const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
   useEffect(() => {
     const module = data?.module;
     if (!module) return;
@@ -373,6 +375,18 @@ export default function AdminModuleEditor() {
   }, [data]);
   const set = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const moveLegacyVideoIntoEditorial = () => {
+    const url = form.videoUrl.trim();
+    if (!url || editorialVideoIsPresent) return;
+    const document = ensureEditorialDocument(form.editorialContent);
+    const video = createEditorialBlock("video");
+    setForm((current) => ({
+      ...current,
+      videoUrl: "",
+      editorialContent: createEditorialDocument([...document.blocks, { ...video, url }]),
+    }));
+    toast({ title: "Video dipindahkan ke kanvas", description: "Video ditambahkan di urutan terakhir; atur posisinya dari kartu editorial." });
+  };
   const save = async (event) => {
     event.preventDefault();
     const payload = {
@@ -507,7 +521,7 @@ export default function AdminModuleEditor() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Urutan tampil</Label>
+                  <Label>Urutan modul di roadmap</Label>
                   <Input
                     type="number"
                     min="0"
@@ -545,17 +559,16 @@ export default function AdminModuleEditor() {
             <Surface className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Media</div>
-                  <h2 className="text-sm font-semibold">Video materi</h2>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Media fallback</div>
+                  <h2 className="text-sm font-semibold">Video lama (opsional)</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Simpan tautan YouTube, Vimeo, atau file MP4/WebM. Tautan
-                    YouTube otomatis memakai embed yang aman.
+                    Gunakan blok <strong>Video</strong> di kanvas editorial untuk menentukan posisi tampil learner. Field ini hanya dipakai oleh modul lama yang belum memiliki blok video editorial.
                   </p>
                 </div>
                 <AapmIcon name="play" className="h-5 w-5 text-brand-orange" />
               </div>
               <div className="mt-4 space-y-2">
-                <Label htmlFor="module-video-url">Tautan video</Label>
+                <Label htmlFor="module-video-url">Tautan video fallback</Label>
                 <Input
                   id="module-video-url"
                   type="text"
@@ -572,9 +585,14 @@ export default function AdminModuleEditor() {
                   className="text-[11px] text-muted-foreground"
                 >
                   Kosongkan bila modul belum memiliki video. Mendukung URL
-                  HTTPS/HTTP dan path media internal; penyimpanan akan
+                  HTTPS dan path media internal; penyimpanan akan
                   memvalidasi tautan sebelum diterbitkan.
                 </p>
+                {editorialVideoIsPresent ? (
+                  <p className="rounded-lg border border-brand-orange/20 bg-brand-orange/5 px-3 py-2 text-[11px] leading-5 text-muted-foreground">Blok Video pada kanvas editorial aktif, sehingga learner akan mengikuti urutan kanvas dan mengabaikan video fallback ini.</p>
+                ) : form.videoUrl.trim() ? (
+                  <Button type="button" size="sm" variant="outline" className="mt-1" onClick={moveLegacyVideoIntoEditorial}><AapmIcon name="arrowDown" className="h-3.5 w-3.5" />Pindahkan ke kanvas editorial</Button>
+                ) : null}
               </div>
               {/^(https?:\/\/|\/(?!\/))/.test(form.videoUrl.trim()) && (
                 <div className="mt-5">
@@ -646,18 +664,29 @@ export default function AdminModuleEditor() {
                 </div>
               </div>
             </Surface>
-            <Surface variant="muted" className="sticky bottom-3 z-20 flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name="checkRead" className="h-4 w-4 text-brand-green" /> Perubahan hanya aktif setelah disimpan.</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
+            <Surface variant="muted" className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-20 flex flex-col gap-3 p-3 lg:bottom-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name="checkRead" className="h-4 w-4 text-brand-green" /> Perubahan hanya aktif setelah disimpan.</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
           </form>
         </TabsContent>
         <TabsContent value="preview" className="mt-5">
-          <Surface className="p-5 sm:p-7">
-            <div className="mx-auto max-w-4xl">
-              <div className="mb-6 border-b border-border pb-5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Viewport learner</div>
+          <Surface className="p-3 sm:p-5 lg:p-7">
+            <div className="mx-auto max-w-[1280px]">
+              <div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Pratinjau learner</div>
                 <h2 className="mt-1 text-xl font-semibold">{form.title || "Pratinjau materi"}</h2>
                 {form.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.summary}</p>}
+                </div>
+                <p className="max-w-sm text-xs leading-5 text-muted-foreground">Kanvas ini memakai lebar learner sebenarnya; elemen editorial akan tetap mengalir responsif di layar kecil.</p>
               </div>
-              <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
+              <div className="rounded-2xl border border-border bg-background p-3 shadow-sm sm:p-5 lg:p-7">
+                <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
+                {!editorialVideoIsPresent && form.videoUrl.trim() && (
+                  <div className="mt-7 border-t border-border pt-7">
+                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video fallback modul</p>
+                    <LessonMedia module={{ title: form.title || "Video lesson", videoUrl: form.videoUrl }} />
+                    {form.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{form.videoScript}</p>}
+                  </div>
+                )}
+              </div>
             </div>
           </Surface>
         </TabsContent>

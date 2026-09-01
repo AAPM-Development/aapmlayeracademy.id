@@ -200,6 +200,7 @@ export function LessonSidebar({
   module = null,
   activeSection = "content",
   onSectionChange = (_section) => {},
+  sections = lessonSections,
 } = {}) {
   if (!module) return null;
   return (
@@ -209,7 +210,7 @@ export function LessonSidebar({
           Peta materi
         </div>
         <div className="space-y-1">
-          {lessonSections.map((section) => {
+          {sections.map((section) => {
             const active = activeSection === section.id;
             return (
               <button

@@ -84,11 +84,20 @@ The `develop` branch deploys the Vite artifact in `dist/` to
    the runtime label from the request host, so this shared file does not need
    separate `app_env` values for production and staging.
 3. Set the staging domain to PHP 8.4 and enable `pdo_mysql`.
-4. Leave `app_url` empty when the same config file serves both domains; the API
+4. Before enabling editorial image or PPTX uploads, set the staging domain's
+   values in cPanel **MultiPHP INI Editor** (do not edit the repository
+   `php.ini`): `upload_max_filesize = 50M` and `post_max_size = 64M` or higher.
+   The application validates images up to 20 MB and presentations up to 50 MB.
+   The main and staging sites intentionally share MySQL, but each document root
+   has its own `/uploads` directory. Therefore, do not save editorial uploads
+   from staging until `/uploads` is mapped to shared media storage on both
+   domains, staging uses a separate database, or an explicit media-promotion
+   process is in place.
+5. Leave `app_url` empty when the same config file serves both domains; the API
    derives the current HTTPS host for reset links and OAuth callbacks. Set
    `mail_from` to an address on the verified application domain for
    forgot-password email delivery.
-5. Build and include the static artifact:
+6. Build and include the static artifact:
 
 ```powershell
 npm run build
@@ -97,10 +106,10 @@ git commit -m "build: update native staging artifact"
 git push origin develop
 ```
 
-6. In cPanel Git Version Control for the staging repository, choose `Update
+7. In cPanel Git Version Control for the staging repository, choose `Update
    from Remote`, then `Deploy HEAD Commit`.
-7. Run the seed from the checked-out repository with `php database/seed.php`.
-8. Verify `https://staging.aapmlayeracademy.id/api/health` and log in with the
+8. Run the seed from the checked-out repository with `php database/seed.php`.
+9. Verify `https://staging.aapmlayeracademy.id/api/health` and log in with the
    demo account.
 
 Production remains connected to `main` and is not changed by staging deploys.

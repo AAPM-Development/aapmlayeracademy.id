@@ -31,6 +31,12 @@
     Header always set Cache-Control "public, max-age=604800"
   </FilesMatch>
 
+  # Editorial PPTX filenames are server-generated immutable IDs, so learner
+  # revisits can reuse a downloaded presentation rather than fetch it again.
+  <FilesMatch "\.pptx$">
+    Header always set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
   # The HTML entry point and manifest must be checked for new deploys.
   <FilesMatch "^(index\.html|manifest\.json)$">
     Header always set Cache-Control "no-cache, must-revalidate"

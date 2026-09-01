@@ -16,6 +16,7 @@ import {
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
 import { sortModules } from "@/lib/academyData";
+import { hasEditorialVideo } from "@/lib/editorialDocument";
 import { useParams } from "react-router-dom";
 
 export default function ModuleDetail() {
@@ -45,10 +46,14 @@ export default function ModuleDetail() {
   const index = sortedModules.findIndex((item) => item.moduleNumber === number);
   const previous = index > 0 ? sortedModules[index - 1] : null;
   const next = index >= 0 ? sortedModules[index + 1] || null : null;
+  const editorialVideoIsPresent = useMemo(() => hasEditorialVideo(module?.editorialContent), [module?.editorialContent]);
+  const learnerSections = useMemo(() => (
+    editorialVideoIsPresent ? lessonSections.filter((section) => section.id !== "video") : lessonSections
+  ), [editorialVideoIsPresent]);
 
   useEffect(() => {
     if (!module) return undefined;
-    const sectionElements = lessonSections.map((section) => document.getElementById(section.id)).filter(Boolean);
+    const sectionElements = learnerSections.map((section) => document.getElementById(section.id)).filter(Boolean);
     if (!sectionElements.length) return undefined;
 
     const observer = new IntersectionObserver((entries) => {
@@ -58,7 +63,7 @@ export default function ModuleDetail() {
 
     sectionElements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
-  }, [module?.moduleNumber]);
+  }, [module?.moduleNumber, learnerSections]);
 
   const markComplete = async () => {
     if (!module || moduleProgress?.completed) return;
@@ -82,7 +87,7 @@ export default function ModuleDetail() {
   return (
     <LearningFocusShell
       header={<LessonHeader module={module} completed={moduleProgress?.completed} />}
-      sidebar={<LessonSidebar module={module} activeSection={activeSection} onSectionChange={jumpToSection} />}
+      sidebar={<LessonSidebar module={module} activeSection={activeSection} onSectionChange={jumpToSection} sections={learnerSections} />}
       footer={<div className="mt-8 lg:pr-[292px]">{saveProgress.isError && <div className="mb-4 rounded-xl border border-danger/25 bg-danger/5 p-4 text-sm text-danger" role="alert">Progress belum tersimpan. Silakan coba tombol selesai lagi.</div>}<LessonNavigation previous={previous} next={next} onComplete={markComplete} completed={Boolean(moduleProgress?.completed)} saving={saveProgress.isPending} /></div>}
     >
       <div className="space-y-10">
@@ -94,10 +99,12 @@ export default function ModuleDetail() {
           />
         </LessonSection>
 
-        <LessonSection id="video" title="Video materi" icon="solar:play-circle-bold">
-          <LessonMedia module={module} />
-          <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Catatan instruktur</div>{module.videoScript || "Catatan video sedang disiapkan."}</CardContent></Card>
-        </LessonSection>
+        {!editorialVideoIsPresent && (
+          <LessonSection id="video" title="Video materi" icon="solar:play-circle-bold">
+            <LessonMedia module={module} />
+            <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Catatan instruktur</div>{module.videoScript || "Catatan video sedang disiapkan."}</CardContent></Card>
+          </LessonSection>
+        )}
 
         <LessonSection id="objectives" title="Tujuan & insight" icon="solar:target-bold-duotone">
           <div className="grid gap-6 sm:grid-cols-2"><div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon="solar:target-bold-duotone" /></div><div><div className="mb-3 text-sm font-semibold"><AapmIcon name="solar:lightbulb-bolt-bold-duotone" className="mr-1 inline h-4 w-4 text-brand-orange" /> Inti pembelajaran</div><LessonInsightList items={module.keyTakeaways || []} /></div></div>

@@ -1656,7 +1656,15 @@ function normalise_editorial_internal_path($value): ?string
     if ($path === '' || substr($path, 0, 1) !== '/' || substr($path, 0, 2) === '//') {
         return null;
     }
-    if (strpos($path, '\\') !== false || preg_match('/[\x00-\x1F\x7F]/', $path) || preg_match('#(?:^|/)\.\.?(?:/|$)#', $path)) {
+    $decoded = $path;
+    for ($iteration = 0; $iteration < 3; $iteration += 1) {
+        $next = rawurldecode($decoded);
+        if ($next === $decoded) {
+            break;
+        }
+        $decoded = $next;
+    }
+    if (strpos($decoded, '\\') !== false || preg_match('/[\x00-\x1F\x7F]/', $decoded) || preg_match('#(?:^|/)\.\.?(?:/|$)#', $decoded)) {
         return null;
     }
     return $path;
@@ -1703,10 +1711,22 @@ function normalise_editorial_image_url($value): string
     $url = $internal !== null ? $internal : normalise_editorial_link_url($rawUrl);
     $parts = parse_url($url);
     $path = (string) ($parts['path'] ?? $url);
-    if (preg_match('/\.svg$/i', $path)) {
-        error_response('Gambar editorial tidak mendukung SVG. Gunakan PNG, JPG, WebP, AVIF, atau GIF.', 422, 'invalid_editorial_image');
+    if (!preg_match('/\.(?:jpe?g|png|gif|webp|avif)$/i', $path)) {
+        error_response('Gambar editorial harus memakai PNG, JPG, WebP, AVIF, atau GIF.', 422, 'invalid_editorial_image');
     }
     return $url;
+}
+
+function normalise_editorial_presentation_url($value): string
+{
+    $url = trim((string) $value);
+    $path = normalise_editorial_internal_path($url);
+    $parts = $path !== null ? parse_url($path) : null;
+    $pathname = is_array($parts) ? (string) ($parts['path'] ?? '') : '';
+    if ($path === null || !preg_match('#^/uploads/editorial/presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.pptx$#i', $pathname)) {
+        error_response('Presentasi editorial harus berasal dari unggahan PPTX yang dikelola.', 422, 'invalid_presentation_url');
+    }
+    return $path;
 }
 
 function normalise_lesson_video_url($value): string
@@ -1848,49 +1868,81 @@ function normalise_editorial_content($value): string
             $normalised['src'] = normalise_editorial_image_url($block['src'] ?? '');
             $normalised['alt'] = profile_text($block['alt'] ?? '', 280);
             $normalised['caption'] = profile_text($block['caption'] ?? '', 600);
+            $decorative = array_key_exists('decorative', $block)
+                ? (bool) $block['decorative']
+                : $normalised['alt'] === '';
+            if (!$decorative && $normalised['alt'] === '') {
+                error_response('Gambar bermakna wajib memiliki teks alternatif.', 422, 'invalid_editorial_image');
+            }
             $ratio = (string) ($block['ratio'] ?? 'natural');
             $width = (string) ($block['width'] ?? 'standard');
             if (!in_array($ratio, $allowedRatios, true) || !in_array($width, $allowedWidths, true)) error_response('Tampilan gambar editorial tidak valid.', 422, 'invalid_editorial_content');
+            $normalised['decorative'] = $decorative;
             $normalised['ratio'] = $ratio;
             $normalised['width'] = $width;
             $totalLength += strlen($normalised['alt']) + strlen($normalised['caption']);
             $hasContent = true;
         } elseif ($type === 'slides') {
             $normalised['title'] = profile_text($block['title'] ?? '', 160);
-            $slides = $block['slides'] ?? null;
-            if (!is_array($slides) || count($slides) < 1 || count($slides) > 12) {
-                error_response('Rangkaian editorial harus memiliki 1–12 slide.', 422, 'invalid_editorial_content');
+            $source = (string) ($block['source'] ?? 'manual');
+            if ($source === 'pptx') {
+                $normalised['source'] = 'pptx';
+                $normalised['pptxUrl'] = normalise_editorial_presentation_url($block['pptxUrl'] ?? '');
+                $normalised['pptxName'] = profile_text($block['pptxName'] ?? '', 180);
+                $slideCount = (int) ($block['slideCount'] ?? 0);
+                if ($slideCount < 1 || $slideCount > 50) {
+                    error_response('Jumlah slide PowerPoint tidak valid.', 422, 'invalid_editorial_content');
+                }
+                $normalised['slideCount'] = $slideCount;
+                $normalised['slides'] = [];
+                $totalLength += strlen($normalised['title']) + strlen($normalised['pptxName']);
+                $hasContent = true;
+            } elseif ($source === 'manual') {
+                $normalised['source'] = 'manual';
+                $slides = $block['slides'] ?? null;
+                if (!is_array($slides) || count($slides) < 1 || count($slides) > 12) {
+                    error_response('Rangkaian editorial harus memiliki 1–12 slide.', 422, 'invalid_editorial_content');
+                }
+                $normalised['slides'] = [];
+                $slideIds = [];
+                foreach ($slides as $slide) {
+                    if (!is_array($slide)) error_response('Slide editorial tidak valid.', 422, 'invalid_editorial_content');
+                    $slideId = (string) ($slide['id'] ?? '');
+                    if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $slideId) || isset($slideIds[$slideId])) {
+                        error_response('ID slide editorial tidak valid.', 422, 'invalid_editorial_content');
+                    }
+                    $slideIds[$slideId] = true;
+                    $slideTitle = profile_text($slide['title'] ?? '', 180);
+                    $slideContent = profile_text($slide['content'] ?? '', 3000);
+                    $slideSource = trim((string) ($slide['src'] ?? ''));
+                    $slideAlt = profile_text($slide['alt'] ?? '', 280);
+                    $slideDecorative = array_key_exists('decorative', $slide)
+                        ? (bool) $slide['decorative']
+                        : $slideAlt === '';
+                    if ($slideSource !== '') {
+                        $slideSource = normalise_editorial_image_url($slideSource);
+                        if (!$slideDecorative && $slideAlt === '') {
+                            error_response('Gambar slide bermakna wajib memiliki teks alternatif.', 422, 'invalid_editorial_image');
+                        }
+                    }
+                    if ($slideTitle === '' && $slideContent === '' && $slideSource === '') {
+                        error_response('Setiap slide editorial harus memiliki gambar, judul, atau isi.', 422, 'invalid_editorial_content');
+                    }
+                    $normalised['slides'][] = [
+                        'id' => $slideId,
+                        'title' => $slideTitle,
+                        'content' => $slideContent,
+                        'src' => $slideSource,
+                        'alt' => $slideAlt,
+                        'decorative' => $slideDecorative,
+                    ];
+                    $totalLength += strlen($slideTitle) + strlen($slideContent) + strlen($slideAlt);
+                }
+                $totalLength += strlen($normalised['title']);
+                $hasContent = true;
+            } else {
+                error_response('Sumber rangkaian editorial tidak valid.', 422, 'invalid_editorial_content');
             }
-            $normalised['slides'] = [];
-            $slideIds = [];
-            foreach ($slides as $slide) {
-                if (!is_array($slide)) error_response('Slide editorial tidak valid.', 422, 'invalid_editorial_content');
-                $slideId = (string) ($slide['id'] ?? '');
-                if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $slideId) || isset($slideIds[$slideId])) {
-                    error_response('ID slide editorial tidak valid.', 422, 'invalid_editorial_content');
-                }
-                $slideIds[$slideId] = true;
-                $slideTitle = profile_text($slide['title'] ?? '', 180);
-                $slideContent = profile_text($slide['content'] ?? '', 3000);
-                $slideSource = trim((string) ($slide['src'] ?? ''));
-                $slideAlt = profile_text($slide['alt'] ?? '', 280);
-                if ($slideSource !== '') {
-                    $slideSource = normalise_editorial_image_url($slideSource);
-                }
-                if ($slideTitle === '' && $slideContent === '' && $slideSource === '') {
-                    error_response('Setiap slide editorial harus memiliki gambar, judul, atau isi.', 422, 'invalid_editorial_content');
-                }
-                $normalised['slides'][] = [
-                    'id' => $slideId,
-                    'title' => $slideTitle,
-                    'content' => $slideContent,
-                    'src' => $slideSource,
-                    'alt' => $slideAlt,
-                ];
-                $totalLength += strlen($slideTitle) + strlen($slideContent) + strlen($slideAlt);
-            }
-            $totalLength += strlen($normalised['title']);
-            $hasContent = true;
         } elseif ($type === 'video') {
             $normalised['url'] = normalise_lesson_video_url($block['url'] ?? '');
             $normalised['caption'] = profile_text($block['caption'] ?? '', 600);
