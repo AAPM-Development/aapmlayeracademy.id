@@ -3,9 +3,10 @@ import React from "react";
 import { Button, Surface } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 
-export function AdminPageFrame({ eyebrow = "Administrasi", title, description, actions, children, wide = false }) {
+export function AdminPageFrame({ eyebrow = "Administrasi", title, description, actions, children, wide = false, editor = false }) {
+  const widthClass = editor ? "max-w-7xl" : wide ? "max-w-[1800px]" : "max-w-[1500px]";
   return (
-    <div className={`mx-auto w-full ${wide ? "max-w-[1800px]" : "max-w-[1500px]"} p-4 sm:p-6 lg:p-8`}>
+    <div className={`mx-auto w-full ${widthClass} p-4 sm:p-6 lg:p-8`}>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-green">{eyebrow}</div><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>}</div>{actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}</div>
       {children}
     </div>
