@@ -562,7 +562,7 @@ export default function AdminModuleEditor() {
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Media fallback</div>
                   <h2 className="text-sm font-semibold">Video lama (opsional)</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Gunakan blok <strong>Video</strong> di kanvas editorial untuk menentukan posisi tampil learner. Field ini hanya dipakai oleh modul lama yang belum memiliki blok video editorial.
+                    Gunakan blok <strong>Video</strong> editorial bila perlu mengatur urutannya; field ini hanya fallback modul lama.
                   </p>
                 </div>
                 <AapmIcon name="play" className="h-5 w-5 text-brand-orange" />
@@ -595,16 +595,18 @@ export default function AdminModuleEditor() {
                 ) : null}
               </div>
               {/^(https?:\/\/|\/(?!\/))/.test(form.videoUrl.trim()) && (
-                <div className="mt-5">
+                <div className="mt-4">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Pratinjau player
                   </div>
-                  <LessonMedia
-                    module={{
-                      title: form.title || "Video lesson",
-                      videoUrl: form.videoUrl,
-                    }}
-                  />
+                  <div className="max-w-3xl">
+                    <LessonMedia
+                      module={{
+                        title: form.title || "Video lesson",
+                        videoUrl: form.videoUrl,
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </Surface>

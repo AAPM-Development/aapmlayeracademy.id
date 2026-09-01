@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Checkbox,
+  IconButton,
   Input,
   Label,
   Select,
@@ -36,7 +37,7 @@ function Field({ label, children, hint = "", id, error = "" }) {
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {(hint || error) && <p id={descriptionId} className={cn("text-[11px] leading-5", error ? "text-danger" : "text-muted-foreground")} role={error ? "alert" : undefined}>{error || hint}</p>}
+      {(hint || error) && <p id={descriptionId} className={cn("text-[10px] leading-4", error ? "text-danger" : "text-muted-foreground")} role={error ? "alert" : undefined}>{error || hint}</p>}
     </div>
   );
 }
@@ -155,7 +156,7 @@ function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar 
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <Field id={id} label={label} hint={sourceIssue || hint || "Unggah file terkelola atau gunakan URL HTTPS gambar yang aman."} error={sourceIssue}>
         <Input
           id={id}
@@ -302,7 +303,7 @@ function TableBlockFields({ block, onChange }) {
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-xs font-semibold">Struktur tabel</div>
-          <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">Maksimal 8 kolom dan 20 baris. Learner dapat menggeser tabel secara horizontal pada layar kecil.</p>
+          <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Maks. 8 kolom, 20 baris; tabel tetap bisa digeser di layar kecil.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" disabled={columns.length >= 8} onClick={() => setColumns([...columns, `Kolom ${columns.length + 1}`])}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah kolom</Button>
@@ -339,11 +340,11 @@ function TableBlockFields({ block, onChange }) {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[11px] font-semibold text-muted-foreground">Baris {rowIndex + 1}</span>
                   <div className="flex flex-wrap gap-1.5">
-                    <Button type="button" size="sm" variant="ghost" className="h-11 px-2 text-[11px] sm:h-8" title="Pindahkan satu baris ke atas" disabled={rowIndex === 0} onClick={() => onChange({ rows: moveInList(rows, rowIndex, rowIndex - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" />Ke atas</Button>
-                    <Button type="button" size="sm" variant="ghost" className="h-11 px-2 text-[11px] sm:h-8" title="Pindahkan satu baris ke bawah" disabled={rowIndex === rows.length - 1} onClick={() => onChange({ rows: moveInList(rows, rowIndex, rowIndex + 1) })}>Ke bawah<AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></Button>
-                    <Button type="button" size="sm" variant="ghost" className="h-11 px-2 text-[11px] text-danger hover:bg-danger/5 hover:text-danger sm:h-8" disabled={rows.length <= 1} onClick={() => {
+                    <IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Naikkan baris ${rowIndex + 1}`} tooltip="Naikkan baris satu posisi" disabled={rowIndex === 0} onClick={() => onChange({ rows: moveInList(rows, rowIndex, rowIndex - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton>
+                    <IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Turunkan baris ${rowIndex + 1}`} tooltip="Turunkan baris satu posisi" disabled={rowIndex === rows.length - 1} onClick={() => onChange({ rows: moveInList(rows, rowIndex, rowIndex + 1) })}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton>
+                    <IconButton size="sm" className="h-10 w-10 p-0 text-danger hover:bg-danger/5 hover:text-danger sm:h-8 sm:w-8" label={`Hapus baris ${rowIndex + 1}`} tooltip="Hapus baris" disabled={rows.length <= 1} onClick={() => {
                       if (window.confirm(`Hapus Baris ${rowIndex + 1}?`)) onChange({ rows: rows.filter((_, currentIndex) => currentIndex !== rowIndex) });
-                    }}><AapmIcon name="delete" className="h-3.5 w-3.5" />Hapus</Button>
+                    }}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton>
                   </div>
                 </div>
                 <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(11rem, 1fr))` }}>
@@ -406,7 +407,7 @@ function SlidesBlockFields({ block, onChange }) {
     onChange({ source: "manual", pptxUrl: "", pptxName: "", slideCount: 0, slides: slides.length ? slides : [createEditorialSlide(1)] });
   };
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Field id={`${block.id}-slides-title`} label="Judul rangkaian slide (opsional)">
         <Input id={`${block.id}-slides-title`} value={block.title} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Contoh: Alur pemeriksaan kandang" />
       </Field>
@@ -414,7 +415,7 @@ function SlidesBlockFields({ block, onChange }) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-xs font-semibold">Cara membuat slide</div>
-            <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">Pilih slide manual untuk merangkai materi sendiri, atau unggah PPTX agar learner melihatnya sebagai carousel.</p>
+            <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Manual atau PPTX; learner menampilkannya sebagai carousel.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button>
@@ -433,38 +434,38 @@ function SlidesBlockFields({ block, onChange }) {
           <div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void uploadPresentationFile(pendingPresentation)}>Gunakan PPTX</Button><Button type="button" size="sm" variant="outline" onClick={() => setPendingPresentation(null)}>Batal</Button></div>
         </div>
       )}
-      {uploadState.status !== "idle" && <p className={cn("text-[11px] leading-5", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
+      {uploadState.status !== "idle" && <p className={cn("text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
       {source === "pptx" ? (
         <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 text-brand-orange" /><span className="text-sm font-semibold">{block.pptxName || "Presentasi PowerPoint"}</span></div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{block.slideCount || 0} slide · ditampilkan sebagai carousel responsif di learner.</p>
+              <p className="mt-1 text-[10px] leading-4 text-muted-foreground">{block.slideCount || 0} slide · carousel learner responsif.</p>
             </div>
             <Badge variant="soft" className="bg-tint-green text-brand-green">PPTX terkelola</Badge>
           </div>
-          <p className="mt-3 rounded-lg bg-surface-subtle px-3 py-2 text-[11px] leading-5 text-muted-foreground">Batas: 1–{MAX_PRESENTATION_SLIDES} slide, maksimal 50 MB. Sematkan gambar/media ke dalam PPTX sebelum unggah; sumber eksternal dan file .ppt lama ditolak demi keamanan.</p>
+          <p className="mt-3 rounded-lg bg-surface-subtle px-3 py-2 text-[10px] leading-4 text-muted-foreground">1–{MAX_PRESENTATION_SLIDES} slide · maks. 50 MB · gunakan .pptx dengan media tertanam.</p>
         </div>
       ) : (
         <>
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-xs font-semibold">Rangkaian slide manual</div>
-          <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">Setiap slide dapat berisi gambar, teks, atau keduanya. Di learner, navigasi selalu satu per satu dan responsif.</p>
+          <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Setiap slide dapat berisi gambar dan teks.</p>
         </div>
         <Button type="button" size="sm" variant="outline" disabled={slides.length >= 12} onClick={() => onChange({ slides: [...slides, createEditorialSlide(slides.length + 1)] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah slide</Button>
       </div>
       <div className="space-y-3">
         {slides.map((slide, index) => (
-          <article key={slide.id} className="rounded-xl border border-border bg-background p-4 shadow-sm">
+          <article key={slide.id} className="rounded-xl border border-border bg-background p-3 shadow-sm sm:p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
               <span className="text-xs font-semibold">Slide {index + 1} dari {slides.length}</span>
               <div className="flex flex-wrap gap-1.5">
-                <Button type="button" size="sm" variant="ghost" className="h-11 px-2 text-[11px] sm:h-8" title="Pindahkan satu slide ke atas" disabled={index === 0} onClick={() => onChange({ slides: moveInList(slides, index, index - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" />Ke atas</Button>
-                <Button type="button" size="sm" variant="ghost" className="h-11 px-2 text-[11px] sm:h-8" title="Pindahkan satu slide ke bawah" disabled={index === slides.length - 1} onClick={() => onChange({ slides: moveInList(slides, index, index + 1) })}>Ke bawah<AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></Button>
-                <Button type="button" size="sm" variant="ghost" className="h-11 px-2 text-[11px] text-danger hover:bg-danger/5 hover:text-danger sm:h-8" disabled={slides.length <= 1} onClick={() => {
+                <IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Naikkan slide ${index + 1}`} tooltip="Naikkan slide satu posisi" disabled={index === 0} onClick={() => onChange({ slides: moveInList(slides, index, index - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton>
+                <IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Turunkan slide ${index + 1}`} tooltip="Turunkan slide satu posisi" disabled={index === slides.length - 1} onClick={() => onChange({ slides: moveInList(slides, index, index + 1) })}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton>
+                <IconButton size="sm" className="h-10 w-10 p-0 text-danger hover:bg-danger/5 hover:text-danger sm:h-8 sm:w-8" label={`Hapus slide ${index + 1}`} tooltip="Hapus slide" disabled={slides.length <= 1} onClick={() => {
                   if (window.confirm(`Hapus Slide ${index + 1}?`)) onChange({ slides: slides.filter((_, currentIndex) => currentIndex !== index) });
-                }}><AapmIcon name="delete" className="h-3.5 w-3.5" />Hapus</Button>
+                }}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton>
               </div>
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
@@ -653,28 +654,28 @@ function BlockCard({ block, index, total, onChange, onMove, onRemove, dragHandle
       ref={innerRef}
       {...draggableProps}
       className={cn(
-        "rounded-xl border border-border bg-background p-4 shadow-sm transition-shadow",
+        "rounded-xl border border-border bg-background p-3 shadow-sm transition-shadow sm:p-4",
         blockLayoutClass(block.type),
         isDragging && "shadow-lg ring-2 ring-brand-orange/25",
       )}
     >
-      <div className="mb-4 border-b border-border pb-4">
+      <div className="mb-3 border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             aria-label={`Seret blok ${meta?.label || block.type} untuk mengubah urutan`}
             title="Seret untuk mengubah urutan"
-            className="mt-0.5 inline-flex h-11 shrink-0 cursor-grab items-center gap-1.5 rounded-md border border-border bg-surface-subtle px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing sm:h-8"
+            className="mt-0.5 inline-flex h-10 shrink-0 cursor-grab items-center gap-1.5 rounded-md border border-border bg-surface-subtle px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing sm:h-8"
             {...dragHandleProps}
           >
             <AapmIcon name="grip" className="h-4 w-4" />
             <span>Seret</span>
           </button>
-          <Badge variant="outline" className="shrink-0 whitespace-nowrap border-brand-orange/25 bg-brand-orange/5 text-brand-orange">{meta?.label || block.type}</Badge>
-          <span className="shrink-0 whitespace-nowrap rounded-full bg-surface-subtle px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Tampil ke learner: {index + 1}/{total}</span>
+          <Badge variant="outline" title={meta?.description} className="shrink-0 whitespace-nowrap border-brand-orange/25 bg-brand-orange/5 text-brand-orange">{meta?.label || block.type}</Badge>
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Urutan learner {index + 1}/{total}</span>
           {total > 1 && (
             <Select value={String(index + 1)} onValueChange={(value) => onMove(index, Number(value) - 1)}>
-              <SelectTrigger className="h-11 w-40 shrink-0 text-[11px] sm:h-8" aria-label={`Atur urutan tampil learner untuk ${meta?.label || block.type}`}>
+              <SelectTrigger className="h-10 w-36 shrink-0 text-[11px] sm:h-8" aria-label={`Atur urutan tampil learner untuk ${meta?.label || block.type}`}>
                 <SelectValue placeholder="Ubah urutan" />
               </SelectTrigger>
               <SelectContent>
@@ -684,16 +685,12 @@ function BlockCard({ block, index, total, onChange, onMove, onRemove, dragHandle
               </SelectContent>
             </Select>
           )}
-        </div>
-        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{meta?.description}</p>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="shrink-0 text-[11px] font-medium text-muted-foreground">Pindah satu posisi</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <div role="group" aria-label={`Pindahkan ${meta?.label || block.type} satu posisi`} className="inline-flex overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-              <Button type="button" size="sm" variant="ghost" className="h-11 rounded-none px-2 text-xs sm:h-8" aria-label={`Pindahkan ${meta?.label || block.type} ke atas`} title="Pindahkan satu posisi ke atas" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" />Ke atas</Button>
-              <Button type="button" size="sm" variant="ghost" className="h-11 rounded-none border-l border-border px-2 text-xs sm:h-8" aria-label={`Pindahkan ${meta?.label || block.type} ke bawah`} title="Pindahkan satu posisi ke bawah" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}>Ke bawah<AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></Button>
+          <div className="ml-auto flex items-center gap-1">
+            <div role="group" aria-label={`Pindahkan ${meta?.label || block.type} satu posisi`} className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-background p-0.5 shadow-sm">
+              <IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Naikkan ${meta?.label || block.type}`} tooltip="Naikkan satu posisi" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton>
+              <IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Turunkan ${meta?.label || block.type}`} tooltip="Turunkan satu posisi" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton>
             </div>
-            <Button type="button" size="sm" variant="outline" className="h-11 gap-1.5 border-danger/20 px-2 text-xs text-danger hover:bg-danger/5 hover:text-danger sm:h-8" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" />Hapus</Button>
+            <IconButton size="sm" className="h-10 w-10 p-0 text-danger hover:bg-danger/5 hover:text-danger sm:h-8 sm:w-8" label={`Hapus ${meta?.label || block.type}`} tooltip="Hapus blok" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton>
           </div>
         </div>
       </div>
@@ -738,29 +735,29 @@ export default function EditorialComposer({ value, onChange }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="sr-only" aria-live="polite">{announcement}</div>
-      <div className="rounded-xl border border-border bg-surface-subtle p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="rounded-xl border border-border bg-surface-subtle p-3 sm:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Kanvas editorial</div>
             <h3 className="mt-1 text-sm font-semibold">Susun materi sebagai blok yang aman</h3>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Nomor urutan di bawah adalah urutan tampil learner: blok 1 paling atas, lalu berlanjut ke kanan dan baris berikutnya. Pilih urutan, seret, atau gunakan panah untuk mengubahnya. Semua media dipaksa responsif; HTML, CSS, dan iframe bebas tidak pernah dipublikasikan.</p>
+            <p className="mt-1 max-w-2xl text-[10px] leading-4 text-muted-foreground">Urutan learner mengikuti posisi blok. Seret, pilih nomor, atau gunakan ikon panah.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="soft" className="w-fit bg-tint-green text-brand-green">{blocks.length}/80 blok</Badge>
             <Badge variant="outline" className="w-fit">{textLength.toLocaleString("id-ID")}/{EDITORIAL_TEXT_LIMIT.toLocaleString("id-ID")} byte teks</Badge>
           </div>
         </div>
-        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">Batas teks diterapkan saat Anda mengetik agar isi yang dirangkai di sini selalu bisa disimpan oleh server.</p>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {editorialBlockLibrary.map((item) => (
-            <Button key={item.type} type="button" variant="outline" className="h-auto min-h-12 justify-start whitespace-normal px-3 py-2.5 text-left" disabled={blocks.length >= 80} onClick={() => addBlock(item.type)}>
+            <Button key={item.type} type="button" variant="outline" aria-label={`Tambah blok ${item.label}`} title={`Tambah blok ${item.label}`} className="h-9 justify-start gap-2 px-2.5 text-left text-xs" disabled={blocks.length >= 80} onClick={() => addBlock(item.type)}>
               <AapmIcon name={item.icon} className="shrink-0 text-brand-orange" />
-              <span className="min-w-0"><span className="block text-xs font-semibold">{item.label}</span><span className="mt-0.5 block text-[10px] font-normal leading-4 text-muted-foreground">Tambah blok</span></span>
+              <span className="min-w-0 truncate font-semibold">{item.label}</span>
             </Button>
           ))}
         </div>
+        <p className="mt-2 text-[10px] leading-4 text-muted-foreground">Batas teks diterapkan saat mengetik; media tetap responsif dan HTML bebas tidak diterbitkan.</p>
       </div>
 
       {blocks.length ? (
