@@ -177,7 +177,21 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
         </ToolbarButton>
       </div>
       {linkOpen && (
-        <form onSubmit={applyLink} className="flex flex-col gap-2 border-b border-border bg-tint-orange/45 p-2.5 sm:flex-row sm:items-start">
+        <div
+          role="group"
+          aria-label="Tautkan teks"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              applyLink(event);
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setLinkOpen(false);
+            }
+          }}
+          className="flex flex-col gap-2 border-b border-border bg-tint-orange/45 p-2.5 sm:flex-row sm:items-start"
+        >
           <div className="min-w-0 flex-1">
             <label htmlFor={`${id || "rich-text"}-link`} className="sr-only">URL tautan</label>
             <Input
@@ -197,10 +211,10 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
             {linkError && <p className="mt-1 text-[10px] text-danger" role="alert">{linkError}</p>}
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <Button type="submit" size="sm" className="h-9 rounded-lg bg-brand-orange px-3 text-xs text-white hover:bg-brand-orange/90">Terapkan</Button>
+            <Button type="button" size="sm" onClick={applyLink} className="h-9 rounded-lg bg-brand-orange px-3 text-xs text-white hover:bg-brand-orange/90">Terapkan</Button>
             <Button type="button" size="sm" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setLinkOpen(false)}>Batal</Button>
           </div>
-        </form>
+        </div>
       )}
       <EditorContent editor={editor} />
       <p className="border-t border-border/70 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
