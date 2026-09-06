@@ -38,7 +38,7 @@ import {
   useSaveAdminQuestion,
   useUpdateAdminModule,
 } from "@/lib/useAdminData";
-import { createEditorialBlock, createEditorialDocument, ensureEditorialDocument, hasEditorialVideo, parseEditorialDocument } from "@/lib/editorialDocument";
+import { hasEditorialVideo, parseEditorialDocument } from "@/lib/editorialDocument";
 import { useAuth } from "@/lib/AuthContext";
 
 const emptyModule = {
@@ -633,22 +633,6 @@ export default function AdminModuleEditor() {
     writeEditorDraft(draftKeyRef.current, formRef.current);
     promptNavigation({ target, type: "route" });
   };
-  const moveLegacyVideoIntoEditorial = () => {
-    const url = form.videoUrl.trim();
-    if (!url || editorialVideoIsPresent) return;
-    const document = ensureEditorialDocument(form.editorialContent);
-    const video = createEditorialBlock("video");
-    setForm((current) => {
-      const next = {
-        ...current,
-        videoUrl: "",
-        editorialContent: createEditorialDocument([...document.blocks, { ...video, url }]),
-      };
-      formRef.current = next;
-      return next;
-    });
-    toast({ title: "Video dipindahkan ke kanvas", description: "Video ditambahkan di urutan terakhir; atur posisinya dari kartu editorial." });
-  };
   const save = async (event) => {
     event.preventDefault();
     const payload = {
@@ -831,77 +815,17 @@ export default function AdminModuleEditor() {
               </div>
             </Surface>
             <Surface className="p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Media fallback</div>
-                  <h2 className="text-sm font-semibold">Video lama (opsional)</h2>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Gunakan blok <strong>Video</strong> editorial bila perlu mengatur urutannya; field ini hanya fallback modul lama.
-                  </p>
-                </div>
-                <AapmIcon name="play" className="h-5 w-5 text-brand-orange" />
-              </div>
-              <div className="mt-4 space-y-2">
-                <Label htmlFor="module-video-url">Tautan video fallback</Label>
-                <Input
-                  id="module-video-url"
-                  type="text"
-                  inputMode="url"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  placeholder="https://youtu.be/... atau /media/lesson-01.mp4"
-                  value={form.videoUrl}
-                  onChange={(event) => set("videoUrl", event.target.value)}
-                  aria-describedby="module-video-help"
-                />
-                <p
-                  id="module-video-help"
-                  className="text-[11px] text-muted-foreground"
-                >
-                  Kosongkan bila modul belum memiliki video. Mendukung URL
-                  HTTPS dan path media internal; penyimpanan akan
-                  memvalidasi tautan sebelum diterbitkan.
-                </p>
-                {editorialVideoIsPresent ? (
-                  <p className="rounded-lg border border-brand-orange/20 bg-brand-orange/5 px-3 py-2 text-[11px] leading-5 text-muted-foreground">Blok Video pada kanvas editorial aktif, sehingga learner akan mengikuti urutan kanvas dan mengabaikan video fallback ini.</p>
-                ) : form.videoUrl.trim() ? (
-                  <Button type="button" size="sm" variant="outline" className="mt-1" onClick={moveLegacyVideoIntoEditorial}><AapmIcon name="arrowDown" className="h-3.5 w-3.5" />Pindahkan ke kanvas editorial</Button>
-                ) : null}
-              </div>
-              {/^(https?:\/\/|\/(?!\/))/.test(form.videoUrl.trim()) && (
-                <div className="mt-4">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    Pratinjau player
-                  </div>
-                  <div className="max-w-3xl">
-                    <LessonMedia
-                      module={{
-                        title: form.title || "Video lesson",
-                        videoUrl: form.videoUrl,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </Surface>
-            <Surface className="p-5">
-              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">03 · Learning content</div><h2 className="mt-1 text-base font-semibold">Materi editorial dan outcome</h2></div>
+              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Materi utama</div><h2 className="mt-1 text-base font-semibold">Tulis materi dan atur video</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Materi teks sekarang berada di satu editor inline. Video saja yang dipisahkan menjadi kartu agar mudah diatur.</p></div>
               <EditorialComposer
                 value={form.editorialContent}
-                onChange={(editorialContent) => set("editorialContent", editorialContent)}
+                fallback={form.content}
+                legacyVideoUrl={form.videoUrl}
+                onChange={(editorialContent) => {
+                  set("editorialContent", editorialContent);
+                  if (editorialContent?.blocks?.length) set("content", "");
+                }}
+                onLegacyVideoChange={(videoUrl) => set("videoUrl", videoUrl)}
               />
-              <div className="mt-5 border-t border-border pt-5">
-                <Label>Konten Markdown lama (fallback)</Label>
-                <Textarea
-                  className="mt-2"
-                  rows={8}
-                  value={form.content}
-                  onChange={(event) => set("content", event.target.value)}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Dipakai untuk modul lama atau saat kanvas editorial belum memiliki blok. Markdown tetap aman dan mendukung teks dasar, daftar, tabel, serta tautan.
-                </p>
-              </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-3">
                 {[
                   ["learningObjectives", "Tujuan pembelajaran"],

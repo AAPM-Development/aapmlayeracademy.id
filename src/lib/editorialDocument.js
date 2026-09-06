@@ -1,3 +1,5 @@
+import { safeEditorialImage, safeEditorialLink } from "./editorialUrls.js";
+
 export const EDITORIAL_DOCUMENT_VERSION = 1;
 export const EDITORIAL_TEXT_LIMIT = 120000;
 
@@ -196,7 +198,7 @@ function normaliseBlock(block, index) {
 
   switch (block.type) {
     case "richText":
-      return { id, type: "richText", content: text(block.content, 24000) };
+      return { id, type: "richText", content: text(block.content, EDITORIAL_TEXT_LIMIT) };
     case "heading":
       return {
         id,
@@ -294,6 +296,135 @@ export function createEditorialDocument(blocks = []) {
 
 export function ensureEditorialDocument(value) {
   return parseEditorialDocument(value) || createEditorialDocument();
+}
+
+function escapeInlineMarkdown(value, maximum = 24000) {
+  return text(value, maximum)
+    .replace(/\\/g, "\\\\")
+    .replace(/([`*_{}\[\]()#+\-.!|>])/g, "\\$1")
+    .replace(/\r?\n/g, " ")
+    .trim();
+}
+
+function safeMarkdownLink(value) {
+  const safe = safeEditorialLink(value);
+  return safe ? `<${safe}>` : "";
+}
+
+function markdownImage(block) {
+  const source = safeEditorialImage(block?.src || "");
+  if (!source) return "";
+  const alt = block?.decorative ? "" : escapeInlineMarkdown(block?.alt || "", 280);
+  const image = `![${alt}](${safeMarkdownLink(source)})`;
+  const caption = escapeInlineMarkdown(block?.caption || "", 600);
+  return caption ? `${image}\n\n*${caption}*` : image;
+}
+
+function markdownTable(block) {
+  const columns = Array.isArray(block?.columns) ? block.columns : [];
+  const rows = Array.isArray(block?.rows) ? block.rows : [];
+  if (!columns.length || !rows.length) return "";
+  const cell = (value) => String(value || "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>").trim() || " ";
+  const title = escapeInlineMarkdown(block?.title || "", 160);
+  const lines = [
+    ...(title ? [`### ${title}`, ""] : []),
+    `| ${columns.map(cell).join(" | ")} |`,
+    `| ${columns.map(() => "---").join(" | ")} |`,
+    ...rows.map((row) => `| ${columns.map((_, index) => cell(row?.[index])).join(" | ")} |`),
+  ];
+  return lines.join("\n");
+}
+
+function markdownSlides(block) {
+  const title = escapeInlineMarkdown(block?.title || block?.pptxName || "", 180);
+  if (block?.source === "pptx") {
+    const link = safeMarkdownLink(block?.pptxUrl || "");
+    if (!link) return title ? `### ${title}` : "";
+    return `${title ? `### ${title}\n\n` : ""}[Buka presentasi](${link})`;
+  }
+
+  const slides = Array.isArray(block?.slides) ? block.slides : [];
+  const sections = slides.map((slide, index) => {
+    const parts = [];
+    const slideTitle = escapeInlineMarkdown(slide?.title || `Slide ${index + 1}`, 180);
+    if (slideTitle) parts.push(`#### ${slideTitle}`);
+    const image = markdownImage(slide);
+    if (image) parts.push(image);
+    if (slide?.content) parts.push(String(slide.content).trim());
+    return parts.filter(Boolean).join("\n\n");
+  }).filter(Boolean);
+  return [title ? `### ${title}` : "", ...sections].filter(Boolean).join("\n\n");
+}
+
+function markdownCallout(block) {
+  const title = escapeInlineMarkdown(block?.title || "", 160);
+  const content = String(block?.content || "").trim();
+  const lines = [
+    ...(title ? [`> **${title}**`] : []),
+    ...(content ? [">", ...content.split(/\r?\n/).map((line) => `> ${line}`)] : []),
+  ];
+  return lines.join("\n");
+}
+
+function inlineMarkdownForBlock(block) {
+  if (!block) return "";
+  switch (block.type) {
+    case "richText":
+      return String(block.content || "").trim();
+    case "heading": {
+      const content = escapeInlineMarkdown(block.content || "", 500);
+      return content ? `${"#".repeat(Math.min(3, Math.max(1, Number(block.level) || 2)))} ${content}` : "";
+    }
+    case "table":
+      return markdownTable(block);
+    case "image":
+      return markdownImage(block);
+    case "slides":
+      return markdownSlides(block);
+    case "link": {
+      const label = escapeInlineMarkdown(block.label || "", 160);
+      const link = safeMarkdownLink(block.url || "");
+      if (!label || !link) return "";
+      const description = String(block.description || "").trim();
+      return `[${label}](${link})${description ? `\n\n${description}` : ""}`;
+    }
+    case "cta": {
+      const label = escapeInlineMarkdown(block.label || "", 120);
+      const link = safeMarkdownLink(block.url || "");
+      return label && link ? `[${label}](${link})` : label;
+    }
+    case "callout":
+      return markdownCallout(block);
+    case "divider":
+      return "---";
+    case "video":
+      return "";
+    default:
+      return "";
+  }
+}
+
+export function editorialInlineContent(value, fallback = "") {
+  const document = parseEditorialDocument(value);
+  if (!document?.blocks.length) return typeof fallback === "string" ? fallback : "";
+  return document.blocks
+    .filter((block) => block.type !== "video")
+    .map(inlineMarkdownForBlock)
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function editorialVideoBlocks(value) {
+  return ensureEditorialDocument(value).blocks.filter((block) => block.type === "video");
+}
+
+export function createInlineEditorialDocument(content = "", videos = [], richTextId = "inline-content") {
+  const blocks = [];
+  if (typeof content === "string" && content.trim()) {
+    blocks.push({ id: richTextId, type: "richText", content });
+  }
+  if (Array.isArray(videos)) blocks.push(...videos);
+  return createEditorialDocument(blocks);
 }
 
 export function hasEditorialBlocks(value) {

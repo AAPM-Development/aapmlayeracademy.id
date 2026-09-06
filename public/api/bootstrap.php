@@ -1822,7 +1822,7 @@ function normalise_editorial_content($value): string
         $normalised = ['id' => $id, 'type' => $type];
 
         if ($type === 'richText') {
-            $content = profile_text($block['content'] ?? '', 24000);
+            $content = profile_text($block['content'] ?? '', 120000);
             if ($content === '') error_response('Blok teks editorial tidak boleh kosong.', 422, 'invalid_editorial_content');
             $normalised['content'] = $content;
             $totalLength += strlen($content);

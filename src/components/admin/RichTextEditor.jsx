@@ -76,6 +76,7 @@ function TextIcon({ children }) {
 export default function RichTextEditor({ id, value = "", onChange = () => {} }) {
   const onChangeRef = useRef(onChange);
   const selectionRef = useRef(null);
+  const toolbarSelectionRef = useRef(null);
   const [, refreshSelectionState] = useState(0);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
@@ -150,14 +151,15 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
   };
 
   const rememberSelection = () => {
-    if (!editor || editor.isDestroyed) return;
+    if (!editor || editor.isDestroyed) return null;
     const { from, to } = editor.state.selection;
     selectionRef.current = { from, to };
+    return selectionRef.current;
   };
 
-  const editorChain = () => {
+  const editorChain = (selectionOverride = selectionRef.current) => {
     const chain = editor.chain().focus();
-    const selection = selectionRef.current;
+    const selection = selectionOverride;
     const maxPosition = editor.state.doc.content.size;
     if (selection && selection.from <= maxPosition && selection.to <= maxPosition) {
       chain.setTextSelection(selection);
@@ -189,8 +191,8 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
 
   const applyBlockStyle = (style) => {
     if (!editor) return;
-    const selection = selectionRef.current;
-    const chain = editorChain();
+    const selection = toolbarSelectionRef.current || selectionRef.current;
+    const chain = editorChain(selection);
     if (style === "paragraph") {
       chain.setParagraph().run();
     } else {
@@ -210,10 +212,11 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
           value={blockStyle}
           onOpenChange={(open) => {
             if (open) {
-              rememberSelection();
+              toolbarSelectionRef.current = rememberSelection();
               return;
             }
-            restoreEditorSelection();
+            restoreEditorSelection(toolbarSelectionRef.current || selectionRef.current);
+            toolbarSelectionRef.current = null;
           }}
           onValueChange={applyBlockStyle}
         >
