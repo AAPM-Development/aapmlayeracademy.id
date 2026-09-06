@@ -7,55 +7,16 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import { parseEditorialDocument } from "@/lib/editorialDocument";
+import {
+  safeEditorialImage as getSafeEditorialImage,
+  safeEditorialLink as getSafeEditorialLink,
+  safeInternalPath,
+} from "@/lib/editorialUrls";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import PptxCarousel from "@/components/academy/PptxCarousel";
 
-function safeInternalPath(value) {
-  if (typeof value !== "string") return null;
-  const path = value.trim();
-  if (!path.startsWith("/") || path.startsWith("//")) return null;
-  let decoded = path;
-  for (let index = 0; index < 3; index += 1) {
-    try {
-      const next = decodeURIComponent(decoded);
-      if (next === decoded) break;
-      decoded = next;
-    } catch {
-      return null;
-    }
-  }
-  if (decoded.includes("\\") || /[\x00-\x1F\x7F]/.test(decoded) || /(?:^|\/)\.\.?(?:$|\/)/.test(decoded)) return null;
-  return path;
-}
-
-function safeHttpsUrl(value) {
-  if (typeof value !== "string" || !value.trim()) return null;
-  try {
-    const url = new URL(value.trim());
-    if (url.protocol !== "https:" || !url.hostname || url.username || url.password) {
-      return null;
-    }
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-function safeInternalMediaPath(value) {
-  const path = safeInternalPath(value);
-  return path && /^\/(?:assets|media|uploads)(?:\/|$)/.test(path) ? path : null;
-}
-
-export function safeEditorialLink(value) {
-  return safeInternalPath(value) || safeHttpsUrl(value);
-}
-
-export function safeEditorialImage(value) {
-  const safe = safeInternalMediaPath(value) || safeHttpsUrl(value);
-  const pathname = safe ? new URL(safe, typeof window === "undefined" ? "https://academy.invalid" : window.location.origin).pathname : "";
-  if (!safe || !/\.(?:jpe?g|png|gif|webp|avif)$/i.test(pathname)) return null;
-  return safe;
-}
+export const safeEditorialLink = getSafeEditorialLink;
+export const safeEditorialImage = getSafeEditorialImage;
 
 function safeEditorialPresentation(value) {
   const safe = safeInternalPath(value);
@@ -78,6 +39,44 @@ function SafeLink({ href, children, className, ...props }) {
       {children}
     </a>
   );
+}
+
+// Tiptap's safe Markdown serializer uses ++text++ for underline. Markdown/GFM
+// does not define that mark, so turn only this bounded syntax into a real
+// semantic <u> node for the renderer. Raw HTML remains disabled by
+// react-markdown, and no HTML supplied by the author is passed through here.
+function remarkUnderline() {
+  return (tree) => {
+    const visit = (node) => {
+      if (!Array.isArray(node?.children)) return;
+      for (let index = 0; index < node.children.length; index += 1) {
+        const child = node.children[index];
+        if (child?.type === "text" && typeof child.value === "string") {
+          const parts = [];
+          let cursor = 0;
+          const pattern = /\+\+([^+\n]+?)\+\+/g;
+          let match;
+          while ((match = pattern.exec(child.value))) {
+            if (match.index > cursor) parts.push({ type: "text", value: child.value.slice(cursor, match.index) });
+            parts.push({
+              type: "underline",
+              children: [{ type: "text", value: match[1] }],
+              data: { hName: "u" },
+            });
+            cursor = match.index + match[0].length;
+          }
+          if (parts.length) {
+            if (cursor < child.value.length) parts.push({ type: "text", value: child.value.slice(cursor) });
+            node.children.splice(index, 1, ...parts);
+            index += parts.length - 1;
+            continue;
+          }
+        }
+        visit(child);
+      }
+    };
+    visit(tree);
+  };
 }
 
 function MarkdownTable({ children, ...props }) {
@@ -114,12 +113,13 @@ const markdownComponents = {
   },
   table: ({ node: _node, children, ...props }) => <MarkdownTable {...props}>{children}</MarkdownTable>,
   th: ({ node: _node, children, ...props }) => <th {...props} scope="col">{children}</th>,
+  u: ({ children, ...props }) => <u {...props} className="underline decoration-brand-orange/70 underline-offset-2">{children}</u>,
 };
 
 export function EditorialMarkdown({ children = "", className = "" }) {
   return (
     <div className={cn("markdown-body min-w-0 break-words", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkUnderline]} components={markdownComponents}>
         {children}
       </ReactMarkdown>
     </div>

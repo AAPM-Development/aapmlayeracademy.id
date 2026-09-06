@@ -1,6 +1,6 @@
 // @ts-nocheck
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
@@ -38,7 +38,8 @@ import {
   useSaveAdminQuestion,
   useUpdateAdminModule,
 } from "@/lib/useAdminData";
-import { createEditorialBlock, createEditorialDocument, ensureEditorialDocument, hasEditorialVideo } from "@/lib/editorialDocument";
+import { createEditorialBlock, createEditorialDocument, ensureEditorialDocument, hasEditorialVideo, parseEditorialDocument } from "@/lib/editorialDocument";
+import { useAuth } from "@/lib/AuthContext";
 
 const emptyModule = {
   levelNumber: 1,
@@ -74,6 +75,85 @@ const textToList = (value) =>
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+
+const editorDraftPrefix = "aapm:academy:module-editor:v1";
+
+function moduleFormFromApi(module) {
+  return {
+    levelNumber: module?.level || 1,
+    levelName: module?.levelName || "",
+    moduleNumber: module?.moduleNumber || "",
+    title: module?.title || "",
+    category: module?.category || "",
+    summary: module?.summary || "",
+    content: module?.content || "",
+    editorialContent: module?.editorialContent || null,
+    videoUrl: module?.videoUrl || "",
+    videoScript: module?.videoScript || "",
+    learningObjectives: listToText(module?.learningObjectives),
+    keyTakeaways: listToText(module?.keyTakeaways),
+    checklist: listToText(module?.checklist),
+    practicalAssignment: module?.practicalAssignment || "",
+    order: module?.order || "",
+  };
+}
+
+function moduleFormFromDraft(candidate) {
+  if (!candidate || typeof candidate !== "object") return null;
+  const textValue = (value) => (typeof value === "string" ? value : "");
+  const numberValue = (value, fallback = "") => value ?? fallback;
+  return {
+    levelNumber: numberValue(candidate.levelNumber, 1),
+    levelName: textValue(candidate.levelName),
+    moduleNumber: numberValue(candidate.moduleNumber),
+    title: textValue(candidate.title),
+    category: textValue(candidate.category),
+    summary: textValue(candidate.summary),
+    content: textValue(candidate.content),
+    editorialContent: parseEditorialDocument(candidate.editorialContent) || null,
+    videoUrl: textValue(candidate.videoUrl),
+    videoScript: textValue(candidate.videoScript),
+    learningObjectives: textValue(candidate.learningObjectives),
+    keyTakeaways: textValue(candidate.keyTakeaways),
+    checklist: textValue(candidate.checklist),
+    practicalAssignment: textValue(candidate.practicalAssignment),
+    order: numberValue(candidate.order),
+  };
+}
+
+function editorDraftKey(accountId, courseId, moduleId) {
+  if (!accountId || !courseId || !moduleId) return "";
+  return `${editorDraftPrefix}:${encodeURIComponent(String(accountId))}:${encodeURIComponent(String(courseId))}:${encodeURIComponent(String(moduleId))}`;
+}
+
+function readEditorDraft(key) {
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || "null");
+    if (!parsed || typeof parsed !== "object" || !parsed.form || typeof parsed.form !== "object") return null;
+    return moduleFormFromDraft(parsed.form);
+  } catch {
+    return null;
+  }
+}
+
+function removeEditorDraft(key) {
+  if (!key || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Storage failures must not block the editor.
+  }
+}
+
+function writeEditorDraft(key, form) {
+  if (!key || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ version: 1, savedAt: new Date().toISOString(), form }));
+  } catch {
+    // Storage failures must not block the editor.
+  }
+}
 
 function QuestionEditor({ moduleId }) {
   const { data, isLoading } = useAdminModuleQuestions(moduleId);
@@ -342,7 +422,10 @@ export default function AdminModuleEditor() {
   const { courseId, moduleId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const isNew = moduleId === "new";
+  const accountId = user?.id ? String(user.id) : "";
+  const editorModuleId = isNew ? "new" : moduleId;
   const { data, isLoading, error, refetch } = useAdminModule(
     isNew ? null : moduleId,
   );
@@ -351,30 +434,70 @@ export default function AdminModuleEditor() {
   const deleteModule = useDeleteAdminModule();
   const [form, setForm] = useState(emptyModule);
   const [pendingModuleDelete, setPendingModuleDelete] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState(null);
+  const [pendingNavigation, setPendingNavigation] = useState("");
+  const [editorReady, setEditorReady] = useState(false);
+  const initialFormRef = useRef(JSON.stringify(emptyModule));
+  const editorContextRef = useRef("");
+  const draftKey = useMemo(
+    () => editorDraftKey(accountId, courseId, editorModuleId),
+    [accountId, courseId, editorModuleId],
+  );
+  const editorContextKey = useMemo(
+    () => `${accountId}:${courseId}:${editorModuleId}`,
+    [accountId, courseId, editorModuleId],
+  );
+  const formSnapshot = useMemo(() => JSON.stringify(form), [form]);
+  const isDirty = editorReady && formSnapshot !== initialFormRef.current;
   const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
+
   useEffect(() => {
     const module = data?.module;
-    if (!module) return;
-    setForm({
-      levelNumber: module.level || 1,
-      levelName: module.levelName || "",
-      moduleNumber: module.moduleNumber || "",
-      title: module.title || "",
-      category: module.category || "",
-      summary: module.summary || "",
-      content: module.content || "",
-      editorialContent: module.editorialContent || null,
-      videoUrl: module.videoUrl || "",
-      videoScript: module.videoScript || "",
-      learningObjectives: listToText(module.learningObjectives),
-      keyTakeaways: listToText(module.keyTakeaways),
-      checklist: listToText(module.checklist),
-      practicalAssignment: module.practicalAssignment || "",
-      order: module.order || "",
-    });
-  }, [data]);
+    if (!accountId || (!isNew && !module)) return;
+    if (editorContextRef.current === editorContextKey) return;
+
+    const nextForm = isNew ? { ...emptyModule } : moduleFormFromApi(module);
+    editorContextRef.current = editorContextKey;
+    initialFormRef.current = JSON.stringify(nextForm);
+    setForm(nextForm);
+    setEditorReady(true);
+
+    const draft = readEditorDraft(draftKey);
+    if (draft && JSON.stringify(draft) !== JSON.stringify(nextForm)) {
+      setPendingDraft({ key: draftKey, form: draft });
+    } else {
+      removeEditorDraft(draftKey);
+      setPendingDraft(null);
+    }
+  }, [accountId, data, draftKey, editorContextKey, isNew]);
+
+  useEffect(() => {
+    if (!editorReady || !isDirty || !draftKey) return undefined;
+    const timeoutId = window.setTimeout(() => writeEditorDraft(draftKey, form), 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [draftKey, editorReady, form, isDirty]);
+
+  useEffect(() => {
+    if (!isDirty) return undefined;
+    const handleBeforeUnload = (event) => {
+      writeEditorDraft(draftKey, form);
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [draftKey, form, isDirty]);
+
   const set = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const requestNavigation = (target) => {
+    if (!isDirty) {
+      navigate(target);
+      return;
+    }
+    writeEditorDraft(draftKey, form);
+    setPendingNavigation(target);
+  };
   const moveLegacyVideoIntoEditorial = () => {
     const url = form.videoUrl.trim();
     if (!url || editorialVideoIsPresent) return;
@@ -410,6 +533,11 @@ export default function AdminModuleEditor() {
         title: "Modul disimpan",
         description: "Perubahan langsung dipakai oleh Academy.",
       });
+      const savedForm = saved?.id ? moduleFormFromApi(saved) : form;
+      initialFormRef.current = JSON.stringify(savedForm);
+      setForm(savedForm);
+      removeEditorDraft(draftKey);
+      setEditorReady(true);
       if (isNew && saved?.id)
         navigate(`/admin/courses/${courseId}/modules/${saved.id}`, {
           replace: true,
@@ -453,11 +581,14 @@ export default function AdminModuleEditor() {
       title={isNew ? "Tambah modul" : `Edit modul ${form.moduleNumber || ""}`}
       description="Kelola konten belajar, susunan, video, serta evaluasi dengan aman."
       actions={
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link to={`/admin/courses/${courseId}`}>
-              <AapmIcon name="arrowLeft" className="h-4 w-4" /> Kurikulum
-            </Link>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {isDirty && (
+            <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground">
+              Belum tersimpan
+            </Badge>
+          )}
+          <Button type="button" variant="outline" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}>
+            <AapmIcon name="arrowLeft" className="h-4 w-4" /> Kurikulum
           </Button>
           {!isNew && (
             <Button
@@ -666,7 +797,7 @@ export default function AdminModuleEditor() {
                 </div>
               </div>
             </Surface>
-            <Surface variant="muted" className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-20 flex flex-col gap-3 p-3 lg:bottom-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name="checkRead" className="h-4 w-4 text-brand-green" /> Perubahan hanya aktif setelah disimpan.</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
+            <Surface variant="muted" className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-20 flex flex-col gap-3 p-3 lg:bottom-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name={isDirty ? "edit" : "checkRead"} className={`h-4 w-4 ${isDirty ? "text-brand-orange" : "text-brand-green"}`} /> {isDirty ? "Perubahan lokal belum tersimpan." : "Perubahan hanya aktif setelah disimpan."}</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
           </form>
         </TabsContent>
         <TabsContent value="preview" className="mt-5">
@@ -696,6 +827,42 @@ export default function AdminModuleEditor() {
           {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}
         </TabsContent>
       </Tabs>
+      <ConfirmDialog
+        open={Boolean(pendingDraft)}
+        onOpenChange={(open) => {
+          if (!open) {
+            removeEditorDraft(pendingDraft?.key);
+            setPendingDraft(null);
+          }
+        }}
+        title="Draft lokal ditemukan"
+        description="Ada perubahan lokal yang belum tersimpan untuk modul ini. Pulihkan draft untuk melanjutkan dari titik terakhir atau buang draft tersebut."
+        confirmLabel="Pulihkan draft"
+        cancelLabel="Buang draft"
+        icon="solar:history-bold-duotone"
+        onConfirm={() => {
+          const draft = pendingDraft;
+          if (!draft) return;
+          setForm(draft.form);
+          initialFormRef.current = JSON.stringify(form);
+          removeEditorDraft(draft.key);
+          setPendingDraft(null);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingNavigation)}
+        onOpenChange={(open) => !open && setPendingNavigation("")}
+        title="Tinggalkan editor?"
+        description="Perubahan belum disimpan. Draft akan tetap tersedia di browser untuk dipulihkan saat editor modul ini dibuka lagi."
+        confirmLabel="Tinggalkan tanpa simpan"
+        cancelLabel="Tetap di editor"
+        icon="solar:logout-2-bold-duotone"
+        onConfirm={() => {
+          const target = pendingNavigation;
+          setPendingNavigation("");
+          if (target) navigate(target);
+        }}
+      />
       <ConfirmDialog
         open={pendingModuleDelete}
         onOpenChange={setPendingModuleDelete}

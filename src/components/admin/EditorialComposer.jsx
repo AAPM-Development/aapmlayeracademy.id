@@ -2,6 +2,7 @@
 import React from "react";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import AapmIcon from "@/components/icons/AapmIcon";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import {
   Badge,
   Button,
@@ -498,13 +499,13 @@ function BlockFields({ block, onChange }) {
       return (
         <Field
           label="Materi"
-          hint="Mendukung Markdown aman: **tebal**, *miring*, daftar, kutipan, tabel, dan [tautan](https://...). HTML, script, dan iframe tidak diterbitkan."
+          hint="Editor menyimpan Markdown aman agar modul lama tetap terbaca. HTML, script, dan iframe dibersihkan; gunakan tautan HTTPS atau path internal."
+          id={fieldId("content")}
         >
-          <Textarea
+          <RichTextEditor
             id={fieldId("content")}
-            rows={9}
             value={block.content}
-            onChange={(event) => set("content", event.target.value)}
+            onChange={(content) => set("content", content)}
           />
         </Field>
       );

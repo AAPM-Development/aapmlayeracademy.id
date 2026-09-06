@@ -1884,4 +1884,40 @@
   .markdown-body hr {
     @apply my-4 border-border;
   }
+
+  .aapm-rich-editor__content {
+    @apply min-h-56 max-h-[32rem] overflow-y-auto px-3 py-3 text-sm leading-6 text-foreground outline-none;
+  }
+  .aapm-rich-editor__content p {
+    @apply my-2 first:mt-0 last:mb-0;
+  }
+  .aapm-rich-editor__content h1,
+  .aapm-rich-editor__content h2,
+  .aapm-rich-editor__content h3 {
+    @apply mt-4 mb-2 font-semibold tracking-[-0.015em] first:mt-0;
+  }
+  .aapm-rich-editor__content h1 {
+    @apply text-xl;
+  }
+  .aapm-rich-editor__content h2 {
+    @apply text-lg;
+  }
+  .aapm-rich-editor__content h3 {
+    @apply text-base;
+  }
+  .aapm-rich-editor__content ul {
+    @apply my-2 list-disc space-y-1 pl-5;
+  }
+  .aapm-rich-editor__content ol {
+    @apply my-2 list-decimal space-y-1 pl-5;
+  }
+  .aapm-rich-editor__content blockquote {
+    @apply my-3 border-l-2 border-brand-orange pl-3 italic text-muted-foreground;
+  }
+  .aapm-rich-editor__content a {
+    @apply text-brand-orange underline decoration-brand-orange/40 underline-offset-2;
+  }
+  .aapm-rich-editor__content > *:first-child {
+    @apply mt-0;
+  }
 }
