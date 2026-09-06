@@ -408,21 +408,33 @@ export function editorialInlineContent(value, fallback = "") {
   const document = parseEditorialDocument(value);
   if (!document?.blocks.length) return typeof fallback === "string" ? fallback : "";
   return document.blocks
-    .filter((block) => block.type !== "video")
+    // Keep structured elements (slides, images, tables, and callouts) as
+    // document blocks. Flattening them into Markdown makes a later text edit
+    // silently replace the learner's carousel/object with plain copy.
+    .filter((block) => ["richText", "heading"].includes(block.type))
     .map(inlineMarkdownForBlock)
     .filter(Boolean)
     .join("\n\n");
+}
+
+export function editorialContentBlocks(value) {
+  return ensureEditorialDocument(value).blocks.filter((block) => (
+    // Headings are intentionally brought into the Word-like text canvas;
+    // keeping them here as well would render them twice after the next save.
+    block.type !== "richText" && block.type !== "heading" && block.type !== "video"
+  ));
 }
 
 export function editorialVideoBlocks(value) {
   return ensureEditorialDocument(value).blocks.filter((block) => block.type === "video");
 }
 
-export function createInlineEditorialDocument(content = "", videos = [], richTextId = "inline-content") {
+export function createInlineEditorialDocument(content = "", videos = [], richTextId = "inline-content", contentBlocks = []) {
   const blocks = [];
   if (typeof content === "string" && content.trim()) {
     blocks.push({ id: richTextId, type: "richText", content });
   }
+  if (Array.isArray(contentBlocks)) blocks.push(...contentBlocks);
   if (Array.isArray(videos)) blocks.push(...videos);
   return createEditorialDocument(blocks);
 }

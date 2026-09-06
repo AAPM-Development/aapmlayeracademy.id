@@ -1886,7 +1886,7 @@
   }
 
   .aapm-rich-editor__content {
-    @apply min-h-56 max-h-[32rem] overflow-y-auto px-3 py-3 text-sm leading-6 text-foreground outline-none;
+    @apply min-h-[22rem] max-h-[42rem] overflow-y-auto bg-background px-5 py-5 text-[15px] leading-7 text-foreground outline-none selection:bg-brand-orange/15;
   }
   .aapm-rich-editor__content p {
     @apply my-2 first:mt-0 last:mb-0;

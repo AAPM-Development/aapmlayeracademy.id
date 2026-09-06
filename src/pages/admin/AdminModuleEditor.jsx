@@ -815,7 +815,7 @@ export default function AdminModuleEditor() {
               </div>
             </Surface>
             <Surface className="p-5">
-              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Materi utama</div><h2 className="mt-1 text-base font-semibold">Tulis materi dan atur video</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Materi teks sekarang berada di satu editor inline. Video saja yang dipisahkan menjadi kartu agar mudah diatur.</p></div>
+              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Materi utama</div><h2 className="mt-1 text-base font-semibold">Tulis materi dan sisipkan media</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Tulis seperti di Word, lalu sisipkan slide, gambar, tabel, sorotan, tautan, atau video tanpa kehilangan bentuk elemen learner.</p></div>
               <EditorialComposer
                 value={form.editorialContent}
                 fallback={form.content}

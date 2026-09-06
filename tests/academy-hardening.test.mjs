@@ -4,6 +4,7 @@ import {
   createEditorialBlock,
   createEditorialDocument,
   createInlineEditorialDocument,
+  editorialContentBlocks,
   editorialInlineContent,
   editorialVideoBlocks,
   ensureEditorialDocument,
@@ -41,12 +42,13 @@ test("editorial blocks preserve legacy Markdown and normalize a rich-text block"
   assert.deepEqual(ensured, document);
 });
 
-test("simple editorial mode converts non-video blocks into one inline document", () => {
+test("hybrid editorial mode keeps structured elements beside the inline text canvas", () => {
   const legacy = createEditorialDocument([
     { id: "heading", type: "heading", content: "Pemeriksaan harian", level: 2 },
     { id: "copy", type: "richText", content: "Gunakan **checklist** ini." },
     { id: "table", type: "table", title: "Target", columns: ["Indikator", "Nilai"], rows: [["Suhu", "24°C"]] },
     { id: "image", type: "image", src: "/uploads/kandang.webp", alt: "Kandang ayam", decorative: false },
+    { id: "slides", type: "slides", source: "manual", slides: [{ id: "slide-1", title: "Langkah pertama", content: "Amati kondisi kandang.", src: "/uploads/langkah.webp", alt: "Kandang" }] },
     { id: "link", type: "link", label: "Panduan", url: "/modules/2", description: "Baca referensi lanjutan." },
     { id: "video", type: "video", url: "https://youtu.be/demo", caption: "Video utama" },
   ]);
@@ -54,17 +56,17 @@ test("simple editorial mode converts non-video blocks into one inline document",
   const inline = editorialInlineContent(legacy);
   assert.match(inline, /## Pemeriksaan harian/);
   assert.match(inline, /Gunakan \*\*checklist\*\* ini\./);
-  assert.match(inline, /\| Indikator \| Nilai \|/);
-  assert.match(inline, /!\[Kandang ayam\]\(\<\/uploads\/kandang\.webp\>\)/);
-  assert.match(inline, /\[Panduan\]\(\<\/modules\/2\>\)/);
+  assert.doesNotMatch(inline, /Indikator|Kandang ayam|Panduan|Langkah pertama/);
   assert.doesNotMatch(inline, /youtu\.be/);
   assert.equal(editorialVideoBlocks(legacy).length, 1);
+  assert.deepEqual(editorialContentBlocks(legacy).map((block) => block.type), ["table", "image", "slides", "link"]);
 
-  const simple = createInlineEditorialDocument(inline, editorialVideoBlocks(legacy), "inline-content");
-  assert.equal(simple.blocks.length, 2);
+  const simple = createInlineEditorialDocument(inline, editorialVideoBlocks(legacy), "inline-content", editorialContentBlocks(legacy));
+  assert.equal(simple.blocks.length, 6);
   assert.equal(simple.blocks[0].id, "inline-content");
   assert.equal(simple.blocks[0].type, "richText");
-  assert.equal(simple.blocks[1].type, "video");
+  assert.equal(simple.blocks[3].type, "slides");
+  assert.equal(simple.blocks[5].type, "video");
 });
 
 test("editorial URL policy rejects dangerous links and unsafe media paths", () => {

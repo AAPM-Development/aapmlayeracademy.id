@@ -207,7 +207,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
 
   return (
     <div id={id} className="aapm-rich-editor overflow-hidden rounded-xl border border-input bg-surface-elevated shadow-sm focus-within:border-brand-orange/65 focus-within:ring-2 focus-within:ring-brand-orange/10">
-      <div className="flex min-w-0 flex-wrap items-center gap-0.5 border-b border-border bg-surface-subtle/75 p-1.5" role="toolbar" aria-label="Format materi">
+      <div className="sticky top-0 z-10 flex min-w-0 flex-wrap items-center gap-0.5 border-b border-border bg-surface-subtle/95 p-1.5 shadow-[0_1px_0_hsl(var(--border)/0.65)] backdrop-blur" role="toolbar" aria-label="Format materi">
         <Select
           value={blockStyle}
           onOpenChange={(open) => {
