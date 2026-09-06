@@ -165,17 +165,38 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
     return chain;
   };
 
+  const restoreEditorSelection = (selection = selectionRef.current) => {
+    if (!editor || editor.isDestroyed || !selection || typeof window === "undefined") return;
+    const maxPosition = editor.state.doc.content.size;
+    const nextSelection = {
+      from: Math.min(selection.from, maxPosition),
+      to: Math.min(selection.to, maxPosition),
+    };
+
+    // Radix Select returns focus to its trigger after an option is chosen. Let
+    // that focus transition finish, then return the caret to the editor so the
+    // author can keep typing and the style label stays tied to the same block.
+    window.setTimeout(() => {
+      if (!editor || editor.isDestroyed) return;
+      editor.chain().focus().setTextSelection(nextSelection).run();
+      selectionRef.current = nextSelection;
+      refreshSelectionState((version) => version + 1);
+    }, 0);
+  };
+
   const activeHeadingLevel = editor && [1, 2, 3].find((level) => editor.isActive("heading", { level }));
   const blockStyle = activeHeadingLevel ? `heading-${activeHeadingLevel}` : "paragraph";
 
   const applyBlockStyle = (style) => {
     if (!editor) return;
+    const selection = selectionRef.current;
     const chain = editorChain();
     if (style === "paragraph") {
       chain.setParagraph().run();
-      return;
+    } else {
+      chain.setHeading({ level: Number(style.replace("heading-", "")) }).run();
     }
-    chain.setHeading({ level: Number(style.replace("heading-", "")) }).run();
+    restoreEditorSelection(selection);
   };
 
   if (!editor) {
@@ -187,7 +208,13 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
       <div className="flex min-w-0 flex-wrap items-center gap-0.5 border-b border-border bg-surface-subtle/75 p-1.5" role="toolbar" aria-label="Format materi">
         <Select
           value={blockStyle}
-          onOpenChange={(open) => open && rememberSelection()}
+          onOpenChange={(open) => {
+            if (open) {
+              rememberSelection();
+              return;
+            }
+            restoreEditorSelection();
+          }}
           onValueChange={applyBlockStyle}
         >
           <SelectTrigger
