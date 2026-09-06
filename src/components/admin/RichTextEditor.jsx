@@ -76,6 +76,7 @@ function TextIcon({ children }) {
 export default function RichTextEditor({ id, value = "", onChange = () => {} }) {
   const onChangeRef = useRef(onChange);
   const selectionRef = useRef(null);
+  const [, refreshSelectionState] = useState(0);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [linkError, setLinkError] = useState("");
@@ -107,6 +108,9 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
     onSelectionUpdate: ({ editor: currentEditor }) => {
       const { from, to } = currentEditor.state.selection;
       selectionRef.current = { from, to };
+      // Re-render the toolbar so its block-style label follows the caret when
+      // the author moves between paragraphs or headings in this editor.
+      refreshSelectionState((version) => version + 1);
     },
     onUpdate: ({ editor: currentEditor }) => {
       const clean = sanitizeRichTextDocument(currentEditor.getJSON());
