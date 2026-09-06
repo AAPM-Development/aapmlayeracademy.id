@@ -38,6 +38,8 @@ export const aapmIconSources = Object.freeze({
   chevronUp: "solar:alt-arrow-up-linear",
   arrowLeft: "solar:alt-arrow-left-linear",
   arrowRight: "solar:alt-arrow-right-linear",
+  undo: "solar:undo-left-round-linear",
+  redo: "solar:undo-right-round-linear",
   logout: "solar:logout-3-bold",
   progress: "solar:chart-square-bold-duotone",
   themeLight: "solar:sun-2-bold-duotone",

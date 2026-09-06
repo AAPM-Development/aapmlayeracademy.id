@@ -40,6 +40,8 @@ import solarLeaf from '@iconify-icons/solar/leaf-bold-duotone.js';
 import solar30 from '@iconify-icons/solar/list-bold.js';
 import solarAltArrowDown from '@iconify-icons/solar/alt-arrow-down-linear.js';
 import solarAltArrowUp from '@iconify-icons/solar/alt-arrow-up-linear.js';
+import solarUndoLeft from '@iconify-icons/solar/undo-left-round-linear.js';
+import solarUndoRight from '@iconify-icons/solar/undo-right-round-linear.js';
 import solar31 from '@iconify-icons/solar/lock-keyhole-minimalistic-unlocked-bold.js';
 import solar32 from '@iconify-icons/solar/lock-password-outline.js';
 import solarLockedKeyhole from '@iconify-icons/solar/lock-keyhole-minimalistic-bold-duotone.js';
@@ -90,6 +92,8 @@ export const solarIconData = Object.freeze({
   'solar:alt-arrow-right-linear': solar2,
   'solar:alt-arrow-down-linear': solarAltArrowDown,
   'solar:alt-arrow-up-linear': solarAltArrowUp,
+  'solar:undo-left-round-linear': solarUndoLeft,
+  'solar:undo-right-round-linear': solarUndoRight,
   'solar:arrow-right-up-bold': solar3,
   'solar:arrow-up-bold': solarArrowUp,
   'solar:calculator-bold-duotone': solar4,

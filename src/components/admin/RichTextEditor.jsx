@@ -73,6 +73,19 @@ function TextIcon({ children }) {
   return <span aria-hidden="true" className="font-semibold leading-none">{children}</span>;
 }
 
+function ListGlyph({ ordered = false }) {
+  return (
+    <span aria-hidden="true" className="inline-flex items-start gap-1">
+      <span className="w-3 text-right text-[10px] font-semibold leading-4">{ordered ? "1." : "•"}</span>
+      <span className="flex flex-col gap-[3px] pt-[5px]">
+        <span className="h-px w-3 rounded-full bg-current" />
+        <span className="h-px w-3 rounded-full bg-current" />
+        <span className="h-px w-3 rounded-full bg-current" />
+      </span>
+    </span>
+  );
+}
+
 export default function RichTextEditor({ id, value = "", onChange = () => {} }) {
   const onChangeRef = useRef(onChange);
   const selectionRef = useRef(null);
@@ -118,6 +131,12 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
       if (JSON.stringify(clean) !== JSON.stringify(currentEditor.getJSON())) {
         currentEditor.commands.setContent(clean, { emitUpdate: false });
       }
+      const { from, to } = currentEditor.state.selection;
+      selectionRef.current = { from, to };
+      // History buttons must follow every document transaction, not only
+      // caret movement. Otherwise undo/redo can look disabled or enabled
+      // until the author clicks somewhere else in the document.
+      refreshSelectionState((version) => version + 1);
       onChangeRef.current(currentEditor.getMarkdown());
     },
   });
@@ -251,10 +270,10 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
         </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
         <ToolbarButton label="Daftar bullet" active={editor.isActive("bulletList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBulletList().run()}>
-          <AapmIcon name="solar:list-bold" className="h-4 w-4" />
+          <ListGlyph />
         </ToolbarButton>
         <ToolbarButton label="Daftar bernomor" active={editor.isActive("orderedList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleOrderedList().run()}>
-          <span aria-hidden="true" className="text-[11px] font-semibold">1·</span>
+          <ListGlyph ordered />
         </ToolbarButton>
         <ToolbarButton label="Kutipan" active={editor.isActive("blockquote")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBlockquote().run()}>
           <span aria-hidden="true" className="text-sm font-bold">“</span>
@@ -266,11 +285,11 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
           <AapmIcon name="solar:link-broken-minimalistic-bold" className="h-4 w-4" />
         </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <ToolbarButton label="Urungkan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onBeforeAction={rememberSelection} onClick={() => editorChain().undo().run()}>
-          <AapmIcon name="solar:alt-arrow-left-linear" className="h-4 w-4" />
+        <ToolbarButton label="Urungkan perubahan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).undo().run()}>
+          <AapmIcon name="undo" className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Ulangi (Ctrl/⌘+Shift+Z)" disabled={!editor.can().redo()} onBeforeAction={rememberSelection} onClick={() => editorChain().redo().run()}>
-          <AapmIcon name="solar:alt-arrow-right-linear" className="h-4 w-4" />
+        <ToolbarButton label="Ulangi perubahan (Ctrl/⌘+Shift+Z atau Ctrl+Y)" disabled={!editor.can().redo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).redo().run()}>
+          <AapmIcon name="redo" className="h-4 w-4" />
         </ToolbarButton>
       </div>
       {linkOpen && (
