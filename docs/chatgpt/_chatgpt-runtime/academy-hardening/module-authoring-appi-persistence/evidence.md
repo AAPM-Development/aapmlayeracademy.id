@@ -7,18 +7,18 @@ Date: 2026-09-06 (Asia/Jakarta)
 - The attached handoff was treated as implementation and verification context. Its earlier staging-only boundary was superseded for this turn by the direct user request to harden the editor, verify the result, merge the tested result into `main`, and deploy the production domain.
 - Repository: `D:\SA\aapmlayeracademy.id`.
 - Baseline for the earlier APPI/authoring handoff: `develop` at `bc68df4ba724128171a4a9c25f543815237b8102`.
-- Runtime promotion commit: `61801c37e82c1d7664c2aa7c751a899bc14fd70b`, containing the focused editor hardening commits `9c2b7dac79e5fd2c8` and `27c18388abc3033ec1173e6fe20ea6accf71018a`. The production/evidence synchronization commit deployed afterward is `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`.
-- Deployment target: cPanel repository `/home/aapp8359/repositories/aapmlayeracademy-staging`, checked-out branch `develop`.
-- Production promotion is a separate, explicitly authorized step after the staging UAT below. The production cPanel repository path and checked-out branch must be verified from cPanel before deployment; no path is inferred from the staging repository name.
+- Runtime promotion commit for this run: `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`. It contains the current evidence/status record and the tracked native artifact built from the focused source follow-up `ab943e558b730fd078c3caeb02b72eba81970989` plus the earlier authoring/APPI hardening history.
+- Deployment targets: cPanel repository `/home/aapp8359/repositories/aapmlayeracademy-staging`, checked-out branch `develop`, and cPanel repository `/home/aapp8359/repositories/aapmlayeracademy-production`, checked-out branch `main`.
+- Production promotion was a separate, explicitly authorized step after the staging artifact/health gate. The production cPanel repository path and checked-out branch were verified from cPanel before deployment; no path was inferred from the staging repository name. The protected editor smoke still requires an authenticated session.
 - No database schema recreation, seed, truncate, delete, or direct SQL write was performed. The only staging data changes were the explicitly scoped additive UAT fixtures described below.
 
 ## Current follow-up status: simple inline authoring
 
-- The current `develop` head is `ab943e558b730fd078c3caeb02b72eba81970989` (`fix(editor): confirm video card removal before applying changes`), pushed to `origin/develop`.
+- The runtime promotion target for this run is `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`, pushed to `origin/develop`, fast-forwarded to `origin/main`, and pulled/deployed by both cPanel repositories.
 - The follow-up keeps exactly one inline rich-text canvas for non-video material and renders videos as separate ordered cards. Video removal now uses the Academy `ConfirmDialog`; cancelling leaves the card and unsaved content unchanged.
 - Local browser verification on `http://127.0.0.1:5174/admin/courses/layer-farm-management/modules/2` showed one inline editor, one video card, no block-add controls, and the video-delete confirmation. The page had zero console errors.
-- The tracked local build currently references `assets/index-D-4LYCa_.js`; staging and production currently still reference `assets/index-BYnpfCkS.js`. The follow-up build has therefore not reached either live target yet.
-- The Chrome extension exposes the ten4seven account as the `UTAMA` profile, but its open-tab control is currently unavailable. No cPanel update or deploy action is recorded for `ab943e5`.
+- The tracked build references `assets/index-D-4LYCa_.js`; both staging and production now serve that same asset. The remote asset is 542660 bytes with SHA-256 `6DF4813EF174723219E4B750216321F05AB52A9A9AF23332C9F191DF36F2C8B3`, matching the local build.
+- The existing Chrome cPanel tab exposed the `UTAMA` profile and was used for the staging and production `Update from Remote` and `Deploy HEAD Commit` actions. No credentials or OTP were entered or recorded.
 
 ## Root-cause evidence
 
@@ -55,7 +55,7 @@ The frontend initialized a blank active conversation instead of restoring the ac
 | --- | --- | --- |
 | `npm run lint` | PASS | Exit code 0 after the natural block-style selector and navigation-guard changes. |
 | `npm test` | PASS | 5/5 tests passed before the confirmation-dialog-only follow-up; the follow-up was also exercised in the local browser. |
-| `npm run build` | PASS | Vite built 3,199 modules for `ab943e5`; only existing Browserslist/chunk-size warnings. |
+| `npm run build` | PASS | Vite built 3,199 modules for the current tracked artifact from the `ab943e5` source follow-up; only existing Browserslist/chunk-size warnings. |
 | `php -l public/api/index.php` | PASS | No syntax errors. |
 | `php -l public/api/bootstrap.php` | PASS | No syntax errors. |
 | `git diff --check` | PASS | No whitespace errors; Git reported only existing LF/CRLF normalization warnings. |
@@ -65,20 +65,20 @@ The package installation reported 12 npm audit findings. They were not auto-fixe
 
 ## Staging deployment
 
-1. cPanel updated `/home/aapp8359/repositories/aapmlayeracademy-staging` from remote `develop` through the earlier hardening commits and deployed it.
-2. The first staging authoring pass found a real nested-form defect in the link popover: submitting `Terapkan` reloaded the module form and dropped an unsaved block.
-3. The narrow fix was committed, pushed, integrated into `develop`, and redeployed.
-4. The follow-up natural-editor/guard changes were pushed to `develop`; cPanel then updated and deployed final runtime commit `27c18388abc3033ec1173e6fe20ea6accf71018a`.
-5. Final staging cPanel state at the time of this evidence update: `Last Deployed SHA: 27c18388abc3033ec1173e6fe20ea6accf71018a` (`fix(editor): keep block style synced with caret`).
-6. `GET https://staging.aapmlayeracademy.id/api/health` returned HTTP 200:
+1. The earlier staging history includes the narrow link-popover form fix and the natural-editor/guard redeploy. Those earlier UAT results remain retained below as historical evidence for the authoring/APPI hardening scope.
+2. For this run, cPanel updated `/home/aapp8359/repositories/aapmlayeracademy-staging` from the remote `develop` branch and advanced HEAD to `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`.
+3. cPanel `Deploy HEAD Commit` completed for the same staging HEAD. The refreshed panel showed `Last Deployed on: Sep 6, 2026 10:36:01 PM` and `Last Deployed SHA: 03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`.
+4. `GET https://staging.aapmlayeracademy.id/` returned HTTP 200 and referenced `/assets/index-D-4LYCa_.js`. The served JavaScript was 542660 bytes with SHA-256 `6DF4813EF174723219E4B750216321F05AB52A9A9AF23332C9F191DF36F2C8B3`, matching the local build.
+5. `GET https://staging.aapmlayeracademy.id/api/health` returned HTTP 200:
 
 ```json
 {"data":{"ok":true,"app":"aapm-layer-academy-native","environment":"staging"}}
 ```
-
-7. The later simple-inline follow-up was pushed as `ab943e5`, but cPanel has not yet updated or deployed that commit. The live staging asset remains `assets/index-BYnpfCkS.js`, so the follow-up is not staging-verified.
+6. A read-only browser navigation to the protected module route after deployment redirected to `/login`; `/api/auth/me` returned `401` because no authenticated staging session was available. No credentials were entered, so the rendered authenticated editor smoke is `UNVERIFIED` for this run.
 
 ## Runtime UAT
+
+The authenticated module/APPI UAT recorded below was performed during the earlier staging session and remains valid for the earlier hardening deployment. The current follow-up was verified in the local rendered runtime and through the deployed artifact/health checks; a fresh authenticated staging or production editor session was not available after this deployment.
 
 ### Module authoring
 
@@ -94,12 +94,13 @@ The package installation reported 12 npm audit findings. They were not auto-fixe
 
 ### Natural editing and accidental-action guards
 
-- On the final deployed build, a fresh rich-text block was populated with `Final natural heading test`, changed from `Judul 1` to `Judul 2` while the same text node remained the active selection, and inspected in the live DOM. Result: `blockTags=["H2","P"]`, text unchanged, with the trailing empty `P` representing Tiptap's normal required trailing paragraph; no extra heading or line was created by the H1-to-H2 action.
+- On the current local rendered build for commit `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`, a fresh rich-text block was populated with `Final natural heading test`, changed from `Judul 1` to `Judul 2` while the same text node remained the active selection, and inspected in the live DOM. Result: `blockTags=["H2","P"]`, text unchanged, with the trailing empty `P` representing Tiptap's normal required trailing paragraph; no extra heading or line was created by the H1-to-H2 action.
 - Moving the caret to an existing H2 block made the selector show `Judul 2`; moving it to an H1 block made the selector show `Judul 1`. This confirms the control reflects the active block rather than a stale previous selection.
 - With unsaved text, clicking `Kurikulum` opened `Tinggalkan editor?`; cancel kept the module URL and text. Browser Back opened the same guard; cancel kept the editor and text. Confirming `Tinggalkan tanpa simpan` navigated away while retaining the browser draft for recovery.
 - Reopening the module in a fresh tab showed `Draft lokal ditemukan`; `Pulihkan draft` restored the unsaved text and dirty state. This verifies accidental route/history exit does not silently lose the draft.
 - Delete confirmation stated that unsaved changes would also be discarded. Cancel and Escape closed the confirmation without deleting or leaving the editor.
 - No current natural-editor UAT block was saved to the staging database; the temporary UAT state was discarded in the browser. The previously documented additive APPI/module fixtures remain unchanged.
+- After the current staging deployment, read-only browser navigation to `/admin/courses/layer-farm-management/modules/2` redirected to `/login`; the login page rendered correctly, while `/api/auth/me` returned `401`. The authenticated editor journey is therefore `UNVERIFIED` on staging and production for this run.
 
 ### APPI persistence and history
 
@@ -136,30 +137,30 @@ The expected post-UAT database delta is one new APPI conversation with two messa
 - `10af06fcfec7930fab358346043a7fa8118af1a7` — `fix(editor): prevent link popover form submission`
 - `9c2b7dac79e5fd2c8a9079e90f3f14375874a2c8` — `fix(editor): make block formatting and navigation safe`
 - `27c18388abc3033ec1173e6fe20ea6accf71018a` — `fix(editor): keep block style synced with caret`
+- `ab943e558b730fd078c3caeb02b72eba81970989` — `fix(editor): confirm video card removal before applying changes`
+- `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29` — `docs(editor): record current inline follow-up status`
 - `2fdd1b64a8718075468a8c1741656ab7d1b5fa26` — `docs: record production promotion and smoke verification`
 
-Remote `develop` and `main` were synchronized through `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`; this final evidence correction is documentation-only and does not change runtime code.
+The runtime promotion was a fast-forward push from `develop` to `main` at `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`. The final evidence correction after deployment is documentation-only and does not change runtime code, generated assets, database state, or deployment paths.
 
 The production `main` promotion and cPanel deployment are recorded in the production section below.
 
 ## Production promotion
 
-Status: VERIFIED.
+Status: VERIFIED for Git pull/deploy and live artifact/health; authenticated editor UAT is `UNVERIFIED` because no authenticated staging or production browser session was available.
 
-The production verification below applies to the earlier promoted runtime through `2fdd1b64`. The current simple-inline follow-up at `ab943e5` has not been promoted or deployed to production; production therefore does not yet represent the current `develop` head.
-
-- GitHub remote `origin/main` was updated by fast-forward from `bc68df4ba724128171a4a9c25f543815237b8102` through the tested runtime promotion to `61801c37e82c1d7664c2aa7c751a899bc14fd70b` and the production/evidence synchronization commit `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`; `origin/develop` points to the same history. The local stale/divergent `main` branch was not reset or overwritten.
-- Production cPanel repository: `/home/aapp8359/repositories/aapmlayeracademy-production`, repository name `aapmlayeracademy-production-main`.
-- Production cPanel configuration was verified before mutation: remote `git@github.com:erp-aapm/aapmlayeracademy.id.git`, checked-out branch `main`.
-- cPanel `Update from Remote` succeeded and advanced production HEAD through the tested runtime promotion to `61801c37e82c1d7664c2aa7c751a899bc14fd70b`, then to the final production/evidence synchronization commit `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`.
-- cPanel `Deploy HEAD Commit` completed successfully for the final synchronized HEAD. Last deployed timestamp shown by cPanel: Sep 6, 2026 5:11:37 PM; last deployed SHA: `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`.
-- The follow-up evidence correction is documentation-only; no runtime source, generated runtime artifact, production database, migration, or seed changed after that verified deployment.
+- The GitHub remote `origin/main` was advanced by a normal fast-forward from `3eefb8da3d59040353dcb343ae232baea67c0902` to `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`. The local `develop` worktree was clean at the promotion point; no force push, reset, or destructive branch operation was used.
+- Production cPanel configuration was verified before mutation: repository `/home/aapp8359/repositories/aapmlayeracademy-production`, repository name `aapmlayeracademy-production-main`, remote `git@github.com:erp-aapm/aapmlayeracademy.id.git`, checked-out branch `main`.
+- cPanel `Update from Remote` succeeded and advanced production HEAD to `03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`.
+- cPanel `Deploy HEAD Commit` completed for that production HEAD. After a transient post-trigger `VersionControl/retrieve` timeout left an empty cPanel error alert, re-entering the read-only Pull or Deploy view refreshed the metadata and showed `Last Deployed on: Sep 6, 2026 10:39:43 PM` and `Last Deployed SHA: 03aa73419a1e0c20a4a4923c5e9ddb174ac6bb29`.
+- `GET https://aapmlayeracademy.id/` returned HTTP 200 and referenced `/assets/index-D-4LYCa_.js`. The served JavaScript was 542660 bytes with SHA-256 `6DF4813EF174723219E4B750216321F05AB52A9A9AF23332C9F191DF36F2C8B3`, matching staging and the local build.
 - `GET https://aapmlayeracademy.id/api/health` returned HTTP 200 with `{"data":{"ok":true,"app":"aapm-layer-academy-native","environment":"production"}}`.
-- A fresh browser smoke check of `https://aapmlayeracademy.id/` redirected to `/login` and rendered the Academy login title, form fields, CTA, and branding. No credentials are recorded in this evidence.
+- A read-only browser navigation to the protected module route redirected to `/login` and rendered the Academy login title, form fields, CTA, and branding. `/api/auth/me` returned `401`; no credentials are recorded in this evidence.
 - No production database write, seed, migration, or destructive cleanup was performed by this task.
 
 ## Remaining limitations
 
 - Repository-wide `npm run typecheck` remains blocked by the pre-existing JavaScript/JSX primitive declaration debt described above; this task did not broaden into a design-system typing migration.
-- Fresh logout/login verification was not performed because the staging session was an existing authenticated session and no fresh test credentials were supplied. Existing session runtime, account-scoped history, read-only role grouping, and server-side scope predicates were verified.
+- Fresh authenticated staging/production editor verification was not performed because the current browser sessions were unauthenticated after deployment and no test credentials were supplied. The login shell, public root, health endpoint, cPanel HEAD/deploy records, and local authenticated editor journey were verified.
 - Direct cross-account API response verification remains UNVERIFIED because the browser client blocked direct JSON navigation; it was not bypassed by changing auth/configuration.
+- One production cPanel metadata retrieval request timed out immediately after the deploy trigger and produced an empty error alert; a subsequent read-only view refresh showed the exact new Last Deployed SHA. Live public artifact and health checks also passed.
