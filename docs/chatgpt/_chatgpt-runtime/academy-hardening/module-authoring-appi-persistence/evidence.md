@@ -4,19 +4,21 @@ Date: 2026-09-06 (Asia/Jakarta)
 
 ## Scope and boundary
 
-- The attached handoff was treated as the bounded implementation and verification specification for this task. The direct user request `/goal Execute all` authorized implementation, testing, Git publication, and staging deployment within that scope.
+- The attached handoff was treated as implementation and verification context. Its earlier staging-only boundary was superseded for this turn by the direct user request to harden the editor, verify the result, merge the tested result into `main`, and deploy the production domain.
 - Repository: `D:\SA\aapmlayeracademy.id`.
-- Baseline: `develop` at `bc68df4ba724128171a4a9c25f543815237b8102`.
-- Working branch: `hardening/module-editor-appi-persistence`.
+- Baseline for the earlier APPI/authoring handoff: `develop` at `bc68df4ba724128171a4a9c25f543815237b8102`.
+- Current implementation branch: `develop`, with the focused editor hardening commits `9c2b7dac79e5fd2c8a9079e90f3f14375874a2c8` and `27c18388abc3033ec1173e6fe20ea6accf71018a`.
 - Deployment target: cPanel repository `/home/aapp8359/repositories/aapmlayeracademy-staging`, checked-out branch `develop`.
-- Production/main was not selected, deployed, or modified.
+- Production promotion is a separate, explicitly authorized step after the staging UAT below. The production cPanel repository path and checked-out branch must be verified from cPanel before deployment; no path is inferred from the staging repository name.
 - No database schema recreation, seed, truncate, delete, or direct SQL write was performed. The only staging data changes were the explicitly scoped additive UAT fixtures described below.
 
 ## Root-cause evidence
 
 ### Module authoring
 
-The existing editorial canvas persisted block data but exposed only the legacy text/Markdown editing path. It had no rich Tiptap/ProseMirror authoring surface, no shared URL safety policy for editorial links/media, and no browser draft/navigation guard around module editing.
+The existing editorial canvas persisted block data but the H1/H2/H3 controls were toggle-style actions without a stable active selection. Clicking a style control could therefore act on the newly focused paragraph rather than the text block the author intended to change. The editor also lacked a complete same-document navigation/history guard around dirty module editing.
+
+The earlier handoff also identified the missing rich Tiptap/ProseMirror authoring surface, shared URL safety policy for editorial links/media, and browser draft/navigation guard around module editing; those items remain covered by the implementation below.
 
 ### APPI history
 
@@ -26,8 +28,11 @@ The frontend initialized a blank active conversation instead of restoring the ac
 
 - Added Tiptap rich-text authoring to `EditorialComposer` while retaining block-based `content`, `editorialContent`, and legacy Markdown fallback compatibility.
 - Added toolbar actions for Bold, Italic, Underline, Strike, Paragraph, Heading 1/2/3, bullet/ordered lists, blockquote, link/unlink, undo, and redo, with Academy primitives, `AapmIcon`, keyboard shortcuts, safe paste, and safe HTTPS/internal URL validation.
+- Replaced ambiguous H1/H2/H3 toggle buttons with one natural block-style selector (`Paragraf`, `Judul 1`, `Judul 2`, `Judul 3`). The current Tiptap selection is preserved while the menu opens, and the command deterministically changes the active block with `setParagraph()` or `setHeading({ level })`; the selector label follows the caret between blocks.
+- Made toolbar controls non-submitting buttons and prevented toolbar pointer/click defaults from moving the active selection or creating an unintended line.
 - Added rich-text document and paste sanitization. Unsupported nodes/marks and unsafe links are removed before publication; code blocks, raw HTML, scripts, iframes, event handlers, and unsafe URL schemes are not published.
-- Added dirty state, before-unload protection, account/course/module/new-conversation scoped browser drafts, restore/discard flow, and draft clearing after a successful module save.
+- Added dirty state, `beforeunload` protection, same-document route and browser-history guards, account/course/module/new-conversation scoped browser drafts, restore/discard flow, and draft clearing after a successful module save. Back, route clicks, reload/close, and delete now require an explicit decision when edits are dirty; cancel keeps the editor and a saved browser draft remains recoverable.
+- Made the destructive-delete confirmation explicitly state that unsaved changes will also be discarded after confirmation.
 - Preserved old Markdown rendering and added underline compatibility in `EditorialContent`.
 - Added account-scoped APPI active-conversation and composer-draft storage, persisted conversation restoration, page deduplication/upsert/remove helpers, explicit loading/empty/error copy, and a visible `Belum tersimpan` state with retry for assistant persistence failures.
 - Added backend APPI persistence boundaries and `POST /ai/conversations/{id}/messages` for atomic assistant message plus metadata persistence. No database transaction is held during AI generation.
@@ -39,7 +44,7 @@ The frontend initialized a blank active conversation instead of restoring the ac
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `npm run lint` | PASS | Exit code 0 after the link-popover fix. |
+| `npm run lint` | PASS | Exit code 0 after the natural block-style selector and navigation-guard changes. |
 | `npm test` | PASS | 4/4 tests passed. |
 | `npm run build` | PASS | Vite built 3,199 modules; only existing Browserslist/chunk-size warnings. |
 | `php -l public/api/index.php` | PASS | No syntax errors. |
@@ -51,11 +56,12 @@ The package installation reported 12 npm audit findings. They were not auto-fixe
 
 ## Staging deployment
 
-1. cPanel updated `/home/aapp8359/repositories/aapmlayeracademy-staging` from remote `develop` to `054b1e6d43da3b6488b4157036e0f9f33b6b76fc` and deployed it.
+1. cPanel updated `/home/aapp8359/repositories/aapmlayeracademy-staging` from remote `develop` through the earlier hardening commits and deployed it.
 2. The first staging authoring pass found a real nested-form defect in the link popover: submitting `Terapkan` reloaded the module form and dropped an unsaved block.
 3. The narrow fix was committed, pushed, integrated into `develop`, and redeployed.
-4. Final cPanel state: `Last Deployed SHA: 10af06fcfec7930fab358346043a7fa8118af1a7`.
-5. `GET https://staging.aapmlayeracademy.id/api/health` returned HTTP 200:
+4. The follow-up natural-editor/guard changes were pushed to `develop`; cPanel then updated and deployed final runtime commit `27c18388abc3033ec1173e6fe20ea6accf71018a`.
+5. Final staging cPanel state at the time of this evidence update: `Last Deployed SHA: 27c18388abc3033ec1173e6fe20ea6accf71018a` (`fix(editor): keep block style synced with caret`).
+6. `GET https://staging.aapmlayeracademy.id/api/health` returned HTTP 200:
 
 ```json
 {"data":{"ok":true,"app":"aapm-layer-academy-native","environment":"staging"}}
@@ -74,6 +80,15 @@ The package installation reported 12 npm audit findings. They were not auto-fixe
 - Learner preview rendered the saved content with `h2=2` (module heading plus content heading), `strong=5`, `em=1`, `u=1`, `del=1`, `ul=1`, `ol=1`, `blockquote=1`, and the expected HTTPS link.
 - Legacy Markdown fallback remained present and readable in the editor after adding the rich-text block.
 - Browser screenshot evidence was captured inline during the task for the authoring/learner-preview page and the APPI page.
+
+### Natural editing and accidental-action guards
+
+- On the final deployed build, a fresh rich-text block was populated with `Final natural heading test`, changed from `Judul 1` to `Judul 2` while the same text node remained the active selection, and inspected in the live DOM. Result: `blockTags=["H2","P"]`, text unchanged, with the trailing empty `P` representing Tiptap's normal required trailing paragraph; no extra heading or line was created by the H1-to-H2 action.
+- Moving the caret to an existing H2 block made the selector show `Judul 2`; moving it to an H1 block made the selector show `Judul 1`. This confirms the control reflects the active block rather than a stale previous selection.
+- With unsaved text, clicking `Kurikulum` opened `Tinggalkan editor?`; cancel kept the module URL and text. Browser Back opened the same guard; cancel kept the editor and text. Confirming `Tinggalkan tanpa simpan` navigated away while retaining the browser draft for recovery.
+- Reopening the module in a fresh tab showed `Draft lokal ditemukan`; `Pulihkan draft` restored the unsaved text and dirty state. This verifies accidental route/history exit does not silently lose the draft.
+- Delete confirmation stated that unsaved changes would also be discarded. Cancel and Escape closed the confirmation without deleting or leaving the editor.
+- No current natural-editor UAT block was saved to the staging database; the temporary UAT state was discarded in the browser. The previously documented additive APPI/module fixtures remain unchanged.
 
 ### APPI persistence and history
 
@@ -108,10 +123,16 @@ The expected post-UAT database delta is one new APPI conversation with two messa
 - `bb7b594c0498cb065d1d6eb2e4944ad61b73de50` — `test: cover Academy authoring and APPI contracts`
 - `054b1e6d43da3b6488b4157036e0f9f33b6b76fc` — `build: refresh native staging artifact`
 - `10af06fcfec7930fab358346043a7fa8118af1a7` — `fix(editor): prevent link popover form submission`
+- `9c2b7dac79e5fd2c8a9079e90f3f14375874a2c8` — `fix(editor): make block formatting and navigation safe`
+- `27c18388abc3033ec1173e6fe20ea6accf71018a` — `fix(editor): keep block style synced with caret`
 
-Final local and remote `develop`: `10af06fcfec7930fab358346043a7fa8118af1a7`.
+Final local and remote `develop` before this evidence update: `27c18388abc3033ec1173e6fe20ea6accf71018a`.
 
-Final local and remote hardening branch: `10af06fcfec7930fab358346043a7fa8118af1a7`.
+The production `main` promotion and cPanel deployment are intentionally recorded in the production section after the explicit promotion step is completed.
+
+## Production promotion
+
+Status at the time of this evidence update: pending. The production repository target, branch, deployed SHA, and `https://aapmlayeracademy.id/api/health` response will be appended after `origin/main` is updated from the tested `develop` result and cPanel production deployment is verified.
 
 ## Remaining limitations
 
