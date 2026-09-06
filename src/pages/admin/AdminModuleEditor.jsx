@@ -435,10 +435,14 @@ export default function AdminModuleEditor() {
   const [form, setForm] = useState(emptyModule);
   const [pendingModuleDelete, setPendingModuleDelete] = useState(false);
   const [pendingDraft, setPendingDraft] = useState(null);
-  const [pendingNavigation, setPendingNavigation] = useState("");
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   const [editorReady, setEditorReady] = useState(false);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
   const editorContextRef = useRef("");
+  const formRef = useRef(form);
+  const isDirtyRef = useRef(false);
+  const pendingNavigationRef = useRef(null);
+  const historyGuardRef = useRef(null);
   const draftKey = useMemo(
     () => editorDraftKey(accountId, courseId, editorModuleId),
     [accountId, courseId, editorModuleId],
@@ -447,9 +451,38 @@ export default function AdminModuleEditor() {
     () => `${accountId}:${courseId}:${editorModuleId}`,
     [accountId, courseId, editorModuleId],
   );
+  const draftKeyRef = useRef(draftKey);
   const formSnapshot = useMemo(() => JSON.stringify(form), [form]);
   const isDirty = editorReady && formSnapshot !== initialFormRef.current;
   const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
+
+  useEffect(() => {
+    formRef.current = form;
+    draftKeyRef.current = draftKey;
+    isDirtyRef.current = isDirty;
+  }, [draftKey, form, isDirty]);
+
+  const promptNavigation = (request) => {
+    pendingNavigationRef.current = request;
+    setPendingNavigation(request);
+  };
+
+  const clearNavigationPrompt = () => {
+    pendingNavigationRef.current = null;
+    setPendingNavigation(null);
+  };
+
+  const releaseHistoryGuard = () => {
+    const guard = historyGuardRef.current;
+    if (!guard?.active || typeof window === "undefined") return;
+    if (
+      window.location.href === guard.editorHref &&
+      window.history.state?.[guard.stateKey] === guard.id
+    ) {
+      window.history.replaceState(guard.baseState, "", guard.editorHref);
+    }
+    guard.active = false;
+  };
 
   useEffect(() => {
     const module = data?.module;
@@ -460,6 +493,7 @@ export default function AdminModuleEditor() {
     editorContextRef.current = editorContextKey;
     initialFormRef.current = JSON.stringify(nextForm);
     setForm(nextForm);
+    formRef.current = nextForm;
     setEditorReady(true);
 
     const draft = readEditorDraft(draftKey);
@@ -480,34 +514,139 @@ export default function AdminModuleEditor() {
   useEffect(() => {
     if (!isDirty) return undefined;
     const handleBeforeUnload = (event) => {
-      writeEditorDraft(draftKey, form);
+      writeEditorDraft(draftKeyRef.current, formRef.current);
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [draftKey, form, isDirty]);
+  }, [isDirty]);
+
+  useEffect(() => {
+    if (!editorReady || typeof window === "undefined") return undefined;
+    if (historyGuardRef.current?.active) return undefined;
+
+    const stateKey = "__aapmEditorGuard";
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const editorHref = window.location.href;
+    const baseState = window.history.state;
+    const sentinelState = {
+      ...(baseState && typeof baseState === "object" ? baseState : {}),
+      [stateKey]: id,
+    };
+
+    window.history.pushState(sentinelState, "", editorHref);
+    historyGuardRef.current = {
+      active: true,
+      allowPop: false,
+      baseState,
+      editorHref,
+      id,
+      sentinelState,
+      stateKey,
+    };
+
+    const handlePopState = () => {
+      const guard = historyGuardRef.current;
+      if (!guard?.active) return;
+
+      if (guard.allowPop) {
+        guard.allowPop = false;
+        guard.active = false;
+        return;
+      }
+
+      // The extra same-URL entry gives browser Back a safe interception point
+      // before React Router can render another page.
+      if (window.location.href !== guard.editorHref) return;
+
+      if (!isDirtyRef.current) {
+        guard.allowPop = true;
+        window.history.go(-1);
+        return;
+      }
+
+      writeEditorDraft(draftKeyRef.current, formRef.current);
+      window.history.pushState(guard.sentinelState, "", guard.editorHref);
+      promptNavigation({ type: "history-back" });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (historyGuardRef.current?.active) releaseHistoryGuard();
+    };
+  }, [editorReady, isDirty]);
+
+  useEffect(() => {
+    if (!editorReady || typeof document === "undefined") return undefined;
+
+    const handleDocumentClick = (event) => {
+      if (
+        !isDirtyRef.current ||
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) return;
+
+      const target = event.target;
+      const anchor = target instanceof Element ? target.closest("a[href]") : null;
+      if (
+        !anchor ||
+        anchor.hasAttribute("download") ||
+        anchor.target === "_blank" ||
+        anchor.closest("[contenteditable=\"true\"]")
+      ) return;
+
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin) return;
+
+      const nextTarget = `${url.pathname}${url.search}${url.hash}`;
+      const currentTarget = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (nextTarget === currentTarget) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      writeEditorDraft(draftKeyRef.current, formRef.current);
+      promptNavigation({ target: nextTarget, type: "route" });
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
+  }, [editorReady]);
 
   const set = (key, value) =>
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      formRef.current = next;
+      return next;
+    });
   const requestNavigation = (target) => {
     if (!isDirty) {
+      releaseHistoryGuard();
       navigate(target);
       return;
     }
-    writeEditorDraft(draftKey, form);
-    setPendingNavigation(target);
+    writeEditorDraft(draftKeyRef.current, formRef.current);
+    promptNavigation({ target, type: "route" });
   };
   const moveLegacyVideoIntoEditorial = () => {
     const url = form.videoUrl.trim();
     if (!url || editorialVideoIsPresent) return;
     const document = ensureEditorialDocument(form.editorialContent);
     const video = createEditorialBlock("video");
-    setForm((current) => ({
-      ...current,
-      videoUrl: "",
-      editorialContent: createEditorialDocument([...document.blocks, { ...video, url }]),
-    }));
+    setForm((current) => {
+      const next = {
+        ...current,
+        videoUrl: "",
+        editorialContent: createEditorialDocument([...document.blocks, { ...video, url }]),
+      };
+      formRef.current = next;
+      return next;
+    });
     toast({ title: "Video dipindahkan ke kanvas", description: "Video ditambahkan di urutan terakhir; atur posisinya dari kartu editorial." });
   };
   const save = async (event) => {
@@ -536,8 +675,10 @@ export default function AdminModuleEditor() {
       const savedForm = saved?.id ? moduleFormFromApi(saved) : form;
       initialFormRef.current = JSON.stringify(savedForm);
       setForm(savedForm);
+      formRef.current = savedForm;
       removeEditorDraft(draftKey);
       setEditorReady(true);
+      releaseHistoryGuard();
       if (isNew && saved?.id)
         navigate(`/admin/courses/${courseId}/modules/${saved.id}`, {
           replace: true,
@@ -554,6 +695,8 @@ export default function AdminModuleEditor() {
     try {
       await deleteModule.mutateAsync(moduleId);
       toast({ title: "Modul dihapus" });
+      removeEditorDraft(draftKey);
+      releaseHistoryGuard();
       navigate(`/admin/courses/${courseId}`);
     } catch (deleteError) {
       toast({
@@ -841,33 +984,44 @@ export default function AdminModuleEditor() {
         cancelLabel="Buang draft"
         icon="solar:history-bold-duotone"
         onConfirm={() => {
-          const draft = pendingDraft;
-          if (!draft) return;
-          setForm(draft.form);
-          initialFormRef.current = JSON.stringify(form);
+           const draft = pendingDraft;
+           if (!draft) return;
+           setForm(draft.form);
+           formRef.current = draft.form;
+           initialFormRef.current = JSON.stringify(form);
           removeEditorDraft(draft.key);
           setPendingDraft(null);
         }}
       />
       <ConfirmDialog
         open={Boolean(pendingNavigation)}
-        onOpenChange={(open) => !open && setPendingNavigation("")}
+        onOpenChange={(open) => !open && clearNavigationPrompt()}
         title="Tinggalkan editor?"
-        description="Perubahan belum disimpan. Draft akan tetap tersedia di browser untuk dipulihkan saat editor modul ini dibuka lagi."
+        description="Perubahan belum disimpan. Jika Anda keluar sekarang, draft aman akan tetap disimpan di browser dan dapat dipulihkan saat editor ini dibuka lagi."
         confirmLabel="Tinggalkan tanpa simpan"
         cancelLabel="Tetap di editor"
         icon="solar:logout-2-bold-duotone"
         onConfirm={() => {
-          const target = pendingNavigation;
-          setPendingNavigation("");
-          if (target) navigate(target);
+          const request = pendingNavigationRef.current || pendingNavigation;
+          clearNavigationPrompt();
+          if (!request) return;
+          if (request.type === "history-back") {
+            const guard = historyGuardRef.current;
+            if (guard?.active) {
+              guard.allowPop = true;
+              window.history.go(-2);
+            }
+            return;
+          }
+          releaseHistoryGuard();
+          if (request.target) navigate(request.target);
         }}
       />
       <ConfirmDialog
         open={pendingModuleDelete}
         onOpenChange={setPendingModuleDelete}
         title="Hapus modul?"
-        description="Modul dan seluruh bank soalnya akan dihapus. Modul yang sudah memiliki progres learner tetap akan ditolak oleh sistem."
+        description={`Modul dan seluruh bank soalnya akan dihapus. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang setelah Anda mengonfirmasi. " : ""}Modul yang sudah memiliki progres learner tetap akan ditolak oleh sistem.`}
         confirmLabel="Hapus modul"
         icon="solar:trash-bin-trash-bold"
         destructive

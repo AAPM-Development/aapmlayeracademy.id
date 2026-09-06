@@ -6,7 +6,15 @@ import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { Markdown } from "@tiptap/markdown";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, Input } from "@/components/primitives";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/primitives";
 import { safeEditorialLink } from "@/lib/editorialUrls";
 import { sanitizePastedHtml, sanitizeRichTextDocument } from "@/lib/richTextSafety";
 import { cn } from "@/lib/utils";
@@ -30,7 +38,15 @@ const extensions = [
   Markdown,
 ];
 
-function ToolbarButton({ label, active = false, disabled = false, onClick, children }) {
+function ToolbarButton({ label, active = false, disabled = false, onClick, onBeforeAction, children }) {
+  const preserveEditorSelection = (event) => {
+    if (event.button !== 0) return;
+    onBeforeAction?.();
+    // Keep the ProseMirror selection in place while the toolbar is clicked.
+    // Without this, a browser can move focus to the button before the command runs.
+    event.preventDefault();
+  };
+
   return (
     <Button
       type="button"
@@ -40,8 +56,12 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, child
       aria-pressed={active}
       title={label}
       disabled={disabled}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
+      onPointerDown={preserveEditorSelection}
+      onMouseDown={preserveEditorSelection}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.(event);
+      }}
       className={cn("h-8 w-8 rounded-lg text-xs", active && "bg-tint-orange text-brand-orange")}
     >
       {children}
@@ -55,6 +75,7 @@ function TextIcon({ children }) {
 
 export default function RichTextEditor({ id, value = "", onChange = () => {} }) {
   const onChangeRef = useRef(onChange);
+  const selectionRef = useRef(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [linkError, setLinkError] = useState("");
@@ -83,6 +104,10 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
         currentEditor.commands.setContent(clean, { emitUpdate: false });
       }
     },
+    onSelectionUpdate: ({ editor: currentEditor }) => {
+      const { from, to } = currentEditor.state.selection;
+      selectionRef.current = { from, to };
+    },
     onUpdate: ({ editor: currentEditor }) => {
       const clean = sanitizeRichTextDocument(currentEditor.getJSON());
       if (JSON.stringify(clean) !== JSON.stringify(currentEditor.getJSON())) {
@@ -101,6 +126,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
 
   const openLinkEditor = () => {
     if (!editor) return;
+    rememberSelection();
     setLinkValue(editor.getAttributes("link").href || "");
     setLinkError("");
     setLinkOpen(true);
@@ -114,9 +140,38 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
       setLinkError("Gunakan URL HTTPS atau path internal yang aman.");
       return;
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: safeHref }).run();
+    editorChain().extendMarkRange("link").setLink({ href: safeHref }).run();
     setLinkOpen(false);
     setLinkError("");
+  };
+
+  const rememberSelection = () => {
+    if (!editor || editor.isDestroyed) return;
+    const { from, to } = editor.state.selection;
+    selectionRef.current = { from, to };
+  };
+
+  const editorChain = () => {
+    const chain = editor.chain().focus();
+    const selection = selectionRef.current;
+    const maxPosition = editor.state.doc.content.size;
+    if (selection && selection.from <= maxPosition && selection.to <= maxPosition) {
+      chain.setTextSelection(selection);
+    }
+    return chain;
+  };
+
+  const activeHeadingLevel = editor && [1, 2, 3].find((level) => editor.isActive("heading", { level }));
+  const blockStyle = activeHeadingLevel ? `heading-${activeHeadingLevel}` : "paragraph";
+
+  const applyBlockStyle = (style) => {
+    if (!editor) return;
+    const chain = editorChain();
+    if (style === "paragraph") {
+      chain.setParagraph().run();
+      return;
+    }
+    chain.setHeading({ level: Number(style.replace("heading-", "")) }).run();
   };
 
   if (!editor) {
@@ -126,53 +181,61 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
   return (
     <div id={id} className="aapm-rich-editor overflow-hidden rounded-xl border border-input bg-surface-elevated shadow-sm focus-within:border-brand-orange/65 focus-within:ring-2 focus-within:ring-brand-orange/10">
       <div className="flex min-w-0 flex-wrap items-center gap-0.5 border-b border-border bg-surface-subtle/75 p-1.5" role="toolbar" aria-label="Format materi">
-        <ToolbarButton label="Tebal (Ctrl/⌘+B)" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <Select
+          value={blockStyle}
+          onOpenChange={(open) => open && rememberSelection()}
+          onValueChange={applyBlockStyle}
+        >
+          <SelectTrigger
+            type="button"
+            aria-label="Gaya blok teks"
+            title="Gaya blok teks"
+            className="h-8 w-[8.5rem] rounded-lg px-2 text-xs"
+            onPointerDown={rememberSelection}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="paragraph">Paragraf</SelectItem>
+            <SelectItem value="heading-1">Judul 1</SelectItem>
+            <SelectItem value="heading-2">Judul 2</SelectItem>
+            <SelectItem value="heading-3">Judul 3</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+        <ToolbarButton label="Tebal (Ctrl/⌘+B)" active={editor.isActive("bold")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBold().run()}>
           <TextIcon>B</TextIcon>
         </ToolbarButton>
-        <ToolbarButton label="Miring (Ctrl/⌘+I)" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarButton label="Miring (Ctrl/⌘+I)" active={editor.isActive("italic")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleItalic().run()}>
           <TextIcon><em>I</em></TextIcon>
         </ToolbarButton>
-        <ToolbarButton label="Garis bawah (Ctrl/⌘+U)" active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <ToolbarButton label="Garis bawah (Ctrl/⌘+U)" active={editor.isActive("underline")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleUnderline().run()}>
           <TextIcon><u>U</u></TextIcon>
         </ToolbarButton>
-        <ToolbarButton label="Coret" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <ToolbarButton label="Coret" active={editor.isActive("strike")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleStrike().run()}>
           <TextIcon><s>S</s></TextIcon>
         </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        {[1, 2, 3].map((level) => (
-          <ToolbarButton
-            key={level}
-            label={`Heading ${level}`}
-            active={editor.isActive("heading", { level })}
-            onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-          >
-            <TextIcon>H{level}</TextIcon>
-          </ToolbarButton>
-        ))}
-        <ToolbarButton label="Paragraf" active={editor.isActive("paragraph")} onClick={() => editor.chain().focus().setParagraph().run()}>
-          <TextIcon>P</TextIcon>
-        </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <ToolbarButton label="Daftar bullet" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ToolbarButton label="Daftar bullet" active={editor.isActive("bulletList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBulletList().run()}>
           <AapmIcon name="solar:list-bold" className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Daftar bernomor" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ToolbarButton label="Daftar bernomor" active={editor.isActive("orderedList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleOrderedList().run()}>
           <span aria-hidden="true" className="text-[11px] font-semibold">1·</span>
         </ToolbarButton>
-        <ToolbarButton label="Kutipan" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarButton label="Kutipan" active={editor.isActive("blockquote")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBlockquote().run()}>
           <span aria-hidden="true" className="text-sm font-bold">“</span>
         </ToolbarButton>
-        <ToolbarButton label="Tautkan teks" active={editor.isActive("link")} onClick={openLinkEditor}>
+        <ToolbarButton label="Tautkan teks" active={editor.isActive("link")} onBeforeAction={rememberSelection} onClick={openLinkEditor}>
           <AapmIcon name="solar:link-bold" className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Lepas tautan" disabled={!editor.isActive("link")} onClick={() => editor.chain().focus().unsetLink().run()}>
+        <ToolbarButton label="Lepas tautan" disabled={!editor.isActive("link")} onBeforeAction={rememberSelection} onClick={() => editorChain().unsetLink().run()}>
           <AapmIcon name="solar:link-broken-minimalistic-bold" className="h-4 w-4" />
         </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <ToolbarButton label="Urungkan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
+        <ToolbarButton label="Urungkan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onBeforeAction={rememberSelection} onClick={() => editorChain().undo().run()}>
           <AapmIcon name="solar:alt-arrow-left-linear" className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton label="Ulangi (Ctrl/⌘+Shift+Z)" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>
+        <ToolbarButton label="Ulangi (Ctrl/⌘+Shift+Z)" disabled={!editor.can().redo()} onBeforeAction={rememberSelection} onClick={() => editorChain().redo().run()}>
           <AapmIcon name="solar:alt-arrow-right-linear" className="h-4 w-4" />
         </ToolbarButton>
       </div>
