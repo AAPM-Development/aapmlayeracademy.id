@@ -12,6 +12,14 @@ Date: 2026-09-06 (Asia/Jakarta)
 - Production promotion is a separate, explicitly authorized step after the staging UAT below. The production cPanel repository path and checked-out branch must be verified from cPanel before deployment; no path is inferred from the staging repository name.
 - No database schema recreation, seed, truncate, delete, or direct SQL write was performed. The only staging data changes were the explicitly scoped additive UAT fixtures described below.
 
+## Current follow-up status: simple inline authoring
+
+- The current `develop` head is `ab943e558b730fd078c3caeb02b72eba81970989` (`fix(editor): confirm video card removal before applying changes`), pushed to `origin/develop`.
+- The follow-up keeps exactly one inline rich-text canvas for non-video material and renders videos as separate ordered cards. Video removal now uses the Academy `ConfirmDialog`; cancelling leaves the card and unsaved content unchanged.
+- Local browser verification on `http://127.0.0.1:5174/admin/courses/layer-farm-management/modules/2` showed one inline editor, one video card, no block-add controls, and the video-delete confirmation. The page had zero console errors.
+- The tracked local build currently references `assets/index-D-4LYCa_.js`; staging and production currently still reference `assets/index-BYnpfCkS.js`. The follow-up build has therefore not reached either live target yet.
+- The Chrome extension exposes the ten4seven account as the `UTAMA` profile, but its open-tab control is currently unavailable. No cPanel update or deploy action is recorded for `ab943e5`.
+
 ## Root-cause evidence
 
 ### Module authoring
@@ -27,6 +35,7 @@ The frontend initialized a blank active conversation instead of restoring the ac
 ## Implemented
 
 - Added Tiptap rich-text authoring to `EditorialComposer` while retaining block-based `content`, `editorialContent`, and legacy Markdown fallback compatibility.
+- Simplified the authoring surface so non-video material uses one inline editor and video modules use separate cards; video-card deletion now has an explicit Academy confirmation dialog.
 - Added toolbar actions for Bold, Italic, Underline, Strike, Paragraph, Heading 1/2/3, bullet/ordered lists, blockquote, link/unlink, undo, and redo, with Academy primitives, `AapmIcon`, keyboard shortcuts, safe paste, and safe HTTPS/internal URL validation.
 - Replaced ambiguous H1/H2/H3 toggle buttons with one natural block-style selector (`Paragraf`, `Judul 1`, `Judul 2`, `Judul 3`). The current Tiptap selection is preserved while the menu opens, and the command deterministically changes the active block with `setParagraph()` or `setHeading({ level })`; the selector label follows the caret between blocks.
 - Made toolbar controls non-submitting buttons and prevented toolbar pointer/click defaults from moving the active selection or creating an unintended line.
@@ -45,8 +54,8 @@ The frontend initialized a blank active conversation instead of restoring the ac
 | Check | Result | Evidence |
 | --- | --- | --- |
 | `npm run lint` | PASS | Exit code 0 after the natural block-style selector and navigation-guard changes. |
-| `npm test` | PASS | 4/4 tests passed. |
-| `npm run build` | PASS | Vite built 3,199 modules; only existing Browserslist/chunk-size warnings. |
+| `npm test` | PASS | 5/5 tests passed before the confirmation-dialog-only follow-up; the follow-up was also exercised in the local browser. |
+| `npm run build` | PASS | Vite built 3,199 modules for `ab943e5`; only existing Browserslist/chunk-size warnings. |
 | `php -l public/api/index.php` | PASS | No syntax errors. |
 | `php -l public/api/bootstrap.php` | PASS | No syntax errors. |
 | `git diff --check` | PASS | No whitespace errors; Git reported only existing LF/CRLF normalization warnings. |
@@ -66,6 +75,8 @@ The package installation reported 12 npm audit findings. They were not auto-fixe
 ```json
 {"data":{"ok":true,"app":"aapm-layer-academy-native","environment":"staging"}}
 ```
+
+7. The later simple-inline follow-up was pushed as `ab943e5`, but cPanel has not yet updated or deployed that commit. The live staging asset remains `assets/index-BYnpfCkS.js`, so the follow-up is not staging-verified.
 
 ## Runtime UAT
 
@@ -134,6 +145,8 @@ The production `main` promotion and cPanel deployment are recorded in the produc
 ## Production promotion
 
 Status: VERIFIED.
+
+The production verification below applies to the earlier promoted runtime through `2fdd1b64`. The current simple-inline follow-up at `ab943e5` has not been promoted or deployed to production; production therefore does not yet represent the current `develop` head.
 
 - GitHub remote `origin/main` was updated by fast-forward from `bc68df4ba724128171a4a9c25f543815237b8102` through the tested runtime promotion to `61801c37e82c1d7664c2aa7c751a899bc14fd70b` and the production/evidence synchronization commit `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`; `origin/develop` points to the same history. The local stale/divergent `main` branch was not reset or overwritten.
 - Production cPanel repository: `/home/aapp8359/repositories/aapmlayeracademy-production`, repository name `aapmlayeracademy-production-main`.
