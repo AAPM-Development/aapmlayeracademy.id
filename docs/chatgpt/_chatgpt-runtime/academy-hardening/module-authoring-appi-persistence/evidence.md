@@ -7,7 +7,7 @@ Date: 2026-09-06 (Asia/Jakarta)
 - The attached handoff was treated as implementation and verification context. Its earlier staging-only boundary was superseded for this turn by the direct user request to harden the editor, verify the result, merge the tested result into `main`, and deploy the production domain.
 - Repository: `D:\SA\aapmlayeracademy.id`.
 - Baseline for the earlier APPI/authoring handoff: `develop` at `bc68df4ba724128171a4a9c25f543815237b8102`.
-- Current implementation branch: `develop`; the final promotion commit is `61801c37e82c1d7664c2aa7c751a899bc14fd70b`, containing the focused editor hardening commits `9c2b7dac79e5fd2c8` and `27c18388abc3033ec1173e6fe20ea6accf71018a` plus the final evidence update.
+- Runtime promotion commit: `61801c37e82c1d7664c2aa7c751a899bc14fd70b`, containing the focused editor hardening commits `9c2b7dac79e5fd2c8` and `27c18388abc3033ec1173e6fe20ea6accf71018a`. The production/evidence synchronization commit deployed afterward is `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`.
 - Deployment target: cPanel repository `/home/aapp8359/repositories/aapmlayeracademy-staging`, checked-out branch `develop`.
 - Production promotion is a separate, explicitly authorized step after the staging UAT below. The production cPanel repository path and checked-out branch must be verified from cPanel before deployment; no path is inferred from the staging repository name.
 - No database schema recreation, seed, truncate, delete, or direct SQL write was performed. The only staging data changes were the explicitly scoped additive UAT fixtures described below.
@@ -125,8 +125,9 @@ The expected post-UAT database delta is one new APPI conversation with two messa
 - `10af06fcfec7930fab358346043a7fa8118af1a7` — `fix(editor): prevent link popover form submission`
 - `9c2b7dac79e5fd2c8a9079e90f3f14375874a2c8` — `fix(editor): make block formatting and navigation safe`
 - `27c18388abc3033ec1173e6fe20ea6accf71018a` — `fix(editor): keep block style synced with caret`
+- `2fdd1b64a8718075468a8c1741656ab7d1b5fa26` — `docs: record production promotion and smoke verification`
 
-Final remote `develop` and `main` after promotion: `61801c37e82c1d7664c2aa7c751a899bc14fd70b`.
+Remote `develop` and `main` were synchronized through `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`; this final evidence correction is documentation-only and does not change runtime code.
 
 The production `main` promotion and cPanel deployment are recorded in the production section below.
 
@@ -134,11 +135,12 @@ The production `main` promotion and cPanel deployment are recorded in the produc
 
 Status: VERIFIED.
 
-- GitHub remote `origin/main` was updated by fast-forward from `bc68df4ba724128171a4a9c25f543815237b8102` to `61801c37e82c1d7664c2aa7c751a899bc14fd70b`; `origin/develop` points to the same final commit. The local stale/divergent `main` branch was not reset or overwritten.
+- GitHub remote `origin/main` was updated by fast-forward from `bc68df4ba724128171a4a9c25f543815237b8102` through the tested runtime promotion to `61801c37e82c1d7664c2aa7c751a899bc14fd70b` and the production/evidence synchronization commit `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`; `origin/develop` points to the same history. The local stale/divergent `main` branch was not reset or overwritten.
 - Production cPanel repository: `/home/aapp8359/repositories/aapmlayeracademy-production`, repository name `aapmlayeracademy-production-main`.
 - Production cPanel configuration was verified before mutation: remote `git@github.com:erp-aapm/aapmlayeracademy.id.git`, checked-out branch `main`.
-- cPanel `Update from Remote` succeeded and advanced production HEAD to `61801c37e82c1d7664c2aa7c751a899bc14fd70b`.
-- cPanel `Deploy HEAD Commit` completed successfully. Last deployed timestamp shown by cPanel: Sep 6, 2026 5:07:55 PM; last deployed SHA: `61801c37e82c1d7664c2aa7c751a899bc14fd70b`.
+- cPanel `Update from Remote` succeeded and advanced production HEAD through the tested runtime promotion to `61801c37e82c1d7664c2aa7c751a899bc14fd70b`, then to the final production/evidence synchronization commit `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`.
+- cPanel `Deploy HEAD Commit` completed successfully for the final synchronized HEAD. Last deployed timestamp shown by cPanel: Sep 6, 2026 5:11:37 PM; last deployed SHA: `2fdd1b64a8718075468a8c1741656ab7d1b5fa26`.
+- The follow-up evidence correction is documentation-only; no runtime source, generated runtime artifact, production database, migration, or seed changed after that verified deployment.
 - `GET https://aapmlayeracademy.id/api/health` returned HTTP 200 with `{"data":{"ok":true,"app":"aapm-layer-academy-native","environment":"production"}}`.
 - A fresh browser smoke check of `https://aapmlayeracademy.id/` redirected to `/login` and rendered the Academy login title, form fields, CTA, and branding. No credentials are recorded in this evidence.
 - No production database write, seed, migration, or destructive cleanup was performed by this task.
