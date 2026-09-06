@@ -5,6 +5,7 @@ import RichTextEditor from "@/components/admin/RichTextEditor";
 import {
   Badge,
   Button,
+  ConfirmDialog,
   IconButton,
   Input,
   Label,
@@ -127,6 +128,7 @@ export default function EditorialComposer({
   const richTextId = richTextBlock?.id || (existingIds.has("inline-content") ? "inline-content-text" : "inline-content");
   const textLength = editorialTextLength(createInlineEditorialDocument(inlineContent, videos, richTextId).blocks);
   const [announcement, setAnnouncement] = React.useState("");
+  const [pendingVideoDelete, setPendingVideoDelete] = React.useState(null);
 
   const commit = (nextContent = inlineContent, nextVideos = videos) => {
     const nextDocument = createInlineEditorialDocument(nextContent, nextVideos, richTextId);
@@ -156,11 +158,18 @@ export default function EditorialComposer({
     setAnnouncement(`Video dipindahkan ke posisi ${destinationIndex + 1}.`);
   };
 
-  const removeVideo = (index) => {
+  const requestRemoveVideo = (index) => {
     const video = videos[index];
-    if (!video || !window.confirm(`Hapus Video ${index + 1}?`)) return;
+    if (!video) return;
+    setPendingVideoDelete({ index, video });
+  };
+
+  const removeVideo = () => {
+    const index = pendingVideoDelete?.index;
+    if (!Number.isInteger(index) || !videos[index]) return;
     commit(inlineContent, videos.filter((_, currentIndex) => currentIndex !== index));
     setAnnouncement(`Video ${index + 1} dihapus.`);
+    setPendingVideoDelete(null);
   };
 
   return (
@@ -217,7 +226,7 @@ export default function EditorialComposer({
                 total={videos.length}
                 onChange={(patch) => updateVideo(index, patch)}
                 onMove={moveVideo}
-                onRemove={removeVideo}
+                onRemove={requestRemoveVideo}
               />
             ))}
           </div>
@@ -225,6 +234,17 @@ export default function EditorialComposer({
           <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video. Tambahkan hanya jika modul ini memiliki materi video.</div>
         )}
       </section>
+      <ConfirmDialog
+        open={Boolean(pendingVideoDelete)}
+        onOpenChange={(open) => !open && setPendingVideoDelete(null)}
+        title="Hapus video?"
+        description={`Video ${pendingVideoDelete ? pendingVideoDelete.index + 1 : ""} akan dihapus dari modul. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`}
+        confirmLabel="Hapus video"
+        cancelLabel="Batal"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={removeVideo}
+      />
     </div>
   );
 }
