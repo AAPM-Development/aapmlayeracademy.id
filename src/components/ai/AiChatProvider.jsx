@@ -11,9 +11,40 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { nativeApi } from "@/api/nativeClient";
 import { useFarmData } from "@/lib/useCourseData";
 import { useAuth } from "@/lib/AuthContext";
+import {
+  flattenConversationPages,
+  removeConversationFromPages,
+  upsertConversationInPages,
+} from "@/lib/aiHistoryState";
 
 const AiChatContext = createContext(null);
 const HISTORY_PAGE_SIZE = 40;
+const ACTIVE_CONVERSATION_STORAGE_KEY = "aapm:appi:active:v1";
+const COMPOSER_DRAFT_STORAGE_KEY = "aapm:appi:draft:v1";
+
+function scopedStorageKey(prefix, accountId, scope = "new") {
+  if (!accountId) return "";
+  return `${prefix}:${encodeURIComponent(String(accountId))}:${encodeURIComponent(String(scope || "new"))}`;
+}
+
+function readStorage(key) {
+  if (!key || typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(key) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStorage(key, value) {
+  if (!key || typeof window === "undefined") return;
+  try {
+    if (value) window.localStorage.setItem(key, value);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Private browsing and storage quotas must not break the chat journey.
+  }
+}
 
 const idFor = (prefix) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -33,67 +64,6 @@ function clientMessage(message) {
     image: message.image ?? null,
     createdAt: message.createdAt ?? null,
   };
-}
-
-function pageItems(page) {
-  return Array.isArray(page?.items) ? page.items : [];
-}
-
-function flattenConversationPages(data) {
-  const seen = new Set();
-  return (data?.pages ?? [])
-    .flatMap((page) => pageItems(page))
-    .filter((conversation) => {
-      if (!conversation?.id || seen.has(conversation.id)) return false;
-      seen.add(conversation.id);
-      return true;
-    });
-}
-
-function upsertConversationInPages(data, conversation) {
-  if (!data?.pages?.length || !conversation?.id) return data;
-  let existed = false;
-  const pages = data.pages.map((page) => ({
-    ...page,
-    items: pageItems(page).filter((item) => {
-      if (item.id !== conversation.id) return true;
-      existed = true;
-      return false;
-    }),
-  }));
-  const firstPage = pages[0];
-  const total = Math.max(
-    0,
-    Number(firstPage.total ?? flattenConversationPages(data).length) +
-      (existed ? 0 : 1),
-  );
-
-  pages[0] = {
-    ...firstPage,
-    total,
-    items: [conversation, ...pageItems(firstPage)],
-  };
-  return { ...data, pages };
-}
-
-function removeConversationFromPages(data, conversationId) {
-  if (!data?.pages?.length) return data;
-  let removed = false;
-  const pages = data.pages.map((page) => ({
-    ...page,
-    items: pageItems(page).filter((item) => {
-      if (item.id !== conversationId) return true;
-      removed = true;
-      return false;
-    }),
-  }));
-  if (removed && pages[0]) {
-    pages[0] = {
-      ...pages[0],
-      total: Math.max(0, Number(pages[0].total ?? 0) - 1),
-    };
-  }
-  return { ...data, pages };
 }
 
 export function AiChatProvider({ children }) {
@@ -146,10 +116,13 @@ export function AiChatProvider({ children }) {
   const [streamPhase, setStreamPhase] = useState("idle");
   const [historySyncState, setHistorySyncState] = useState("idle");
   const [historyError, setHistoryError] = useState(null);
+  const [promptDraft, setPromptDraftState] = useState("");
+  const [retryingMessageId, setRetryingMessageId] = useState(null);
   const activeRef = useRef(null);
   const messagesRef = useRef([]);
   const draftRef = useRef(false);
   const phaseTimerRef = useRef(null);
+  const restoreAttemptedRef = useRef(null);
 
   const settleStreamPhase = useCallback((phase, delay = 1100) => {
     window.clearTimeout(phaseTimerRef.current);
@@ -177,8 +150,39 @@ export function AiChatProvider({ children }) {
     draftRef.current = isDraft;
   }, [isDraft]);
 
+  const activeConversationStorageKey = useCallback(
+    () => scopedStorageKey(ACTIVE_CONVERSATION_STORAGE_KEY, accountId, "current"),
+    [accountId],
+  );
+  const composerDraftStorageKey = useCallback(
+    (conversationId = activeRef.current) =>
+      scopedStorageKey(COMPOSER_DRAFT_STORAGE_KEY, accountId, conversationId || "new"),
+    [accountId],
+  );
+  const persistActiveConversation = useCallback(
+    (conversationId) => writeStorage(activeConversationStorageKey(), conversationId ? String(conversationId) : ""),
+    [activeConversationStorageKey],
+  );
+  const setPromptDraft = useCallback(
+    (value) => {
+      const next = typeof value === "string" ? value.slice(0, 3000) : "";
+      setPromptDraftState(next);
+      writeStorage(composerDraftStorageKey(), next);
+    },
+    [composerDraftStorageKey],
+  );
+  const clearPromptDraft = useCallback(
+    (conversationId = activeRef.current) => {
+      writeStorage(composerDraftStorageKey("new"), "");
+      if (conversationId) writeStorage(composerDraftStorageKey(conversationId), "");
+      setPromptDraftState("");
+    },
+    [composerDraftStorageKey],
+  );
+
   // Account data must never be reused when the active session changes.
   useEffect(() => {
+    restoreAttemptedRef.current = null;
     activeRef.current = null;
     setActiveConversationId(null);
     setMessages([]);
@@ -190,6 +194,8 @@ export function AiChatProvider({ children }) {
     setStreamPhase("idle");
     setHistorySyncState("idle");
     setHistoryError(null);
+    setRetryingMessageId(null);
+    setPromptDraftState(readStorage(scopedStorageKey(COMPOSER_DRAFT_STORAGE_KEY, accountId, "new")));
   }, [accountId]);
 
   const upsertConversation = useCallback(
@@ -212,9 +218,11 @@ export function AiChatProvider({ children }) {
         const detailMessages = detail?.messages ?? [];
         const latestMessage = detailMessages.at(-1);
         const assistantPersisted =
-          typeof expectedAssistantContent === "string" &&
           latestMessage?.role === "assistant" &&
-          latestMessage?.content === expectedAssistantContent;
+          (expectedAssistantContent === null ||
+            typeof expectedAssistantContent === "string") &&
+          (expectedAssistantContent === null ||
+            latestMessage?.content === expectedAssistantContent);
         if (detail?.conversation) upsertConversation(detail.conversation);
         if (replaceMessages && activeRef.current === id) {
           setMessages(
@@ -253,6 +261,8 @@ export function AiChatProvider({ children }) {
               clientMessage({ ...message, persisted: true }),
             ),
           );
+          persistActiveConversation(id);
+          setPromptDraftState(readStorage(composerDraftStorageKey(id)));
           setHistorySyncState("saved");
         }
         return true;
@@ -270,12 +280,13 @@ export function AiChatProvider({ children }) {
         setIsLoadingConversation(false);
       }
     },
-    [isStreaming, upsertConversation],
+    [composerDraftStorageKey, isStreaming, persistActiveConversation, upsertConversation],
   );
 
   const startNewConversation = useCallback(() => {
     if (isStreaming) return;
     activeRef.current = null;
+    persistActiveConversation(null);
     setIsDraft(true);
     setActiveConversationId(null);
     setMessages([]);
@@ -284,7 +295,8 @@ export function AiChatProvider({ children }) {
     setStreamPhase("idle");
     setHistorySyncState("idle");
     setHistoryError(null);
-  }, [isStreaming]);
+    setPromptDraftState(readStorage(composerDraftStorageKey("new")));
+  }, [composerDraftStorageKey, isStreaming, persistActiveConversation]);
 
   const ensureConversation = useCallback(
     async (title) => {
@@ -293,12 +305,37 @@ export function AiChatProvider({ children }) {
       setIsDraft(false);
       setActiveConversationId(conversation.id);
       activeRef.current = conversation.id;
+      persistActiveConversation(conversation.id);
       upsertConversation(conversation);
       queryClient.invalidateQueries({ queryKey: conversationQueryKey });
       return conversation;
     },
-    [conversationQueryKey, queryClient, upsertConversation],
+    [conversationQueryKey, persistActiveConversation, queryClient, upsertConversation],
   );
+
+  useEffect(() => {
+    if (
+      !accountId ||
+      conversationsQuery.isLoading ||
+      conversationsQuery.isFetching ||
+      restoreAttemptedRef.current === accountId
+    ) {
+      return;
+    }
+    restoreAttemptedRef.current = accountId;
+    const savedConversationId = readStorage(activeConversationStorageKey());
+    if (!savedConversationId) return;
+    void selectConversation(savedConversationId).then((restored) => {
+      if (!restored) persistActiveConversation(null);
+    });
+  }, [
+    accountId,
+    activeConversationStorageKey,
+    conversationsQuery.isFetching,
+    conversationsQuery.isLoading,
+    persistActiveConversation,
+    selectConversation,
+  ]);
 
   const send = useCallback(
     async (
@@ -319,7 +356,8 @@ export function AiChatProvider({ children }) {
       } catch (error) {
         setHistoryError(error);
         setHistorySyncState("attention");
-        return;
+        setPromptDraft(message);
+        return { ok: false, persisted: false };
       }
 
       const assistantId = idFor("assistant");
@@ -432,9 +470,10 @@ export function AiChatProvider({ children }) {
               flushPendingText();
               if (data.conversation) upsertConversation(data.conversation);
               const didPersist = data.persisted !== false;
+              persisted = persisted || didPersist;
               updateAssistant({
                 streaming: false,
-                persisted: didPersist,
+                persisted,
                 provider: data.provider,
                 model: data.model,
                 fallback: Boolean(data.fallback),
@@ -445,29 +484,44 @@ export function AiChatProvider({ children }) {
         });
         flushPendingText();
         const reconciled = await reconcileConversation(conversation.id, {
-          replaceMessages: !persisted,
-          expectedAssistantContent: streamedContent,
+          // Keep the visible local answer when Phase 3 failed. Replacing it
+          // with the DB detail here used to erase the only copy the user
+          // could retry.
+          replaceMessages: persisted,
+          expectedAssistantContent: streamedContent || null,
         });
-        setHistorySyncState(
-          reconciled.assistantPersisted || persisted ? "saved" : "attention",
-        );
+        const didPersist = reconciled.assistantPersisted || persisted;
+        setHistorySyncState(didPersist ? "saved" : "attention");
+        if (reconciled.assistantPersisted && !persisted) {
+          updateAssistant({ persisted: true, error: false, notice: "", streaming: false });
+        }
+        if (didPersist) clearPromptDraft(conversation.id);
         settleStreamPhase("complete");
+        return { ok: true, persisted: didPersist, conversationId: conversation.id, assistantId };
       } catch (error) {
         flushPendingText();
+        const visibleContent = streamedContent || error?.message || "Koneksi ke asisten belum tersedia.";
         updateAssistant({
           streaming: false,
           persisted,
-          content: error?.message || "Koneksi ke asisten belum tersedia.",
+          content: visibleContent,
+          notice: streamedContent ? "Jawaban terputus sebelum selesai. Coba kirim ulang." : "",
           error: true,
         });
         const reconciled = await reconcileConversation(conversation.id, {
-          expectedAssistantContent: streamedContent,
+          replaceMessages: false,
+          expectedAssistantContent: streamedContent || null,
         });
-        setHistorySyncState(
-          reconciled.assistantPersisted || persisted ? "saved" : "attention",
-        );
-        setHistoryError(error);
-        settleStreamPhase("alert", 1500);
+        const didPersist = reconciled.assistantPersisted || persisted;
+        if (reconciled.assistantPersisted && !persisted) {
+          updateAssistant({ persisted: true, error: false, notice: "", streaming: false });
+        }
+        setHistorySyncState(didPersist ? "saved" : "attention");
+        setHistoryError(didPersist ? null : error);
+        settleStreamPhase(didPersist ? "complete" : "alert", didPersist ? 1100 : 1500);
+        if (didPersist) clearPromptDraft(conversation.id);
+        else setPromptDraft(message);
+        return { ok: didPersist, persisted: didPersist, conversationId: conversation.id, assistantId };
       } finally {
         if (deltaFrame !== null) window.cancelAnimationFrame(deltaFrame);
         setIsStreaming(false);
@@ -479,13 +533,70 @@ export function AiChatProvider({ children }) {
     },
     [
       activityQueryKey,
+      clearPromptDraft,
       conversationQueryKey,
       ensureConversation,
       farm,
       isStreaming,
       queryClient,
       reconcileConversation,
+      setPromptDraft,
       settleStreamPhase,
+      upsertConversation,
+    ],
+  );
+
+  const retryPersistAssistant = useCallback(
+    async (message) => {
+      const conversationId = activeRef.current;
+      if (
+        !accountId ||
+        !conversationId ||
+        !message?.content ||
+        message.persisted ||
+        isStreaming ||
+        retryingMessageId
+      ) {
+        return false;
+      }
+      setRetryingMessageId(message.id);
+      setHistoryError(null);
+      setHistorySyncState("saving");
+      try {
+        const result = await nativeApi.ai.conversations.persistAssistant(conversationId, {
+          content: message.content,
+          provider: message.provider || "",
+          model: message.model || "",
+          fallback: Boolean(message.fallback),
+        });
+        if (result?.conversation) upsertConversation(result.conversation);
+        const reconciled = await reconcileConversation(conversationId, { replaceMessages: true });
+        if (reconciled.ok) {
+          clearPromptDraft(conversationId);
+          setHistorySyncState("saved");
+          return true;
+        }
+        setHistorySyncState("attention");
+        return false;
+      } catch (error) {
+        setHistoryError(error);
+        setHistorySyncState("attention");
+        return false;
+      } finally {
+        setRetryingMessageId(null);
+        queryClient.invalidateQueries({ queryKey: conversationQueryKey });
+        queryClient.invalidateQueries({ queryKey: activityQueryKey });
+      }
+    },
+    [
+      accountId,
+      activityQueryKey,
+      clearPromptDraft,
+      conversationQueryKey,
+      isStreaming,
+      queryClient,
+      reconcileConversation,
+      retryingMessageId,
       upsertConversation,
     ],
   );
@@ -501,14 +612,17 @@ export function AiChatProvider({ children }) {
       queryClient.invalidateQueries({ queryKey: activityQueryKey });
       if (activeRef.current === id) {
         activeRef.current = null;
+        persistActiveConversation(null);
         setActiveConversationId(null);
         setMessages([]);
         setIsDraft(true);
+        clearPromptDraft(id);
+        setPromptDraftState(readStorage(composerDraftStorageKey("new")));
         setHistorySyncState("idle");
       }
       return true;
     },
-    [activityQueryKey, conversationQueryKey, isStreaming, queryClient],
+    [activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
   );
 
   const renameConversation = useCallback(
@@ -528,7 +642,9 @@ export function AiChatProvider({ children }) {
       conversationsQuery.refetch(),
       activityQuery.refetch(),
     ]);
-    if (conversationResult.error) setHistoryError(conversationResult.error);
+    if (conversationResult.error || activityResult.error) {
+      setHistoryError(conversationResult.error || activityResult.error);
+    }
     return !conversationResult.error && !activityResult.error;
   }, [activityQuery, conversationsQuery]);
 
@@ -551,6 +667,11 @@ export function AiChatProvider({ children }) {
       refreshHistory,
       historyError,
       historySyncState,
+      promptDraft,
+      setPromptDraft,
+      clearPromptDraft,
+      retryPersistAssistant,
+      retryingMessageId,
       activity,
       activityLoading: activityQuery.isLoading,
       activeConversationId,
@@ -579,6 +700,7 @@ export function AiChatProvider({ children }) {
       conversationsQuery.isFetchingNextPage,
       conversationsQuery.isLoading,
       deleteConversation,
+      clearPromptDraft,
       historyError,
       historySyncState,
       isDraft,
@@ -586,8 +708,12 @@ export function AiChatProvider({ children }) {
       isStreaming,
       loadMoreConversations,
       messages,
+      promptDraft,
+      setPromptDraft,
       refreshHistory,
       renameConversation,
+      retryPersistAssistant,
+      retryingMessageId,
       selectConversation,
       send,
       startNewConversation,

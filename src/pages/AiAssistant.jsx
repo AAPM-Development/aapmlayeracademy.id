@@ -248,6 +248,8 @@ function AssistantMessage({
   message,
   retryPrompt,
   onRetry,
+  onRetryPersistence,
+  persistenceRetrying = false,
   onQuickAction,
   pathname,
   disabled,
@@ -312,6 +314,22 @@ function AssistantMessage({
           )}
         </div>
       )}
+      {!message.streaming && !message.error && !message.persisted && message.content && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[11px] leading-4 text-tint-orange-foreground">
+          <AapmIcon name="solar:refresh-circle-bold-duotone" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
+          <span>Belum tersimpan. Jawaban tetap tampil di layar.</span>
+          {onRetryPersistence && (
+            <button
+              type="button"
+              onClick={() => onRetryPersistence(message)}
+              disabled={persistenceRetrying || disabled}
+              className="font-semibold text-brand-orange underline underline-offset-2 disabled:opacity-60"
+            >
+              {persistenceRetrying ? "Menyimpan…" : "Coba simpan lagi"}
+            </button>
+          )}
+        </div>
+      )}
       {message.error && (
         <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-danger/20 bg-danger/10 px-2.5 py-2 text-[11px] leading-4 text-danger">
           <AapmIcon name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -326,12 +344,12 @@ function AssistantMessage({
                 ? "solar:info-circle-bold"
                 : message.persisted
                   ? "solar:check-circle-bold-duotone"
-                  : "solar:verified-check-bold"
+                  : "solar:refresh-circle-bold-duotone"
             }
-            className={`h-3.5 w-3.5 shrink-0 ${message.fallback ? "text-brand-orange" : "text-brand-green"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${message.fallback || !message.persisted ? "text-brand-orange" : "text-brand-green"}`}
           />
           <span className="shrink-0">
-            {message.persisted ? "Tersimpan di riwayat akun" : "Menyiapkan riwayat"}
+            {message.persisted ? "Tersimpan di riwayat akun" : "Belum tersimpan"}
           </span>
           {message.provider && (
             <span className="min-w-0 truncate text-muted-foreground/80">
@@ -446,7 +464,7 @@ function ConversationList({
               hasMore={hasMore && !query}
               onLoadMore={onLoadMore}
               isLoadingMore={loadingMore}
-              emptyMessage="Belum ada riwayat. Percakapan pertama akan tersimpan otomatis."
+              emptyMessage="Belum ada percakapan."
               filtered={Boolean(query)}
             />
           </div>
@@ -625,7 +643,7 @@ function MobileConversationSheet({
                 hasMore={hasMore && !query}
                 onLoadMore={onLoadMore}
                 isLoadingMore={loadingMore}
-                emptyMessage="Belum ada riwayat. Pertanyaan pertama akan membuat percakapan baru secara otomatis."
+                emptyMessage="Belum ada percakapan."
                 filtered={Boolean(query)}
               />
             </div>
@@ -670,7 +688,6 @@ function MobileConversationSheet({
 
 export default function AiAssistant() {
   const { toast } = useToast();
-  const [input, setInput] = useState("");
   const [includeFarm, setIncludeFarm] = useState(true);
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -704,11 +721,15 @@ export default function AiAssistant() {
     streamStatus,
     streamSteps,
     streamPhase,
+    promptDraft,
+    setPromptDraft,
     selectConversation,
     startNewConversation,
     deleteConversation,
     renameConversation,
     send,
+    retryPersistAssistant,
+    retryingMessageId,
   } = useAiChat();
   const suggestionContext = location.state?.pageContext || "ai-assistant";
   const suggestions = useMemo(
@@ -767,15 +788,12 @@ export default function AiAssistant() {
       if (String(activeConversationId || "") !== handoffId) {
         selectConversation(handoffId);
       }
-      return;
     }
-    startNewConversation();
   }, [
     activeConversationId,
     conversationsLoading,
     location.state,
     selectConversation,
-    startNewConversation,
   ]);
 
   const {
@@ -810,17 +828,18 @@ export default function AiAssistant() {
     reader.readAsDataURL(file);
   };
 
-  const submit = async (text = input) => {
+  const submit = async (text = promptDraft) => {
     const content = text.trim();
     if ((!content && !imageAttachment) || isStreaming) return;
     const image = imageAttachment;
     const message =
       content ||
       "Tolong analisis foto farm ini. Bedakan observasi visual, hal yang belum pasti, dan data yang perlu saya cek berikutnya.";
-    setInput("");
-    setImageAttachment(null);
-    setAttachmentError("");
-    await send(message, { includeFarm, allowWebSearch, image, pageContext: "ai-assistant" });
+    const result = await send(message, { includeFarm, allowWebSearch, image, pageContext: "ai-assistant" });
+    if (result?.ok) {
+      setImageAttachment(null);
+      setAttachmentError("");
+    }
   };
 
   return (
@@ -933,7 +952,7 @@ export default function AiAssistant() {
               )}
               {isLoadingConversation ? (
                 <p className="text-sm text-muted-foreground">
-                  Memuat percakapan…
+                  Memuat riwayat...
                 </p>
               ) : messages.length === 0 ? (
                 <div className="py-3 sm:py-8">
@@ -996,6 +1015,8 @@ export default function AiAssistant() {
                         }
                         onRetry={submit}
                         onQuickAction={submit}
+                        onRetryPersistence={retryPersistAssistant}
+                        persistenceRetrying={retryingMessageId === message.id}
                         pathname={location.state?.pageContext || location.pathname}
                         disabled={isStreaming}
                       />
@@ -1020,8 +1041,8 @@ export default function AiAssistant() {
         <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto min-w-0 max-w-3xl">
             <AiComposer
-              input={input}
-              setInput={setInput}
+              input={promptDraft}
+              setInput={setPromptDraft}
               onSubmit={() => submit()}
               isStreaming={isStreaming}
               imageInputRef={imageInputRef}

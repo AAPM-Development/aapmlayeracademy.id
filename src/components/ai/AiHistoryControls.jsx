@@ -332,12 +332,12 @@ export function AiConversationHistoryResults({
   hasMore = false,
   onLoadMore,
   isLoadingMore = false,
-  emptyMessage = "Belum ada riwayat percakapan.",
+  emptyMessage = "Belum ada percakapan.",
   noResultsMessage = "Tidak ada percakapan yang cocok.",
   filtered = false,
 }) {
   if (loading) {
-    return <p className="px-2 py-4 text-xs text-muted-foreground">Memuat percakapan…</p>;
+    return <p className="px-2 py-4 text-xs text-muted-foreground">Memuat riwayat...</p>;
   }
 
   if (error && !conversations.length) {
@@ -346,7 +346,7 @@ export function AiConversationHistoryResults({
         <div className="flex items-start gap-2">
           <AapmIcon name="solar:info-circle-bold-duotone" className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
           <div className="min-w-0">
-            <p className="font-semibold text-foreground">Riwayat belum dapat dimuat</p>
+            <p className="font-semibold text-foreground">Riwayat belum dapat dimuat.</p>
             <p className="mt-0.5">Data chat tidak dihapus. Coba muat ulang untuk mengambilnya lagi dari akun Anda.</p>
             {onRetry && (
               <Button

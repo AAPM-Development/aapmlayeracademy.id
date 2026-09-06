@@ -29,6 +29,7 @@ async function request(path, options = /** @type {any} */ ({})) {
 
   const response = await fetch(`${API_ROOT}${path}`, {
     ...fetchOptions,
+    ...(method === "GET" ? { cache: "no-store" } : {}),
     credentials: "same-origin",
     headers,
   });
@@ -231,6 +232,8 @@ export const nativeApi = {
       },
       create: (title = "") => request("/ai/conversations", json({ title })),
       detail: (id) => request(`/ai/conversations/${encodeURIComponent(id)}`),
+      persistAssistant: (id, data) =>
+        request(`/ai/conversations/${encodeURIComponent(id)}/messages`, json(data)),
       update: (id, data) =>
         request(`/ai/conversations/${encodeURIComponent(id)}`, {
           method: "PATCH",

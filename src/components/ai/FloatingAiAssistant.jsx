@@ -152,7 +152,6 @@ export default function FloatingAiAssistant() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [input, setInput] = useState("");
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyView, setHistoryView] = useState("chats");
@@ -191,11 +190,15 @@ export default function FloatingAiAssistant() {
     streamStatus,
     streamSteps,
     streamPhase,
+    promptDraft,
+    setPromptDraft,
     startNewConversation,
     selectConversation,
     deleteConversation,
     renameConversation,
     send,
+    retryPersistAssistant,
+    retryingMessageId,
   } = useAiChat();
   const activeConversation = conversations.find(
     (item) => item.id === activeConversationId,
@@ -274,7 +277,7 @@ export default function FloatingAiAssistant() {
     setHistoryOpen(false);
     setClosing(true);
   };
-  const submit = async (text = input) => {
+  const submit = async (text = promptDraft) => {
     const message =
       text.trim() ||
       (imageAttachment
@@ -282,15 +285,16 @@ export default function FloatingAiAssistant() {
         : "");
     if (!message || isStreaming) return;
     const image = imageAttachment;
-    setInput("");
-    setImageAttachment(null);
-    setAttachmentError("");
-    await send(message, {
+    const result = await send(message, {
       includeFarm: true,
       allowWebSearch,
       pageContext: pageContextForPath(location.pathname),
       image,
     });
+    if (result?.ok) {
+      setImageAttachment(null);
+      setAttachmentError("");
+    }
   };
   const handleImageSelection = (event) => {
     const file = event.target.files?.[0];
@@ -514,6 +518,20 @@ export default function FloatingAiAssistant() {
                             "Respons lokal tersimpan; provider dapat dicoba kembali di workspace penuh."}
                         </p>
                       )}
+                      {!message.streaming && !message.error && !message.persisted && message.content && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+                          <AapmIcon name="solar:refresh-circle-bold-duotone" className="h-3 w-3 shrink-0 text-brand-orange" />
+                          <span>Belum tersimpan. Jawaban tetap tampil di layar.</span>
+                          <button
+                            type="button"
+                            onClick={() => retryPersistAssistant(message)}
+                            disabled={Boolean(retryingMessageId) || isStreaming}
+                            className="font-semibold text-brand-orange underline underline-offset-2 disabled:opacity-60"
+                          >
+                            {retryingMessageId === message.id ? "Menyimpan…" : "Coba simpan lagi"}
+                          </button>
+                        </div>
+                      )}
                       {message.error && (
                         <p className="mt-2 text-[10px] text-danger">
                           Permintaan belum dapat diproses.
@@ -526,7 +544,7 @@ export default function FloatingAiAssistant() {
                             className={`h-3 w-3 shrink-0 ${message.persisted ? "text-brand-green" : "text-brand-orange"}`}
                           />
                           <span className="truncate">
-                            {message.persisted ? "Tersimpan di riwayat akun" : "Menyiapkan riwayat"}
+                            {message.persisted ? "Tersimpan di riwayat akun" : "Belum tersimpan"}
                             {message.provider
                               ? message.fallback
                                 ? " · Respons lokal"
@@ -627,7 +645,7 @@ export default function FloatingAiAssistant() {
                         hasMore={hasMoreConversations && !historyQuery}
                         onLoadMore={loadMoreConversations}
                         isLoadingMore={isLoadingMoreConversations}
-                        emptyMessage="Belum ada riwayat percakapan."
+                        emptyMessage="Belum ada percakapan."
                         filtered={Boolean(historyQuery)}
                       />
                     </div>
@@ -638,8 +656,8 @@ export default function FloatingAiAssistant() {
           </div>
           <footer className="aapm-ai-floating-composer shrink-0 border-t border-border bg-background p-3">
             <AiComposer
-              input={input}
-              setInput={setInput}
+              input={promptDraft}
+              setInput={setPromptDraft}
               onSubmit={() => submit()}
               isStreaming={isStreaming}
               imageInputRef={imageInputRef}

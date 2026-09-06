@@ -700,15 +700,29 @@ try {
         $pageContext = trim((string) ($input['pageContext'] ?? ''));
         $accountMemory = ai_account_memory_for_user((int) $user['id']);
         $accountContext = ai_account_context_for_user((int) $user['id']);
-        ai_record_chat_message((int) $conversation['id'], 'user', $message);
-        ai_record_activity(
-            (int) $user['id'],
-            (int) $conversation['id'],
-            'question',
-            $imageDataUrl !== null ? 'Pertanyaan dengan foto dikirim' : 'Pertanyaan dikirim',
-            ai_conversation_preview($message)
-        );
-        ai_touch_conversation((int) $conversation['id'], (string) $conversation['title'], $message, (int) $conversation['message_count'] === 0);
+        // Phase 1 is deliberately short and atomic. The user turn, activity
+        // entry, and conversation metadata must either all exist or none of
+        // them should be visible to the history API before the provider runs.
+        $phaseOneDatabase = db();
+        try {
+            $phaseOneDatabase->beginTransaction();
+            ai_record_chat_message((int) $conversation['id'], 'user', $message);
+            ai_record_activity(
+                (int) $user['id'],
+                (int) $conversation['id'],
+                'question',
+                $imageDataUrl !== null ? 'Pertanyaan dengan foto dikirim' : 'Pertanyaan dikirim',
+                ai_conversation_preview($message)
+            );
+            ai_touch_conversation((int) $conversation['id'], (string) $conversation['title'], $message, (int) $conversation['message_count'] === 0);
+            $phaseOneDatabase->commit();
+        } catch (Throwable $exception) {
+            if ($phaseOneDatabase->inTransaction()) {
+                $phaseOneDatabase->rollBack();
+            }
+            error_log('[aapm-ai-phase1] ' . $exception->getMessage());
+            error_response('Pertanyaan belum dapat disimpan ke riwayat akun. Coba lagi.', 503, 'persistence_error');
+        }
         ai_sse_start();
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
@@ -777,6 +791,66 @@ try {
         ]);
         rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
+    }
+
+    if (preg_match('#^ai/conversations/(\d+)/messages$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $conversation = ai_conversation_for_user((int) $matches[1], (int) $user['id']);
+        if (!$conversation) {
+            error_response('Percakapan tidak ditemukan.', 404, 'not_found');
+        }
+        $input = request_json();
+        $content = trim((string) ($input['content'] ?? ''));
+        if ($content === '') {
+            error_response('Jawaban yang akan disimpan wajib diisi.', 422, 'validation_error');
+        }
+        if (strlen($content) > 24000) {
+            error_response('Jawaban terlalu panjang untuk disimpan.', 422, 'validation_error');
+        }
+        $provider = profile_text($input['provider'] ?? '', 80);
+        $model = profile_text($input['model'] ?? '', 180);
+        $fallback = bool_value($input['fallback'] ?? false) === 1;
+        $database = db();
+        try {
+            $database->beginTransaction();
+            $latestStmt = $database->prepare('SELECT role, content FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 1');
+            $latestStmt->execute([(int) $conversation['id']]);
+            $latest = $latestStmt->fetch();
+            // A retry may be submitted twice after a slow network response;
+            // do not create duplicate assistant messages for the same visible
+            // answer.
+            if (!(($latest['role'] ?? '') === 'assistant' && (string) ($latest['content'] ?? '') === $content)) {
+                ai_record_chat_message(
+                    (int) $conversation['id'],
+                    'assistant',
+                    $content,
+                    $provider !== '' ? $provider : null,
+                    $model !== '' ? $model : null,
+                    $fallback
+                );
+                ai_record_activity(
+                    (int) $user['id'],
+                    (int) $conversation['id'],
+                    $fallback ? 'fallback' : 'response',
+                    $fallback ? 'Respons lokal disimpan' : 'Jawaban APPI selesai',
+                    trim($provider . ($model !== '' ? ' · ' . $model : ''))
+                );
+            }
+            ai_touch_conversation((int) $conversation['id'], (string) $conversation['title'], $content, false);
+            $database->commit();
+        } catch (Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            error_log('[aapm-ai-retry] ' . $exception->getMessage());
+            error_response('Jawaban APPI belum dapat disimpan. Coba lagi.', 503, 'persistence_error');
+        }
+        $savedConversation = ai_conversation_for_user((int) $conversation['id'], (int) $user['id']);
+        json_response([
+            'persisted' => true,
+            'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null,
+        ]);
     }
 
     if (preg_match('#^ai/conversations/(\d+)$#', $path, $matches) && $method === 'GET') {
@@ -977,13 +1051,16 @@ function ai_record_activity(int $userId, ?int $conversationId, string $type, str
 
 function ai_touch_conversation(int $conversationId, string $title, string $preview, bool $setTitle): void
 {
+    $countStmt = db()->prepare('SELECT COUNT(*) FROM ai_chat_messages WHERE conversation_id = ?');
+    $countStmt->execute([$conversationId]);
+    $messageCount = (int) $countStmt->fetchColumn();
     $sql = $setTitle
-        ? 'UPDATE ai_conversations SET title = ?, last_message_preview = ?, message_count = message_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-        : 'UPDATE ai_conversations SET last_message_preview = ?, message_count = message_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+        ? 'UPDATE ai_conversations SET title = ?, last_message_preview = ?, message_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        : 'UPDATE ai_conversations SET last_message_preview = ?, message_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
     $stmt = db()->prepare($sql);
     $setTitle
-        ? $stmt->execute([ai_conversation_title($title), ai_conversation_preview($preview), $conversationId])
-        : $stmt->execute([ai_conversation_preview($preview), $conversationId]);
+        ? $stmt->execute([ai_conversation_title($title), ai_conversation_preview($preview), $messageCount, $conversationId])
+        : $stmt->execute([ai_conversation_preview($preview), $messageCount, $conversationId]);
 }
 
 function redirect_response(string $url, int $status = 302): void
