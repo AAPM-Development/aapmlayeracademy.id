@@ -11,6 +11,7 @@ import {
   IconButton,
   Input,
   Label,
+  Surface,
   Textarea,
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
@@ -292,7 +293,7 @@ function ContentBlockFields({ block, onChange }) {
 
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
-  return <article className={cn("rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div><p className="mt-1 max-w-2xl text-[10px] leading-4 text-muted-foreground">{meta?.description || "Elemen materi terstruktur."}</p></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  return <article className={cn("scroll-mt-24 rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type} data-editorial-content-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div><p className="mt-1 max-w-2xl text-[10px] leading-4 text-muted-foreground">{meta?.description || "Elemen materi terstruktur."}</p></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
 }
 
 function VideoCard({ block, index, total, onChange, onMove, onRemove }) {
@@ -304,32 +305,64 @@ function VideoCard({ block, index, total, onChange, onMove, onRemove }) {
 
 const insertableTypes = ["slides", "image", "table", "callout", "link", "cta", "divider"];
 
+const quickBlockLabels = Object.freeze({
+  slides: "Slide",
+  image: "Gambar",
+  table: "Tabel",
+  callout: "Sorotan",
+  link: "Tautan",
+  cta: "CTA",
+  divider: "Pemisah",
+  video: "Video",
+});
+
+const editorialQuickSections = [
+  { id: "editorial-main-canvas", label: "Kanvas teks", shortLabel: "Kanvas", detail: "Tulis dan format", icon: "edit" },
+  { id: "editorial-structured-blocks", label: "Elemen materi", shortLabel: "Elemen", detail: "Slide, gambar, tabel", icon: "modules" },
+  { id: "editorial-video-section", label: "Video", shortLabel: "Video", detail: "Kartu video learner", icon: "solar:play-circle-bold" },
+];
+
 export default function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange }) {
-  const document = ensureEditorialDocument(value);
+  const editorialDocument = ensureEditorialDocument(value);
   const storedVideos = editorialVideoBlocks(value);
   const videos = storedVideos.length ? storedVideos : legacyVideoUrl.trim() ? [{ id: "legacy-video", type: "video", url: legacyVideoUrl, caption: "" }] : [];
   const inlineContent = editorialInlineContent(value, fallback);
   const contentBlocks = editorialContentBlocks(value);
-  const richTextBlock = document.blocks.find((block) => block.type === "richText");
-  const existingIds = new Set(document.blocks.map((block) => block.id));
+  const richTextBlock = editorialDocument.blocks.find((block) => block.type === "richText");
+  const existingIds = new Set(editorialDocument.blocks.map((block) => block.id));
   const richTextId = richTextBlock?.id || (existingIds.has("inline-content") ? "inline-content-text" : "inline-content");
   const textLength = editorialTextLength(createInlineEditorialDocument(inlineContent, videos, richTextId, contentBlocks).blocks);
   const [announcement, setAnnouncement] = React.useState("");
   const [pendingVideoDelete, setPendingVideoDelete] = React.useState(null);
   const [pendingContentBlockDelete, setPendingContentBlockDelete] = React.useState(null);
+  const quickScrollTargetRef = React.useRef("");
 
   const commit = (nextContent = inlineContent, nextContentBlocks = contentBlocks, nextVideos = videos) => {
     const nextDocument = createInlineEditorialDocument(nextContent, nextVideos, richTextId, nextContentBlocks);
     if (editorialTextLength(nextDocument.blocks) > EDITORIAL_TEXT_LIMIT) {
       setAnnouncement("Isi materi sudah mencapai batas maksimum.");
-      return;
+      return false;
     }
     onChange(nextDocument.blocks.length ? nextDocument : null);
     if (legacyVideoUrl.trim()) onLegacyVideoChange?.("");
+    return true;
   };
   const updateInlineContent = (nextContent) => commit(nextContent, contentBlocks, videos);
   const updateContentBlock = (index, patch) => commit(inlineContent, contentBlocks.map((block, currentIndex) => currentIndex === index ? { ...block, ...patch } : block), videos);
-  const addContentBlock = (type) => { const block = createEditorialBlock(type); if (!block || contentBlocks.length >= 79) return; commit(inlineContent, [...contentBlocks, block], videos); setAnnouncement(`${blockMeta[type]?.label || "Elemen"} ditambahkan setelah kanvas teks.`); };
+  const scrollToSection = (sectionId) => {
+    if (typeof document === "undefined") return;
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const addContentBlock = (type) => {
+    const block = createEditorialBlock(type);
+    if (!block || contentBlocks.length >= 79) return;
+    quickScrollTargetRef.current = block.id;
+    if (!commit(inlineContent, [...contentBlocks, block], videos)) {
+      quickScrollTargetRef.current = "";
+      return;
+    }
+    setAnnouncement(`${blockMeta[type]?.label || "Elemen"} ditambahkan setelah kanvas teks.`);
+  };
   const moveContentBlock = (sourceIndex, destinationIndex) => { commit(inlineContent, moveInList(contentBlocks, sourceIndex, destinationIndex), videos); setAnnouncement(`Elemen dipindahkan ke urutan ${destinationIndex + 1}.`); };
   const requestRemoveContentBlock = (index) => { const block = contentBlocks[index]; if (block) setPendingContentBlockDelete({ index, label: blockMeta[block.type]?.label || "elemen" }); };
   const removeContentBlock = () => { const index = pendingContentBlockDelete?.index; if (!Number.isInteger(index) || !contentBlocks[index]) return; commit(inlineContent, contentBlocks.filter((_, currentIndex) => currentIndex !== index), videos); setAnnouncement(`${pendingContentBlockDelete.label} dihapus.`); setPendingContentBlockDelete(null); };
@@ -339,17 +372,148 @@ export default function EditorialComposer({ value, fallback = "", legacyVideoUrl
   const requestRemoveVideo = (index) => { if (videos[index]) setPendingVideoDelete({ index }); };
   const removeVideo = () => { const index = pendingVideoDelete?.index; if (!Number.isInteger(index) || !videos[index]) return; commit(inlineContent, contentBlocks, videos.filter((_, currentIndex) => currentIndex !== index)); setAnnouncement(`Video ${index + 1} dihapus.`); setPendingVideoDelete(null); };
 
-  return <div className="space-y-5" data-editorial-mode="hybrid">
-    <div className="sr-only" aria-live="polite">{announcement}</div>
-    <section className="rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-green">Kanvas materi</p><h3 className="mt-1 text-base font-semibold">Tulis seperti di Word</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Ketik langsung, paste dari Word, lalu gunakan toolbar untuk judul, penekanan, daftar, kutipan, dan tautan.</p></div></div><Badge variant="soft" className="bg-tint-green text-brand-green">{textLength.toLocaleString("id-ID")} byte teks</Badge></div>
-      <div className="mt-4"><RichTextEditor id="module-inline-editor" value={inlineContent} onChange={updateInlineContent} /></div>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] leading-4 text-muted-foreground"><span><strong className="font-semibold text-foreground">Enter</strong> membuat paragraf baru</span><span><strong className="font-semibold text-foreground">Ctrl/⌘ + Z</strong> untuk mengurungkan</span><span>Paste dari Word dibersihkan secara aman</span></div>
-      <div className="mt-5 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-3.5 sm:p-4" data-editorial-insert-rail><div className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange text-white"><AapmIcon name="add" className="h-4 w-4" /></span><div><p className="text-xs font-semibold">Sisipkan ke materi</p><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Elemen pilihan akan muncul setelah kanvas teks dan tetap bisa diurutkan.</p></div></div><Badge variant="outline" className="border-brand-orange/25 text-brand-orange">{contentBlocks.length} elemen</Badge></div><div className="mt-3 flex flex-wrap gap-2">{insertableTypes.map((type) => { const item = blockMeta[type]; return <Button key={type} type="button" size="sm" variant={type === "slides" ? "default" : "outline"} className={cn("h-9 rounded-lg text-xs", type === "slides" && "bg-brand-orange text-white hover:bg-brand-orange/90")} aria-label={`Sisipkan ${item?.label || type}`} onClick={() => addContentBlock(type)}><AapmIcon name={item?.icon || "add"} className="h-3.5 w-3.5" />{item?.label || type}</Button>; })}</div></div>
-    </section>
-    {contentBlocks.length > 0 && <section className="space-y-3" aria-label="Elemen materi terstruktur"><div className="flex flex-wrap items-center justify-between gap-2 px-1"><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Elemen tersisip</p><p className="mt-1 text-xs text-muted-foreground">Atur urutan learner dengan panah di setiap elemen.</p></div><Badge variant="outline">{contentBlocks.length} elemen</Badge></div><div className="space-y-3">{contentBlocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={contentBlocks.length} onChange={(patch) => updateContentBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div></section>}
-    <section className="rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-4 shadow-sm sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-5 w-5" /></span><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video pembelajaran</p><h3 className="mt-1 text-base font-semibold">Tambahkan video sebagai kartu terpisah</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Video tetap punya urutan sendiri, tanpa mengganggu alur tulisan dan elemen materi.</p></div></div><Button type="button" size="sm" variant="outline" onClick={addVideo}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah video</Button></div>{videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video. Tambahkan hanya jika modul ini memiliki materi video.</div>}</section>
-    <ConfirmDialog open={Boolean(pendingContentBlockDelete)} onOpenChange={(open) => !open && setPendingContentBlockDelete(null)} title="Hapus elemen materi?" description={`${pendingContentBlockDelete?.label || "Elemen"} akan dihapus dari alur learner. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus elemen" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeContentBlock} />
-    <ConfirmDialog open={Boolean(pendingVideoDelete)} onOpenChange={(open) => !open && setPendingVideoDelete(null)} title="Hapus video?" description={`Video ${pendingVideoDelete ? pendingVideoDelete.index + 1 : ""} akan dihapus dari modul. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus video" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeVideo} />
-  </div>;
+  React.useEffect(() => {
+    const targetId = quickScrollTargetRef.current;
+    if (!targetId || typeof window === "undefined" || typeof document === "undefined") return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const target = Array.from(document.querySelectorAll("[data-editorial-content-block-id]"))
+        .find((element) => element.dataset.editorialContentBlockId === targetId);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.querySelector("input, textarea, button")?.focus({ preventScroll: true });
+    });
+    quickScrollTargetRef.current = "";
+    return () => window.cancelAnimationFrame(frameId);
+  }, [contentBlocks]);
+
+  const revealQuickSection = (sectionId) => {
+    const targetId = sectionId === "editorial-structured-blocks" && !contentBlocks.length
+      ? "editorial-insert-rail"
+      : sectionId;
+    scrollToSection(targetId);
+  };
+  const addVideoAndReveal = () => {
+    addVideo();
+    scrollToSection("editorial-video-section");
+  };
+
+  return (
+    <div className="space-y-5" data-editorial-mode="hybrid">
+      <div className="sr-only" aria-live="polite">{announcement}</div>
+
+      <div className="sticky top-2 z-30 flex min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-border bg-surface-elevated p-1 shadow-sm xl:hidden" aria-label="Akses cepat materi">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-brand-orange" title="Navigasi materi" aria-hidden="true">
+          <AapmIcon name="sidebar" className="h-3.5 w-3.5" />
+        </div>
+        <nav className="aapm-scrollbar flex min-w-0 gap-0.5 overflow-x-auto" aria-label="Bagian materi">
+          {editorialQuickSections.map((section, index) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => revealQuickSection(section.id)}
+              aria-label={`${section.label}: ${section.detail}`}
+              title={`${section.label}: ${section.detail}`}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="font-mono text-[10px] text-brand-orange">{String(index + 1).padStart(2, "0")}</span>
+              {section.shortLabel || section.label}
+            </button>
+          ))}
+        </nav>
+        <Button type="button" size="sm" className="h-8 shrink-0 rounded-lg bg-brand-orange px-2 text-[11px] text-white hover:bg-brand-orange/90" onClick={() => addContentBlock("slides")} aria-label="Tambah slide" title="Tambah slide">
+          <AapmIcon name="add" className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Tambah slide</span>
+          <span className="sm:hidden">Slide</span>
+        </Button>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_15rem]">
+        <div className="min-w-0 space-y-5">
+          <section id="editorial-main-canvas" className="scroll-mt-24 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-green">Kanvas materi</p>
+                  <h3 className="mt-1 text-base font-semibold">Tulis seperti di Word</h3>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Ketik langsung, paste dari Word, lalu gunakan toolbar untuk judul, penekanan, daftar, kutipan, dan tautan.</p>
+                </div>
+              </div>
+              <Badge variant="soft" className="bg-tint-green text-brand-green">{textLength.toLocaleString("id-ID")} byte teks</Badge>
+            </div>
+            <div className="mt-4"><RichTextEditor id="module-inline-editor" value={inlineContent} onChange={updateInlineContent} /></div>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] leading-4 text-muted-foreground"><span><strong className="font-semibold text-foreground">Enter</strong> membuat paragraf baru</span><span><strong className="font-semibold text-foreground">Ctrl/⌘ + Z</strong> untuk mengurungkan</span><span>Paste dari Word dibersihkan secara aman</span></div>
+            <div id="editorial-insert-rail" className="mt-5 scroll-mt-24 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-3.5 sm:p-4" data-editorial-insert-rail>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange text-white"><AapmIcon name="add" className="h-4 w-4" /></span>
+                  <div><p className="text-xs font-semibold">Sisipkan ke materi</p><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Elemen pilihan akan muncul setelah kanvas teks dan tetap bisa diurutkan.</p></div>
+                </div>
+                <Badge variant="outline" className="border-brand-orange/25 text-brand-orange">{contentBlocks.length} elemen</Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {insertableTypes.map((type) => {
+                  const item = blockMeta[type];
+                  return <Button key={type} type="button" size="sm" variant={type === "slides" ? "default" : "outline"} className={cn("h-8 rounded-lg px-2.5 text-[11px]", type === "slides" && "bg-brand-orange text-white hover:bg-brand-orange/90")} aria-label={`Sisipkan ${item?.label || type}`} title={`Sisipkan ${item?.label || type}`} onClick={() => addContentBlock(type)}><AapmIcon name={item?.icon || "add"} className="h-3.5 w-3.5" />{item?.label || type}</Button>;
+                })}
+              </div>
+            </div>
+          </section>
+
+          {contentBlocks.length > 0 && (
+            <section id="editorial-structured-blocks" className="scroll-mt-24 space-y-3" aria-label="Elemen materi terstruktur">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1"><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Elemen tersisip</p><p className="mt-1 text-xs text-muted-foreground">Atur urutan learner dengan panah di setiap elemen.</p></div><Badge variant="outline">{contentBlocks.length} elemen</Badge></div>
+              <div className="space-y-3">{contentBlocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={contentBlocks.length} onChange={(patch) => updateContentBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div>
+            </section>
+          )}
+
+          <section id="editorial-video-section" className="scroll-mt-24 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-4 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-5 w-5" /></span>
+                <div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video pembelajaran</p><h3 className="mt-1 text-base font-semibold">Tambahkan video sebagai kartu terpisah</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Video tetap punya urutan sendiri, tanpa mengganggu alur tulisan dan elemen materi.</p></div>
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={addVideo}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah video</Button>
+            </div>
+            {videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video. Tambahkan hanya jika modul ini memiliki materi video.</div>}
+          </section>
+        </div>
+
+        <aside className="hidden xl:block">
+          <Surface className="sticky top-5 p-2.5">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange" aria-hidden="true"><AapmIcon name="sidebar" className="h-3.5 w-3.5" /></span>
+                <h3 className="truncate text-xs font-semibold">Akses cepat</h3>
+              </div>
+              <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground">{contentBlocks.length + videos.length} item</Badge>
+            </div>
+            <nav className="mt-2 space-y-0.5" aria-label="Bagian materi">
+              {editorialQuickSections.map((section, index) => (
+                <button key={section.id} type="button" onClick={() => revealQuickSection(section.id)} aria-label={`${section.label}: ${section.detail}`} title={`${section.label}: ${section.detail}`} className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-subtle font-mono text-[10px] font-bold text-muted-foreground group-hover:text-foreground">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0"><span className="block truncate text-[11px] font-semibold leading-4">{section.label}</span><span className="block truncate text-[9px] leading-3 text-muted-foreground">{section.id === "editorial-structured-blocks" && !contentBlocks.length ? "Tambah elemen dari kanvas" : section.detail}</span></span>
+                </button>
+              ))}
+            </nav>
+            <div className="mt-2 border-t border-border pt-2">
+              <p className="px-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tambah elemen</p>
+              <div className="mt-1.5 grid grid-cols-2 gap-1">
+                {insertableTypes.map((type) => {
+                  const item = blockMeta[type];
+                  return <Button key={type} type="button" size="sm" variant={type === "slides" ? "default" : "outline"} className={cn("h-8 min-w-0 justify-start rounded-lg px-2 text-[10px]", type === "slides" && "bg-brand-orange text-white hover:bg-brand-orange/90")} aria-label={`Sisipkan ${item?.label || type}`} title={`Sisipkan ${item?.label || type}`} data-editorial-quick-add={type} onClick={() => addContentBlock(type)}><AapmIcon name={item?.icon || "add"} className="h-3.5 w-3.5" /><span className="truncate">{quickBlockLabels[type] || item?.label || type}</span></Button>;
+                })}
+                <Button type="button" size="sm" variant="outline" className="h-8 min-w-0 justify-start rounded-lg px-2 text-[10px]" aria-label="Tambah video" title="Tambah video" data-editorial-quick-add="video" onClick={addVideoAndReveal}><AapmIcon name="solar:play-circle-bold" className="h-3.5 w-3.5" /><span className="truncate">{quickBlockLabels.video}</span></Button>
+              </div>
+            </div>
+            <div className="mt-2 rounded-lg bg-surface-subtle px-2 py-1.5 text-[9px] leading-3 text-muted-foreground"><span className="font-semibold text-foreground">Tip:</span> pilih elemen; form baru otomatis dibawa ke layar.</div>
+          </Surface>
+        </aside>
+      </div>
+
+      <ConfirmDialog open={Boolean(pendingContentBlockDelete)} onOpenChange={(open) => !open && setPendingContentBlockDelete(null)} title="Hapus elemen materi?" description={`${pendingContentBlockDelete?.label || "Elemen"} akan dihapus dari alur learner. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus elemen" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeContentBlock} />
+      <ConfirmDialog open={Boolean(pendingVideoDelete)} onOpenChange={(open) => !open && setPendingVideoDelete(null)} title="Hapus video?" description={`Video ${pendingVideoDelete ? pendingVideoDelete.index + 1 : ""} akan dihapus dari modul. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus video" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeVideo} />
+    </div>
+  );
 }

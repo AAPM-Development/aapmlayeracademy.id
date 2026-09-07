@@ -70,7 +70,42 @@ export default function AdminCourseDetail() {
         <Tabs defaultValue="general">
           <TabsList className="aapm-scrollbar w-full justify-start overflow-x-auto"><TabsTrigger value="general">Ringkasan</TabsTrigger><TabsTrigger value="curriculum">Kurikulum</TabsTrigger><TabsTrigger value="learners">Learner</TabsTrigger></TabsList>
           <TabsContent value="general" className="mt-4"><Surface className="p-5 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Ruang kerja course</div><h2 className="mt-1 text-xl font-semibold">Kurikulum aktif</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{course.availabilityNote}</p></div><Badge variant="soft" className="bg-tint-green text-tint-green-foreground"><AapmIcon name="checkRead" /> Sumber aktif</Badge></div><div className="mt-6 grid gap-3 sm:grid-cols-3"><Stat label="Struktur" value={`${course.moduleCount} modul`} icon="modules" tone="green" /><Stat label="Konten & bank soal" value="Dapat diedit" icon="edit" tone="orange" /><Stat label="Urutan tampil" value="Board + list" icon="reorder" tone="blue" /></div></Surface></TabsContent>
-          <TabsContent value="curriculum" className="mt-4"><div className="space-y-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Editorial board</div><h2 className="mt-1 text-xl font-semibold">Susun ritme kurikulum</h2><p className="mt-1 text-sm text-muted-foreground">Tarik modul dalam level yang sama. Untuk pindah level, buka editor modul.</p></div><div className="inline-flex w-full rounded-xl border border-border bg-surface-subtle p-1 sm:w-auto"><button type="button" onClick={() => setView("board")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:flex-none ${view === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}><AapmIcon name="reorder" /> Board</button><button type="button" onClick={() => setView("list")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:flex-none ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}><AapmIcon name="modules" /> List</button></div></div>{view === "board" ? <CurriculumBoard levels={boardLevels} courseId={courseId} onDragEnd={handleDragEnd} saving={reorderModules.isPending} /> : <CurriculumList levels={course.curriculum || []} modules={modules} courseId={courseId} moveModule={moveModule} saving={reorderModules.isPending} />}</div></TabsContent>
+          <TabsContent value="curriculum" className="mt-4">
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Editorial board</div>
+                  <h2 className="mt-1 text-xl font-semibold">Susun ritme kurikulum</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Tarik modul dalam level yang sama. Untuk pindah level, buka editor modul.</p>
+                </div>
+                <div className="inline-flex w-full rounded-xl border border-border bg-surface-subtle p-1 sm:w-auto">
+                  <button type="button" onClick={() => setView("board")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:flex-none ${view === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}><AapmIcon name="reorder" /> Board</button>
+                  <button type="button" onClick={() => setView("list")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:flex-none ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}><AapmIcon name="modules" /> List</button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-2.5 xl:hidden">
+                <Button asChild size="sm" className="h-8 bg-brand-orange text-white hover:bg-brand-orange/90"><Link to={`/admin/courses/${courseId}/modules/new`}><AapmIcon name="add" className="h-3.5 w-3.5" /> Tambah modul</Link></Button>
+                <span className="text-[11px] leading-4 text-muted-foreground">Aksi utama tetap terlihat saat daftar modul panjang.</span>
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_15rem]">
+                <div className="min-w-0">
+                  {view === "board" ? <CurriculumBoard levels={boardLevels} courseId={courseId} onDragEnd={handleDragEnd} saving={reorderModules.isPending} /> : <CurriculumList levels={course.curriculum || []} modules={modules} courseId={courseId} moveModule={moveModule} saving={reorderModules.isPending} />}
+                </div>
+                <aside className="hidden xl:block">
+                  <Surface className="sticky top-5 p-2.5">
+                    <div className="flex items-center justify-between gap-2 px-1">
+                      <div className="flex min-w-0 items-center gap-2"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange" aria-hidden="true"><AapmIcon name="add" className="h-3.5 w-3.5" /></span><h3 className="truncate text-xs font-semibold">Aksi cepat</h3></div>
+                      <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground">{modules.length} modul</Badge>
+                    </div>
+                    <Button asChild size="sm" className="mt-2 h-8 w-full bg-brand-orange text-white hover:bg-brand-orange/90"><Link to={`/admin/courses/${courseId}/modules/new`}><AapmIcon name="add" className="h-3.5 w-3.5" /> Tambah modul</Link></Button>
+                    <div className="mt-2 rounded-lg bg-surface-subtle px-2 py-1.5 text-[9px] leading-3 text-muted-foreground">Tetap terlihat saat Anda meninjau urutan.</div>
+                  </Surface>
+                </aside>
+              </div>
+            </div>
+          </TabsContent>
           <TabsContent value="learners" className="mt-4"><AdminUnavailable title="Enrollment per course belum digunakan" description="Progress tiap learner tetap aman dan dapat dilihat dari menu User management. Academy saat ini memakai satu kurikulum aktif." /></TabsContent>
         </Tabs>
       </div>}

@@ -6,6 +6,11 @@ export function useModules() {
   return useQuery({
     queryKey: ['courseModules'],
     queryFn: () => nativeApi.courseModules.list(),
+    // The learner route is the public projection of admin edits. Always
+    // re-read it when the route mounts so a cached catalog can never mask a
+    // just-saved, added, or deleted module.
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -62,7 +62,7 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, onBef
         event.preventDefault();
         onClick?.(event);
       }}
-      className={cn("h-8 w-8 rounded-lg text-xs", active && "bg-tint-orange text-brand-orange")}
+      className={cn("h-8 w-8 shrink-0 rounded-lg text-xs", active && "bg-tint-orange text-brand-orange")}
     >
       {children}
     </Button>
@@ -226,7 +226,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
 
   return (
     <div id={id} className="aapm-rich-editor overflow-hidden rounded-xl border border-input bg-surface-elevated shadow-sm focus-within:border-brand-orange/65 focus-within:ring-2 focus-within:ring-brand-orange/10">
-      <div className="sticky top-0 z-10 flex min-w-0 flex-wrap items-center gap-0.5 border-b border-border bg-surface-subtle/95 p-1.5 shadow-[0_1px_0_hsl(var(--border)/0.65)] backdrop-blur" role="toolbar" aria-label="Format materi">
+      <div className="aapm-scrollbar sticky top-0 z-10 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-border bg-surface-subtle/95 p-1 shadow-[0_1px_0_hsl(var(--border)/0.65)] backdrop-blur" role="toolbar" aria-label="Format materi">
         <Select
           value={blockStyle}
           onOpenChange={(open) => {
@@ -243,7 +243,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
             type="button"
             aria-label="Gaya blok teks"
             title="Gaya blok teks"
-            className="h-8 w-[8.5rem] rounded-lg px-2 text-xs"
+            className="h-8 w-[8.5rem] shrink-0 rounded-lg px-2 text-xs"
             onPointerDown={rememberSelection}
           >
             <SelectValue />

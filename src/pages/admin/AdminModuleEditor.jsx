@@ -5,6 +5,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialComposer from "@/components/admin/EditorialComposer";
+import EditorQuickNav from "@/components/admin/EditorQuickNav";
 import {
   Badge,
   Button,
@@ -77,6 +78,33 @@ const textToList = (value) =>
     .filter(Boolean);
 
 const editorDraftPrefix = "aapm:academy:module-editor:v1";
+
+const EDITOR_SECTIONS = [
+  {
+    id: "module-section-identity",
+    label: "Identitas",
+    detail: "Nomor, judul, dan ringkasan",
+    icon: "course",
+  },
+  {
+    id: "module-section-content",
+    label: "Materi & media",
+    detail: "Teks, slide, gambar, dan video",
+    icon: "edit",
+  },
+  {
+    id: "module-section-outcomes",
+    label: "Outcome",
+    detail: "Tujuan, poin penting, checklist",
+    icon: "checkRead",
+  },
+  {
+    id: "module-section-practice",
+    label: "Praktik",
+    detail: "Tugas dan naskah video",
+    icon: "target",
+  },
+];
 
 function moduleFormFromApi(module) {
   return {
@@ -437,6 +465,8 @@ export default function AdminModuleEditor() {
   const [pendingDraft, setPendingDraft] = useState(null);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [editorReady, setEditorReady] = useState(false);
+  const [activeTab, setActiveTab] = useState("content");
+  const [activeSection, setActiveSection] = useState(EDITOR_SECTIONS[0].id);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
   const editorContextRef = useRef("");
   const formRef = useRef(form);
@@ -455,6 +485,7 @@ export default function AdminModuleEditor() {
   const formSnapshot = useMemo(() => JSON.stringify(form), [form]);
   const isDirty = editorReady && formSnapshot !== initialFormRef.current;
   const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
+  const isSaving = createModule.isPending || updateModule.isPending;
 
   useEffect(() => {
     formRef.current = form;
@@ -618,6 +649,74 @@ export default function AdminModuleEditor() {
     return () => document.removeEventListener("click", handleDocumentClick, true);
   }, [editorReady]);
 
+  useEffect(() => {
+    if (
+      !editorReady ||
+      activeTab !== "content" ||
+      typeof document === "undefined" ||
+      typeof window === "undefined"
+    ) return undefined;
+
+    const sectionElements = EDITOR_SECTIONS
+      .map((section) => document.getElementById(section.id))
+      .filter(Boolean);
+    if (!sectionElements.length) return undefined;
+    const scrollTargets = [window, document.querySelector("main")].filter(Boolean);
+
+    const updateActiveSection = () => {
+      const marker = Math.max(96, Math.min(window.innerHeight * 0.32, 280));
+      const reachedSections = sectionElements.filter((element) => element.getBoundingClientRect().top <= marker);
+      const currentSection = reachedSections[reachedSections.length - 1] || sectionElements[0];
+      setActiveSection((previous) => (previous === currentSection.id ? previous : currentSection.id));
+    };
+    let frameId = 0;
+    const handleViewportChange = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        updateActiveSection();
+      });
+    };
+
+    updateActiveSection();
+    scrollTargets.forEach((target) => target.addEventListener("scroll", handleViewportChange, { passive: true }));
+    window.addEventListener("resize", handleViewportChange);
+    return () => {
+      scrollTargets.forEach((target) => target.removeEventListener("scroll", handleViewportChange));
+      window.removeEventListener("resize", handleViewportChange);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [activeTab, editorReady]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleEditorShortcut = (event) => {
+      if (event.defaultPrevented || event.isComposing) return;
+
+      const key = event.key.toLowerCase();
+      if ((event.metaKey || event.ctrlKey) && key === "s") {
+        event.preventDefault();
+        if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
+        return;
+      }
+
+      if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        const section = EDITOR_SECTIONS[Number(event.key) - 1];
+        if (!section) return;
+        event.preventDefault();
+        setActiveTab("content");
+        setActiveSection(section.id);
+        window.requestAnimationFrame(() => {
+          document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleEditorShortcut);
+    return () => window.removeEventListener("keydown", handleEditorShortcut);
+  }, [isSaving]);
+
   const set = (key, value) =>
     setForm((current) => {
       const next = { ...current, [key]: value };
@@ -632,6 +731,17 @@ export default function AdminModuleEditor() {
     }
     writeEditorDraft(draftKeyRef.current, formRef.current);
     promptNavigation({ target, type: "route" });
+  };
+  const scrollToEditorSection = (sectionId) => {
+    setActiveTab("content");
+    setActiveSection(sectionId);
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+  const submitEditorForm = () => {
+    if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
   };
   const save = async (event) => {
     event.preventDefault();
@@ -729,7 +839,7 @@ export default function AdminModuleEditor() {
         </div>
       }
     >
-      <Tabs defaultValue="content">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="aapm-scrollbar w-full justify-start overflow-x-auto">
           <TabsTrigger value="content">Konten modul</TabsTrigger>
           <TabsTrigger value="preview">Pratinjau learner</TabsTrigger>
@@ -738,12 +848,22 @@ export default function AdminModuleEditor() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="content" className="mt-5">
-          <form onSubmit={save} className="space-y-5">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_16rem]">
+            <EditorQuickNav
+              sections={EDITOR_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={scrollToEditorSection}
+              onPreview={() => setActiveTab("preview")}
+              onSave={submitEditorForm}
+              isDirty={isDirty}
+              isSaving={isSaving}
+            />
+            <form id="module-editor-form" onSubmit={save} className="space-y-5 xl:col-start-1 xl:row-start-1">
             <Surface tone="orange" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3"><AapmIcon name="edit" className="mt-0.5 h-5 w-5 shrink-0 text-tint-orange-foreground" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-tint-orange-foreground/75">Content workflow</div><h2 className="mt-1 text-base font-semibold">Bangun modul yang siap dipelajari</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Lengkapi identitas, media, materi, dan outcome. Field yang belum siap dapat disimpan lalu dilanjutkan dari editor ini.</p></div></div>
               <div className="grid shrink-0 grid-cols-3 gap-2 text-center text-[10px] font-semibold text-muted-foreground"><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">01</div><div className="mt-1">Struktur</div></div><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">02</div><div className="mt-1">Materi</div></div><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">03</div><div className="mt-1">Evaluasi</div></div></div>
             </Surface>
-            <Surface className="p-5">
+            <Surface id="module-section-identity" className="scroll-mt-24 p-5">
               <div className="mb-4 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Structure</div><h2 className="mt-1 text-base font-semibold">Identitas modul</h2></div><span className="text-[11px] text-muted-foreground">Wajib untuk tampil di roadmap</span></div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2">
@@ -814,7 +934,7 @@ export default function AdminModuleEditor() {
                 />
               </div>
             </Surface>
-            <Surface className="p-5">
+            <Surface id="module-section-content" className="scroll-mt-24 p-5">
               <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Materi utama</div><h2 className="mt-1 text-base font-semibold">Tulis materi dan sisipkan media</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Tulis seperti di Word, lalu sisipkan slide, gambar, tabel, sorotan, tautan, atau video tanpa kehilangan bentuk elemen learner.</p></div>
               <EditorialComposer
                 value={form.editorialContent}
@@ -822,11 +942,15 @@ export default function AdminModuleEditor() {
                 legacyVideoUrl={form.videoUrl}
                 onChange={(editorialContent) => {
                   set("editorialContent", editorialContent);
-                  if (editorialContent?.blocks?.length) set("content", "");
+                  // Once the Word-like canvas is edited, the legacy Markdown
+                  // field must not remain as a hidden fallback. In
+                  // particular, clearing the last block must clear old
+                  // content too, otherwise learner view appears unchanged.
+                  set("content", "");
                 }}
                 onLegacyVideoChange={(videoUrl) => set("videoUrl", videoUrl)}
               />
-              <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <div id="module-section-outcomes" className="mt-4 scroll-mt-24 grid gap-4 lg:grid-cols-3">
                 {[
                   ["learningObjectives", "Tujuan pembelajaran"],
                   ["keyTakeaways", "Poin penting"],
@@ -843,7 +967,7 @@ export default function AdminModuleEditor() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div id="module-section-practice" className="mt-4 scroll-mt-24 grid gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Tugas praktik</Label>
                   <Textarea
@@ -865,7 +989,8 @@ export default function AdminModuleEditor() {
               </div>
             </Surface>
             <Surface variant="muted" className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-20 flex flex-col gap-3 p-3 lg:bottom-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name={isDirty ? "edit" : "checkRead"} className={`h-4 w-4 ${isDirty ? "text-brand-orange" : "text-brand-green"}`} /> {isDirty ? "Perubahan lokal belum tersimpan." : "Perubahan hanya aktif setelah disimpan."}</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></Surface>
-          </form>
+            </form>
+          </div>
         </TabsContent>
         <TabsContent value="preview" className="mt-5">
           <Surface className="p-3 sm:p-5 lg:p-7">

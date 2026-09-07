@@ -94,7 +94,10 @@ export function useAdminModuleQuestions(moduleId) {
 
 function invalidateCourseData(queryClient) {
   queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
-  queryClient.invalidateQueries({ queryKey: ["courseModules"] });
+  // Refresh inactive learner projections too. This matters when an admin
+  // saves in one route and the learner view is opened from the same SPA
+  // session afterwards.
+  queryClient.invalidateQueries({ queryKey: ["courseModules"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["quizQuestions"] });
 }
 
