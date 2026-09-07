@@ -583,34 +583,29 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-green">Kanvas materi</p>
-                  <h3 className="mt-1 text-base font-semibold">Tulis seperti di Word</h3>
-                  <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Ketik langsung, paste dari Word, lalu gunakan toolbar untuk judul, penekanan, daftar, kutipan, dan tautan.</p>
-                </div>
+                <h3 className="text-sm font-semibold">Materi</h3>
               </div>
               <Badge variant="soft" className="bg-tint-green text-brand-green">{textLength.toLocaleString("id-ID")} byte teks</Badge>
             </div>
             <div className="mt-4"><RichTextEditor id="module-inline-editor" value={inlineContent} onChange={updateInlineContent} /></div>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] leading-4 text-muted-foreground"><span><strong className="font-semibold text-foreground">Enter</strong> membuat paragraf baru</span><span><strong className="font-semibold text-foreground">Ctrl/⌘ + Z</strong> untuk mengurungkan</span><span>Paste dari Word dibersihkan secara aman</span></div>
-            <div id="editorial-insert-rail" className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground" data-editorial-insert-rail>
-              <span><strong className="font-semibold text-foreground">{contentBlocks.length ? `${contentBlocks.length} elemen tersisip.` : "Belum ada elemen tambahan."}</strong> Gunakan menu <span className="font-semibold text-foreground">Tambah</span> di bar editor untuk memasukkan slide, gambar, tabel, dan lainnya.</span>
-              {videos.length > 0 && <span className="shrink-0 font-semibold text-brand-orange">{videos.length} video</span>}
-            </div>
+            {(contentBlocks.length > 0 || videos.length > 0) && <div id="editorial-insert-rail" className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground" data-editorial-insert-rail>
+              {contentBlocks.length > 0 && <span className="font-semibold text-foreground">{contentBlocks.length} elemen tersisip</span>}
+              {videos.length > 0 && <span className="font-semibold text-brand-orange">{videos.length} video</span>}
+            </div>}
           </section>
 
           {contentBlocks.length > 0 && (
             <section id="editorial-structured-blocks" className="scroll-mt-24 space-y-3" aria-label="Elemen materi terstruktur">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-1"><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Elemen tersisip</p><p className="mt-1 text-xs text-muted-foreground">Atur urutan learner dengan panah di setiap elemen.</p></div><Badge variant="outline">{contentBlocks.length} elemen</Badge></div>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Elemen tersisip</p><Badge variant="outline">{contentBlocks.length} elemen</Badge></div>
               <div className="space-y-3">{contentBlocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={contentBlocks.length} onChange={(patch) => updateContentBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div>
             </section>
           )}
 
           <section id="editorial-video-section" className="scroll-mt-24 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-4 shadow-sm sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-5 w-5" /></span>
-                <div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video pembelajaran</p><h3 className="mt-1 text-base font-semibold">Tambahkan video sebagai kartu terpisah</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Video tetap punya urutan sendiri, tanpa mengganggu alur tulisan dan elemen materi.</p></div>
+                <h3 className="text-sm font-semibold">Video pembelajaran</h3>
               </div>
               <Button type="button" size="sm" variant="outline" onClick={addVideo}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah video</Button>
             </div>

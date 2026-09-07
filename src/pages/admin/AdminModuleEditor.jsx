@@ -848,7 +848,7 @@ export default function AdminModuleEditor() {
     <AdminPageFrame
       editor
       title={isNew ? "Tambah modul" : `Edit modul ${form.moduleNumber || ""}`}
-      description="Kelola konten belajar, susunan, video, serta evaluasi dengan aman."
+      description="Kelola isi modul, media, dan evaluasi."
       actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
           {isDirty && (
@@ -898,7 +898,7 @@ export default function AdminModuleEditor() {
                 <div className="min-w-0">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Struktur</div>
                   <h2 className="mt-1 line-clamp-2 text-base font-semibold">{form.title || "Identitas modul"}</h2>
-                  <p className="mt-1 hidden line-clamp-1 text-xs leading-5 text-muted-foreground sm:block">{form.summary || "Tambahkan ringkasan singkat agar learner memahami fokus modul."}</p>
+                  <p className="mt-1 hidden line-clamp-1 text-xs leading-5 text-muted-foreground sm:block">{form.summary || "Ringkasan modul belum diisi."}</p>
                 </div>
                 <div className="flex items-center justify-start lg:justify-end">
                   <Button type="button" size="sm" variant={identityExpanded ? "ghost" : "outline"} className="shrink-0" aria-expanded={identityExpanded} aria-controls="module-identity-fields" onClick={toggleIdentity}>
@@ -915,7 +915,7 @@ export default function AdminModuleEditor() {
                 <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Kategori</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.category || "—"}</dd></div>
               </dl>
               {identityExpanded && <div id="module-identity-fields" className="border-t border-border bg-surface-subtle/45 py-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">Atur posisi modul di roadmap dan informasi yang tampil ke learner.</p>{!identityIsComplete && <span className="text-[10px] text-brand-orange">Lengkapi field wajib sebelum ditutup.</span>}</div>
+                {!identityIsComplete && <div className="mb-3 flex justify-end"><span className="text-[10px] text-brand-orange">Lengkapi field wajib sebelum ditutup.</span></div>}
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1.5">
                     <Label>Level</Label>
@@ -987,7 +987,7 @@ export default function AdminModuleEditor() {
               </div>}
             </section>
             <section id="module-section-content" className="scroll-mt-24">
-              <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Materi utama</div><h2 className="mt-1 text-base font-semibold">Tulis materi dan sisipkan media</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Tulis seperti di Word, lalu sisipkan slide, gambar, tabel, sorotan, tautan, atau video tanpa kehilangan bentuk elemen learner.</p></div>
+              <h2 className="mb-3 text-base font-semibold">Materi utama</h2>
               <EditorialComposer
                 ref={editorialComposerRef}
                 value={form.editorialContent}
@@ -1053,7 +1053,6 @@ export default function AdminModuleEditor() {
                 <h2 className="mt-1 text-xl font-semibold">{form.title || "Pratinjau materi"}</h2>
                 {form.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.summary}</p>}
                 </div>
-                <p className="max-w-sm text-xs leading-5 text-muted-foreground">Kanvas ini memakai lebar learner sebenarnya; elemen editorial akan tetap mengalir responsif di layar kecil.</p>
               </div>
               <div className="rounded-2xl border border-border bg-background p-3 shadow-sm sm:p-5 lg:p-7">
                 <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />

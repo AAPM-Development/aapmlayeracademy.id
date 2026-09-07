@@ -453,7 +453,7 @@ export function createEditorialBlock(type) {
   const id = makeBlockId();
   switch (type) {
     case "richText":
-      return { id, type, content: "Tulis materi di sini. **Markdown** aman didukung." };
+      return { id, type, content: "" };
     case "heading":
       return { id, type, content: "Judul bagian", level: 2 };
     case "table":

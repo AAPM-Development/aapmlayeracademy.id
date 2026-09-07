@@ -41,7 +41,7 @@ test("editorial blocks preserve legacy Markdown and normalize a rich-text block"
   const document = createEditorialDocument([richText]);
   assert.equal(document.version, 1);
   assert.equal(document.blocks[0].type, "richText");
-  assert.match(document.blocks[0].content, /Markdown/);
+  assert.equal(document.blocks[0].content, "");
 
   const ensured = ensureEditorialDocument(document);
   assert.deepEqual(ensured, document);

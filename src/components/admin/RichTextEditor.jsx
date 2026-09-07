@@ -334,7 +334,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
       )}
       <EditorContent editor={editor} />
       <p className="border-t border-border/70 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
-        Paste dari Word, Google Docs, atau web akan dibersihkan. HTML, script, iframe, dan URL tidak aman tidak diterbitkan.
+        Konten tidak aman disaring sebelum diterbitkan.
       </p>
     </div>
   );
