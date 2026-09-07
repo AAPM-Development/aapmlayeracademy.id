@@ -35,6 +35,15 @@ const MAX_PRESENTATION_SLIDES = 50;
 const imageExtensions = /\.(?:jpe?g|png|gif|webp|avif)$/i;
 const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 
+const contentBlockAnchorId = (id) => `editorial-content-block-${id}`;
+const videoBlockAnchorId = (id) => `editorial-video-block-${id}`;
+
+function outlineText(value, fallback = "Belum diberi keterangan") {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return fallback;
+  return text.length > 54 ? `${text.slice(0, 53).trimEnd()}…` : text;
+}
+
 function Field({ label, children, hint = "", id, required = false, error = "" }) {
   const descriptionId = id && (hint || error) ? `${id}-description` : undefined;
   return (
@@ -292,14 +301,14 @@ function ContentBlockFields({ block, onChange }) {
 
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
-  return <article className={cn("scroll-mt-24 rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type} data-editorial-content-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div><p className="mt-1 max-w-2xl text-[10px] leading-4 text-muted-foreground">{meta?.description || "Elemen materi terstruktur."}</p></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  return <article id={contentBlockAnchorId(block.id)} className={cn("scroll-mt-28 rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type} data-editorial-content-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div><p className="mt-1 max-w-2xl text-[10px] leading-4 text-muted-foreground">{meta?.description || "Elemen materi terstruktur."}</p></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
 }
 
 function VideoCard({ block, index, total, onChange, onMove, onRemove }) {
   const hasUrl = Boolean(block.url?.trim());
   const urlId = `${block.id}-url`;
   const captionId = `${block.id}-caption`;
-  return <article className="rounded-2xl border border-brand-orange/20 bg-background p-4 shadow-sm" data-editorial-video-card><div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-3"><div className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-4 w-4" /></span><div className="min-w-0"><div className="text-sm font-semibold">Video {index + 1}</div><div className={cn("text-[10px]", hasUrl ? "text-brand-green" : "text-brand-orange")}>{hasUrl ? "Tautan siap diputar" : "Isi tautan video"}</div></div></div><div className="ml-auto flex items-center gap-1">{total > 1 && <div role="group" aria-label={`Atur urutan Video ${index + 1}`} className="flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan Video ${index + 1}`} tooltip="Naikkan video" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan Video ${index + 1}`} tooltip="Turunkan video" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton></div>}<IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus Video ${index + 1}`} tooltip="Hapus video" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="space-y-4"><Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, file HTTPS, atau file internal pada /assets/, /media/, atau /uploads/."><Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required /></Field><Field id={captionId} label="Keterangan (opsional)"><Textarea id={captionId} rows={2} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Contoh: Simak demonstrasi pemeriksaan harian." /></Field></div></article>;
+  return <article id={videoBlockAnchorId(block.id)} className="scroll-mt-28 rounded-2xl border border-brand-orange/20 bg-background p-4 shadow-sm" data-editorial-video-card><div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-3"><div className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-4 w-4" /></span><div className="min-w-0"><div className="text-sm font-semibold">Video {index + 1}</div><div className={cn("text-[10px]", hasUrl ? "text-brand-green" : "text-brand-orange")}>{hasUrl ? "Tautan siap diputar" : "Isi tautan video"}</div></div></div><div className="ml-auto flex items-center gap-1">{total > 1 && <div role="group" aria-label={`Atur urutan Video ${index + 1}`} className="flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan Video ${index + 1}`} tooltip="Naikkan video" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan Video ${index + 1}`} tooltip="Turunkan video" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton></div>}<IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus Video ${index + 1}`} tooltip="Hapus video" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="space-y-4"><Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, file HTTPS, atau file internal pada /assets/, /media/, atau /uploads/."><Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required /></Field><Field id={captionId} label="Keterangan (opsional)"><Textarea id={captionId} rows={2} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Contoh: Simak demonstrasi pemeriksaan harian." /></Field></div></article>;
 }
 
 const insertableTypes = ["slides", "image", "table", "callout", "link", "cta", "divider"];
@@ -330,6 +339,94 @@ export const editorialInsertActions = Object.freeze([
   },
 ]);
 
+function outlineDetailForBlock(block) {
+  switch (block.type) {
+    case "slides": {
+      const manualSlides = Array.isArray(block.slides) ? block.slides.length : 0;
+      if (block.title?.trim()) return outlineText(block.title);
+      if (block.source === "pptx") return outlineText(block.pptxName, `${block.slideCount || 0} slide PPTX`);
+      return `${manualSlides} slide manual`;
+    }
+    case "image":
+      return outlineText(block.caption || block.alt, block.src ? "Gambar tersisip" : "Belum ada gambar");
+    case "table":
+      return outlineText(block.title, `${Array.isArray(block.rows) ? block.rows.length : 0} baris, ${Array.isArray(block.columns) ? block.columns.length : 0} kolom`);
+    case "callout":
+      return outlineText(block.title || block.content, "Sorotan materi");
+    case "link":
+      return outlineText(block.label || block.description, "Tautan pembelajaran");
+    case "cta":
+      return outlineText(block.label, "Tombol aksi learner");
+    case "divider":
+      return "Pemisah alur materi";
+    case "heading":
+      return outlineText(block.content, "Judul bagian");
+    default:
+      return outlineText(block.title || block.label || block.content, "Elemen materi");
+  }
+}
+
+function EditorialOutlineList({ items, activeItemId, onNavigate }) {
+  return (
+    <nav aria-label="Daftar isi materi" className="space-y-1">
+      {items.map((item, index) => {
+        const active = item.id === activeItemId;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={active ? "location" : undefined}
+            onClick={() => onNavigate(item.id)}
+            className={cn(
+              "group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/50",
+              active ? "bg-tint-green text-foreground" : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
+            )}
+          >
+            <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[9px] font-semibold", active ? "bg-brand-green text-white" : item.tone === "media" ? "bg-tint-orange text-brand-orange" : "bg-surface-subtle text-muted-foreground")}>
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold leading-4"><AapmIcon name={item.icon} className="h-3 w-3 shrink-0" /><span className="truncate">{item.label}</span></span>
+              <span className="mt-0.5 block truncate text-[10px] leading-4 text-muted-foreground" title={item.detail}>{item.detail}</span>
+            </span>
+            <AapmIcon name="chevronRight" className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", active && "text-brand-green")} />
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function EditorialOutline({ items, activeItemId, onNavigate }) {
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const elementCount = Math.max(0, items.length - 1);
+  const navigate = (id) => {
+    onNavigate(id);
+    setMobileOpen(false);
+  };
+
+  return (
+    <div className="min-w-0 xl:col-start-2 xl:row-start-1 xl:sticky xl:top-24 xl:self-start" data-editorial-outline>
+      <section className="rounded-xl border border-border bg-surface-subtle/70 p-2 xl:hidden">
+        <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50" aria-expanded={mobileOpen} aria-controls="editorial-outline-mobile-list" onClick={() => setMobileOpen((open) => !open)}>
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-brand-green"><AapmIcon name="solar:list-check-bold" className="h-4 w-4" /></span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Daftar isi</span><span className="block text-[10px] leading-4 text-muted-foreground">{elementCount} elemen siap dinavigasi</span></span>
+          <AapmIcon name={mobileOpen ? "chevronUp" : "chevronDown"} className="h-4 w-4 text-muted-foreground" />
+        </button>
+        {mobileOpen && <div id="editorial-outline-mobile-list" className="mt-2 max-h-72 overflow-y-auto border-t border-border pt-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={navigate} /></div>}
+      </section>
+
+      <aside className="hidden overflow-hidden rounded-xl border border-border bg-background/95 shadow-sm xl:block" aria-label="Daftar isi editor">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-brand-green"><AapmIcon name="solar:list-check-bold" className="h-4 w-4" /></span><div><h3 className="text-xs font-semibold">Daftar isi</h3><p className="text-[10px] text-muted-foreground">{elementCount} elemen</p></div></div>
+          <Badge variant="outline" className="hidden shrink-0 px-1.5 text-[9px] 2xl:inline-flex">Klik untuk lompat</Badge>
+        </div>
+        <div className="aapm-scrollbar max-h-[calc(100vh-10rem)] overflow-y-auto p-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={onNavigate} /></div>
+      </aside>
+    </div>
+  );
+}
+
 const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange }, ref) {
   const editorialDocument = ensureEditorialDocument(value);
   const storedVideos = editorialVideoBlocks(value);
@@ -340,10 +437,37 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
   const existingIds = new Set(editorialDocument.blocks.map((block) => block.id));
   const richTextId = richTextBlock?.id || (existingIds.has("inline-content") ? "inline-content-text" : "inline-content");
   const textLength = editorialTextLength(createInlineEditorialDocument(inlineContent, videos, richTextId, contentBlocks).blocks);
+  const outlineItems = React.useMemo(() => [
+    {
+      id: "editorial-main-canvas",
+      label: "Kanvas teks",
+      detail: `${textLength.toLocaleString("id-ID")} byte teks`,
+      icon: "solar:pen-new-square-bold",
+      tone: "canvas",
+    },
+    ...contentBlocks.map((block, index) => ({
+      id: contentBlockAnchorId(block.id),
+      label: `${blockMeta[block.type]?.label || "Elemen"} ${index + 1}`,
+      detail: outlineDetailForBlock(block),
+      icon: blockMeta[block.type]?.icon || "solar:widget-2-bold",
+      tone: block.type === "slides" ? "media" : "canvas",
+    })),
+    ...videos.map((video, index) => ({
+      id: videoBlockAnchorId(video.id),
+      label: `Video ${index + 1}`,
+      detail: outlineText(video.caption, video.url?.trim() ? "Tautan siap diputar" : "Belum ada tautan"),
+      icon: "solar:play-circle-bold",
+      tone: "media",
+    })),
+  ], [contentBlocks, textLength, videos]);
+  const hasOutline = contentBlocks.length + videos.length > 0;
+  const outlineItemKey = outlineItems.map((item) => item.id).join("|");
   const [announcement, setAnnouncement] = React.useState("");
   const [pendingVideoDelete, setPendingVideoDelete] = React.useState(null);
   const [pendingContentBlockDelete, setPendingContentBlockDelete] = React.useState(null);
+  const [activeOutlineId, setActiveOutlineId] = React.useState("editorial-main-canvas");
   const quickScrollTargetRef = React.useRef("");
+  const outlineNavigationLockRef = React.useRef(0);
 
   const commit = (nextContent = inlineContent, nextContentBlocks = contentBlocks, nextVideos = videos) => {
     const nextDocument = createInlineEditorialDocument(nextContent, nextVideos, richTextId, nextContentBlocks);
@@ -361,6 +485,35 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const navigateOutline = (sectionId) => {
+    outlineNavigationLockRef.current = Date.now() + 900;
+    setActiveOutlineId(sectionId);
+    scrollToSection(sectionId);
+  };
+
+  React.useEffect(() => {
+    if (outlineItemKey.split("|").includes(activeOutlineId)) return;
+    setActiveOutlineId("editorial-main-canvas");
+  }, [activeOutlineId, outlineItemKey]);
+
+  React.useEffect(() => {
+    if (!hasOutline || typeof window === "undefined" || typeof window.IntersectionObserver !== "function") return undefined;
+    const targetIds = outlineItemKey.split("|").filter(Boolean);
+    const targets = targetIds.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!targets.length) return undefined;
+
+    const observer = new window.IntersectionObserver((entries) => {
+      if (Date.now() < outlineNavigationLockRef.current) return;
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => Math.abs(left.boundingClientRect.top - 140) - Math.abs(right.boundingClientRect.top - 140));
+      if (visible[0]?.target?.id) setActiveOutlineId(visible[0].target.id);
+    }, { rootMargin: "-120px 0px -55% 0px", threshold: [0.01, 0.25] });
+
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [hasOutline, outlineItemKey]);
+
   const addContentBlock = (type) => {
     const block = createEditorialBlock(type);
     if (!block || contentBlocks.length >= 79) return;
@@ -374,7 +527,16 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
   const moveContentBlock = (sourceIndex, destinationIndex) => { commit(inlineContent, moveInList(contentBlocks, sourceIndex, destinationIndex), videos); setAnnouncement(`Elemen dipindahkan ke urutan ${destinationIndex + 1}.`); };
   const requestRemoveContentBlock = (index) => { const block = contentBlocks[index]; if (block) setPendingContentBlockDelete({ index, label: blockMeta[block.type]?.label || "elemen" }); };
   const removeContentBlock = () => { const index = pendingContentBlockDelete?.index; if (!Number.isInteger(index) || !contentBlocks[index]) return; commit(inlineContent, contentBlocks.filter((_, currentIndex) => currentIndex !== index), videos); setAnnouncement(`${pendingContentBlockDelete.label} dihapus.`); setPendingContentBlockDelete(null); };
-  const addVideo = () => { const nextVideo = createEditorialBlock("video"); commit(inlineContent, contentBlocks, [...videos, nextVideo]); setAnnouncement(`Video ${videos.length + 1} ditambahkan.`); };
+  const addVideo = () => {
+    const nextVideo = createEditorialBlock("video");
+    if (!nextVideo) return;
+    quickScrollTargetRef.current = nextVideo.id;
+    if (!commit(inlineContent, contentBlocks, [...videos, nextVideo])) {
+      quickScrollTargetRef.current = "";
+      return;
+    }
+    setAnnouncement(`Video ${videos.length + 1} ditambahkan.`);
+  };
   const updateVideo = (index, patch) => commit(inlineContent, contentBlocks, videos.map((video, currentIndex) => currentIndex === index ? { ...video, ...patch } : video));
   const moveVideo = (sourceIndex, destinationIndex) => { commit(inlineContent, contentBlocks, moveInList(videos, sourceIndex, destinationIndex)); setAnnouncement(`Video dipindahkan ke posisi ${destinationIndex + 1}.`); };
   const requestRemoveVideo = (index) => { if (videos[index]) setPendingVideoDelete({ index }); };
@@ -385,15 +547,15 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
     if (!targetId || typeof window === "undefined" || typeof document === "undefined") return undefined;
 
     const frameId = window.requestAnimationFrame(() => {
-      const target = Array.from(document.querySelectorAll("[data-editorial-content-block-id]"))
-        .find((element) => element.dataset.editorialContentBlockId === targetId);
+      const target = document.getElementById(contentBlockAnchorId(targetId)) || document.getElementById(videoBlockAnchorId(targetId));
       if (!target) return;
       target.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveOutlineId(target.id);
       target.querySelector("input, textarea, button")?.focus({ preventScroll: true });
     });
     quickScrollTargetRef.current = "";
     return () => window.cancelAnimationFrame(frameId);
-  }, [contentBlocks]);
+  }, [contentBlocks, videos]);
 
   const addVideoAndReveal = () => {
     addVideo();
@@ -414,8 +576,10 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
     <div className="space-y-5" data-editorial-mode="hybrid">
       <div className="sr-only" aria-live="polite">{announcement}</div>
 
-      <div className="min-w-0 space-y-5">
-          <section id="editorial-main-canvas" className="scroll-mt-24 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
+      <div className={cn("grid min-w-0 gap-4", hasOutline && "xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-start")}>
+        {hasOutline && <EditorialOutline items={outlineItems} activeItemId={activeOutlineId} onNavigate={navigateOutline} />}
+        <div className={cn("min-w-0 space-y-5", hasOutline && "xl:col-start-1 xl:row-start-1")}>
+          <section id="editorial-main-canvas" className="scroll-mt-28 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span>
@@ -452,6 +616,7 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
             </div>
             {videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video. Tambahkan hanya jika modul ini memiliki materi video.</div>}
           </section>
+        </div>
       </div>
 
       <ConfirmDialog open={Boolean(pendingContentBlockDelete)} onOpenChange={(open) => !open && setPendingContentBlockDelete(null)} title="Hapus elemen materi?" description={`${pendingContentBlockDelete?.label || "Elemen"} akan dihapus dari alur learner. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus elemen" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeContentBlock} />
