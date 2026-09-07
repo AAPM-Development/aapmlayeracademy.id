@@ -2,6 +2,8 @@
 import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { LessonMedia } from "@/components/academy/LessonWorkspace";
+import PptxCarousel from "@/components/academy/PptxCarousel";
 import { nativeApi } from "@/api/nativeClient";
 import {
   Badge,
@@ -31,18 +33,11 @@ import {
 const blockMeta = Object.fromEntries(editorialBlockLibrary.map((item) => [item.type, item]));
 const MAX_IMAGE_UPLOAD_BYTES = 20 * 1024 * 1024;
 const MAX_PRESENTATION_UPLOAD_BYTES = 50 * 1024 * 1024;
-const MAX_PRESENTATION_SLIDES = 50;
 const imageExtensions = /\.(?:jpe?g|png|gif|webp|avif)$/i;
 const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 
 const contentBlockAnchorId = (id) => `editorial-content-block-${id}`;
 const videoBlockAnchorId = (id) => `editorial-video-block-${id}`;
-
-function outlineText(value, fallback = "Belum diberi keterangan") {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
-  if (!text) return fallback;
-  return text.length > 54 ? `${text.slice(0, 53).trimEnd()}…` : text;
-}
 
 function Field({ label, children, hint = "", id, required = false, error = "" }) {
   const descriptionId = id && (hint || error) ? `${id}-description` : undefined;
@@ -183,7 +178,7 @@ function TableBlockFields({ block, onChange }) {
   const updateCell = (rowIndex, columnIndex, value) => onChange({ rows: rows.map((row, currentRow) => currentRow === rowIndex ? row.map((cell, currentColumn) => currentColumn === columnIndex ? value : cell) : row) });
   const addColumn = () => {
     if (columns.length >= 8) return;
-    onChange({ columns: [...columns, `Kolom ${columns.length + 1}`], rows: rows.map((row) => [...row, ""]) });
+    onChange({ columns: [...columns, ""], rows: rows.map((row) => [...row, ""]) });
   };
   const addRow = () => {
     if (rows.length >= 20) return;
@@ -193,10 +188,10 @@ function TableBlockFields({ block, onChange }) {
   return (
     <div className="space-y-3">
       <Field id={`${block.id}-table-title`} label="Judul tabel (opsional)">
-        <Input id={`${block.id}-table-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Contoh: Target pemeriksaan" />
+        <Input id={`${block.id}-table-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Judul tabel" />
       </Field>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><div className="text-xs font-semibold">Isi tabel</div><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Maksimal 8 kolom dan 20 baris. Tabel akan tetap bisa digeser di learner.</p></div>
+         <div className="text-xs font-semibold">Isi tabel</div>
         <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={columns.length >= 8} onClick={addColumn}><AapmIcon name="add" className="h-3.5 w-3.5" />Kolom</Button><Button type="button" size="sm" variant="outline" disabled={rows.length >= 20} onClick={addRow}><AapmIcon name="add" className="h-3.5 w-3.5" />Baris</Button></div>
       </div>
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -215,6 +210,7 @@ function SlidesBlockFields({ block, onChange }) {
   const [uploadState, setUploadState] = React.useState({ status: "idle", message: "" });
   const [pendingPresentation, setPendingPresentation] = React.useState(null);
   const [pendingAction, setPendingAction] = React.useState(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
   const presentationInputId = `${block.id}-presentation-upload`;
   const updateSlide = (index, patch) => onChange({ slides: slides.map((slide, currentIndex) => currentIndex === index ? { ...slide, ...patch } : slide) });
 
@@ -235,7 +231,7 @@ function SlidesBlockFields({ block, onChange }) {
       if (!presentation?.url || !presentation?.slideCount) throw new Error("Respons unggahan PPTX tidak lengkap.");
       onChange({ source: "pptx", pptxUrl: presentation.url, pptxName: presentation.name || file.name, slideCount: presentation.slideCount, slides: [] });
       setPendingPresentation(null);
-      setUploadState({ status: "success", message: "PPTX siap ditampilkan sebagai carousel learner." });
+      setUploadState({ status: "success", message: "PPTX siap." });
     } catch (error) {
       setUploadState({ status: "error", message: error?.message || "PPTX tidak dapat diunggah." });
     }
@@ -270,12 +266,12 @@ function SlidesBlockFields({ block, onChange }) {
 
   return (
     <div className="space-y-3">
-      <Field id={`${block.id}-slides-title`} label="Judul rangkaian slide (opsional)"><Input id={`${block.id}-slides-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Contoh: Alur pemeriksaan kandang" /></Field>
-      <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div className="text-xs font-semibold">Sumber slide</div><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Buat slide manual atau tampilkan presentasi PPTX sebagai carousel learner.</p></div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source === "pptx" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source === "pptx" ? "Ganti PPTX" : "Unggah PPTX"}</label></Button></div></div></div>
+      <Field id={`${block.id}-slides-title`} label="Judul rangkaian slide (opsional)"><Input id={`${block.id}-slides-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Judul rangkaian slide" /></Field>
+      <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="text-xs font-semibold">Sumber slide</div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source === "pptx" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source === "pptx" ? "Ganti PPTX" : "Unggah PPTX"}</label></Button></div></div></div>
       {pendingPresentation && <div className="flex flex-col gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/5 p-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5">PPTX baru akan menggantikan {slides.length} slide manual di elemen ini.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void uploadPresentationFile(pendingPresentation)}>Gunakan PPTX</Button><Button type="button" size="sm" variant="outline" onClick={() => setPendingPresentation(null)}>Batal</Button></div></div>}
       {uploadState.status !== "idle" && <p className={cn("text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
-      {source === "pptx" ? <div className="rounded-xl border border-border bg-background p-4 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 text-brand-orange" /><span className="text-sm font-semibold">{block.pptxName || "Presentasi PowerPoint"}</span></div><p className="mt-1 text-[10px] leading-4 text-muted-foreground">{block.slideCount || 0} slide · carousel learner responsif.</p></div><Badge variant="soft" className="bg-tint-green text-brand-green">PPTX terkelola</Badge></div><p className="mt-3 rounded-lg bg-surface-subtle px-3 py-2 text-[10px] leading-4 text-muted-foreground">1–{MAX_PRESENTATION_SLIDES} slide · maks. 50 MB · gunakan .pptx dengan media tertanam.</p></div> : <>
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-subtle p-3 sm:flex-row sm:items-center sm:justify-between"><div><div className="text-xs font-semibold">Rangkaian slide manual</div><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Setiap slide dapat berisi gambar dan teks.</p></div><Button type="button" size="sm" variant="outline" disabled={slides.length >= 12} onClick={() => onChange({ slides: [...slides, createEditorialSlide(slides.length + 1)] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah slide</Button></div>
+      {source === "pptx" ? <div className="rounded-xl border border-border bg-background p-4 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 shrink-0 text-brand-orange" /><div className="min-w-0"><div className="truncate text-sm font-semibold">{block.pptxName || "Presentasi PowerPoint"}</div><div className="text-[10px] text-muted-foreground">{block.slideCount || 0} slide</div></div></div><div className="flex flex-wrap items-center justify-end gap-2"><Badge variant="soft" className="bg-tint-green text-brand-green">PPTX</Badge><Button type="button" size="sm" variant="outline" disabled={!block.pptxUrl} onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : "Pratinjau"}</Button></div></div>{previewOpen && block.pptxUrl && <div className="mt-3 border-t border-border pt-3"><PptxCarousel src={block.pptxUrl} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} compact /></div>}</div> : <>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-subtle p-3"><div className="text-xs font-semibold">Rangkaian slide manual</div><Button type="button" size="sm" variant="outline" disabled={slides.length >= 12} onClick={() => onChange({ slides: [...slides, createEditorialSlide(slides.length + 1)] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah slide</Button></div>
         <div className="space-y-3">{slides.map((slide, index) => <article key={slide.id} className="rounded-xl border border-border bg-background p-3 shadow-sm sm:p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3"><span className="text-xs font-semibold">Slide {index + 1} dari {slides.length}</span><div className="flex flex-wrap gap-1.5"><IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Naikkan slide ${index + 1}`} tooltip="Naikkan slide satu posisi" disabled={index === 0} onClick={() => onChange({ slides: moveInList(slides, index, index - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Turunkan slide ${index + 1}`} tooltip="Turunkan slide satu posisi" disabled={index === slides.length - 1} onClick={() => onChange({ slides: moveInList(slides, index, index + 1) })}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-10 w-10 p-0 text-danger hover:bg-danger/5 sm:h-8 sm:w-8" label={`Hapus slide ${index + 1}`} tooltip="Hapus slide" disabled={slides.length <= 1} onClick={() => setPendingAction({ type: "delete-slide", index })}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="grid gap-3 lg:grid-cols-2"><Field id={`${block.id}-slide-${index}-title`} label="Judul slide"><Input id={`${block.id}-slide-${index}-title`} value={slide.title || ""} maxLength={180} onChange={(event) => updateSlide(index, { title: event.target.value })} /></Field><div className="lg:col-span-2"><ImageSourceField id={`${block.id}-slide-${index}-image`} label="Gambar slide (opsional)" value={slide.src || ""} alt={slide.alt || ""} onValueChange={(src) => updateSlide(index, { src })} hint="Pilih gambar dari komputer atau masukkan URL HTTPS." /></div><div className="lg:col-span-2"><Field id={`${block.id}-slide-${index}-content`} label="Isi slide (opsional)"><Textarea id={`${block.id}-slide-${index}-content`} rows={3} maxLength={3000} value={slide.content || ""} onChange={(event) => updateSlide(index, { content: event.target.value })} placeholder="Ringkas poin utama slide ini." /></Field></div>{slide.src && <div className="space-y-3 lg:col-span-2"><DecorativeImageControl id={`${block.id}-slide-${index}-decorative`} decorative={slide.decorative !== false} onChange={(decorative) => updateSlide(index, { decorative })} />{slide.decorative === false && <Field id={`${block.id}-slide-${index}-alt`} label="Alt text gambar" hint="Wajib untuk gambar yang membawa informasi."><Input id={`${block.id}-slide-${index}-alt`} value={slide.alt || ""} maxLength={280} onChange={(event) => updateSlide(index, { alt: event.target.value })} /></Field>}</div>}</div></article>)}</div>
       </>}
       <ConfirmDialog open={Boolean(pendingAction)} onOpenChange={(open) => !open && setPendingAction(null)} title={pendingTitle} description={pendingDescription} confirmLabel={pendingAction?.type === "delete-slide" ? "Hapus slide" : "Gunakan manual"} cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive={pendingAction?.type === "delete-slide"} onConfirm={confirmAction} />
@@ -294,21 +290,22 @@ function ContentBlockFields({ block, onChange }) {
     case "link": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field><div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div></div>;
     case "cta": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("cta-label")} label="Label tombol"><Input id={fieldId("cta-label")} value={block.label || ""} maxLength={120} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field></div>;
     case "callout": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("callout-title")} label="Judul sorotan"><Input id={fieldId("callout-title")} value={block.title || ""} maxLength={160} onChange={(event) => set("title", event.target.value)} /></Field><Field id={fieldId("callout-content")} label="Isi sorotan"><Textarea id={fieldId("callout-content")} rows={2} maxLength={2400} value={block.content || ""} onChange={(event) => set("content", event.target.value)} /></Field></div>;
-    case "divider": return <p className="text-sm leading-6 text-muted-foreground">Pemisah akan mengikuti lebar materi dan tidak memerlukan konfigurasi.</p>;
-    default: return <p className="text-sm leading-6 text-muted-foreground">Elemen ini dipertahankan untuk kompatibilitas materi lama.</p>;
+    case "divider": return null;
+    default: return null;
   }
 }
 
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
-  return <article id={contentBlockAnchorId(block.id)} className={cn("scroll-mt-28 rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type} data-editorial-content-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div><p className="mt-1 max-w-2xl text-[10px] leading-4 text-muted-foreground">{meta?.description || "Elemen materi terstruktur."}</p></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  return <article id={contentBlockAnchorId(block.id)} className={cn("scroll-mt-28 rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type} data-editorial-content-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
 }
 
 function VideoCard({ block, index, total, onChange, onMove, onRemove }) {
   const hasUrl = Boolean(block.url?.trim());
+  const [previewOpen, setPreviewOpen] = React.useState(false);
   const urlId = `${block.id}-url`;
   const captionId = `${block.id}-caption`;
-  return <article id={videoBlockAnchorId(block.id)} className="scroll-mt-28 rounded-2xl border border-brand-orange/20 bg-background p-4 shadow-sm" data-editorial-video-card><div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-3"><div className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-4 w-4" /></span><div className="min-w-0"><div className="text-sm font-semibold">Video {index + 1}</div><div className={cn("text-[10px]", hasUrl ? "text-brand-green" : "text-brand-orange")}>{hasUrl ? "Tautan siap diputar" : "Isi tautan video"}</div></div></div><div className="ml-auto flex items-center gap-1">{total > 1 && <div role="group" aria-label={`Atur urutan Video ${index + 1}`} className="flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan Video ${index + 1}`} tooltip="Naikkan video" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan Video ${index + 1}`} tooltip="Turunkan video" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton></div>}<IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus Video ${index + 1}`} tooltip="Hapus video" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="space-y-4"><Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, file HTTPS, atau file internal pada /assets/, /media/, atau /uploads/."><Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required /></Field><Field id={captionId} label="Keterangan (opsional)"><Textarea id={captionId} rows={2} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Contoh: Simak demonstrasi pemeriksaan harian." /></Field></div></article>;
+  return <article id={videoBlockAnchorId(block.id)} className="scroll-mt-28 rounded-2xl border border-brand-orange/20 bg-background p-4 shadow-sm" data-editorial-video-card><div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-3"><div className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-4 w-4" /></span><div className="min-w-0"><div className="text-sm font-semibold">Video {index + 1}</div>{hasUrl && <div className="text-[10px] text-brand-green">Siap</div>}</div></div><div className="ml-auto flex items-center gap-1">{hasUrl && <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-[11px]" onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : "Pratinjau"}</Button>}{total > 1 && <div role="group" aria-label={`Atur urutan Video ${index + 1}`} className="flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan Video ${index + 1}`} tooltip="Naikkan video" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan Video ${index + 1}`} tooltip="Turunkan video" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton></div>}<IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus Video ${index + 1}`} tooltip="Hapus video" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="space-y-4"><Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, atau file video HTTPS/internal."><Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required /></Field><Field id={captionId} label="Keterangan (opsional)"><Textarea id={captionId} rows={2} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Keterangan video" /></Field>{previewOpen && hasUrl && <div className="border-t border-border pt-3"><LessonMedia module={{ title: `Video ${index + 1}`, videoUrl: block.url }} /></div>}</div></article>;
 }
 
 const insertableTypes = ["slides", "image", "table", "callout", "link", "cta", "divider"];
@@ -329,42 +326,13 @@ export const editorialInsertActions = Object.freeze([
     type,
     label: quickBlockLabels[type],
     icon: blockMeta[type]?.icon || "add",
-    detail: blockMeta[type]?.description || "Elemen materi terstruktur.",
   })),
   {
     type: "video",
     label: quickBlockLabels.video,
     icon: "solar:play-circle-bold",
-    detail: "Kartu video learner.",
   },
 ]);
-
-function outlineDetailForBlock(block) {
-  switch (block.type) {
-    case "slides": {
-      const manualSlides = Array.isArray(block.slides) ? block.slides.length : 0;
-      if (block.title?.trim()) return outlineText(block.title);
-      if (block.source === "pptx") return outlineText(block.pptxName, `${block.slideCount || 0} slide PPTX`);
-      return `${manualSlides} slide manual`;
-    }
-    case "image":
-      return outlineText(block.caption || block.alt, block.src ? "Gambar tersisip" : "Belum ada gambar");
-    case "table":
-      return outlineText(block.title, `${Array.isArray(block.rows) ? block.rows.length : 0} baris, ${Array.isArray(block.columns) ? block.columns.length : 0} kolom`);
-    case "callout":
-      return outlineText(block.title || block.content, "Sorotan materi");
-    case "link":
-      return outlineText(block.label || block.description, "Tautan pembelajaran");
-    case "cta":
-      return outlineText(block.label, "Tombol aksi learner");
-    case "divider":
-      return "Pemisah alur materi";
-    case "heading":
-      return outlineText(block.content, "Judul bagian");
-    default:
-      return outlineText(block.title || block.label || block.content, "Elemen materi");
-  }
-}
 
 function EditorialOutlineList({ items, activeItemId, onNavigate }) {
   return (
@@ -387,7 +355,6 @@ function EditorialOutlineList({ items, activeItemId, onNavigate }) {
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold leading-4"><AapmIcon name={item.icon} className="h-3 w-3 shrink-0" /><span className="truncate">{item.label}</span></span>
-              <span className="mt-0.5 block truncate text-[10px] leading-4 text-muted-foreground" title={item.detail}>{item.detail}</span>
             </span>
             <AapmIcon name="chevronRight" className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", active && "text-brand-green")} />
           </button>
@@ -410,7 +377,7 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
       <section className="rounded-xl border border-border bg-surface-subtle/70 p-2 xl:hidden">
         <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50" aria-expanded={mobileOpen} aria-controls="editorial-outline-mobile-list" onClick={() => setMobileOpen((open) => !open)}>
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-brand-green"><AapmIcon name="solar:list-check-bold" className="h-4 w-4" /></span>
-          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Daftar isi</span><span className="block text-[10px] leading-4 text-muted-foreground">{elementCount} elemen siap dinavigasi</span></span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Daftar isi</span><span className="block text-[10px] leading-4 text-muted-foreground">{elementCount} elemen</span></span>
           <AapmIcon name={mobileOpen ? "chevronUp" : "chevronDown"} className="h-4 w-4 text-muted-foreground" />
         </button>
         {mobileOpen && <div id="editorial-outline-mobile-list" className="mt-2 max-h-72 overflow-y-auto border-t border-border pt-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={navigate} /></div>}
@@ -419,7 +386,6 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
       <aside className="hidden overflow-hidden rounded-xl border border-border bg-background/95 shadow-sm xl:block" aria-label="Daftar isi editor">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
           <div className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-brand-green"><AapmIcon name="solar:list-check-bold" className="h-4 w-4" /></span><div><h3 className="text-xs font-semibold">Daftar isi</h3><p className="text-[10px] text-muted-foreground">{elementCount} elemen</p></div></div>
-          <Badge variant="outline" className="hidden shrink-0 px-1.5 text-[9px] 2xl:inline-flex">Klik untuk lompat</Badge>
         </div>
         <div className="aapm-scrollbar max-h-[calc(100vh-10rem)] overflow-y-auto p-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={onNavigate} /></div>
       </aside>
@@ -441,21 +407,18 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
     {
       id: "editorial-main-canvas",
       label: "Kanvas teks",
-      detail: `${textLength.toLocaleString("id-ID")} byte teks`,
       icon: "solar:pen-new-square-bold",
       tone: "canvas",
     },
     ...contentBlocks.map((block, index) => ({
       id: contentBlockAnchorId(block.id),
       label: `${blockMeta[block.type]?.label || "Elemen"} ${index + 1}`,
-      detail: outlineDetailForBlock(block),
       icon: blockMeta[block.type]?.icon || "solar:widget-2-bold",
       tone: block.type === "slides" ? "media" : "canvas",
     })),
     ...videos.map((video, index) => ({
       id: videoBlockAnchorId(video.id),
       label: `Video ${index + 1}`,
-      detail: outlineText(video.caption, video.url?.trim() ? "Tautan siap diputar" : "Belum ada tautan"),
       icon: "solar:play-circle-bold",
       tone: "media",
     })),
@@ -588,8 +551,9 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
               <Badge variant="soft" className="bg-tint-green text-brand-green">{textLength.toLocaleString("id-ID")} byte teks</Badge>
             </div>
             <div className="mt-4"><RichTextEditor id="module-inline-editor" value={inlineContent} onChange={updateInlineContent} /></div>
-            {(contentBlocks.length > 0 || videos.length > 0) && <div id="editorial-insert-rail" className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground" data-editorial-insert-rail>
-              {contentBlocks.length > 0 && <span className="font-semibold text-foreground">{contentBlocks.length} elemen tersisip</span>}
+            {(contentBlocks.length > 0 || videos.length > 0) && <div id="editorial-insert-rail" className="mt-3 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground" data-editorial-insert-rail>
+              {contentBlocks.length > 0 && <span className="font-semibold text-foreground">{contentBlocks.length} elemen</span>}
+              {contentBlocks.length > 0 && videos.length > 0 && <span aria-hidden="true"> · </span>}
               {videos.length > 0 && <span className="font-semibold text-brand-orange">{videos.length} video</span>}
             </div>}
           </section>
@@ -609,7 +573,7 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
               </div>
               <Button type="button" size="sm" variant="outline" onClick={addVideo}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah video</Button>
             </div>
-            {videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video. Tambahkan hanya jika modul ini memiliki materi video.</div>}
+             {videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video.</div>}
           </section>
         </div>
       </div>

@@ -50,61 +50,51 @@ export const editorialBlockLibrary = [
   {
     type: "richText",
     label: "Teks kaya",
-    description: "Paragraf, daftar, penekanan, dan link Markdown.",
     icon: "solar:file-text-bold",
   },
   {
     type: "heading",
     label: "Judul bagian",
-    description: "Membagi materi menjadi bagian yang mudah dipindai.",
     icon: "solar:text-bold",
   },
   {
     type: "table",
     label: "Tabel",
-    description: "Baris dan kolom terstruktur yang tetap bisa digeser di layar kecil.",
     icon: "solar:widget-2-bold",
   },
   {
     type: "image",
     label: "Gambar / GIF",
-    description: "Unggah PNG, JPG, WebP, AVIF, atau GIF; URL HTTPS tetap tersedia.",
     icon: "solar:gallery-bold",
   },
   {
     type: "slides",
     label: "Slide / galeri",
-    description: "Slide manual bergambar atau PPTX yang tampil sebagai carousel learner.",
     icon: "solar:slider-vertical-bold",
   },
   {
     type: "video",
     label: "Video",
-    description: "YouTube, Vimeo, atau file video internal.",
     icon: "solar:play-circle-bold",
   },
   {
     type: "link",
     label: "Tautan",
-    description: "Referensi atau sumber bacaan dengan konteks.",
     icon: "solar:link-bold",
   },
   {
     type: "cta",
     label: "Tombol aksi",
-    description: "CTA dengan gaya produk yang konsisten.",
     icon: "solar:cursor-bold",
   },
   {
     type: "callout",
     label: "Sorotan",
-    description: "Catatan penting, praktik, atau perhatian.",
     icon: "solar:lightbulb-bolt-bold-duotone",
   },
   {
     type: "divider",
     label: "Pemisah",
-    description: "Membuat ritme antar bagian tetap rapi.",
     icon: "solar:minus-circle-bold",
   },
 ];
@@ -132,10 +122,10 @@ function makeNestedId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function createEditorialSlide(index = 1) {
+export function createEditorialSlide(_index = 1) {
   return {
     id: makeNestedId("slide"),
-    title: `Slide ${index}`,
+    title: "",
     content: "",
     src: "",
     alt: "",
@@ -455,13 +445,13 @@ export function createEditorialBlock(type) {
     case "richText":
       return { id, type, content: "" };
     case "heading":
-      return { id, type, content: "Judul bagian", level: 2 };
+      return { id, type, content: "", level: 2 };
     case "table":
       return {
         id,
         type,
         title: "",
-        columns: ["Indikator", "Target"],
+        columns: ["", ""],
         rows: [["", ""], ["", ""]],
       };
     case "image":
@@ -471,11 +461,11 @@ export function createEditorialBlock(type) {
     case "video":
       return { id, type, url: "", caption: "" };
     case "link":
-      return { id, type, label: "Buka referensi", url: "", description: "" };
+      return { id, type, label: "", url: "", description: "" };
     case "cta":
-      return { id, type, label: "Lanjutkan", url: "", variant: "primary" };
+      return { id, type, label: "", url: "", variant: "primary" };
     case "callout":
-      return { id, type, title: "Catatan penting", content: "", tone: "info" };
+      return { id, type, title: "", content: "", tone: "info" };
     case "divider":
       return { id, type };
     default:

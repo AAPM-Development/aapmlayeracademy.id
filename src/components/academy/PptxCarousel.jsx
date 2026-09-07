@@ -32,9 +32,9 @@ function getFriendlyError(error) {
     return "Ukuran file presentasi melebihi batas 50 MB.";
   }
   if (message.includes("network") || message.includes("fetch") || message.includes("http")) {
-    return "File presentasi belum dapat dimuat. Coba muat ulang halaman.";
+    return "Presentasi belum dapat dimuat. Coba muat ulang halaman.";
   }
-  return "Presentasi belum dapat ditampilkan dengan aman di browser ini.";
+  return "Presentasi tidak dapat ditampilkan di browser ini.";
 }
 
 function getSlideContainers(viewer) {
@@ -55,7 +55,7 @@ function restorePresentationVisibility(viewer) {
  * Renders a server-approved, same-origin PPTX as a responsive learner carousel.
  * The viewer is loaded only when an editorial block actually references a deck.
  */
-export default function PptxCarousel({ src, title = "Presentasi pembelajaran", declaredSlideCount }) {
+export default function PptxCarousel({ src, title = "Presentasi", declaredSlideCount, compact = false }) {
   const targetRef = React.useRef(null);
   const viewerRef = React.useRef(null);
   const activeSlideRef = React.useRef(0);
@@ -110,7 +110,7 @@ export default function PptxCarousel({ src, title = "Presentasi pembelajaran", d
 
     if (!target || !source) {
       setStatus("error");
-      setError("Tautan presentasi tidak valid. Gunakan file .pptx dari media academy.");
+      setError("Tautan PPTX tidak valid.");
       return () => controller.abort();
     }
 
@@ -228,15 +228,14 @@ export default function PptxCarousel({ src, title = "Presentasi pembelajaran", d
   const liveStatus = error
     ? error
     : status === "loading"
-      ? expectedSlides ? `Memuat presentasi, ${expectedSlides} slide.` : "Memuat presentasi."
+      ? expectedSlides ? `Memuat presentasi, ${expectedSlides} slide.` : "Memuat presentasi…"
       : `Slide ${activeSlide + 1} dari ${slideCount}.`;
 
   return (
-    <section className="my-7 overflow-hidden rounded-2xl border border-border bg-surface shadow-sm" aria-label={title}>
+    <section className={`${compact ? "mt-3" : "my-7"} overflow-hidden rounded-2xl border border-border bg-surface shadow-sm`} aria-label={title || "Presentasi"}>
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface-subtle px-4 py-3.5 sm:px-5">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Presentasi pembelajaran</p>
-          <h3 className="mt-1 truncate text-sm font-semibold sm:text-base">{title}</h3>
+          <h3 className="truncate text-sm font-semibold sm:text-base">{title || "Presentasi"}</h3>
         </div>
         <button
           type="button"
@@ -255,7 +254,7 @@ export default function PptxCarousel({ src, title = "Presentasi pembelajaran", d
           <div className="absolute inset-0 flex items-center justify-center bg-slate-950/5 px-5 text-center text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 shadow-sm">
               <AapmIcon name="loading" className="h-4 w-4 animate-spin text-brand-green" />
-              Menyiapkan slide untuk learner…
+              Memuat presentasi…
             </span>
           </div>
         )}
@@ -263,7 +262,7 @@ export default function PptxCarousel({ src, title = "Presentasi pembelajaran", d
           <div className="absolute inset-0 flex items-center justify-center bg-background/95 p-5 text-center">
             <div className="max-w-sm">
               <AapmIcon name="alert" className="mx-auto h-6 w-6 text-brand-orange" />
-              <p className="mt-2 text-sm font-semibold">Presentasi belum tersedia</p>
+              <p className="mt-2 text-sm font-semibold">Presentasi tidak dapat dimuat</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p>
             </div>
           </div>
@@ -283,7 +282,7 @@ export default function PptxCarousel({ src, title = "Presentasi pembelajaran", d
               <AapmIcon name="arrowLeft" className="h-4 w-4" />
             </button>
             <span className="min-w-24 text-center text-xs font-semibold tabular-nums text-muted-foreground">
-              {slideCount ? `Slide ${activeSlide + 1} / ${slideCount}` : "Memuat slide"}
+              {slideCount ? `Slide ${activeSlide + 1} / ${slideCount}` : "Memuat…"}
             </span>
             <button
               type="button"

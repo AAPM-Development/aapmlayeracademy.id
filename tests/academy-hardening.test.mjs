@@ -43,6 +43,13 @@ test("editorial blocks preserve legacy Markdown and normalize a rich-text block"
   assert.equal(document.blocks[0].type, "richText");
   assert.equal(document.blocks[0].content, "");
 
+  assert.equal(createEditorialBlock("heading").content, "");
+  assert.equal(createEditorialBlock("link").label, "");
+  assert.equal(createEditorialBlock("cta").label, "");
+  assert.equal(createEditorialBlock("callout").title, "");
+  assert.deepEqual(createEditorialBlock("table").columns, ["", ""]);
+  assert.equal(createEditorialBlock("slides").slides[0].title, "");
+
   const ensured = ensureEditorialDocument(document);
   assert.deepEqual(ensured, document);
 });

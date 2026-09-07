@@ -898,7 +898,7 @@ export default function AdminModuleEditor() {
                 <div className="min-w-0">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Struktur</div>
                   <h2 className="mt-1 line-clamp-2 text-base font-semibold">{form.title || "Identitas modul"}</h2>
-                  <p className="mt-1 hidden line-clamp-1 text-xs leading-5 text-muted-foreground sm:block">{form.summary || "Ringkasan modul belum diisi."}</p>
+                  {form.summary && <p className="mt-1 hidden line-clamp-1 text-xs leading-5 text-muted-foreground sm:block">{form.summary}</p>}
                 </div>
                 <div className="flex items-center justify-start lg:justify-end">
                   <Button type="button" size="sm" variant={identityExpanded ? "ghost" : "outline"} className="shrink-0" aria-expanded={identityExpanded} aria-controls="module-identity-fields" onClick={toggleIdentity}>
@@ -1049,8 +1049,7 @@ export default function AdminModuleEditor() {
           <Surface className="p-3 sm:p-5 lg:p-7">
             <div className="mx-auto max-w-[1280px]">
               <div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-                <div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Pratinjau learner</div>
-                <h2 className="mt-1 text-xl font-semibold">{form.title || "Pratinjau materi"}</h2>
+                <div><h2 className="text-xl font-semibold">{form.title || "Pratinjau materi"}</h2>
                 {form.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.summary}</p>}
                 </div>
               </div>
@@ -1058,8 +1057,8 @@ export default function AdminModuleEditor() {
                 <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
                 {!editorialVideoIsPresent && form.videoUrl.trim() && (
                   <div className="mt-7 border-t border-border pt-7">
-                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video fallback modul</p>
-                    <LessonMedia module={{ title: form.title || "Video lesson", videoUrl: form.videoUrl }} />
+                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video materi</p>
+                    <LessonMedia module={{ title: form.title || "Video", videoUrl: form.videoUrl }} />
                     {form.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{form.videoScript}</p>}
                   </div>
                 )}

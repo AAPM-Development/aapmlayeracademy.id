@@ -66,23 +66,20 @@ function AddElementMenu({ items, onAddElement }) {
           <AapmIcon name="chevronDown" className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-xs">Tambah ke materi</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel className="text-xs">Tambah elemen</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.map((item) => (
           <DropdownMenuItem
             key={item.type}
             onSelect={() => onAddElement(item.type)}
-            className="items-start py-2"
+            className="items-center py-1.5"
             data-editor-add-item={item.type}
           >
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange">
               <AapmIcon name={item.icon || "add"} className="h-3.5 w-3.5" />
             </span>
-            <span className="min-w-0">
-              <span className="block text-xs font-semibold">{item.label}</span>
-              {item.detail && <span className="mt-0.5 block text-[10px] leading-4 text-muted-foreground">{item.detail}</span>}
-            </span>
+            <span className="min-w-0 text-xs font-semibold">{item.label}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

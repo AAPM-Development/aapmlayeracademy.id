@@ -19,6 +19,11 @@ import { sortModules } from "@/lib/academyData";
 import { hasEditorialVideo } from "@/lib/editorialDocument";
 import { useParams } from "react-router-dom";
 
+const hasText = (value) => typeof value === "string" && value.trim().length > 0;
+const hasListContent = (value) => Array.isArray(value)
+  ? value.some((item) => hasText(String(item || "")))
+  : hasText(value);
+
 export default function ModuleDetail() {
   const { moduleNumber } = useParams();
   const number = Number.parseInt(moduleNumber, 10);
@@ -47,9 +52,20 @@ export default function ModuleDetail() {
   const previous = index > 0 ? sortedModules[index - 1] : null;
   const next = index >= 0 ? sortedModules[index + 1] || null : null;
   const editorialVideoIsPresent = useMemo(() => hasEditorialVideo(module?.editorialContent), [module?.editorialContent]);
-  const learnerSections = useMemo(() => (
-    editorialVideoIsPresent ? lessonSections.filter((section) => section.id !== "video") : lessonSections
-  ), [editorialVideoIsPresent]);
+  const legacyVideoIsPresent = useMemo(() => [
+    module?.videoUrl,
+    module?.videoEmbedUrl,
+    module?.video,
+    module?.videoScript,
+  ].some(hasText), [module?.videoUrl, module?.videoEmbedUrl, module?.video, module?.videoScript]);
+  const objectivesArePresent = hasListContent(module?.learningObjectives) || hasListContent(module?.keyTakeaways);
+  const practiceIsPresent = hasText(module?.practicalAssignment) || hasListContent(module?.checklist);
+  const learnerSections = useMemo(() => lessonSections.filter((section) => {
+    if (section.id === "video") return !editorialVideoIsPresent && legacyVideoIsPresent;
+    if (section.id === "objectives") return objectivesArePresent;
+    if (section.id === "practical") return practiceIsPresent;
+    return true;
+  }), [editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
 
   useEffect(() => {
     if (!module) return undefined;
@@ -82,7 +98,7 @@ export default function ModuleDetail() {
 
   if (modulesError || progressError) return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><LearningErrorState title="Lesson belum dapat dimuat" description="Materi atau progress Anda belum berhasil diambil. Coba lagi untuk membuka lesson ini." onRetry={() => { refetchModules(); refetchProgress(); }} /></div>;
   if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><LearningLoading label="Memuat lesson..." lines={1} /></div>;
-  if (!module) return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><LearningEmptyState title="Modul belum tersedia" description="Lesson ini belum tersedia atau tautannya sudah berubah. Kembali ke Learning Path untuk memilih materi lain." actionLabel="Kembali ke Learning Path" actionTo="/modules" /></div>;
+  if (!module) return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><LearningEmptyState title="Modul belum tersedia" description="Materi ini belum tersedia atau tautannya sudah berubah. Kembali ke jalur belajar untuk memilih materi lain." actionLabel="Kembali ke jalur belajar" actionTo="/modules" /></div>;
 
   return (
     <LearningFocusShell
@@ -99,20 +115,26 @@ export default function ModuleDetail() {
           />
         </LessonSection>
 
-        {!editorialVideoIsPresent && (
+        {!editorialVideoIsPresent && legacyVideoIsPresent && (
           <LessonSection id="video" title="Video materi" icon="solar:play-circle-bold">
             <LessonMedia module={module} />
-            <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Catatan instruktur</div>{module.videoScript || "Catatan video sedang disiapkan."}</CardContent></Card>
+            {hasText(module.videoScript) && <Card className="mt-4 bg-surface-subtle shadow-none"><CardContent className="p-4 text-sm leading-6 text-muted-foreground"><div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-foreground">Catatan instruktur</div>{module.videoScript}</CardContent></Card>}
           </LessonSection>
         )}
 
-        <LessonSection id="objectives" title="Tujuan & insight" icon="solar:target-bold-duotone">
-          <div className="grid gap-6 sm:grid-cols-2"><div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon="solar:target-bold-duotone" /></div><div><div className="mb-3 text-sm font-semibold"><AapmIcon name="solar:lightbulb-bolt-bold-duotone" className="mr-1 inline h-4 w-4 text-brand-orange" /> Inti pembelajaran</div><LessonInsightList items={module.keyTakeaways || []} /></div></div>
-        </LessonSection>
+        {objectivesArePresent && <LessonSection id="objectives" title="Tujuan & insight" icon="solar:target-bold-duotone">
+          <div className="grid gap-6 sm:grid-cols-2">
+            {hasListContent(module.learningObjectives) && <div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon="solar:target-bold-duotone" /></div>}
+            {hasListContent(module.keyTakeaways) && <div><div className="mb-3 text-sm font-semibold"><AapmIcon name="solar:lightbulb-bolt-bold-duotone" className="mr-1 inline h-4 w-4 text-brand-orange" /> Inti pembelajaran</div><LessonInsightList items={module.keyTakeaways || []} /></div>}
+          </div>
+        </LessonSection>}
 
-        <LessonSection id="practical" title="Praktik" icon="solar:clipboard-check-bold-duotone">
-          <Card className="border-brand-green/20 bg-brand-green/5 shadow-none"><CardContent className="p-5"><div className="mb-3 text-sm font-semibold">Tugas praktik</div><p className="text-sm leading-6 text-muted-foreground">{module.practicalAssignment || "Tugas praktik untuk modul ini akan ditampilkan di sini."}</p>{module.checklist?.length > 0 && <div className="mt-5 border-t border-brand-green/15 pt-5"><div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-green">Checklist observasi</div><LessonChecklist items={module.checklist} /></div>}</CardContent></Card>
-        </LessonSection>
+        {practiceIsPresent && <LessonSection id="practical" title="Praktik" icon="solar:clipboard-check-bold-duotone">
+          <Card className="border-brand-green/20 bg-brand-green/5 shadow-none"><CardContent className="p-5">
+            {hasText(module.practicalAssignment) && <><div className="mb-3 text-sm font-semibold">Tugas praktik</div><p className="text-sm leading-6 text-muted-foreground">{module.practicalAssignment}</p></>}
+            {hasListContent(module.checklist) && <div className={hasText(module.practicalAssignment) ? "mt-5 border-t border-brand-green/15 pt-5" : ""}><div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-green">Checklist observasi</div><LessonChecklist items={module.checklist} /></div>}
+          </CardContent></Card>
+        </LessonSection>}
       </div>
     </LearningFocusShell>
   );

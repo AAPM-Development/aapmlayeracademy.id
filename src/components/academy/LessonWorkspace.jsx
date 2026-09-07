@@ -15,7 +15,7 @@ const LearningCheckbox = /** @type {any} */ (Checkbox);
 
 export const lessonSections = [
   { id: "content", label: "Materi", icon: "solar:file-text-bold" },
-  { id: "video", label: "Video Lesson", icon: "solar:play-circle-bold" },
+  { id: "video", label: "Video", icon: "solar:play-circle-bold" },
   {
     id: "objectives",
     label: "Tujuan & Insight",
@@ -106,7 +106,7 @@ export function LessonMedia({ module = null } = {}) {
           <iframe
             className="absolute inset-0 h-full w-full"
             src={source.src}
-            title={`Video lesson ${module.title}`}
+            title={`Video ${module.title || ""}`.trim()}
             loading="lazy"
             referrerPolicy="strict-origin-when-cross-origin"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -132,28 +132,7 @@ export function LessonMedia({ module = null } = {}) {
     );
   }
 
-  return (
-    <Card className="border-tint-orange-border bg-tint-orange/45 shadow-none">
-      <CardContent className="flex items-start gap-3 p-4 sm:p-5">
-        <IconTile icon="solar:play-circle-bold" tone="orange" size="md" />
-        <div className="min-w-0">
-          <Badge
-            variant="soft"
-            className="bg-card/70 text-[10px] uppercase tracking-[0.14em] text-tint-orange-foreground"
-          >
-            Video lesson
-          </Badge>
-          <h3 className="mt-2 text-sm font-semibold text-foreground">
-            Video belum tersedia untuk modul ini
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Gunakan script instruktur sebagai panduan observasi di farm. Materi
-            tetap dapat diselesaikan tanpa menunggu video.
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return null;
 }
 
 export function LessonHeader({ module = null, completed = false } = {}) {
@@ -164,7 +143,7 @@ export function LessonHeader({ module = null, completed = false } = {}) {
         to="/modules"
         className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
       >
-        <AapmIcon name="arrowLeft" className="h-3.5 w-3.5" /> Learning Path
+          <AapmIcon name="arrowLeft" className="h-3.5 w-3.5" /> Jalur belajar
       </Link>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
@@ -204,7 +183,7 @@ export function LessonSidebar({
 } = {}) {
   if (!module) return null;
   return (
-    <Card className="shadow-none lg:sticky lg:top-6" aria-label="Lesson map">
+    <Card className="shadow-none lg:sticky lg:top-6" aria-label="Peta materi">
       <CardContent className="p-3">
         <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Peta materi
@@ -230,9 +209,6 @@ export function LessonSidebar({
               </button>
             );
           })}
-        </div>
-        <div className="mt-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
-          Baca materi, cek insight, lalu selesaikan aksi praktik sebelum kuis.
         </div>
       </CardContent>
     </Card>
@@ -292,7 +268,7 @@ export function LessonNavigation({
             className="bg-brand-orange text-white hover:bg-brand-orange/90"
           >
             <Link to="/modules">
-              Kembali ke path <AapmIcon name="arrowRight" />
+              Kembali ke jalur belajar <AapmIcon name="arrowRight" />
             </Link>
           </Button>
         )}

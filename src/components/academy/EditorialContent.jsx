@@ -162,11 +162,17 @@ function TableBlock({ block }) {
   const columns = Array.isArray(block.columns) ? block.columns : [];
   const rows = Array.isArray(block.rows) ? block.rows : [];
   const scrollRef = useScrollEdgeFade();
-  if (!columns.length || !rows.length) return null;
+  const hasRowContent = rows.some((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim()));
+  const hasColumnContent = columns.some((column) => String(column || "").trim());
+  const isEmptyDefaultTable = !block.title?.trim()
+    && !hasRowContent
+    && columns.length === 2
+    && columns[0] === "Indikator"
+    && columns[1] === "Target";
+  if (!columns.length || !rows.length || (!hasColumnContent && !hasRowContent) || isEmptyDefaultTable) return null;
   return (
     <section className="max-w-none">
       {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
-      <p className="mb-2 text-[11px] leading-5 text-muted-foreground">Geser horizontal bila semua kolom belum terlihat.</p>
       <div ref={scrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar max-w-full overflow-x-auto rounded-xl border border-border bg-background" tabIndex={0} aria-label={block.title ? `Tabel ${block.title}. Geser horizontal untuk melihat kolom lain.` : "Tabel materi. Geser horizontal untuk melihat kolom lain."}>
         <table className="min-w-full w-max border-collapse text-sm">
           {block.title && <caption className="sr-only">{block.title}</caption>}
@@ -193,15 +199,24 @@ function SlidesBlock({ block }) {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const presentation = block.source === "pptx" ? safeEditorialPresentation(block.pptxUrl) : null;
   if (presentation) {
-    return <PptxCarousel src={presentation} title={block.title || block.pptxName || "Presentasi pembelajaran"} declaredSlideCount={block.slideCount} />;
+    return <PptxCarousel src={presentation} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} />;
   }
-  if (!slides.length) return null;
-  const safeIndex = Math.min(activeIndex, slides.length - 1);
-  const slide = slides[safeIndex];
+  const visibleSlides = slides.filter((slide) => {
+    const slideTitle = String(slide?.title || "").trim();
+    return Boolean(
+      (slideTitle && !/^slide\s+\d+$/i.test(slideTitle))
+      || slide?.content?.trim()
+      || safeEditorialImage(slide?.src),
+    );
+  });
+  if (!visibleSlides.length) return null;
+  const safeIndex = Math.min(activeIndex, visibleSlides.length - 1);
+  const slide = visibleSlides[safeIndex];
   const image = safeEditorialImage(slide.src);
-  const hasCopy = Boolean(slide.title || slide.content);
+  const slideTitle = slide.title?.trim() && !/^slide\s+\d+$/i.test(slide.title.trim()) ? slide.title : "";
+  const hasCopy = Boolean(slideTitle || slide.content);
   const canGoBack = safeIndex > 0;
-  const canGoForward = safeIndex < slides.length - 1;
+  const canGoForward = safeIndex < visibleSlides.length - 1;
   return (
     <section className="max-w-none">
       {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
@@ -209,25 +224,24 @@ function SlidesBlock({ block }) {
         <div className={cn("grid min-w-0", image && "lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]")}>
           {image && <div className="aspect-video min-w-0 bg-muted"><img src={image} alt={slide.decorative ? "" : slide.alt || ""} loading="lazy" decoding="async" className="h-full w-full object-cover" /></div>}
           {(hasCopy || !image) && <div className="flex min-h-48 min-w-0 flex-col p-5 sm:p-6">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Slide {safeIndex + 1} dari {slides.length}</div>
-            {slide.title && <h4 className="mt-2 break-words text-lg font-semibold tracking-[-0.015em] text-foreground">{slide.title}</h4>}
+            <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Slide {safeIndex + 1} dari {visibleSlides.length}</div>
+            {slideTitle && <h4 className="mt-2 break-words text-lg font-semibold tracking-[-0.015em] text-foreground">{slideTitle}</h4>}
             {slide.content && <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{slide.content}</p>}
-            {!slide.title && !slide.content && !image && <p className="text-sm text-muted-foreground">Slide belum memiliki isi.</p>}
           </div>}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/70 px-4 py-3">
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" variant="outline" className="h-11 sm:h-8" disabled={!canGoBack} onClick={() => setActiveIndex((current) => Math.max(0, current - 1))}><AapmIcon name="chevronLeft" className="h-3.5 w-3.5" />Sebelumnya</Button>
-            <Button type="button" size="sm" variant="outline" className="h-11 sm:h-8" disabled={!canGoForward} onClick={() => setActiveIndex((current) => Math.min(slides.length - 1, current + 1))}>Berikutnya<AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Button>
+            <Button type="button" size="sm" variant="outline" className="h-11 sm:h-8" disabled={!canGoForward} onClick={() => setActiveIndex((current) => Math.min(visibleSlides.length - 1, current + 1))}>Berikutnya<AapmIcon name="chevronRight" className="h-3.5 w-3.5" /></Button>
           </div>
           <div className="flex max-w-full flex-wrap justify-end gap-1" aria-label="Pilih slide">
-            {slides.map((item, index) => (
+            {visibleSlides.map((item, index) => (
               <button key={item.id || `slide-${index}`} type="button" aria-label={`Tampilkan slide ${index + 1}`} aria-current={index === safeIndex ? "step" : undefined} onClick={() => setActiveIndex(index)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-tint-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className={cn("rounded-full transition-all", index === safeIndex ? "h-2.5 w-6 bg-brand-orange" : "h-2.5 w-2.5 bg-muted-foreground/30")}/></button>
             ))}
           </div>
         </div>
       </div>
-      <p className="sr-only" aria-live="polite">Slide {safeIndex + 1} dari {slides.length}</p>
+      <p className="sr-only" aria-live="polite">Slide {safeIndex + 1} dari {visibleSlides.length}</p>
     </section>
   );
 }
@@ -271,11 +285,14 @@ function LinkBlock({ block }) {
 
 function CalloutBlock({ block }) {
   const tone = calloutTone[block.tone] || calloutTone.info;
+  const title = block.title?.trim();
+  const content = block.content?.trim();
+  if ((!title || title === "Catatan penting") && !content) return null;
   return (
     <Card className={cn("max-w-3xl shadow-none", tone)}>
       <CardContent className="p-4 sm:p-5">
-        {block.title && <div className="text-sm font-semibold text-foreground">{block.title}</div>}
-        {block.content && <p className="mt-1 text-sm leading-6 text-muted-foreground">{block.content}</p>}
+        {title && <div className="text-sm font-semibold text-foreground">{title}</div>}
+        {content && <p className="mt-1 text-sm leading-6 text-muted-foreground">{content}</p>}
       </CardContent>
     </Card>
   );
@@ -287,7 +304,8 @@ function EditorialBlock({ block, title }) {
       return block.content ? <EditorialMarkdown>{block.content}</EditorialMarkdown> : null;
     case "heading": {
       const Heading = `h${block.level || 2}`;
-      return block.content ? <Heading className="max-w-3xl break-words font-semibold tracking-[-0.015em] text-foreground first:mt-0 [&:not(:first-child)]:mt-8">{block.content}</Heading> : null;
+      const content = block.content?.trim();
+      return content && content !== "Judul bagian" ? <Heading className="max-w-3xl break-words font-semibold tracking-[-0.015em] text-foreground first:mt-0 [&:not(:first-child)]:mt-8">{content}</Heading> : null;
     }
     case "table":
       return <TableBlock block={block} />;
@@ -318,7 +336,7 @@ function EditorialBlock({ block, title }) {
 export function EditorialContent({ document, fallback = "", title = "Materi modul" }) {
   const editorial = parseEditorialDocument(document);
   if (!editorial?.blocks.length) {
-    return <EditorialMarkdown>{fallback || "Konten modul sedang disiapkan."}</EditorialMarkdown>;
+    return typeof fallback === "string" && fallback.trim() ? <EditorialMarkdown>{fallback}</EditorialMarkdown> : null;
   }
 
   return (
