@@ -15,7 +15,9 @@ import {
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 import {
+  getCompletedModuleSet,
   getLevelProgress,
+  getProgressSummary,
   learningLevels,
   TOTAL_MODULES,
 } from "@/lib/academyData";
@@ -131,9 +133,8 @@ export function DashboardMetricStrip({
     );
   }
 
-  const completed = progress.filter((item) => item?.completed).length;
-  const total = modules.length || TOTAL_MODULES;
-  const coursePercent = total ? Math.round((completed / total) * 100) : 0;
+  const progressSummary = getProgressSummary(modules, progress, TOTAL_MODULES);
+  const { completed, total, percent: coursePercent } = progressSummary;
   const scored = progress.filter((item) => item?.quizTotal);
   const average = scored.length
     ? Math.round(
@@ -265,9 +266,7 @@ const dashboardTracks = [
 ];
 
 export function LearningTracks({ modules = [], progress = [] } = {}) {
-  const completedSet = new Set(
-    progress.filter((item) => item?.completed).map((item) => item.moduleNumber),
-  );
+  const completedSet = getCompletedModuleSet(progress, modules);
   const tones = {
     green: {
       card: "border-tint-green-border bg-tint-green",
@@ -399,10 +398,8 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
 }
 
 export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
-  const completed = progress.filter((item) => item?.completed).length;
-  const percent = modules.length
-    ? Math.round((completed / modules.length) * 100)
-    : Math.round((completed / TOTAL_MODULES) * 100);
+  const progressSummary = getProgressSummary(modules, progress, TOTAL_MODULES);
+  const { completed, total, percent } = progressSummary;
   const scored = progress.filter((item) => item?.quizTotal);
   const average = scored.length
     ? Math.round(
@@ -435,7 +432,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
               {percent}%
             </div>
             <div className="text-right text-xs text-muted-foreground">
-              {completed}/{modules.length || TOTAL_MODULES} modul selesai
+              {completed}/{total} modul selesai
             </div>
           </div>
         ) : (
@@ -475,9 +472,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
 }
 
 export function LearningJourney({ modules = [], progress = [] } = {}) {
-  const completedSet = new Set(
-    progress.filter((item) => item?.completed).map((item) => item.moduleNumber),
-  );
+  const completedSet = getCompletedModuleSet(progress, modules);
 
   return (
     <Card className="bg-card/95">

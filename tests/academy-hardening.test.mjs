@@ -24,6 +24,11 @@ import {
   richTextPlainText,
   sanitizeRichTextDocument,
 } from "../src/lib/richTextSafety.js";
+import {
+  getCompletedModuleSet,
+  getNextModule,
+  getProgressSummary,
+} from "../src/lib/academyData.js";
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -130,4 +135,26 @@ test("conversation pages deduplicate, upsert newest metadata, and remove safely"
   const removed = removeConversationFromPages(added, "c2");
   assert.equal(removed.pages[0].total, 3);
   assert.deepEqual(flattenConversationPages(removed).map((item) => item.id), ["c4", "c1", "c3"]);
+});
+
+test("progress metrics count only active catalog modules", () => {
+  const modules = [
+    { moduleNumber: 1, title: "Satu" },
+    { moduleNumber: 2, title: "Dua" },
+  ];
+  const progress = [
+    { moduleNumber: 1, completed: true },
+    { moduleNumber: 2, completed: false },
+    { moduleNumber: 0, completed: true },
+    { moduleNumber: 99, completed: true },
+  ];
+
+  assert.deepEqual([...getCompletedModuleSet(progress, modules)], [1]);
+  assert.deepEqual(getProgressSummary(modules, progress), {
+    completed: 1,
+    total: 2,
+    percent: 50,
+    completedSet: new Set([1]),
+  });
+  assert.equal(getNextModule(modules, progress)?.moduleNumber, 2);
 });

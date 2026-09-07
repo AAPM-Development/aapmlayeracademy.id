@@ -349,6 +349,12 @@ try {
         json_response(['ok' => true]);
     }
 
+    if (preg_match('#^admin/users/(\\d+)/progress$#', $path, $matches) && $method === 'DELETE') {
+        require_admin();
+        require_csrf();
+        json_response(['reset' => admin_reset_user_progress((int) $matches[1])]);
+    }
+
     if ($path === 'admin/media/images' && $method === 'POST') {
         $actor = require_admin();
         require_csrf();
@@ -398,8 +404,8 @@ try {
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
         require_admin();
         require_csrf();
-        admin_delete_module((int) $matches[1]);
-        json_response(['ok' => true]);
+        $purgeProgress = bool_value($_GET['purgeProgress'] ?? false) === 1;
+        json_response(['ok' => true, 'deleted' => admin_delete_module((int) $matches[1], $purgeProgress)]);
     }
 
     if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'GET') {
@@ -468,7 +474,10 @@ try {
 
     if ($path === 'progress' && $method === 'GET') {
         $user = require_user();
-        $stmt = db()->prepare('SELECT * FROM user_progress WHERE user_id = ? ORDER BY module_number ASC');
+        // Module 0 is reserved for the final exam. All other progress rows
+        // must still point to a live catalog module so deleted modules cannot
+        // keep showing up in the learner view.
+        $stmt = db()->prepare('SELECT p.* FROM user_progress p LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? AND (p.module_number = 0 OR m.id IS NOT NULL) ORDER BY p.module_number ASC');
         $stmt->execute([(int) $user['id']]);
         json_response(array_map('present_progress', $stmt->fetchAll()));
     }
@@ -478,7 +487,7 @@ try {
         require_csrf();
         $input = request_json();
         $moduleNumber = (int) ($input['moduleNumber'] ?? 0);
-        if ($moduleNumber < 0 || $moduleNumber > 22) {
+        if ($moduleNumber < 0 || ($moduleNumber !== 0 && !admin_module_number_exists($moduleNumber))) {
             error_response('Nomor modul tidak valid.', 422, 'validation_error');
         }
 

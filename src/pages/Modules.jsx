@@ -6,7 +6,7 @@ import { Badge, IconTile, Surface } from "@/components/primitives";
 import LearningRoadmap from "@/components/academy/LearningRoadmap";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useUserProgress } from "@/lib/useCourseData";
-import { getNextModule } from "@/lib/academyData";
+import { getNextModule, getProgressSummary } from "@/lib/academyData";
 
 export default function Modules() {
   const {
@@ -23,10 +23,7 @@ export default function Modules() {
   } = useUserProgress();
   const isLoading = modulesLoading || progressLoading;
   const isError = modulesError || progressError;
-  const completedCount = progress.filter((item) => item.completed).length;
-  const completion = modules.length
-    ? Math.round((completedCount / modules.length) * 100)
-    : 0;
+  const { completed: completedCount, percent: completion } = getProgressSummary(modules, progress);
   const nextModule = getNextModule(modules, progress);
 
   const retryLearningData = () => {

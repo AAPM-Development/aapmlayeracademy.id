@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, IconTile, Surface } from "@/components/primitives";
 import { cn } from "@/lib/utils";
-import { certificationTiers, getCertificationState } from "@/lib/academyData";
+import { certificationTiers, getCertificationState, getCompletedModuleSet } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
 
 const tierTones = ["green", "lime", "blue", "orange", "violet", "slate"];
@@ -22,9 +22,9 @@ function TierIcon({ status = "locked" } = {}) {
   return <AapmIcon name="lock" />;
 }
 
-export default function CertificationPath({ progress = [], certificates = [], onClaim = (_tier) => {}, claiming = false } = {}) {
-  const completedSet = new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
-  const finalPassed = progress.some((item) => item.moduleNumber === 0 && item.completed);
+export default function CertificationPath({ modules = [], progress = [], certificates = [], onClaim = (_tier) => {}, claiming = false } = {}) {
+  const completedSet = getCompletedModuleSet(progress, modules);
+  const finalPassed = progress.some((item) => Number(item?.moduleNumber) === 0 && item.completed);
 
   return (
     <div className="grid gap-3 lg:grid-cols-2">

@@ -6,7 +6,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconButton } from "@/components/primitives";
 import { academyNavigation } from "./academyNavigation";
 import { cn } from "@/lib/utils";
-import { getCompletedModuleSet, TOTAL_MODULES } from "@/lib/academyData";
+import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import { preloadRoute } from "@/lib/routePreloaders";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
@@ -15,12 +15,12 @@ export default function AcademySidebar({
   onToggle = null,
   onNavigate = () => {},
   onLogout = () => {},
+  modules = [],
   progress = [],
   user = null,
   className = "",
 } = {}) {
-  const completed = getCompletedModuleSet(progress).size;
-  const percent = Math.round((completed / TOTAL_MODULES) * 100);
+  const { completed, total, percent } = getProgressSummary(modules, progress, TOTAL_MODULES);
   const displayName = user?.full_name || user?.email || "Peserta";
   const isAdmin = user?.role === "admin";
   const navScrollRef = useScrollEdgeFade();
@@ -117,7 +117,7 @@ export default function AcademySidebar({
                     </Badge>
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    {completed} dari {TOTAL_MODULES} modul selesai
+                    {completed} dari {total} modul selesai
                   </div>
                 </div>
               </div>

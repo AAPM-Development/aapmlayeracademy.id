@@ -32,27 +32,56 @@ export function sortModules(modules = []) {
   return [...modules].sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
 }
 
-export function getCompletedModuleSet(progress = []) {
-  return new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
+export function getCompletedModuleSet(progress = [], modules = null) {
+  const activeModuleNumbers = Array.isArray(modules)
+    ? new Set(modules.map((module) => Number(module?.moduleNumber)).filter((number) => number > 0))
+    : null;
+
+  return new Set(
+    progress
+      .filter((item) => {
+        const moduleNumber = Number(item?.moduleNumber);
+        return Boolean(item?.completed) && moduleNumber > 0 && (
+          activeModuleNumbers === null || activeModuleNumbers.has(moduleNumber)
+        );
+      })
+      .map((item) => Number(item.moduleNumber)),
+  );
+}
+
+export function getProgressSummary(modules = [], progress = [], fallbackTotal = 0) {
+  const sorted = sortModules(modules);
+  const completedSet = getCompletedModuleSet(progress, sorted);
+  const total = sorted.length || fallbackTotal;
+  const completed = sorted.length
+    ? sorted.filter((module) => completedSet.has(Number(module.moduleNumber))).length
+    : completedSet.size;
+
+  return {
+    completed,
+    total,
+    percent: total ? Math.min(100, Math.round((completed / total) * 100)) : 0,
+    completedSet,
+  };
 }
 
 export function getNextModule(modules = [], progress = []) {
-  const completedSet = getCompletedModuleSet(progress);
-  return sortModules(modules).find((module) => !completedSet.has(module.moduleNumber)) || null;
+  const completedSet = getCompletedModuleSet(progress, modules);
+  return sortModules(modules).find((module) => !completedSet.has(Number(module.moduleNumber))) || null;
 }
 
 export function getModuleState(module, modules = [], completedSet = new Set()) {
   if (!module) return "locked";
-  if (completedSet.has(module.moduleNumber)) return "completed";
+  if (completedSet.has(Number(module.moduleNumber))) return "completed";
   if (module.available === true || module.state === "available") return "available";
 
-  const firstIncomplete = sortModules(modules).find((item) => !completedSet.has(item.moduleNumber));
-  return firstIncomplete?.moduleNumber === module.moduleNumber ? "current" : "locked";
+  const firstIncomplete = sortModules(modules).find((item) => !completedSet.has(Number(item.moduleNumber)));
+  return Number(firstIncomplete?.moduleNumber) === Number(module.moduleNumber) ? "current" : "locked";
 }
 
 export function getLevelProgress(levelNumber, modules = [], completedSet = new Set()) {
   const levelModules = sortModules(modules).filter((module) => module.level === levelNumber);
-  const completed = levelModules.filter((module) => completedSet.has(module.moduleNumber)).length;
+  const completed = levelModules.filter((module) => completedSet.has(Number(module.moduleNumber))).length;
 
   return {
     total: levelModules.length,

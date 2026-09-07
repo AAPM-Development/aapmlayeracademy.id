@@ -17,7 +17,7 @@ import {
 import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
-import { getNextModule } from "@/lib/academyData";
+import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 
@@ -43,9 +43,7 @@ function personalizedSuggestions({ farm = [], progress = [], modules = [], user,
   const name = displayName.split(" ")[0] || "Anda";
   const latest = farm.at(-1);
   const previous = farm.at(-2);
-  const completed = progress.filter(
-    (item) => item?.completed && Number(item.moduleNumber) > 0,
-  ).length;
+  const completed = getCompletedModuleSet(progress, modules).size;
   const nextModule = getNextModule(modules, progress);
   const nextModuleLabel = nextModule
     ? `Modul ${nextModule.moduleNumber}: ${nextModule.title}`

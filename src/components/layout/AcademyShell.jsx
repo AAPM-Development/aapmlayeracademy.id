@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
-import { useUserProgress } from "@/lib/useCourseData";
+import { useModules, useUserProgress } from "@/lib/useCourseData";
 import { useThemeMode } from "@/lib/useThemeMode";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AcademyHeader from "./AcademyHeader";
@@ -15,6 +15,7 @@ export default function AcademyShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { data: modules = [] } = useModules();
   const { data: progress = [] } = useUserProgress();
   const { user, logout } = useAuth();
   const { mode: themeMode, toggleTheme } = useThemeMode();
@@ -36,6 +37,7 @@ export default function AcademyShell() {
                 : () => setSidebarCollapsed((current) => !current)
             }
             onLogout={handleLogout}
+            modules={modules}
             progress={progress}
             user={user}
           />
@@ -51,6 +53,7 @@ export default function AcademyShell() {
               className="w-full border-r-0"
               onNavigate={() => setMobileOpen(false)}
               onLogout={handleLogout}
+              modules={modules}
               progress={progress}
               user={user}
             />

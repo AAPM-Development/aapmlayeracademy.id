@@ -4,18 +4,26 @@ import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import CertificationPath from "@/components/academy/CertificationPath";
 import { Badge, Button, IconTile, Surface, useToast } from "@/components/primitives";
-import { useCertificates, useIssueCertificate, useUserProgress } from "@/lib/useCourseData";
+import { useCertificates, useIssueCertificate, useModules, useUserProgress } from "@/lib/useCourseData";
+import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
 
 export default function Certification() {
+  const { data: modules = [], isLoading: modulesLoading } = useModules();
   const { data: progress = [] } = useUserProgress();
   const { data: certificates = [] } = useCertificates();
   const issue = useIssueCertificate();
   const issueCertificate = /** @type {any} */ (issue.mutateAsync);
   const { toast } = useToast();
-  const completedModules = progress.filter((item) => item?.completed && item.moduleNumber !== 0).length;
-  const finalExamPassed = progress.some((item) => item.moduleNumber === 0 && item.completed);
-  const curriculumPercent = Math.min(100, Math.round((completedModules / 22) * 100));
+  const progressSummary = getProgressSummary(
+    modules,
+    progress,
+    modulesLoading ? TOTAL_MODULES : 0,
+  );
+  const completedModules = progressSummary.completed;
+  const totalModules = progressSummary.total;
+  const finalExamPassed = progress.some((item) => Number(item?.moduleNumber) === 0 && item.completed);
+  const curriculumPercent = progressSummary.percent;
 
   const claim = async (tier) => {
     try {
@@ -43,16 +51,16 @@ export default function Certification() {
             <div className="shrink-0 rounded-xl border border-tint-green-border bg-background/80 px-4 py-3"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Progress kurikulum</div><div className="mt-1 text-2xl font-semibold tabular-nums">{curriculumPercent}%</div><div className="mt-2 h-1.5 w-36 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-brand-green" style={{ width: `${curriculumPercent}%` }} /></div></div>
           </div>
         </Surface>
-        <Surface className="flex flex-col justify-between p-5 sm:p-7"><div className="flex items-start gap-3"><IconTile icon="graduation" tone={finalExamPassed ? "green" : "orange"} size="lg" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Evaluasi akhir</div><h2 className="mt-1 text-lg font-semibold">Tingkat 6 · Ahli</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{finalExamPassed ? "Ujian akhir sudah lulus. Sertifikat ahli tersedia." : "Pastikan 22 modul sudah Anda kuasai sebelum mengirim jawaban."}</p></div></div><Button asChild className="mt-5 w-full" variant={finalExamPassed ? "outline" : "default"}><Link to={finalExamPassed ? "/profile" : "/final-exam"}>{finalExamPassed ? "Lihat profil & sertifikat" : "Buka ujian akhir"}<AapmIcon name="arrowRight" /></Link></Button></Surface>
+        <Surface className="flex flex-col justify-between p-5 sm:p-7"><div className="flex items-start gap-3"><IconTile icon="graduation" tone={finalExamPassed ? "green" : "orange"} size="lg" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Evaluasi akhir</div><h2 className="mt-1 text-lg font-semibold">Tingkat 6 · Ahli</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{finalExamPassed ? "Ujian akhir sudah lulus. Sertifikat ahli tersedia." : `Pastikan ${totalModules} modul sudah Anda kuasai sebelum mengirim jawaban.`}</p></div></div><Button asChild className="mt-5 w-full" variant={finalExamPassed ? "outline" : "default"}><Link to={finalExamPassed ? "/profile" : "/final-exam"}>{finalExamPassed ? "Lihat profil & sertifikat" : "Buka ujian akhir"}<AapmIcon name="arrowRight" /></Link></Button></Surface>
       </section>
 
       <div className="mb-7 grid gap-3 sm:grid-cols-3">
         <Metric icon="course" label="Tingkat belajar" value="14" detail={`${completedModules} modul selesai`} tone="green" />
-        <Metric icon="modules" label="Modul inti" value="22" detail="Roadmap Academy" tone="blue" />
+        <Metric icon="modules" label="Modul inti" value={totalModules} detail="Roadmap Academy" tone="blue" />
         <Metric icon="award" label="Tingkat profesional" value="6" detail={`${certificates.length} sertifikat dimiliki`} tone="orange" />
       </div>
 
-      <section><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Jalur sertifikasi</div><h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Pilih bukti kompetensi berikutnya</h2><p className="mt-1 text-sm text-muted-foreground">Status tingkat berubah berdasarkan progress yang tersimpan di akun Anda.</p></div><span className="text-xs text-muted-foreground">{certificates.length} sertifikat tersimpan</span></div><CertificationPath progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} /></section>
+      <section><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Jalur sertifikasi</div><h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Pilih bukti kompetensi berikutnya</h2><p className="mt-1 text-sm text-muted-foreground">Status tingkat berubah berdasarkan progress yang tersimpan di akun Anda.</p></div><span className="text-xs text-muted-foreground">{certificates.length} sertifikat tersimpan</span></div><CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} /></section>
 
       {certificates.length > 0 && <section className="mt-8"><div className="mb-3 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Riwayat saya</div><h2 className="mt-1 text-lg font-semibold">Sertifikat saya</h2></div><Link to="/profile" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka profil <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div><div className="grid gap-3 md:grid-cols-2">{certificates.map((certificate) => <Surface key={certificate.id} variant="interactive" className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"><div className="flex items-center gap-3"><IconTile icon="award" tone="orange" size="md" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Tingkat {certificate.levelNumber}</div><div className="mt-1 text-sm font-semibold">{certificate.levelName}</div><div className="mt-1 text-xs text-muted-foreground">{certificate.holderName} · Nilai {certificate.score}%</div></div></div><Button type="button" variant="outline" size="sm" disabled><AapmIcon name="download" /> Unduh PDF</Button></Surface>)}</div></section>}
     </ContentContainer>

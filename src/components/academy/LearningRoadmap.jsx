@@ -5,6 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { LearningEmptyState } from "@/components/academy/LearningStates";
 import { cn } from "@/lib/utils";
 import {
+  getCompletedModuleSet,
   getLevelProgress,
   getModuleState,
   learningLevels,
@@ -146,7 +147,7 @@ function LevelCard({ level, modules, allModules, completedSet, accent }) {
 }
 
 export default function LearningRoadmap({ modules = [], progress = [] }) {
-  const completedSet = new Set(progress.filter((item) => item?.completed).map((item) => item.moduleNumber));
+  const completedSet = getCompletedModuleSet(progress, modules);
   const sortedModules = [...modules].sort((left, right) => left.moduleNumber - right.moduleNumber);
   if (!modules.length) return <LearningEmptyState title="Learning roadmap belum memiliki modul" description="Modul akan muncul di sini saat materi sudah tersedia untuk akun Anda." actionLabel={null} actionTo={null} />;
 
@@ -155,7 +156,7 @@ export default function LearningRoadmap({ modules = [], progress = [] }) {
       {learningTracks.map((track) => {
         const levels = learningLevels.filter((level) => track.levels.includes(level.number));
         const trackModules = sortedModules.filter((module) => track.levels.includes(module.level));
-        const trackCompleted = trackModules.filter((module) => completedSet.has(module.moduleNumber)).length;
+        const trackCompleted = trackModules.filter((module) => completedSet.has(Number(module.moduleNumber))).length;
         const accent = accentStyles[track.accent];
         return (
           <section key={track.key} className="min-w-0">

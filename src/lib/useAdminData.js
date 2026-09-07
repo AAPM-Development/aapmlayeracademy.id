@@ -76,6 +76,22 @@ export function useResetAdminUserPassword() {
   });
 }
 
+export function useResetAdminUserProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId }) => nativeApi.admin.users.resetProgress(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "learners"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+      // If an admin resets the account currently open in another view, keep
+      // the learner-facing projections in the same SPA session consistent.
+      queryClient.invalidateQueries({ queryKey: ["userProgress"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-profile"] });
+    },
+  });
+}
+
 export function useAdminModule(moduleId) {
   return useQuery({
     queryKey: ["admin", "modules", moduleId],
@@ -94,10 +110,15 @@ export function useAdminModuleQuestions(moduleId) {
 
 function invalidateCourseData(queryClient) {
   queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
+  queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+  queryClient.invalidateQueries({ queryKey: ["admin", "learners"] });
+  queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
   // Refresh inactive learner projections too. This matters when an admin
   // saves in one route and the learner view is opened from the same SPA
   // session afterwards.
   queryClient.invalidateQueries({ queryKey: ["courseModules"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["userProgress"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["learning-profile"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["quizQuestions"] });
 }
 
@@ -123,7 +144,8 @@ export function useUpdateAdminModule() {
 export function useDeleteAdminModule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (moduleId) => nativeApi.admin.modules.delete(moduleId),
+    mutationFn: ({ moduleId, purgeProgress = false }) =>
+      nativeApi.admin.modules.delete(moduleId, { purgeProgress }),
     onSuccess: () => invalidateCourseData(queryClient),
   });
 }

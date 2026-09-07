@@ -466,6 +466,7 @@ export default function AdminModuleEditor() {
   const deleteModule = useDeleteAdminModule();
   const [form, setForm] = useState(emptyModule);
   const [pendingModuleDelete, setPendingModuleDelete] = useState(false);
+  const [pendingModuleDeleteWithProgress, setPendingModuleDeleteWithProgress] = useState(false);
   const [pendingDraft, setPendingDraft] = useState(null);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [editorReady, setEditorReady] = useState(false);
@@ -807,14 +808,23 @@ export default function AdminModuleEditor() {
       });
     }
   };
-  const remove = async () => {
+  const remove = async ({ purgeProgress = false } = {}) => {
     try {
-      await deleteModule.mutateAsync(moduleId);
-      toast({ title: "Modul dihapus" });
+      await deleteModule.mutateAsync({ moduleId, purgeProgress });
+      toast({
+        title: "Modul dihapus",
+        description: purgeProgress
+          ? "Bank soal dan seluruh progress pada modul ini ikut dihapus."
+          : undefined,
+      });
       removeEditorDraft(draftKey);
       releaseHistoryGuard();
       navigate(`/admin/courses/${courseId}`);
     } catch (deleteError) {
+      if (!purgeProgress && deleteError?.code === "module_has_progress") {
+        setPendingModuleDeleteWithProgress(true);
+        return;
+      }
       toast({
         variant: "destructive",
         title: "Modul belum dihapus",
@@ -1113,13 +1123,26 @@ export default function AdminModuleEditor() {
         open={pendingModuleDelete}
         onOpenChange={setPendingModuleDelete}
         title="Hapus modul?"
-        description={`Modul dan seluruh bank soalnya akan dihapus. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang setelah Anda mengonfirmasi. " : ""}Modul yang sudah memiliki progres learner tetap akan ditolak oleh sistem.`}
+        description={`Modul dan seluruh bank soalnya akan dihapus. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang setelah Anda mengonfirmasi. " : ""}Jika modul memiliki progres learner, sistem akan meminta konfirmasi tambahan sebelum ikut menghapus progres tersebut.`}
         confirmLabel="Hapus modul"
         icon="solar:trash-bin-trash-bold"
         destructive
         onConfirm={() => {
           setPendingModuleDelete(false);
           remove();
+        }}
+      />
+      <ConfirmDialog
+        open={pendingModuleDeleteWithProgress}
+        onOpenChange={setPendingModuleDeleteWithProgress}
+        title="Hapus modul beserta progress learner?"
+        description={`Modul, bank soal, dan seluruh progress learner pada Modul ${form.moduleNumber || "ini"} akan dihapus permanen. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang. " : ""}Sertifikat, data farm, dan percakapan pengguna tetap dipertahankan.`}
+        confirmLabel="Hapus bersama progress"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={() => {
+          setPendingModuleDeleteWithProgress(false);
+          remove({ purgeProgress: true });
         }}
       />
     </AdminPageFrame>

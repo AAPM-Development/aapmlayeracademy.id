@@ -294,6 +294,10 @@ export const nativeApi = {
           method: "PUT",
           body: JSON.stringify({ password }),
         }),
+      resetProgress: (userId) =>
+        request(`/admin/users/${encodeURIComponent(userId)}/progress`, {
+          method: "DELETE",
+        }),
     },
     modules: {
       detail: (moduleId) =>
@@ -304,10 +308,11 @@ export const nativeApi = {
           method: "PUT",
           body: JSON.stringify(data),
         }),
-      delete: (moduleId) =>
-        request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
-          method: "DELETE",
-        }),
+      delete: (moduleId, { purgeProgress = false } = {}) =>
+        request(
+          `/admin/modules/${encodeURIComponent(moduleId)}${purgeProgress ? "?purgeProgress=1" : ""}`,
+          { method: "DELETE" },
+        ),
       reorder: (items) =>
         request("/admin/modules/reorder", {
           method: "PUT",
