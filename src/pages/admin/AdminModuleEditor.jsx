@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
-import EditorialComposer from "@/components/admin/EditorialComposer";
+import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
 import EditorQuickNav from "@/components/admin/EditorQuickNav";
 import {
   Badge,
@@ -83,24 +83,28 @@ const EDITOR_SECTIONS = [
   {
     id: "module-section-identity",
     label: "Identitas",
+    shortLabel: "Struktur",
     detail: "Nomor, judul, dan ringkasan",
     icon: "course",
   },
   {
     id: "module-section-content",
     label: "Materi & media",
+    shortLabel: "Materi",
     detail: "Teks, slide, gambar, dan video",
     icon: "edit",
   },
   {
     id: "module-section-outcomes",
     label: "Outcome",
+    shortLabel: "Outcome",
     detail: "Tujuan, poin penting, checklist",
     icon: "checkRead",
   },
   {
     id: "module-section-practice",
     label: "Praktik",
+    shortLabel: "Praktik",
     detail: "Tugas dan naskah video",
     icon: "target",
   },
@@ -473,6 +477,7 @@ export default function AdminModuleEditor() {
   const isDirtyRef = useRef(false);
   const pendingNavigationRef = useRef(null);
   const historyGuardRef = useRef(null);
+  const editorialComposerRef = useRef(null);
   const draftKey = useMemo(
     () => editorDraftKey(accountId, courseId, editorModuleId),
     [accountId, courseId, editorModuleId],
@@ -848,7 +853,7 @@ export default function AdminModuleEditor() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="content" className="mt-5">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_16rem]">
+          <div className="space-y-3">
             <EditorQuickNav
               sections={EDITOR_SECTIONS}
               activeSection={activeSection}
@@ -857,13 +862,11 @@ export default function AdminModuleEditor() {
               onSave={submitEditorForm}
               isDirty={isDirty}
               isSaving={isSaving}
+              elementItems={editorialInsertActions}
+              onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             />
-            <form id="module-editor-form" onSubmit={save} className="space-y-5 xl:col-start-1 xl:row-start-1">
-            <Surface tone="orange" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3"><AapmIcon name="edit" className="mt-0.5 h-5 w-5 shrink-0 text-tint-orange-foreground" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-tint-orange-foreground/75">Content workflow</div><h2 className="mt-1 text-base font-semibold">Bangun modul yang siap dipelajari</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Lengkapi identitas, media, materi, dan outcome. Field yang belum siap dapat disimpan lalu dilanjutkan dari editor ini.</p></div></div>
-              <div className="grid shrink-0 grid-cols-3 gap-2 text-center text-[10px] font-semibold text-muted-foreground"><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">01</div><div className="mt-1">Struktur</div></div><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">02</div><div className="mt-1">Materi</div></div><div className="rounded-lg border border-tint-orange-border bg-background/75 px-2 py-2"><div className="text-brand-orange">03</div><div className="mt-1">Evaluasi</div></div></div>
-            </Surface>
-            <Surface id="module-section-identity" className="scroll-mt-24 p-5">
+            <form id="module-editor-form" onSubmit={save} className="space-y-4">
+            <Surface id="module-section-identity" className="scroll-mt-24 p-4 sm:p-5">
               <div className="mb-4 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Structure</div><h2 className="mt-1 text-base font-semibold">Identitas modul</h2></div><span className="text-[11px] text-muted-foreground">Wajib untuk tampil di roadmap</span></div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2">
@@ -934,9 +937,10 @@ export default function AdminModuleEditor() {
                 />
               </div>
             </Surface>
-            <Surface id="module-section-content" className="scroll-mt-24 p-5">
+            <Surface id="module-section-content" className="scroll-mt-24 p-4 sm:p-5">
               <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">02 · Materi utama</div><h2 className="mt-1 text-base font-semibold">Tulis materi dan sisipkan media</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Tulis seperti di Word, lalu sisipkan slide, gambar, tabel, sorotan, tautan, atau video tanpa kehilangan bentuk elemen learner.</p></div>
               <EditorialComposer
+                ref={editorialComposerRef}
                 value={form.editorialContent}
                 fallback={form.content}
                 legacyVideoUrl={form.videoUrl}

@@ -11,7 +11,6 @@ import {
   IconButton,
   Input,
   Label,
-  Surface,
   Textarea,
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
@@ -316,13 +315,22 @@ const quickBlockLabels = Object.freeze({
   video: "Video",
 });
 
-const editorialQuickSections = [
-  { id: "editorial-main-canvas", label: "Kanvas teks", shortLabel: "Kanvas", detail: "Tulis dan format", icon: "edit" },
-  { id: "editorial-structured-blocks", label: "Elemen materi", shortLabel: "Elemen", detail: "Slide, gambar, tabel", icon: "modules" },
-  { id: "editorial-video-section", label: "Video", shortLabel: "Video", detail: "Kartu video learner", icon: "solar:play-circle-bold" },
-];
+export const editorialInsertActions = Object.freeze([
+  ...insertableTypes.map((type) => ({
+    type,
+    label: quickBlockLabels[type],
+    icon: blockMeta[type]?.icon || "add",
+    detail: blockMeta[type]?.description || "Elemen materi terstruktur.",
+  })),
+  {
+    type: "video",
+    label: quickBlockLabels.video,
+    icon: "solar:play-circle-bold",
+    detail: "Kartu video learner.",
+  },
+]);
 
-export default function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange }) {
+const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange }, ref) {
   const editorialDocument = ensureEditorialDocument(value);
   const storedVideos = editorialVideoBlocks(value);
   const videos = storedVideos.length ? storedVideos : legacyVideoUrl.trim() ? [{ id: "legacy-video", type: "video", url: legacyVideoUrl, caption: "" }] : [];
@@ -387,49 +395,26 @@ export default function EditorialComposer({ value, fallback = "", legacyVideoUrl
     return () => window.cancelAnimationFrame(frameId);
   }, [contentBlocks]);
 
-  const revealQuickSection = (sectionId) => {
-    const targetId = sectionId === "editorial-structured-blocks" && !contentBlocks.length
-      ? "editorial-insert-rail"
-      : sectionId;
-    scrollToSection(targetId);
-  };
   const addVideoAndReveal = () => {
     addVideo();
     scrollToSection("editorial-video-section");
   };
 
+  React.useImperativeHandle(ref, () => ({
+    addElement: (type) => {
+      if (type === "video") {
+        addVideoAndReveal();
+        return;
+      }
+      addContentBlock(type);
+    },
+  }), [addContentBlock, addVideoAndReveal]);
+
   return (
     <div className="space-y-5" data-editorial-mode="hybrid">
       <div className="sr-only" aria-live="polite">{announcement}</div>
 
-      <div className="sticky top-2 z-30 flex min-w-0 items-center gap-1 overflow-hidden rounded-xl border border-border bg-surface-elevated p-1 shadow-sm xl:hidden" aria-label="Akses cepat materi">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-brand-orange" title="Navigasi materi" aria-hidden="true">
-          <AapmIcon name="sidebar" className="h-3.5 w-3.5" />
-        </div>
-        <nav className="aapm-scrollbar flex min-w-0 gap-0.5 overflow-x-auto" aria-label="Bagian materi">
-          {editorialQuickSections.map((section, index) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => revealQuickSection(section.id)}
-              aria-label={`${section.label}: ${section.detail}`}
-              title={`${section.label}: ${section.detail}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="font-mono text-[10px] text-brand-orange">{String(index + 1).padStart(2, "0")}</span>
-              {section.shortLabel || section.label}
-            </button>
-          ))}
-        </nav>
-        <Button type="button" size="sm" className="h-8 shrink-0 rounded-lg bg-brand-orange px-2 text-[11px] text-white hover:bg-brand-orange/90" onClick={() => addContentBlock("slides")} aria-label="Tambah slide" title="Tambah slide">
-          <AapmIcon name="add" className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Tambah slide</span>
-          <span className="sm:hidden">Slide</span>
-        </Button>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_15rem]">
-        <div className="min-w-0 space-y-5">
+      <div className="min-w-0 space-y-5">
           <section id="editorial-main-canvas" className="scroll-mt-24 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
@@ -444,20 +429,9 @@ export default function EditorialComposer({ value, fallback = "", legacyVideoUrl
             </div>
             <div className="mt-4"><RichTextEditor id="module-inline-editor" value={inlineContent} onChange={updateInlineContent} /></div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] leading-4 text-muted-foreground"><span><strong className="font-semibold text-foreground">Enter</strong> membuat paragraf baru</span><span><strong className="font-semibold text-foreground">Ctrl/⌘ + Z</strong> untuk mengurungkan</span><span>Paste dari Word dibersihkan secara aman</span></div>
-            <div id="editorial-insert-rail" className="mt-5 scroll-mt-24 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-3.5 sm:p-4" data-editorial-insert-rail>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange text-white"><AapmIcon name="add" className="h-4 w-4" /></span>
-                  <div><p className="text-xs font-semibold">Sisipkan ke materi</p><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Elemen pilihan akan muncul setelah kanvas teks dan tetap bisa diurutkan.</p></div>
-                </div>
-                <Badge variant="outline" className="border-brand-orange/25 text-brand-orange">{contentBlocks.length} elemen</Badge>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {insertableTypes.map((type) => {
-                  const item = blockMeta[type];
-                  return <Button key={type} type="button" size="sm" variant={type === "slides" ? "default" : "outline"} className={cn("h-8 rounded-lg px-2.5 text-[11px]", type === "slides" && "bg-brand-orange text-white hover:bg-brand-orange/90")} aria-label={`Sisipkan ${item?.label || type}`} title={`Sisipkan ${item?.label || type}`} onClick={() => addContentBlock(type)}><AapmIcon name={item?.icon || "add"} className="h-3.5 w-3.5" />{item?.label || type}</Button>;
-                })}
-              </div>
+            <div id="editorial-insert-rail" className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground" data-editorial-insert-rail>
+              <span><strong className="font-semibold text-foreground">{contentBlocks.length ? `${contentBlocks.length} elemen tersisip.` : "Belum ada elemen tambahan."}</strong> Gunakan menu <span className="font-semibold text-foreground">Tambah</span> di bar editor untuk memasukkan slide, gambar, tabel, dan lainnya.</span>
+              {videos.length > 0 && <span className="shrink-0 font-semibold text-brand-orange">{videos.length} video</span>}
             </div>
           </section>
 
@@ -478,42 +452,14 @@ export default function EditorialComposer({ value, fallback = "", legacyVideoUrl
             </div>
             {videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video. Tambahkan hanya jika modul ini memiliki materi video.</div>}
           </section>
-        </div>
-
-        <aside className="hidden xl:block">
-          <Surface className="sticky top-5 p-2.5">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange" aria-hidden="true"><AapmIcon name="sidebar" className="h-3.5 w-3.5" /></span>
-                <h3 className="truncate text-xs font-semibold">Akses cepat</h3>
-              </div>
-              <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground">{contentBlocks.length + videos.length} item</Badge>
-            </div>
-            <nav className="mt-2 space-y-0.5" aria-label="Bagian materi">
-              {editorialQuickSections.map((section, index) => (
-                <button key={section.id} type="button" onClick={() => revealQuickSection(section.id)} aria-label={`${section.label}: ${section.detail}`} title={`${section.label}: ${section.detail}`} className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-subtle font-mono text-[10px] font-bold text-muted-foreground group-hover:text-foreground">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="min-w-0"><span className="block truncate text-[11px] font-semibold leading-4">{section.label}</span><span className="block truncate text-[9px] leading-3 text-muted-foreground">{section.id === "editorial-structured-blocks" && !contentBlocks.length ? "Tambah elemen dari kanvas" : section.detail}</span></span>
-                </button>
-              ))}
-            </nav>
-            <div className="mt-2 border-t border-border pt-2">
-              <p className="px-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tambah elemen</p>
-              <div className="mt-1.5 grid grid-cols-2 gap-1">
-                {insertableTypes.map((type) => {
-                  const item = blockMeta[type];
-                  return <Button key={type} type="button" size="sm" variant={type === "slides" ? "default" : "outline"} className={cn("h-8 min-w-0 justify-start rounded-lg px-2 text-[10px]", type === "slides" && "bg-brand-orange text-white hover:bg-brand-orange/90")} aria-label={`Sisipkan ${item?.label || type}`} title={`Sisipkan ${item?.label || type}`} data-editorial-quick-add={type} onClick={() => addContentBlock(type)}><AapmIcon name={item?.icon || "add"} className="h-3.5 w-3.5" /><span className="truncate">{quickBlockLabels[type] || item?.label || type}</span></Button>;
-                })}
-                <Button type="button" size="sm" variant="outline" className="h-8 min-w-0 justify-start rounded-lg px-2 text-[10px]" aria-label="Tambah video" title="Tambah video" data-editorial-quick-add="video" onClick={addVideoAndReveal}><AapmIcon name="solar:play-circle-bold" className="h-3.5 w-3.5" /><span className="truncate">{quickBlockLabels.video}</span></Button>
-              </div>
-            </div>
-            <div className="mt-2 rounded-lg bg-surface-subtle px-2 py-1.5 text-[9px] leading-3 text-muted-foreground"><span className="font-semibold text-foreground">Tip:</span> pilih elemen; form baru otomatis dibawa ke layar.</div>
-          </Surface>
-        </aside>
       </div>
 
       <ConfirmDialog open={Boolean(pendingContentBlockDelete)} onOpenChange={(open) => !open && setPendingContentBlockDelete(null)} title="Hapus elemen materi?" description={`${pendingContentBlockDelete?.label || "Elemen"} akan dihapus dari alur learner. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus elemen" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeContentBlock} />
       <ConfirmDialog open={Boolean(pendingVideoDelete)} onOpenChange={(open) => !open && setPendingVideoDelete(null)} title="Hapus video?" description={`Video ${pendingVideoDelete ? pendingVideoDelete.index + 1 : ""} akan dihapus dari modul. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus video" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeVideo} />
     </div>
   );
-}
+  });
+
+EditorialComposer.displayName = "EditorialComposer";
+
+export default EditorialComposer;
