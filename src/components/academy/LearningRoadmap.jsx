@@ -71,7 +71,7 @@ function ModuleTile({ module, state }) {
   const identity = moduleIdentity[module.level] || moduleIdentity[1];
   const tile = (
     <div className={cn(
-      "group relative min-w-0 overflow-hidden rounded-xl border p-3.5 transition-[border-color,box-shadow,transform,background-color] sm:p-4",
+      "group relative min-w-0 overflow-hidden rounded-[var(--radius-control)] border p-3.5 transition-[border-color,box-shadow,transform,background-color] sm:p-4",
       isCurrent && "border-brand-orange/45 bg-tint-orange shadow-[0_10px_30px_hsl(var(--aapm-orange-700)/0.10)]",
       state === "completed" && "border-border bg-background",
       state === "available" && "border-border bg-background",
@@ -81,7 +81,7 @@ function ModuleTile({ module, state }) {
       {isCurrent && <span className="absolute inset-y-0 left-0 w-1 bg-brand-orange" />}
       <div className="flex min-w-0 items-start gap-3">
         <span className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold",
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-sm font-semibold",
           state === "completed" && "bg-tint-green text-brand-green",
           isCurrent && "bg-brand-orange text-white",
           state === "available" && "bg-surface-inset text-muted-foreground",
@@ -93,7 +93,7 @@ function ModuleTile({ module, state }) {
           <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                <span className={cn("inline-flex h-5 w-5 items-center justify-center rounded-md", moduleIdentityStyles[identity.tone])}>
+                <span className={cn("inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius-control)]", moduleIdentityStyles[identity.tone])}>
                   <AapmIcon name={identity.icon} className="h-3 w-3" />
                 </span>
                 <span className="truncate">Modul {module.moduleNumber} · {module.category}</span>
@@ -110,7 +110,7 @@ function ModuleTile({ module, state }) {
   );
 
   if (state === "locked") return <div aria-disabled="true" title="Selesaikan modul sebelumnya untuk membuka lesson ini.">{tile}</div>;
-  return <Link to={`/modules/${module.moduleNumber}`} aria-current={isCurrent ? "step" : undefined} className={cn("block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2", isCurrent && "md:col-span-2")}>{tile}</Link>;
+  return <Link to={`/modules/${module.moduleNumber}`} aria-current={isCurrent ? "step" : undefined} className={cn("block min-w-0 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2", isCurrent && "md:col-span-2")}>{tile}</Link>;
 }
 
 function LevelCard({ level, modules, allModules, completedSet, accent }) {
@@ -119,12 +119,12 @@ function LevelCard({ level, modules, allModules, completedSet, accent }) {
   const hasCurrent = moduleStates.includes("current");
 
   return (
-    <AccordionItem id={`level-${level.number}`} value={`level-${level.number}`} className={cn("group/level h-fit min-w-0 self-start overflow-hidden rounded-2xl border bg-background shadow-sm transition-[border-color,box-shadow]", hasCurrent && "ring-1 ring-brand-orange/20 lg:col-span-2", "data-[state=open]:border-brand-green/35 data-[state=open]:shadow-[var(--surface-shadow-hover)]")}>
+    <AccordionItem id={`level-${level.number}`} value={`level-${level.number}`} className={cn("group/level h-fit min-w-0 self-start overflow-hidden rounded-[var(--radius-card)] border bg-background shadow-sm transition-[border-color,box-shadow]", hasCurrent && "ring-1 ring-brand-orange/20 lg:col-span-2", "data-[state=open]:border-brand-green/35 data-[state=open]:shadow-[var(--surface-shadow-hover)]")}>
       <AccordionTrigger className="group/header relative w-full px-4 py-4 hover:no-underline sm:px-5 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-muted-foreground">
         <span className={cn("absolute inset-y-0 left-0 w-1", accent.line)} />
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold", accent.icon)}>{String(level.number).padStart(2, "0")}</span>
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-sm font-bold", accent.icon)}>{String(level.number).padStart(2, "0")}</span>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold tracking-[-0.015em] sm:text-base">{level.name}</h3>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{level.description}</p>
@@ -159,9 +159,9 @@ export default function LearningRoadmap({ modules = [], progress = [] }) {
         const accent = accentStyles[track.accent];
         return (
           <section key={track.key} className="min-w-0">
-            <div className={cn("mb-3 flex min-w-0 flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5", accent.section)}>
+            <div className={cn("mb-3 flex min-w-0 flex-col gap-3 rounded-[var(--radius-card)] border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5", accent.section)}>
               <div className="flex min-w-0 items-start gap-3">
-                <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", accent.icon)}><AapmIcon name={track.icon} className="h-5 w-5" /></span>
+                <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)]", accent.icon)}><AapmIcon name={track.icon} className="h-5 w-5" /></span>
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{track.kicker}</p>
                   <h2 className="mt-0.5 text-lg font-semibold tracking-[-0.025em]">{track.title}</h2>

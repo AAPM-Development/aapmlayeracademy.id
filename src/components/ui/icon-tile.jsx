@@ -5,7 +5,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 const iconTileVariants = cva(
-  "aapm-icon-tile relative isolate inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-transparent transition-colors",
+  "aapm-icon-tile aapm-token-icon relative isolate inline-flex shrink-0 items-center justify-center overflow-hidden border border-transparent",
   {
     variants: {
       tone: {
@@ -13,16 +13,16 @@ const iconTileVariants = cva(
         green: "border-tint-green-border/60 bg-tint-green text-tint-green-foreground",
         lime: "border-tint-lime-border/70 bg-tint-lime text-tint-lime-foreground",
         orange: "border-tint-orange-border/70 bg-tint-orange text-tint-orange-foreground",
-        /* Legacy tone names remain source-compatible, but resolve to the
-         * approved AAPM palette instead of leaking recipe blue/violet hues. */
-        blue: "border-tint-lime-border/70 bg-tint-lime text-tint-lime-foreground",
-        violet: "border-tint-orange-border/70 bg-tint-orange text-tint-orange-foreground",
+        /* Blue and violet are data/status roles. They remain available for
+         * truthful categories instead of being flattened into brand green. */
+        blue: "border-tint-blue-border/70 bg-tint-blue text-tint-blue-foreground",
+        violet: "border-tint-violet-border/70 bg-tint-violet text-tint-violet-foreground",
         slate: "border-border/60 bg-surface-inset text-muted-foreground",
       },
       size: {
-        sm: "h-8 w-8 [&_svg]:size-4",
-        md: "h-10 w-10 [&_svg]:size-[18px]",
-        lg: "h-12 w-12 [&_svg]:size-5",
+        sm: "h-[var(--icon-tile-size-sm)] w-[var(--icon-tile-size-sm)] [&_svg]:size-[var(--icon-size-status)]",
+        md: "h-[var(--icon-tile-size-md)] w-[var(--icon-tile-size-md)] [&_svg]:size-[var(--icon-size-control)]",
+        lg: "h-[var(--icon-tile-size-lg)] w-[var(--icon-tile-size-lg)] [&_svg]:size-[var(--icon-size-navigation)]",
       },
     },
     defaultVariants: {

@@ -2,23 +2,23 @@ import React, { useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
-import { Badge, IconTile, Surface } from "@/components/primitives";
+import { Badge, IconTile, Input, Surface } from "@/components/primitives";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
 const tools = [
-  { id: "fcr", name: "FCR", icon: "solar:chart-square-bold-duotone", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
-  { id: "eggmass", name: "Egg Mass", icon: "solar:chart-2-bold-duotone", tone: "orange", description: "Ukur output telur per ekor per hari." },
-  { id: "uniformity", name: "Uniformity", icon: "solar:ruler-bold-duotone", tone: "lime", description: "Lihat konsistensi bobot flock." },
-  { id: "mortality", name: "Mortality", icon: "solar:graph-down-bold-duotone", tone: "orange", description: "Pantau kehilangan dan livability." },
+  { id: "fcr", name: "FCR", icon: "analytics", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
+  { id: "eggmass", name: "Egg Mass", icon: "chart", tone: "orange", description: "Ukur output telur per ekor per hari." },
+  { id: "uniformity", name: "Uniformity", icon: "chart", tone: "lime", description: "Lihat konsistensi bobot flock." },
+  { id: "mortality", name: "Mortality", icon: "trendDown", tone: "orange", description: "Pantau kehilangan dan livability." },
   {
     id: "waterfeed",
     name: "Water/Feed Ratio",
-    icon: "solar:waterdrops-bold-duotone",
+    icon: "progress",
     tone: "lime",
     description: "Deteksi perubahan konsumsi air dan pakan.",
   },
-  { id: "ventilation", name: "Ventilasi", icon: "solar:wind-bold-duotone", tone: "green", description: "Terjemahkan volume kandang menjadi airflow." },
-  { id: "roi", name: "ROI & Break Even", icon: "solar:money-bag-bold-duotone", tone: "orange", description: "Uji kelayakan keputusan investasi farm." },
+  { id: "ventilation", name: "Ventilasi", icon: "settings", tone: "green", description: "Terjemahkan volume kandang menjadi airflow." },
+  { id: "roi", name: "ROI & Break Even", icon: "finance", tone: "orange", description: "Uji kelayakan keputusan investasi farm." },
 ];
 
 export default function Calculators() {
@@ -35,7 +35,7 @@ export default function Calculators() {
         actions={
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground">
             <AapmIcon
-              name="solar:calculator-bold-duotone"
+              name="analytics"
               className="h-3.5 w-3.5 text-brand-orange"
             />{" "}
             7 kalkulator
@@ -65,7 +65,7 @@ export default function Calculators() {
         <Surface className="min-w-0 p-3 lg:sticky lg:top-5 lg:self-start">
           <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pilih alat</div>
           <div ref={toolScrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
-            {tools.map((tool) => <button key={tool.id} type="button" onClick={() => setActive(tool.id)} className={`group flex min-w-[11.5rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full ${active === tool.id ? "border-brand-orange/45 bg-tint-orange text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-subtle hover:text-foreground"}`}><IconTile icon={tool.icon} tone={active === tool.id ? tool.tone : "neutral"} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{tool.name}</span><span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{tool.description}</span></span><AapmIcon name="chevronRight" className={`h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${active === tool.id ? "text-brand-orange" : "text-muted-foreground/50"}`} /></button>)}
+            {tools.map((tool) => <button key={tool.id} type="button" onClick={() => setActive(tool.id)} className={`aapm-token-control group flex min-w-[11.5rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full ${active === tool.id ? "border-brand-orange/45 bg-tint-orange text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-subtle hover:text-foreground"}`}><IconTile icon={tool.icon} tone={active === tool.id ? tool.tone : "neutral"} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{tool.name}</span><span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{tool.description}</span></span><AapmIcon name="chevronRight" className={`h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${active === tool.id ? "text-brand-orange" : "text-muted-foreground/50"}`} /></button>)}
           </div>
         </Surface>
         <div className="min-w-0">
@@ -82,22 +82,22 @@ export default function Calculators() {
   );
 }
 
-function Card({ title, formula, children, result }) {
+function CalculatorCard({ title, formula, children, result }) {
   return (
-    <div className="relative min-w-0 max-w-full overflow-hidden rounded-[var(--card-radius)] border border-border bg-card p-5 shadow-[var(--surface-shadow)] sm:p-6">
+    <Surface className="aapm-token-card relative min-w-0 max-w-full overflow-hidden p-5 sm:p-6" data-t7-region="calculator-card">
       <div className="absolute inset-x-0 top-0 h-1 bg-brand-orange" />
       <div className="mb-4 flex items-start gap-3">
-        <IconTile icon="solar:calculator-bold-duotone" tone="orange" size="md" />
+        <IconTile icon="analytics" tone="orange" size="md" />
         <div className="min-w-0"><h2 className="font-semibold">{title}</h2><p className="mt-1 text-xs text-muted-foreground">Masukkan angka aktual untuk mendapatkan indikator awal.</p></div>
       </div>
       {formula && (
-        <div className="mb-4 min-w-0 max-w-full overflow-x-auto rounded-xl border border-border bg-surface-subtle px-3 py-2.5 font-mono text-xs leading-5 text-muted-foreground whitespace-nowrap">
+        <div className="aapm-token-inset mb-4 min-w-0 max-w-full overflow-x-auto px-3 py-2.5 font-mono text-xs leading-5 text-muted-foreground whitespace-nowrap">
           {formula}
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">{children}</div>
       {result !== undefined && result !== null && (
-        <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange px-4 py-3">
+        <div className="aapm-token-alert mt-5 border border-tint-orange-border bg-tint-orange px-4 py-3">
           <div className="text-xs font-medium text-tint-orange-foreground">
             Hasil
           </div>
@@ -106,7 +106,7 @@ function Card({ title, formula, children, result }) {
           </div>
         </div>
       )}
-    </div>
+    </Surface>
   );
 }
 
@@ -114,13 +114,13 @@ function Field({ label, value, onChange, unit, placeholder }) {
   return (
     <label className="block">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="aapm-field mt-1 flex min-h-11 items-center rounded-xl border border-input bg-background px-3 transition-colors focus-within:border-brand-orange/55 focus-within:ring-2 focus-within:ring-brand-orange/10">
-        <input
+      <div className="aapm-field aapm-token-control mt-1 flex min-h-11 items-center border border-input px-3 transition-colors focus-within:border-brand-orange/55 focus-within:ring-2 focus-within:ring-brand-orange/10">
+        <Input
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-transparent py-2.5 text-sm outline-none"
+          className="h-10 w-full border-0 bg-transparent px-0 py-2.5 text-sm shadow-none outline-none focus-visible:ring-0"
         />
         {unit && (
           <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -142,7 +142,7 @@ function FcrCalc() {
   const eggMassKg = (e * w) / 1000;
   const fcr = eggMassKg > 0 ? (f / eggMassKg).toFixed(2) : "—";
   return (
-    <Card
+    <CalculatorCard
       title="Feed Conversion Ratio (FCR)"
       formula="FCR = Total Feed (kg) ÷ Egg Mass (kg), Egg Mass = Total Eggs × Egg Weight ÷ 1000"
     >
@@ -188,7 +188,7 @@ function FcrCalc() {
               ? "Baik"
               : "Perlu evaluasi feed & produksi",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 
@@ -199,7 +199,7 @@ function EggMassCalc() {
   const w = parseFloat(ew) || 0;
   const mass = ((h * w) / 100).toFixed(1);
   return (
-    <Card
+    <CalculatorCard
       title="Egg Mass per Ekor per Hari"
       formula="Egg Mass = HDP(%) × Egg Weight(g) ÷ 100"
     >
@@ -225,7 +225,7 @@ function EggMassCalc() {
             ? "Baik"
             : "Di bawah target — evaluasi produksi & berat telur",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 
@@ -238,7 +238,7 @@ function UniformityCalc() {
   const t = parseFloat(total) || 0;
   const u = t > 0 ? Math.round((wi / t) * 100) : 0;
   return (
-    <Card
+    <CalculatorCard
       title="Uniformity (%)"
       formula="Uniformity = (Jumlah ayam dalam ±10% berat rata-rata ÷ Total ayam) × 100"
     >
@@ -271,7 +271,7 @@ function UniformityCalc() {
             ? "Baik"
             : "Rendah — perlu seleksi/culling",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 
@@ -283,7 +283,7 @@ function MortalityCalc() {
   const m = s > 0 ? ((d / s) * 100).toFixed(2) : "—";
   const liv = s > 0 ? (100 - parseFloat(m)).toFixed(1) : "—";
   return (
-    <Card
+    <CalculatorCard
       title="Mortality & Livability"
       formula="Mortality = (Jumlah Mati ÷ Populasi Awal) × 100  |  Livability = 100 − Mortality"
     >
@@ -309,7 +309,7 @@ function MortalityCalc() {
             ? "Pantau — sedang"
             : "Tinggi — investigasi penyebab",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 
@@ -320,7 +320,7 @@ function WaterFeedCalc() {
   const f = parseFloat(feed) || 0;
   const r = f > 0 ? (w / f).toFixed(2) : "—";
   return (
-    <Card
+    <CalculatorCard
       title="Water/Feed Ratio"
       formula="Ratio = Water Intake (ml) ÷ Feed Intake (g)  — Normal: 1.8–2.2"
     >
@@ -348,7 +348,7 @@ function WaterFeedCalc() {
               ? "Tinggi — cek suhu/stres/kualitas air"
               : "Rendah — cek akses air & kualitas",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 
@@ -368,7 +368,7 @@ function VentilationCalc() {
   // typical 36" fan ~ 340 m3/min
   const fansTunnel = tunnelVent > 0 ? Math.ceil(tunnelVent / 340) : 0;
   return (
-    <Card
+    <CalculatorCard
       title="Kebutuhan Ventilasi & Jumlah Fan"
       formula="Min vent (m³/min) = berat total (kg) × 0.014 | Tunnel = × 0.07 | Fan 36″ ≈ 340 m³/min"
     >
@@ -414,7 +414,7 @@ function VentilationCalc() {
         `${fansTunnel} fan 36″`,
         "Perkiraan; sesuaikan dengan static pressure & design kandang",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 
@@ -429,7 +429,7 @@ function RoiCalc() {
   const bep = margin > 0 ? (c / margin).toFixed(1) : "—";
   const roi = c > 0 && margin > 0 ? ((margin / c) * 100).toFixed(0) : "—";
   return (
-    <Card
+    <CalculatorCard
       title="ROI & Break Even Point"
       formula="Gross Margin = Revenue − OPEX | BEP = CAPEX ÷ Margin | ROI = (Margin ÷ CAPEX) × 100"
     >
@@ -480,7 +480,7 @@ function RoiCalc() {
             ? "Marginal — optimalkan biaya"
             : "Belum profit — evaluasi OPEX/revenue",
       )}
-    </Card>
+    </CalculatorCard>
   );
 }
 

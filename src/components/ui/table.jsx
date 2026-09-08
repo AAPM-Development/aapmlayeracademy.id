@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
 /** @type {any} */
 const Table = ({ className, ...props } = {}) => (
   <T7Table
-    className={className}
+    className={cn("aapm-table", className)}
     data-t7-bridge="academy-table"
     {...props}
   />

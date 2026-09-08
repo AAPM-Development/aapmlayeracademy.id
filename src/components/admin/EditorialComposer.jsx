@@ -11,6 +11,7 @@ import {
   Checkbox,
   ConfirmDialog,
   IconButton,
+  IconTile,
   Input,
   Label,
   Select,
@@ -18,6 +19,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Textarea,
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
@@ -35,6 +42,23 @@ import {
 } from "@/lib/editorialDocument";
 
 const blockMeta = Object.fromEntries(editorialBlockLibrary.map((item) => [item.type, item]));
+/* Editor content types are domain data, but their controls still use the
+ * canonical T7 icon registry. Keeping this map here prevents authored Solar
+ * names from creating a second visual language inside the composer. */
+const editorIconByType = Object.freeze({
+  richText: "file",
+  heading: "type",
+  table: "table",
+  image: "image",
+  slides: "image",
+  video: "preview",
+  link: "arrowRight",
+  cta: "arrowRight",
+  callout: "info",
+  divider: "clear",
+});
+
+const editorIcon = (type) => editorIconByType[type] || "file";
 const MAX_IMAGE_UPLOAD_BYTES = 20 * 1024 * 1024;
 const MAX_PRESENTATION_UPLOAD_BYTES = 50 * 1024 * 1024;
 const imageExtensions = /\.(?:jpe?g|png|gif|webp|avif)$/i;
@@ -207,7 +231,7 @@ function ImageProportionHint({ src, ratio }) {
     : ratio === "natural"
       ? "Rasio asli dipertahankan di learner."
       : "Gambar akan di-crop sesuai rasio pilihan; pastikan subjek utama berada di tengah frame.";
-  return <p className={cn("rounded-xl border px-3 py-2 text-[11px] leading-5", ratio === "natural" && isPortrait ? "border-amber-500/25 bg-amber-500/5 text-amber-800 dark:text-amber-200" : "border-border bg-surface-subtle text-muted-foreground")}><span className="font-semibold text-foreground">{size}</span> · {message}</p>;
+  return <p className={cn("aapm-token-alert rounded-xl border px-3 py-2 text-[11px] leading-5", ratio === "natural" && isPortrait ? "border-tint-orange-border bg-tint-orange text-tint-orange-foreground" : "border-border bg-surface-subtle text-muted-foreground")}><span className="font-semibold text-foreground">{size}</span> · {message}</p>;
 }
 
 function DecorativeImageControl({ id, decorative, onChange }) {
@@ -242,12 +266,10 @@ function TableBlockFields({ block, onChange }) {
          <div className="text-xs font-semibold">Isi tabel</div>
         <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={columns.length >= 8} onClick={addColumn}><AapmIcon name="add" className="h-3.5 w-3.5" />Kolom</Button><Button type="button" size="sm" variant="outline" disabled={rows.length >= 20} onClick={addRow}><AapmIcon name="add" className="h-3.5 w-3.5" />Baris</Button></div>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="min-w-full text-xs">
-          <thead className="bg-surface-subtle"><tr>{columns.map((column, index) => <th key={`column-${index}`} className="min-w-36 border-b border-border p-2 text-left align-top"><label className="sr-only" htmlFor={`${block.id}-column-${index}`}>Nama kolom {index + 1}</label><Input id={`${block.id}-column-${index}`} value={column} maxLength={160} onChange={(event) => updateColumn(index, event.target.value)} className="h-8 bg-background text-xs font-semibold" /></th>)}</tr></thead>
-          <tbody>{rows.map((row, rowIndex) => <tr key={`row-${rowIndex}`}>{columns.map((_, columnIndex) => <td key={`cell-${rowIndex}-${columnIndex}`} className="min-w-36 border-t border-border p-2 align-top"><label className="sr-only" htmlFor={`${block.id}-cell-${rowIndex}-${columnIndex}`}>Baris {rowIndex + 1}, kolom {columnIndex + 1}</label><Textarea id={`${block.id}-cell-${rowIndex}-${columnIndex}`} rows={2} maxLength={3000} value={row?.[columnIndex] || ""} onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)} className="min-h-16 bg-background text-xs" /></td>)}</tr>)}</tbody>
-        </table>
-      </div>
+      <Table className="aapm-editorial-table aapm-editorial-table--editor min-w-full text-xs" aria-label={block.title ? `Editor tabel ${block.title}` : "Editor tabel materi"}>
+        <TableHeader><TableRow>{columns.map((column, index) => <TableHead key={`column-${index}`} className="min-w-36 align-top"><label className="sr-only" htmlFor={`${block.id}-column-${index}`}>Nama kolom {index + 1}</label><Input id={`${block.id}-column-${index}`} value={column} maxLength={160} onChange={(event) => updateColumn(index, event.target.value)} className="aapm-token-control h-8 text-xs font-semibold" /></TableHead>)}</TableRow></TableHeader>
+        <TableBody>{rows.map((row, rowIndex) => <TableRow key={`row-${rowIndex}`} className="align-top">{columns.map((_, columnIndex) => <TableCell key={`cell-${rowIndex}-${columnIndex}`} className="min-w-36 align-top"><label className="sr-only" htmlFor={`${block.id}-cell-${rowIndex}-${columnIndex}`}>Baris {rowIndex + 1}, kolom {columnIndex + 1}</label><Textarea id={`${block.id}-cell-${rowIndex}-${columnIndex}`} rows={2} maxLength={3000} value={row?.[columnIndex] || ""} onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)} className="aapm-token-control min-h-16 text-xs" /></TableCell>)}</TableRow>)}</TableBody>
+      </Table>
     </div>
   );
 }
@@ -381,7 +403,7 @@ function ContentBlockFields({ block, onChange }) {
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
   const mediaTone = ["image", "slides", "video"].includes(block.type);
-  return <article id={contentBlockAnchorId(block.id)} className={cn("scroll-mt-28 rounded-2xl border bg-background p-4 shadow-sm sm:p-5", mediaTone ? "border-brand-orange/25" : "border-border")} data-editorial-block={block.type} data-editorial-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", mediaTone ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  return <article id={contentBlockAnchorId(block.id)} className={cn("aapm-token-card scroll-mt-28 p-4 sm:p-5", mediaTone ? "border-brand-orange/25" : "border-border")} data-editorial-block={block.type} data-editorial-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><IconTile icon={editorIcon(block.type)} tone={mediaTone ? "orange" : "green"} size="md" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
 }
 
 const insertableTypes = editorialBlockLibrary.map((block) => block.type);
@@ -403,7 +425,7 @@ export const editorialInsertActions = Object.freeze([
   ...insertableTypes.map((type) => ({
     type,
     label: quickBlockLabels[type],
-    icon: blockMeta[type]?.icon || "add",
+    icon: editorIcon(type),
   })),
 ]);
 
@@ -449,7 +471,7 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
     <div className="min-w-0 xl:col-start-2 xl:row-start-1 xl:sticky xl:top-24 xl:self-start" data-editorial-outline>
       <section className="rounded-xl border border-border bg-surface-subtle/70 p-2 xl:hidden">
         <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50" aria-expanded={mobileOpen} aria-controls="editorial-outline-mobile-list" onClick={() => setMobileOpen((open) => !open)}>
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-brand-green"><AapmIcon name="solar:list-check-bold" className="h-4 w-4" /></span>
+          <IconTile icon="table" tone="green" size="sm" />
           <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Daftar isi</span><span className="block text-[10px] leading-4 text-muted-foreground">{elementCount} elemen</span></span>
           <AapmIcon name={mobileOpen ? "chevronUp" : "chevronDown"} className="h-4 w-4 text-muted-foreground" />
         </button>
@@ -458,7 +480,7 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
 
       <aside className="hidden overflow-hidden rounded-xl border border-border bg-background/95 shadow-sm xl:block" aria-label="Daftar isi editor">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-brand-green"><AapmIcon name="solar:list-check-bold" className="h-4 w-4" /></span><div><h3 className="text-xs font-semibold">Daftar isi</h3><p className="text-[10px] text-muted-foreground">{elementCount} elemen</p></div></div>
+          <div className="flex min-w-0 items-center gap-2"><IconTile icon="table" tone="green" size="sm" /><div><h3 className="text-xs font-semibold">Daftar isi</h3><p className="text-[10px] text-muted-foreground">{elementCount} elemen</p></div></div>
         </div>
         <div className="aapm-scrollbar max-h-[calc(100vh-10rem)] overflow-y-auto p-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={onNavigate} /></div>
       </aside>
@@ -476,14 +498,14 @@ function EditorialQualityPanel({ signals, onNavigate }) {
   const blocking = signals.filter((signal) => signal.severity === "blocking");
   const advice = signals.filter((signal) => signal.severity !== "blocking");
   const status = blocking.length ? "Lengkapi sebelum simpan" : advice.length ? "Periksa kualitas materi" : "Siap untuk disimpan";
-  const tone = blocking.length ? "border-danger/25 bg-danger/5" : advice.length ? "border-amber-500/25 bg-amber-500/5" : "border-brand-green/25 bg-brand-green/5";
+  const tone = blocking.length ? "border-danger/25 bg-danger/5" : advice.length ? "border-tint-orange-border bg-tint-orange" : "border-tint-green-border bg-tint-green";
   const icon = blocking.length ? "solar:danger-triangle-bold" : advice.length ? "solar:lightbulb-bolt-bold-duotone" : "checkRead";
-  const iconTone = blocking.length ? "text-danger" : advice.length ? "text-amber-700 dark:text-amber-300" : "text-brand-green";
+  const iconTone = blocking.length ? "text-danger" : advice.length ? "text-tint-orange-foreground" : "text-tint-green-foreground";
 
   return (
-    <section className={cn("rounded-2xl border p-4 shadow-sm", tone)} aria-label="Pemeriksaan kualitas materi" data-editorial-quality={blocking.length ? "blocking" : advice.length ? "advice" : "ready"}>
+    <section className={cn("aapm-token-alert rounded-2xl border p-4 shadow-sm", tone)} aria-label="Pemeriksaan kualitas materi" data-editorial-quality={blocking.length ? "blocking" : advice.length ? "advice" : "ready"}>
       <div className="flex flex-wrap items-start gap-3">
-        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70", iconTone)}><AapmIcon name={icon} className="h-4 w-4" /></span>
+        <span className={cn("aapm-token-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70", iconTone)}><AapmIcon name={icon} className="h-4 w-4" /></span>
         <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">{status}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pemeriksaan ini membantu kualitas learner; keputusan isi dan urutan tetap di tangan editor.</p></div>
         <Badge variant="outline" className="bg-background/60 text-[10px]">{blocking.length ? `${blocking.length} perlu dilengkapi` : advice.length ? `${advice.length} catatan` : "Tidak ada catatan"}</Badge>
       </div>
@@ -500,7 +522,7 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
   const outlineItems = React.useMemo(() => blocks.map((block, index) => ({
     id: contentBlockAnchorId(block.id),
     label: outlineLabelForBlock(block, index),
-    icon: blockMeta[block.type]?.icon || "solar:widget-2-bold",
+    icon: editorIcon(block.type),
     tone: ["image", "slides", "video"].includes(block.type) ? "media" : "canvas",
   })), [blocks]);
   const hasOutline = blocks.length > 0;

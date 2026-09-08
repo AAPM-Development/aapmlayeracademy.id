@@ -7,9 +7,7 @@ import {
   QuestionNavigator,
   QuizQuestion,
 } from "@/components/academy/AssessmentComponents";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Card, CardContent, Skeleton } from "@/components/primitives";
 import { useQuizQuestions, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
 import { useToast } from "@/components/ui/use-toast";
 import AapmIcon from "@/components/icons/AapmIcon";

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** Route-level heading backed by the canonical Ten4Seven page-header anatomy. */
 /** @type {any} */
-const PageHeader = function PageHeader({
+const AcademyPageHeader = function AcademyPageHeader({
   eyebrow = "",
   title = "",
   description = "",
@@ -25,4 +25,4 @@ const PageHeader = function PageHeader({
   );
 }
 
-export default PageHeader;
+export default AcademyPageHeader;

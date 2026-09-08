@@ -1,6 +1,7 @@
 // @ts-nocheck
-import React, { useState } from "react";
+import React from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { AppShell } from "@ten4seven/ui";
 import AppBrand from "@/components/AppBrand";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import AapmIcon from "@/components/icons/AapmIcon";
@@ -13,9 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
-  Sheet,
-  SheetContent,
-  SheetTitle,
 } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useThemeMode } from "@/lib/useThemeMode";
@@ -29,12 +27,12 @@ function AdminSidebar({ onNavigate = () => {}, onLogout = () => {}, user = null 
   const navigationScrollRef = useScrollEdgeFade();
 
   return (
-    <aside className="flex h-full w-[var(--aapm-shell-sidebar-width)] flex-col border-r border-[hsl(var(--surface-border))] bg-surface-subtle">
+    <div className="aapm-token-sidebar flex h-full min-h-0 w-full flex-col bg-surface-subtle" data-t7-region="admin-sidebar">
       <Link to="/admin" onClick={onNavigate} className="flex h-[var(--aapm-shell-header-height)] flex-col justify-center gap-1 border-b border-[hsl(var(--surface-border))] px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <AppBrand product="aapm" variant="logo" className="h-auto w-[150px] max-w-full" />
         <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Ruang admin</span>
       </Link>
-      <div ref={navigationScrollRef} className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar min-h-0 flex-1 overflow-y-auto"><AdminNavigation onNavigate={onNavigate} /></div>
+      <div ref={navigationScrollRef} className="aapm-scroll-fade aapm-scroll-fade--subtle aapm-scrollbar min-h-0 flex-1 overflow-y-auto" data-t7-region="admin-nav"><AdminNavigation onNavigate={onNavigate} /></div>
       <div className="shrink-0 border-t border-[hsl(var(--surface-border))] p-3">
         <div className="flex items-center gap-2.5 rounded-xl bg-background/70 px-2.5 py-2">
           <ProfileAvatar user={user} name={displayName} className="h-8 w-8" />
@@ -57,27 +55,33 @@ function AdminSidebar({ onNavigate = () => {}, onLogout = () => {}, user = null 
         </div>
         <p className="mt-2 px-1 text-[10px] leading-4 text-muted-foreground">Data dan kontrol mengikuti API native.</p>
       </div>
-    </aside>
+    </div>
   );
 }
 
 export default function AdminShell() {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
   const location = useLocation();
   const displayName = user?.full_name || user?.email || "Admin";
   const page = getAdminNavigationMeta(location.pathname);
   const mainScrollRef = useScrollEdgeFade();
+  const openCanonicalNavigation = () => {
+    document
+      .getElementById("admin-app-shell")
+      ?.querySelector(".t7-app-mobile-menu")
+      ?.click();
+  };
 
   return (
-    <div className="academy-shell flex h-screen overflow-hidden bg-background text-foreground">
-      <div className="hidden shrink-0 lg:flex"><AdminSidebar user={user} onLogout={logout} /></div>
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-         <SheetContent side="left" className="h-full w-[min(86vw,330px)] p-0 sm:max-w-none"><SheetTitle className="sr-only">Navigasi admin</SheetTitle><AdminSidebar user={user} onLogout={logout} onNavigate={() => setMobileOpen(false)} /></SheetContent>
-      </Sheet>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[var(--aapm-shell-header-height)] shrink-0 items-center justify-between border-b border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] px-4 sm:px-6 lg:px-8">
+    <AppShell
+      id="admin-app-shell"
+      contentAs="div"
+      className="academy-shell aapm-token-shell aapm-t7-app-shell"
+      data-t7-region="admin-shell"
+      sidebar={<AdminSidebar user={user} onLogout={logout} />}
+      topbar={(
+        <div className="aapm-token-header flex h-[var(--aapm-shell-header-height)] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-8" data-t7-region="topbar">
           <div className="flex min-w-0 items-center gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ruang admin</div><div className="truncate text-sm font-semibold">{page.label}</div></div></div>
           <div className="flex items-center gap-1.5">
             <Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/"><AapmIcon name="dashboard" className="h-4 w-4" /> Buka Academy</Link></Button>
@@ -102,10 +106,13 @@ export default function AdminShell() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </header>
-        <main ref={mainScrollRef} className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"><Outlet /></main>
+        </div>
+      )}
+    >
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-t7-region="content-shell">
+        <main ref={mainScrollRef} className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0" data-t7-region="scrollport"><Outlet /></main>
         <MobileBottomNav
-          onOpenMenu={() => setMobileOpen(true)}
+          onOpenMenu={openCanonicalNavigation}
           items={[
              { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
              { to: "/admin/courses", label: "Course", icon: "course" },
@@ -114,6 +121,6 @@ export default function AdminShell() {
           ]}
         />
       </div>
-    </div>
+    </AppShell>
   );
 }

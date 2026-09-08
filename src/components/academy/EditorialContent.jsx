@@ -2,10 +2,20 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Button, Card, CardContent } from "@/components/primitives";
+import {
+  Button,
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import { editorialBlockAnchorId, parseEditorialDocument } from "@/lib/editorialDocument";
 import {
   safeEditorialImage as getSafeEditorialImage,
@@ -80,11 +90,14 @@ function remarkUnderline() {
 }
 
 function MarkdownTable({ children, ...props }) {
-  const scrollRef = useScrollEdgeFade();
   return (
-    <div ref={scrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar my-3 max-w-full overflow-x-auto rounded-xl border border-border" tabIndex={0} aria-label="Tabel materi. Geser horizontal untuk melihat kolom lain.">
-      <table {...props}>{children}</table>
-    </div>
+    <Table
+      {...props}
+      className="aapm-editorial-table"
+      aria-label="Tabel materi. Geser horizontal untuk melihat kolom lain."
+    >
+      {children}
+    </Table>
   );
 }
 
@@ -135,7 +148,7 @@ export function EditorialMarkdown({ children = "", className = "" }) {
 const calloutTone = {
   info: "border-brand-green/20 bg-brand-green/5 text-brand-green",
   practice: "border-brand-orange/20 bg-brand-orange/5 text-brand-orange",
-  warning: "border-amber-500/25 bg-amber-500/5 text-amber-700 dark:text-amber-300",
+  warning: "border-tint-orange-border bg-tint-orange text-tint-orange-foreground",
 };
 
 const imageRatio = {
@@ -150,7 +163,7 @@ function ImageBlock({ block }) {
   if (!src) return null;
   return (
     <figure className={cn("max-w-full", block.width === "wide" ? "lg:-mx-4" : "max-w-4xl")}>
-      <div className={cn("overflow-hidden rounded-2xl border border-border bg-muted", imageRatio[block.ratio] || "")}>
+      <div className={cn("overflow-hidden rounded-[var(--radius-card)] border border-border bg-muted", imageRatio[block.ratio] || "")}>
         <img
           src={src}
           alt={block.decorative ? "" : block.alt || ""}
@@ -167,7 +180,6 @@ function ImageBlock({ block }) {
 function TableBlock({ block }) {
   const columns = Array.isArray(block.columns) ? block.columns : [];
   const rows = Array.isArray(block.rows) ? block.rows : [];
-  const scrollRef = useScrollEdgeFade();
   const hasRowContent = rows.some((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim()));
   const hasColumnContent = columns.some((column) => String(column || "").trim());
   const isEmptyDefaultTable = !block.title?.trim()
@@ -179,23 +191,21 @@ function TableBlock({ block }) {
   return (
     <section className="max-w-none">
       {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
-      <div ref={scrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar max-w-full overflow-x-auto rounded-xl border border-border bg-background" tabIndex={0} aria-label={block.title ? `Tabel ${block.title}. Geser horizontal untuk melihat kolom lain.` : "Tabel materi. Geser horizontal untuk melihat kolom lain."}>
-        <table className="min-w-full w-max border-collapse text-sm">
-          {block.title && <caption className="sr-only">{block.title}</caption>}
-          <thead className="bg-surface-subtle">
-            <tr>
-              {columns.map((column, index) => <th key={`heading-${index}`} scope="col" className="min-w-32 border border-border px-3 py-2 text-left font-semibold text-foreground">{column}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`} className="align-top even:bg-surface-subtle/55">
-                {columns.map((_, columnIndex) => <td key={`cell-${rowIndex}-${columnIndex}`} className="min-w-32 whitespace-pre-wrap break-words border border-border px-3 py-2 leading-6 text-foreground">{row?.[columnIndex] || ""}</td>)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table className="aapm-editorial-table w-max text-sm" aria-label={block.title ? `Tabel ${block.title}. Geser horizontal untuk melihat kolom lain.` : "Tabel materi. Geser horizontal untuk melihat kolom lain."}>
+        {block.title && <TableCaption className="sr-only">{block.title}</TableCaption>}
+        <TableHeader>
+          <TableRow>
+            {columns.map((column, index) => <TableHead key={`heading-${index}`} scope="col" className="min-w-32 whitespace-nowrap">{column}</TableHead>)}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row, rowIndex) => (
+            <TableRow key={`row-${rowIndex}`} className="align-top">
+              {columns.map((_, columnIndex) => <TableCell key={`cell-${rowIndex}-${columnIndex}`} className="min-w-32 whitespace-pre-wrap break-words leading-6">{row?.[columnIndex] || ""}</TableCell>)}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </section>
   );
 }

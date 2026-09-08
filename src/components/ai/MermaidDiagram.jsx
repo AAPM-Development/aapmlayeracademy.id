@@ -5,6 +5,13 @@ function isDarkMode() {
   return document.documentElement.classList.contains("dark");
 }
 
+function themeColor(token, fallback) {
+  const tokenOwner =
+    document.querySelector(".aapm-t7-runtime") || document.documentElement;
+  const value = getComputedStyle(tokenOwner).getPropertyValue(token).trim();
+  return value ? `hsl(${value})` : fallback;
+}
+
 export default function MermaidDiagram({ chart }) {
   const rawId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const [svg, setSvg] = useState("");
@@ -24,26 +31,37 @@ export default function MermaidDiagram({ chart }) {
     let cancelled = false;
     const render = async () => {
       try {
+        // Mermaid owns the SVG markup, but its visual language should still
+        // come from the same Ten4Seven chart/surface roles as KPI and LineChart.
+        // Reading the resolved variables also keeps dark mode and palette
+        // changes in lockstep with the rest of the app.
+        const chartOne = themeColor("--t7-chart-1-hsl", "148 58% 29%");
+        const chartTwo = themeColor("--t7-chart-2-hsl", "193 74% 36%");
+        const chartThree = themeColor("--t7-chart-3-hsl", "30 90% 42%");
+        const foreground = themeColor("--t7-foreground-hsl", dark ? "0 0% 96%" : "0 0% 12%");
+        const border = themeColor("--t7-border-hsl", dark ? "0 0% 24%" : "0 0% 86%");
+        const surface = themeColor("--t7-surface-hsl", dark ? "0 0% 12%" : "0 0% 100%");
+        const surfaceSubtle = themeColor("--t7-surface-subtle-hsl", dark ? "0 0% 16%" : "0 0% 97%");
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "strict",
           theme: dark ? "dark" : "base",
           themeVariables: dark
             ? {
-                primaryColor: "#1f7a3d",
-                primaryTextColor: "#f8fafc",
-                primaryBorderColor: "#4ade80",
-                lineColor: "#94a3b8",
-                secondaryColor: "#1e293b",
-                tertiaryColor: "#172033",
+                primaryColor: surfaceSubtle,
+                primaryTextColor: foreground,
+                primaryBorderColor: chartOne,
+                lineColor: border,
+                secondaryColor: surface,
+                tertiaryColor: chartTwo,
               }
             : {
-                primaryColor: "#eff9f1",
-                primaryTextColor: "#173a25",
-                primaryBorderColor: "#2f8545",
-                lineColor: "#64748b",
-                secondaryColor: "#fff5ef",
-                tertiaryColor: "#fff",
+                primaryColor: surfaceSubtle,
+                primaryTextColor: foreground,
+                primaryBorderColor: chartOne,
+                lineColor: border,
+                secondaryColor: surface,
+                tertiaryColor: chartThree,
               },
         });
         const result = await mermaid.render(`appi-mermaid-${rawId}`, chart);

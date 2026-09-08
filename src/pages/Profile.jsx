@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   IconTile,
+  KPICluster,
   Label,
   Select,
   SelectContent,
@@ -27,29 +28,6 @@ import {
   useAiAccountSettings,
   useSaveAiAccountSettings,
 } from "@/lib/useAiSettings";
-
-function Metric({ icon, label, value, detail, tone = "green" }) {
-  const tones = {
-    green: "border-tint-green-border bg-tint-green text-brand-green",
-    lime: "border-tint-lime-border bg-tint-lime text-tint-lime-foreground",
-    orange: "border-tint-orange-border bg-tint-orange text-brand-orange",
-    violet: "border-tint-lime-border bg-tint-lime text-tint-lime-foreground",
-  };
-  return (
-    <Surface className="relative overflow-hidden p-4">
-      <div className="flex items-start justify-between gap-3">
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${tones[tone]}`}>
-          <AapmIcon name={icon} className="h-4.5 w-4.5" />
-        </span>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          {label}
-        </span>
-      </div>
-      <div className="mt-5 text-2xl font-semibold tracking-[-0.04em]">{value}</div>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </Surface>
-  );
-}
 
 function resizeProfileImage(file) {
   return new Promise((resolve, reject) => {
@@ -223,12 +201,50 @@ export default function Profile() {
         <div className="grid gap-px bg-border sm:grid-cols-3"><div className="bg-background px-5 py-4"><div className="text-xs text-muted-foreground">Poin pembelajaran</div><div className="mt-1 text-xl font-semibold">{learning.points || 0}</div></div><div className="bg-background px-5 py-4"><div className="text-xs text-muted-foreground">Progress kurikulum</div><div className="mt-1 text-xl font-semibold">{learning.completedModules || 0}<span className="text-sm text-muted-foreground">/{learning.moduleTotal || 0} modul</span></div></div><div className="bg-background px-5 py-4"><div className="text-xs text-muted-foreground">Ke level berikutnya</div><div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-brand-orange transition-[width]" style={{ width: `${nextLevelProgress}%` }} /></div></div></div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon="course" label="Modul selesai" value={learning.completedModules || 0} detail={`${learning.progressPercent || 0}% dari kurikulum`} />
-        <Metric icon="target" label="Rata-rata kuis" value={learning.quizAverage === null || learning.quizAverage === undefined ? "—" : `${learning.quizAverage}%`} detail="Dihitung dari nilai tersimpan" tone="orange" />
-        <Metric icon="clock" label="Waktu belajar" value={`${Math.floor((learning.timeSpentMinutes || 0) / 60)}j`} detail={`${(learning.timeSpentMinutes || 0) % 60} menit tercatat`} tone="lime" />
-        <Metric icon="certificate" label="Sertifikat" value={learning.certificateCount || 0} detail="Diterbitkan oleh Academy" />
-      </section>
+      <KPICluster
+        className="aapm-profile-kpi"
+        label="Ringkasan profil belajar"
+        columns={4}
+        variant="cards"
+        items={[
+          {
+            icon: "book",
+            label: "Modul selesai",
+            value: String(learning.completedModules || 0),
+            note: `${learning.progressPercent || 0}% dari kurikulum`,
+            tone: "success",
+            colorway: 1,
+            emphasis: "solid",
+          },
+          {
+            icon: "analytics",
+            label: "Rata-rata kuis",
+            value: learning.quizAverage === null || learning.quizAverage === undefined ? "—" : `${learning.quizAverage}%`,
+            note: "Dihitung dari nilai tersimpan",
+            tone: "info",
+            colorway: 2,
+            emphasis: "solid",
+          },
+          {
+            icon: "clock",
+            label: "Waktu belajar",
+            value: `${Math.floor((learning.timeSpentMinutes || 0) / 60)}j`,
+            note: `${(learning.timeSpentMinutes || 0) % 60} menit tercatat`,
+            tone: "warning",
+            colorway: 3,
+            emphasis: "solid",
+          },
+          {
+            icon: "approve",
+            label: "Sertifikat",
+            value: String(learning.certificateCount || 0),
+            note: "Diterbitkan oleh Academy",
+            tone: "accent",
+            colorway: 4,
+            emphasis: "solid",
+          },
+        ]}
+      />
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
         <Surface className="p-5 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Apresiasi berbasis aktivitas</div><h2 className="mt-1 text-lg font-semibold">Pencapaian Anda</h2><p className="mt-1 text-sm text-muted-foreground">{data?.achievementNote}</p></div><Badge variant="soft" className="bg-tint-green text-tint-green-foreground">{(learning.achievements || []).filter((item) => item.unlocked).length}/{(learning.achievements || []).length} terbuka</Badge></div><div className="mt-5 grid gap-3 sm:grid-cols-2">{(learning.achievements || []).map((achievement) => <div key={achievement.id} className={`rounded-xl border p-4 ${achievement.unlocked ? "border-tint-green-border bg-tint-green" : "border-border bg-surface-subtle"}`}><div className="flex items-start gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${achievement.unlocked ? "bg-background text-brand-green" : "bg-muted text-muted-foreground"}`}><AapmIcon name={achievement.icon} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h3 className="text-sm font-semibold">{achievement.title}</h3>{achievement.unlocked && <AapmIcon name="check" className="h-4 w-4 text-brand-green" />}</div><p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.description}</p><p className="mt-2 text-[11px] font-medium text-muted-foreground">{Math.min(achievement.current, achievement.target)}/{achievement.target}</p></div></div></div>)}</div></Surface>

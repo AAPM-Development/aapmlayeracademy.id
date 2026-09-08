@@ -91,11 +91,31 @@ export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
 const semanticIconByAapmName = Object.freeze({
   dashboard: "dashboard",
   course: "book",
+  book: "book",
   modules: "book",
   assessment: "file",
+  file: "file",
+  image: "image",
+  table: "table",
+  type: "type",
   users: "users",
   analytics: "analytics",
   kpi: "kpi",
+  // Dashboard metrics use the same semantic registry as KPICluster. Keeping
+  // these aliases here means a standalone IconTile or action row cannot fall
+  // back to the dashboard glyph just because it uses a metric-oriented name.
+  chart: "chart",
+  package: "package",
+  warning: "warning",
+  danger: "danger",
+  shield: "admin",
+  farm: "farm",
+  settings: "settings",
+  finance: "finance",
+  preview: "preview",
+  link: "arrowRight",
+  list: "table",
+  clear: "clear",
   certificate: "approve",
   media: "image",
   menu: "menu",
@@ -114,7 +134,9 @@ const semanticIconByAapmName = Object.freeze({
   themeLight: "sun",
   themeDark: "moon",
   lock: "lock",
-  mail: "communication",
+  // Ten4Seven does not currently expose a truthful email glyph. Let the
+  // approved Solar letter source render below instead of substituting a
+  // conversation bubble and changing the field's meaning.
   eye: "eye",
   eyeOff: "eyeOff",
   loading: "refresh",
@@ -137,10 +159,8 @@ const semanticIconByAapmName = Object.freeze({
   delete: "delete",
   egg: "chart",
   weight: "chart",
-  finance: "finance",
   trend: "trendUp",
   target: "chart",
-  shield: "admin",
   circle: "pending",
   play: "preview",
   download: "download",
@@ -148,8 +168,88 @@ const semanticIconByAapmName = Object.freeze({
   clock: "clock",
   reorder: "sort",
   fileCheck: "fileCheck",
-  settings: "settings",
 });
+
+// A few authored Academy surfaces still pass their historical Solar name
+// directly (lesson sections, roadmap metadata, APPI history, etc.). Resolve
+// those names through the same Ten4Seven registry whenever a truthful semantic
+// equivalent exists. Unknown/author-provided Solar names intentionally keep
+// the Iconify fallback below so this bridge remains backward-compatible.
+const semanticIconBySourceName = Object.freeze({
+  "solar:home-angle-bold-duotone": "dashboard",
+  "solar:notebook-bold-duotone": "book",
+  "solar:notes-bold-duotone": "book",
+  "solar:file-text-bold": "file",
+  "solar:file-check-bold-duotone": "fileCheck",
+  "solar:users-group-rounded-bold-duotone": "users",
+  "solar:chart-square-bold-duotone": "analytics",
+  "solar:chart-2-bold-duotone": "chart",
+  "solar:chart-square-outline": "chart",
+  "solar:gallery-wide-bold": "image",
+  "solar:gallery-add-bold-duotone": "image",
+  "solar:list-bold": "table",
+  "solar:close-circle-bold": "close",
+  "solar:alt-arrow-left-linear": "chevronLeft",
+  "solar:alt-arrow-right-linear": "chevronRight",
+  "solar:alt-arrow-down-linear": "chevronDown",
+  "solar:alt-arrow-up-linear": "chevronUp",
+  "solar:arrow-right-bold": "arrowRight",
+  "solar:arrow-right-up-bold": "arrowRight",
+  "solar:undo-left-round-linear": "refresh",
+  "solar:undo-right-round-linear": "refresh",
+  "solar:sun-2-bold-duotone": "sun",
+  "solar:moon-bold-duotone": "moon",
+  "solar:lock-keyhole-bold-duotone": "lock",
+  "solar:lock-keyhole-minimalistic-bold-duotone": "lock",
+  "solar:lock-keyhole-minimalistic-unlocked-bold-duotone": "lock",
+  // Keep a letter as a letter for authored email fields. The canonical
+  // registry has no email icon yet, so this intentionally uses the Iconify
+  // compatibility path rather than a semantically different chat glyph.
+  "solar:eye-bold": "eye",
+  "solar:eye-closed-bold": "eyeOff",
+  "solar:restart-bold": "refresh",
+  "solar:refresh-circle-bold-duotone": "refresh",
+  "solar:add-circle-bold": "add",
+  "solar:card-search-bold-duotone": "search",
+  "solar:danger-triangle-bold": "warning",
+  "solar:danger-circle-bold": "danger",
+  "solar:check-circle-bold": "check",
+  "solar:check-read-bold-duotone": "success",
+  "solar:menu-dots-bold": "more",
+  "solar:minus-circle-bold": "clear",
+  "solar:sidebar-minimalistic-bold-duotone": "sidebar",
+  "solar:sort-vertical-bold-duotone": "sort",
+  "solar:flag-2-bold": "warning",
+  "solar:flag-2-bold-duotone": "warning",
+  "solar:medal-ribbon-star-bold": "approve",
+  "solar:medal-star-bold": "approve",
+  "solar:diploma-verified-bold-duotone": "approve",
+  "solar:trash-bin-trash-bold": "delete",
+  "solar:wallet-money-bold-duotone": "finance",
+  "solar:graph-up-bold-duotone": "trendUp",
+  "solar:target-bold-duotone": "target",
+  "solar:record-circle-bold": "pending",
+  "solar:record-circle-bold-duotone": "pending",
+  "solar:play-circle-bold": "preview",
+  "solar:play-circle-bold-duotone": "preview",
+  "solar:download-minimalistic-bold": "download",
+  "solar:info-circle-bold": "info",
+  "solar:info-circle-bold-duotone": "info",
+  "solar:clock-circle-bold": "clock",
+  "solar:layers-bold-duotone": "package",
+  "solar:settings-minimalistic-bold-duotone": "settings",
+  "solar:waterdrops-bold-duotone": "farm",
+  "solar:wind-bold-duotone": "farm",
+  "solar:medical-kit-bold": "danger",
+  "solar:lightbulb-bolt-bold-duotone": "info",
+  "solar:route-bold-duotone": "timeline",
+  "solar:camera-bold-duotone": "image",
+});
+
+// Export the same semantic bridge used by IconButton so an icon rendered as a
+// control and an icon rendered inline cannot silently drift to different T7
+// glyphs as the registry grows.
+export const aapmSemanticIconNames = semanticIconByAapmName;
 
 function AiMark({ className = "", alt = "", ...props }) {
   // When a caller only sets a text size (for example in a badge), the mark
@@ -168,14 +268,15 @@ function AiMark({ className = "", alt = "", ...props }) {
 }
 
 export default function AapmIcon({ name = "dashboard", className = "", alt = "", ...props }) {
-  const semanticName = semanticIconByAapmName[name];
+  const semanticName = semanticIconByAapmName[name] || semanticIconBySourceName[name];
 
   if (semanticName && IconNames.includes(semanticName)) {
     return (
       <T7Icon
         name={semanticName}
         label={alt || undefined}
-        className={cn("h-5 w-5 shrink-0", className)}
+        className={cn("aapm-icon h-[var(--icon-size-control)] w-[var(--icon-size-control)] shrink-0", className)}
+        data-t7-bridge="academy-icon"
         {...props}
       />
     );
@@ -190,7 +291,8 @@ export default function AapmIcon({ name = "dashboard", className = "", alt = "",
       icon={solarIconData[icon] || icon}
       aria-label={alt || undefined}
       aria-hidden={alt ? undefined : true}
-      className={cn("h-5 w-5 shrink-0", className)}
+      className={cn("aapm-icon h-[var(--icon-size-control)] w-[var(--icon-size-control)] shrink-0", className)}
+      data-t7-bridge="academy-icon"
       {...props}
     />
   );

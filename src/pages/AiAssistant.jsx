@@ -15,7 +15,7 @@ import {
   filterAndSortConversations,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
-import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, ScrollArea, Table, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
@@ -199,11 +199,7 @@ function MarkdownAnswer({ content }) {
             {children}
           </blockquote>
         ),
-        table: ({ children }) => (
-          <div className="aapm-ai-table-wrap">
-            <table>{children}</table>
-          </div>
-        ),
+        table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
         th: ({ children }) => <th>{children}</th>,
         td: ({ children }) => <td>{children}</td>,
         code: ({ className, children, ...props }) => {
@@ -571,7 +567,7 @@ function MobileConversationSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Riwayat percakapan APPI"
-        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[1.5rem] border-x border-t border-border bg-background shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border bg-[hsl(var(--popup-canvas))] shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
       >
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">

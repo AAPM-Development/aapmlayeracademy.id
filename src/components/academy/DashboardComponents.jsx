@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   IconTile,
+  KPICluster,
   Progress,
   Skeleton,
 } from "@/components/primitives";
@@ -154,83 +155,49 @@ export function DashboardMetricStrip({
     {
       value: `${completed}/${total}`,
       label: "Modul selesai",
-      detail: "Jalur belajar",
       icon: "check",
-      iconTone: "green",
-      accent: "border-t-brand-green",
-      ring: "border-brand-green",
+      note: "Jalur belajar",
+      tone: "success",
+      colorway: 1,
+      emphasis: "solid",
     },
     {
       value: `${coursePercent}%`,
       label: "Progress kursus",
-      detail: "Ritme belajar",
       icon: "progress",
-      iconTone: "orange",
-      accent: "border-t-brand-orange",
-      ring: "border-brand-orange",
+      note: "Ritme belajar",
+      tone: "warning",
+      colorway: 3,
+      emphasis: "solid",
     },
     {
       value: `${average}%`,
       label: "Rata-rata nilai kuis",
-      detail: `${scored.length} kuis tersimpan`,
-      icon: "solar:target-bold-duotone",
-      iconTone: "lime",
-      accent: "border-t-brand-lime",
-      ring: "border-brand-lime",
+      note: `${scored.length} kuis tersimpan`,
+      icon: "analytics",
+      tone: "info",
+      colorway: 2,
+      emphasis: "solid",
     },
     {
       value: activeLevel?.name || "Foundation",
       label: "Level saat ini",
-      detail: "Jalur profesional",
-      icon: "solar:cup-star-bold",
-      iconTone: "green",
-      accent: "border-t-brand-orange",
-      ring: "border-brand-orange",
+      note: "Jalur profesional",
+      icon: "approve",
+      tone: "accent",
+      colorway: 4,
+      emphasis: "solid",
     },
   ];
 
   return (
-    <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {metrics.map((metric, index) => {
-        return (
-          <div
-            key={metric.label}
-            className={cn(
-              "academy-enter aapm-interactive-card relative isolate overflow-hidden rounded-[var(--card-radius)] border border-border border-t-[3px] bg-card p-4",
-              metric.accent,
-            )}
-            style={{ animationDelay: `${index * 70}ms` }}
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute -right-8 -top-9 h-24 w-24 rounded-full border-[10px] opacity-25",
-                metric.ring,
-              )}
-            />
-            <span
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute -bottom-8 -right-2 h-16 w-16 rounded-full border opacity-10",
-                metric.ring,
-              )}
-            />
-            <div className="relative z-10 flex items-start justify-between gap-3">
-              <IconTile icon={metric.icon} tone={metric.iconTone} size="sm" />
-              <span className="text-[10px] font-medium text-muted-foreground">
-                {metric.detail}
-              </span>
-            </div>
-            <div className="relative z-10 mt-4 truncate text-2xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">
-              {metric.value}
-            </div>
-            <div className="relative z-10 mt-1 text-xs font-medium text-foreground/80">
-              {metric.label}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <KPICluster
+      className="mb-6 aapm-dashboard-kpi"
+      label="Ringkasan perjalanan belajar"
+      columns={4}
+      variant="cards"
+      items={metrics}
+    />
   );
 }
 

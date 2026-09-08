@@ -60,7 +60,7 @@ const canonicalSizeByVariant = {
  * renders a native button and does not expose an `asChild` prop.
  */
 /** @type {any} */
-const Button = React.forwardRef(({
+const AcademyButton = React.forwardRef(({
   className,
   variant = "default",
   size = "default",
@@ -96,6 +96,6 @@ const Button = React.forwardRef(({
     />
   )
 })
-Button.displayName = "Button"
+AcademyButton.displayName = "Button"
 
-export { Button, buttonVariants }
+export { AcademyButton as Button, buttonVariants }

@@ -129,7 +129,7 @@ export function LessonMedia({ module = null } = {}) {
 
   if (mediaUrl) {
     return (
-      <Card className="border-amber-500/25 bg-amber-500/5 shadow-none">
+      <Card className="border-tint-orange-border bg-tint-orange shadow-none">
         <CardContent className="flex items-start gap-3 p-4 sm:p-5">
           <IconTile icon="solar:shield-warning-bold" tone="orange" size="md" />
           <div className="min-w-0">

@@ -28,4 +28,30 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 export { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from "@/components/ui/table";
+export { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuCheckboxItem, ContextMenuRadioItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuShortcut, ContextMenuGroup, ContextMenuPortal, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuRadioGroup } from "@/components/ui/context-menu";
+export { Menubar, MenubarMenu, MenubarGroup, MenubarPortal, MenubarRadioGroup, MenubarSub, MenubarTrigger, MenubarSubTrigger, MenubarSubContent, MenubarContent, MenubarItem, MenubarCheckboxItem, MenubarRadioItem, MenubarLabel, MenubarSeparator, MenubarShortcut } from "@/components/ui/menubar";
+export { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+export { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuContent, NavigationMenuTrigger, NavigationMenuLink, NavigationMenuIndicator, NavigationMenuViewport, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
+export { Toggle, toggleVariants } from "@/components/ui/toggle";
+export { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+export { Slider } from "@/components/ui/slider";
+export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
+export { Calendar } from "@/components/ui/calendar";
+// Data-dense views use the canonical Ten4Seven contracts directly. Keeping
+// these behind the product facade prevents feature pages from importing a
+// second table/chart/form system by accident.
+export {
+  BarChart as T7BarChart,
+  ChartPanel,
+  DataTable,
+  DataTableColumnPicker,
+  FilterToolbar,
+  FormGrid,
+  FormSection,
+  KPICluster,
+  LineChart as T7LineChart,
+  MetricCard,
+  Sparkline,
+  TrendIndicator,
+} from "@ten4seven/ui";
 export { useToast } from "@/components/ui/use-toast";

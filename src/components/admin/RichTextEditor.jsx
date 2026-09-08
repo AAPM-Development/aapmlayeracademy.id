@@ -62,7 +62,7 @@ function ToolbarButton({ label, active = false, disabled = false, onClick, onBef
         event.preventDefault();
         onClick?.(event);
       }}
-      className={cn("h-8 w-8 shrink-0 rounded-lg text-xs", active && "bg-tint-orange text-brand-orange")}
+      className={cn("h-8 w-8 shrink-0 text-xs", active && "bg-tint-orange text-brand-orange")}
     >
       {children}
     </Button>
@@ -221,12 +221,12 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
   };
 
   if (!editor) {
-    return <div className="rounded-xl border border-input bg-surface-subtle px-3 py-4 text-xs text-muted-foreground">Menyiapkan editor materi…</div>;
+    return <div className="aapm-token-panel border-input bg-surface-subtle px-3 py-4 text-xs text-muted-foreground">Menyiapkan editor materi…</div>;
   }
 
   return (
-    <div id={id} className="aapm-rich-editor overflow-hidden rounded-xl border border-input bg-surface-elevated shadow-sm focus-within:border-brand-orange/65 focus-within:ring-2 focus-within:ring-brand-orange/10">
-      <div className="aapm-scrollbar sticky top-0 z-10 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-border bg-surface-subtle/95 p-1 shadow-[0_1px_0_hsl(var(--border)/0.65)] backdrop-blur" role="toolbar" aria-label="Format materi">
+    <div id={id} className="aapm-rich-editor aapm-token-panel overflow-hidden border-input focus-within:border-brand-orange/65 focus-within:ring-2 focus-within:ring-brand-orange/10">
+      <div className="aapm-token-toolbar aapm-scrollbar sticky top-0 z-10 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-border p-1 backdrop-blur" role="toolbar" aria-label="Format materi">
         <Select
           value={blockStyle}
           onOpenChange={(open) => {
@@ -243,7 +243,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
             type="button"
             aria-label="Gaya blok teks"
             title="Gaya blok teks"
-            className="h-8 w-[8.5rem] shrink-0 rounded-lg px-2 text-xs"
+            className="h-8 w-[8.5rem] shrink-0 px-2 text-xs"
             onPointerDown={rememberSelection}
           >
             <SelectValue />
@@ -279,10 +279,10 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
           <span aria-hidden="true" className="text-sm font-bold">“</span>
         </ToolbarButton>
         <ToolbarButton label="Tautkan teks" active={editor.isActive("link")} onBeforeAction={rememberSelection} onClick={openLinkEditor}>
-          <AapmIcon name="solar:link-bold" className="h-4 w-4" />
+          <AapmIcon name="link" className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton label="Lepas tautan" disabled={!editor.isActive("link")} onBeforeAction={rememberSelection} onClick={() => editorChain().unsetLink().run()}>
-          <AapmIcon name="solar:link-broken-minimalistic-bold" className="h-4 w-4" />
+          <AapmIcon name="clear" className="h-4 w-4" />
         </ToolbarButton>
         <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
         <ToolbarButton label="Urungkan perubahan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).undo().run()}>
@@ -306,7 +306,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
               setLinkOpen(false);
             }
           }}
-          className="flex flex-col gap-2 border-b border-border bg-tint-orange/45 p-2.5 sm:flex-row sm:items-start"
+          className="aapm-token-form flex flex-col gap-2 border-b border-border bg-tint-orange/45 p-2.5 sm:flex-row sm:items-start"
         >
           <div className="min-w-0 flex-1">
             <label htmlFor={`${id || "rich-text"}-link`} className="sr-only">URL tautan</label>
@@ -322,13 +322,13 @@ export default function RichTextEditor({ id, value = "", onChange = () => {} }) 
               autoCapitalize="off"
               spellCheck={false}
               autoFocus
-              className="h-9 rounded-lg text-xs"
+              className="h-9 text-xs"
             />
             {linkError && <p className="mt-1 text-[10px] text-danger" role="alert">{linkError}</p>}
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <Button type="button" size="sm" onClick={applyLink} className="h-9 rounded-lg bg-brand-orange px-3 text-xs text-white hover:bg-brand-orange/90">Terapkan</Button>
-            <Button type="button" size="sm" variant="outline" className="h-9 rounded-lg px-3 text-xs" onClick={() => setLinkOpen(false)}>Batal</Button>
+            <Button type="button" size="sm" onClick={applyLink} className="h-9 bg-brand-orange px-3 text-xs text-white hover:bg-brand-orange/90">Terapkan</Button>
+            <Button type="button" size="sm" variant="outline" className="h-9 px-3 text-xs" onClick={() => setLinkOpen(false)}>Batal</Button>
           </div>
         </div>
       )}

@@ -1,57 +1,73 @@
-import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
+// @ts-nocheck
+// This is a JSX compatibility adapter around Ten4Seven's typed item API.
+// Route files still author the legacy marker children while the renderer is
+// canonical; TypeScript cannot infer those runtime marker props in checkJs.
+import * as React from "react";
+import { TabPanel, Tabs as CanonicalTabs } from "@ten4seven/ui";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
+/*
+ * Compatibility markers let existing route content keep its declarative
+ * TabsList/TabsTrigger/TabsContent shape while the rendered interaction,
+ * keyboard model, and visual anatomy come from the canonical Ten4Seven Tabs.
+ * They intentionally do not render DOM of their own.
+ */
+const tabListMarker = () => null;
+const tabTriggerMarker = () => null;
+const tabContentMarker = () => null;
 
-const Tabs = TabsPrimitive.Root
+function AcademyTabs({
+  children,
+  className,
+  defaultValue,
+  label,
+  onValueChange,
+  value,
+  ...props
+}) {
+  const nodes = React.Children.toArray(children).filter(React.isValidElement);
+  const listNode = nodes.find((node) => node.type === tabListMarker);
+  const contentNodes = nodes.filter((node) => node.type === tabContentMarker);
+  const triggerNodes = React.Children.toArray(listNode?.props?.children)
+    .filter(React.isValidElement)
+    .filter((node) => node.type === tabTriggerMarker);
 
-const TabsList = React.forwardRef(({ className, ...props }, ref) => {
-  const scrollRef = useScrollEdgeFade()
-  const setListRef = React.useCallback(
-    (node) => {
-      scrollRef(node)
-      if (typeof ref === "function") {
-        ref(node)
-      } else if (ref) {
-        ref.current = node
-      }
-    },
-    [ref, scrollRef],
-  )
+  const triggersByValue = new Map(
+    triggerNodes.map((node) => [String(node.props.value), node.props]),
+  );
+
+  const items = contentNodes.map((node) => {
+    const id = String(node.props.value);
+    const trigger = triggersByValue.get(id);
+
+    return {
+      id,
+      label: trigger?.children ?? id,
+      disabled: Boolean(trigger?.disabled),
+      content: (
+        <TabPanel className={cn("mt-5", node.props.className)}>
+          {node.props.children}
+        </TabPanel>
+      ),
+    };
+  });
 
   return (
-    <TabsPrimitive.List
-      ref={setListRef}
-      className={cn(
-        "aapm-scroll-fade aapm-scroll-fade--x inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
-        className
-      )}
-      {...props} />
-  )
-})
-TabsList.displayName = TabsPrimitive.List.displayName
+    <CanonicalTabs
+      {...props}
+      className={className}
+      defaultValue={defaultValue}
+      items={items}
+      label={label}
+      onValueChange={onValueChange}
+      value={value}
+    />
+  );
+}
 
-const TabsTrigger = React.forwardRef(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow",
-      className
-    )}
-    {...props} />
-))
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
-
-const TabsContent = React.forwardRef(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
-    )}
-    {...props} />
-))
-TabsContent.displayName = TabsPrimitive.Content.displayName
-
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+export {
+  AcademyTabs as Tabs,
+  tabListMarker as TabsList,
+  tabTriggerMarker as TabsTrigger,
+  tabContentMarker as TabsContent,
+};

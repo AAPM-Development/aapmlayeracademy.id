@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
@@ -10,7 +9,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
 import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
-import { exactColor, Ten4SevenProvider } from '@ten4seven/ui';
+import { exactColor, Ten4SevenProvider, ToastProvider, Toaster } from '@ten4seven/ui';
 import { ThemeModeProvider, useThemeMode } from '@/lib/useThemeMode';
 
 const Layout = lazy(() => loadRouteModule('layout'));
@@ -63,11 +62,24 @@ function Ten4SevenRuntime({ children }) {
         // Product recipe supplies composition; approved AAPM colors own the
         // action/accent roles instead of silently falling back to indigo/cyan.
         // Emerald keeps any non-brand semantic fallback in the same green
-        // family; data series still use the spectrum chart palette.
+        // family; data series deliberately use the spectrum chart palette so
+        // operational categories do not collapse into one green signal.
         config: {
           palette: 'emerald',
+          chartPalette: 'spectrum',
           primary: exactColor('#318139'),
           accent: exactColor('#d4451a'),
+        },
+        // Provider-generated variables are emitted inline. Keep the focus
+        // contract here so input borders, focus rings, and chart focus states
+        // cannot fall back to the product recipe's unrelated blue default.
+        variables: {
+          '--t7-focus-hsl': 'var(--t7-primary-hsl)',
+          '--t7-input-focus-border-hsl': 'var(--t7-primary-hsl)',
+          '--t7-chart-focus-hsl': 'var(--t7-primary-hsl)',
+          '--t7-focus-halo': '0 0 0 var(--t7-focus-offset) hsl(var(--t7-surface-hsl))',
+          '--t7-focus-ring': 'var(--t7-focus-halo), 0 0 0 calc(var(--t7-focus-offset) + var(--t7-focus-width)) hsl(var(--t7-focus-hsl))',
+          '--t7-focus-ring-inset': 'inset 0 0 0 var(--t7-focus-width) hsl(var(--t7-focus-hsl))',
         },
       }}
       className="aapm-t7-runtime"
@@ -153,15 +165,17 @@ function App() {
   return (
     <ThemeModeProvider>
       <Ten4SevenRuntime>
-        <AuthProvider>
-          <QueryClientProvider client={queryClientInstance}>
-            <Router>
-              <ScrollToTop />
-              <AuthenticatedApp />
-            </Router>
-            <Toaster />
-          </QueryClientProvider>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <Router>
+                <ScrollToTop />
+                <AuthenticatedApp />
+              </Router>
+              <Toaster />
+            </QueryClientProvider>
+          </AuthProvider>
+        </ToastProvider>
       </Ten4SevenRuntime>
     </ThemeModeProvider>
   )

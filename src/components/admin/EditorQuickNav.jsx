@@ -76,7 +76,7 @@ function AddElementMenu({ items, onAddElement }) {
             className="items-center py-1.5"
             data-editor-add-item={item.type}
           >
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange">
+            <span className="aapm-token-icon mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange">
               <AapmIcon name={item.icon || "add"} className="h-3.5 w-3.5" />
             </span>
             <span className="min-w-0 text-xs font-semibold">{item.label}</span>

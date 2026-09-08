@@ -24,12 +24,12 @@ export default function ConfirmDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="rounded-2xl border-border bg-card p-5 shadow-[0_24px_70px_hsl(var(--foreground)/0.2)] sm:max-w-md">
+      <AlertDialogContent className="aapm-token-popover p-5 sm:max-w-md">
         <AlertDialogHeader className="text-left">
           <div className="flex items-start gap-3">
             <span
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                "aapm-token-icon flex h-10 w-10 shrink-0 items-center justify-center",
                 destructive
                   ? "bg-danger/10 text-danger"
                   : "bg-tint-orange text-brand-orange",
@@ -49,13 +49,13 @@ export default function ConfirmDialog({
           </div>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-1 gap-2 sm:space-x-0">
-          <AlertDialogCancel className="mt-0 h-10 rounded-xl border-border px-4">
+          <AlertDialogCancel className="mt-0 h-10 border-border px-4">
             {cancelLabel}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className={cn(
-              "h-10 rounded-xl px-4",
+              "h-10 px-4",
               destructive &&
                 "bg-danger text-destructive-foreground hover:bg-danger/90",
             )}

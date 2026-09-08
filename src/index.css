@@ -39,6 +39,8 @@
     --space-5: 1.25rem;
     --space-6: 1.5rem;
     --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
     /* Product shell geometry. Ten4Seven owns the runtime header token; the
      * fallback keeps pre-provider auth/error surfaces aligned as well. */
     --aapm-shell-header-height: var(--t7-header-height, 4rem);
@@ -52,6 +54,20 @@
     --radius-sm: 0.625rem;
     --radius-md: 0.875rem;
     --radius-lg: 1.25rem;
+    /* Geometry is role-based. Feature code may still use legacy Tailwind
+     * utilities, but the runtime maps those utilities to these shared roles
+     * instead of allowing every route to keep a private radius scale. */
+    --radius-control: var(--radius-md);
+    --radius-panel: 1rem;
+    --radius-data: var(--radius-panel);
+    --radius-card: var(--radius-lg);
+    --radius-overlay: var(--radius-panel);
+    /* Shared rhythm aliases keep shell and feature layout spacing on the same
+     * Ten4Seven reference grid as cards and controls. */
+    --aapm-shell-page-gutter: var(--space-4);
+    --aapm-shell-composition-gap: var(--space-6);
+    --aapm-shell-grid-gap: var(--space-5);
+    --aapm-shell-control-gap: var(--space-3);
     --duration-fast: 150ms;
     --duration-normal: 200ms;
 
@@ -96,6 +112,22 @@
     --surface-border: 0 0% 86%;
     --surface-accent: var(--aapm-green-100);
     --surface-accent-border: 141 42% 77%;
+    /* Shared canvas roles keep forms, overlays, and data surfaces distinct
+     * without introducing page-specific colour literals. */
+    --form-canvas: var(--surface-default);
+    --popup-canvas: var(--surface-elevated);
+    --control-canvas: var(--surface-default);
+    --menu-canvas: var(--popup-canvas);
+    --table-header-canvas: var(--surface-subtle);
+    --table-row-hover: var(--surface-hover);
+    --table-row-selected: var(--surface-accent);
+    --table-divider: var(--surface-border);
+    --icon-size-status: 0.875rem;
+    --icon-size-control: 1rem;
+    --icon-size-navigation: 1.125rem;
+    --icon-tile-size-sm: 2rem;
+    --icon-tile-size-md: 2.5rem;
+    --icon-tile-size-lg: 3rem;
     --tint-green: 141 43% 93%;
     --tint-green-foreground: var(--aapm-green-700);
     --tint-green-border: 141 38% 78%;
@@ -147,7 +179,7 @@
     --sidebar-border: 140 16% 88%;
     --sidebar-ring: var(--aapm-green-700);
     /* Component tokens. */
-    --card-radius: var(--radius-lg);
+    --card-radius: var(--radius-card);
     --card-padding: var(--space-6);
     --card-shadow:
       0 1px 2px rgba(19, 64, 35, 0.06), 0 12px 26px -24px rgba(19, 64, 35, 0.34);
@@ -166,30 +198,6 @@
     --ai-stream-success: var(--aapm-green-700);
     --ai-stream-radius: var(--radius-md);
     --ai-stream-shadow: 0 10px 24px -22px rgba(19, 64, 35, 0.42);
-    /* Toast component tokens — status is communicated by icon, label, and accent. */
-    --toast-bg: var(--surface-elevated);
-    --toast-foreground: var(--foreground);
-    --toast-border: var(--surface-border);
-    --toast-radius: 1.125rem;
-    --toast-shadow: 0 18px 42px -28px rgba(19, 64, 35, 0.44), 0 5px 16px rgba(19, 64, 35, 0.08);
-    --toast-success-bg: var(--tint-green);
-    --toast-success-fg: var(--tint-green-foreground);
-    --toast-success-border: var(--tint-green-border);
-    --toast-error-bg: 0 100% 97%;
-    --toast-error-fg: 0 72% 42%;
-    --toast-error-border: 0 72% 82%;
-    --toast-warning-bg: var(--tint-orange);
-    --toast-warning-fg: var(--tint-orange-foreground);
-    --toast-warning-border: var(--tint-orange-border);
-    --toast-info-bg: var(--tint-blue);
-    --toast-info-fg: var(--tint-blue-foreground);
-    --toast-info-border: var(--tint-blue-border);
-    --toast-ai-bg: var(--tint-orange);
-    --toast-ai-fg: var(--brand-aapm-orange);
-    --toast-ai-border: var(--tint-orange-border);
-    --toast-loading-bg: var(--tint-violet);
-    --toast-loading-fg: var(--tint-violet-foreground);
-    --toast-loading-border: var(--tint-violet-border);
   }
 
   /*
@@ -199,6 +207,10 @@
    * elevation across learner, admin, and auth routes.
    */
   .aapm-t7-runtime {
+    /* Keep the application rail in the same geometry contract as the
+     * provider-owned AppShell. Feature shells may collapse the rail, but they
+     * never get to invent a second desktop width. */
+    --t7-sidebar-width: var(--aapm-shell-sidebar-width);
     --aapm-green-950: var(--t7-primary-active-hsl);
     --aapm-green-900: var(--t7-primary-active-hsl);
     --aapm-green-800: var(--t7-primary-hover-hsl);
@@ -312,6 +324,38 @@
     --surface-shadow-hover: var(--t7-shadow-raised);
     --duration-fast: var(--t7-duration-instant, 120ms);
     --duration-normal: var(--t7-duration-standard, 180ms);
+    --radius-control: var(--t7-radius-control, var(--radius-md));
+    --radius-panel: var(--t7-radius-panel, var(--radius-control));
+    --radius-data: var(--t7-radius-data, var(--radius-panel));
+    --radius-card: var(--t7-radius-card, var(--radius-lg));
+    --radius-overlay: var(--t7-radius-panel, var(--radius-card));
+    --space-1: var(--t7-ref-space-1, 0.25rem);
+    --space-2: var(--t7-ref-space-2, 0.5rem);
+    --space-3: var(--t7-ref-space-3, 0.75rem);
+    --space-4: var(--t7-ref-space-4, 1rem);
+    --space-5: var(--t7-ref-space-5, 1.25rem);
+    --space-6: var(--t7-ref-space-6, 1.5rem);
+    --space-8: var(--t7-ref-space-8, 2rem);
+    --space-10: var(--t7-ref-space-10, 2.5rem);
+    --space-12: var(--t7-ref-space-12, 3rem);
+    --aapm-shell-page-gutter: var(--t7-page-gutter, var(--space-4));
+    --aapm-shell-composition-gap: var(--t7-composition-gap, var(--space-6));
+    --aapm-shell-grid-gap: var(--t7-grid-gap, var(--space-5));
+    --aapm-shell-control-gap: var(--t7-control-gap, var(--space-3));
+    --form-canvas: var(--t7-surface-hsl);
+    --popup-canvas: var(--t7-surface-raised-hsl);
+    --control-canvas: var(--t7-surface-hsl);
+    --menu-canvas: var(--t7-surface-raised-hsl);
+    --table-header-canvas: var(--t7-surface-subtle-hsl);
+    --table-row-hover: var(--t7-surface-muted-hsl);
+    --table-row-selected: var(--t7-surface-emphasis-soft-hsl);
+    --table-divider: var(--t7-border-hsl);
+    --icon-size-status: var(--t7-icon-status);
+    --icon-size-control: var(--t7-icon-control);
+    --icon-size-navigation: var(--t7-icon-navigation);
+    --icon-tile-size-sm: var(--t7-control-height-sm);
+    --icon-tile-size-md: var(--t7-control-height);
+    --icon-tile-size-lg: var(--t7-control-height-lg);
   }
 
   /* Dark mode keeps the same learning hue but lowers its luminance and uses
@@ -577,13 +621,6 @@
     --ai-stream-accent: 24 90% 60%;
     --ai-stream-success: 142 55% 45%;
     --ai-stream-shadow: 0 10px 24px -20px rgba(0, 0, 0, 0.55);
-    --toast-bg: var(--surface-elevated);
-    --toast-foreground: var(--foreground);
-    --toast-border: var(--surface-border);
-    --toast-shadow: 0 18px 42px -28px rgba(0, 0, 0, 0.82), 0 5px 16px rgba(0, 0, 0, 0.3);
-    --toast-error-bg: 0 35% 18%;
-    --toast-error-fg: 0 85% 78%;
-    --toast-error-border: 0 45% 32%;
   }
 }
 
@@ -617,183 +654,6 @@
 }
 
 @layer components {
-  @keyframes aapm-toast-enter {
-    from {
-      opacity: 0;
-      transform: translate3d(0, -10px, 0) scale(0.97);
-    }
-    to {
-      opacity: 1;
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-  }
-
-  @keyframes aapm-toast-exit {
-    from {
-      opacity: 1;
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: translate3d(0, -6px, 0) scale(0.98);
-    }
-  }
-
-  @keyframes aapm-toast-progress {
-    from { transform: scaleX(1); }
-    to { transform: scaleX(0); }
-  }
-
-  .aapm-toast {
-    --toast-accent: hsl(var(--toast-success-fg));
-    --toast-tone-bg: hsl(var(--toast-success-bg));
-    --toast-tone-fg: hsl(var(--toast-success-fg));
-    --toast-tone-border: hsl(var(--toast-success-border));
-    min-height: 4.5rem;
-    border-radius: var(--toast-radius);
-    border-color: hsl(var(--toast-border));
-    background: hsl(var(--toast-bg) / 0.98);
-    color: hsl(var(--toast-foreground));
-    box-shadow: var(--toast-shadow);
-    backdrop-filter: blur(16px);
-  }
-
-  .aapm-toast[data-variant="default"],
-  .aapm-toast[data-variant="success"] {
-    --toast-accent: hsl(var(--toast-success-fg));
-    --toast-tone-bg: hsl(var(--toast-success-bg));
-    --toast-tone-fg: hsl(var(--toast-success-fg));
-    --toast-tone-border: hsl(var(--toast-success-border));
-  }
-
-  .aapm-toast[data-variant="destructive"] {
-    --toast-accent: hsl(var(--toast-error-fg));
-    --toast-tone-bg: hsl(var(--toast-error-bg));
-    --toast-tone-fg: hsl(var(--toast-error-fg));
-    --toast-tone-border: hsl(var(--toast-error-border));
-  }
-
-  .aapm-toast[data-variant="warning"] {
-    --toast-accent: hsl(var(--toast-warning-fg));
-    --toast-tone-bg: hsl(var(--toast-warning-bg));
-    --toast-tone-fg: hsl(var(--toast-warning-fg));
-    --toast-tone-border: hsl(var(--toast-warning-border));
-  }
-
-  .aapm-toast[data-variant="info"] {
-    --toast-accent: hsl(var(--toast-info-fg));
-    --toast-tone-bg: hsl(var(--toast-info-bg));
-    --toast-tone-fg: hsl(var(--toast-info-fg));
-    --toast-tone-border: hsl(var(--toast-info-border));
-  }
-
-  .aapm-toast[data-variant="ai"] {
-    --toast-accent: hsl(var(--toast-ai-fg));
-    --toast-tone-bg: hsl(var(--toast-ai-bg));
-    --toast-tone-fg: hsl(var(--toast-ai-fg));
-    --toast-tone-border: hsl(var(--toast-ai-border));
-  }
-
-  .aapm-toast[data-variant="loading"] {
-    --toast-accent: hsl(var(--toast-loading-fg));
-    --toast-tone-bg: hsl(var(--toast-loading-bg));
-    --toast-tone-fg: hsl(var(--toast-loading-fg));
-    --toast-tone-border: hsl(var(--toast-loading-border));
-  }
-
-  .aapm-toast[data-state="open"] {
-    animation: aapm-toast-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .aapm-toast[data-state="closed"] {
-    animation: aapm-toast-exit 180ms ease-in both;
-  }
-
-  .aapm-toast__accent {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 0.25rem;
-    background: var(--toast-accent);
-    border-radius: var(--toast-radius) 0 0 var(--toast-radius);
-  }
-
-  .aapm-toast__icon {
-    display: inline-flex;
-    width: 2.25rem;
-    height: 2.25rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0.1rem;
-    border: 1px solid var(--toast-tone-border);
-    border-radius: 0.8rem;
-    background: var(--toast-tone-bg);
-    color: var(--toast-tone-fg);
-  }
-
-  .aapm-toast__body {
-    padding: 0.05rem 0 0.15rem;
-  }
-
-  .aapm-toast__eyebrow {
-    margin-bottom: 0.2rem;
-    color: var(--toast-tone-fg);
-    font-size: 0.625rem;
-    font-weight: 750;
-    letter-spacing: 0.12em;
-    line-height: 1.2;
-    text-transform: uppercase;
-  }
-
-  .aapm-toast__title {
-    overflow-wrap: anywhere;
-  }
-
-  .aapm-toast__description {
-    color: hsl(var(--muted-foreground));
-    overflow-wrap: anywhere;
-  }
-
-  .aapm-toast-action {
-    border-color: var(--toast-tone-border);
-    background: var(--toast-tone-bg);
-    color: var(--toast-tone-fg);
-  }
-
-  .aapm-toast-action:hover {
-    border-color: var(--toast-accent);
-    background: var(--toast-tone-bg);
-    filter: brightness(0.97);
-  }
-
-  .aapm-toast__progress {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 0.125rem;
-    transform-origin: left center;
-    background: var(--toast-accent);
-    animation: aapm-toast-progress var(--toast-duration, 5200ms) linear both;
-    opacity: 0.72;
-  }
-
-  .aapm-toast:hover .aapm-toast__progress {
-    animation-play-state: paused;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .aapm-toast[data-state="open"],
-    .aapm-toast[data-state="closed"],
-    .aapm-toast__progress {
-      animation: none;
-    }
-
-    .aapm-toast__progress {
-      opacity: 0.45;
-    }
-  }
-
   @keyframes academy-rise {
     from {
       opacity: 0;
@@ -809,6 +669,552 @@
   .auth-ambient,
   .auth-pane {
     background: hsl(var(--background));
+  }
+
+  /* Structural roles are intentionally small: they provide one place for
+   * shell canvas, rails, dividers, and inset surfaces to inherit the active
+   * T7 mode without forcing every route to repeat colour and geometry. */
+  .aapm-token-shell {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  /* The canonical AppShell owns the responsive grid, mobile navigation
+   * drawer, and topbar landmark. Academy only composes its known scrollport
+   * inside that shell, keeping one viewport owner and preventing overlays
+   * such as APPI from contributing to document width or height. */
+  .aapm-t7-app-shell {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .aapm-t7-app-shell > .t7-app-sidebar {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .aapm-t7-app-shell > .t7-app-main {
+    min-height: 0;
+    height: 100dvh;
+  }
+
+  .aapm-t7-app-shell > .t7-app-main > .t7-app-content {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .aapm-t7-app-shell > .t7-app-main > .t7-app-topbar {
+    padding: 0;
+  }
+
+  .aapm-t7-app-shell--collapsed[data-sidebar] {
+    grid-template-columns: var(--aapm-shell-sidebar-collapsed-width) minmax(0, 1fr);
+  }
+
+  .aapm-token-header {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-default) / 0.94);
+  }
+
+  .aapm-token-sidebar {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-subtle));
+  }
+
+  /* Academy has a product-specific progress summary and a compact desktop
+   * rail, while navigation itself stays fully owned by the canonical Sidebar
+   * and NavItem anatomy. These rules only compose the documented slots; they
+   * do not restyle T7 navigation colors, type, radius, focus, or motion. */
+  .aapm-academy-sidebar {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--t7-ref-space-4) var(--t7-ref-space-3) var(--t7-ref-space-3);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-brand {
+    padding: 0 var(--t7-ref-space-2) var(--t7-ref-space-4);
+  }
+
+  .aapm-academy-sidebar__brand-stack,
+  .aapm-academy-sidebar__progress,
+  .aapm-academy-sidebar__footer-content {
+    display: grid;
+    min-width: 0;
+    gap: var(--t7-ref-space-2);
+  }
+
+  /* The brand needs a distinct breath before status information begins.
+   * Keep that spacing at the composition layer; the logo and Progress
+   * anatomy remain native Ten4Seven components. */
+  .aapm-academy-sidebar__brand-stack {
+    gap: var(--t7-ref-space-4);
+  }
+
+  .aapm-academy-sidebar__brand-row,
+  .aapm-academy-sidebar__progress-meta {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar__brand-link {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+    border-radius: var(--t7-radius-control);
+    padding: 2px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .aapm-academy-sidebar__brand-link:focus-visible {
+    outline: 2px solid hsl(var(--t7-focus-hsl));
+    outline-offset: 2px;
+  }
+
+  .aapm-academy-sidebar__progress {
+    padding: 0 var(--t7-ref-space-2) var(--t7-ref-space-3);
+    border-bottom: 1px solid hsl(var(--t7-border-hsl));
+  }
+
+  .aapm-academy-sidebar__progress-meta {
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+
+  .aapm-academy-sidebar__progress-meta strong {
+    color: hsl(var(--t7-primary-hsl));
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aapm-academy-sidebar__progress p {
+    margin: 0;
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-nav {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* The nav is the scrollable flex child, but its grid rows must keep
+     * intrinsic NavItem anatomy. Without this, CSS Grid stretches each
+     * group/item to consume the viewport and the collapsed rail develops
+     * large, screen-dependent gaps between icons. */
+    align-content: start;
+    padding: var(--t7-ref-space-1) var(--t7-ref-space-2);
+  }
+
+  /* Preserve the canonical 40px NavItem target while tightening only the
+   * whitespace between related Academy navigation groups. */
+  .aapm-academy-sidebar .t7-sidebar-group {
+    gap: var(--t7-ref-space-1);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-group + .t7-sidebar-group {
+    margin-top: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-footer {
+    flex: 0 0 auto;
+    padding: var(--t7-ref-space-3) var(--t7-ref-space-2) 0;
+  }
+
+  .aapm-academy-sidebar__account,
+  .aapm-academy-sidebar__logout {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .aapm-academy-sidebar__theme-mobile {
+    display: none;
+  }
+
+  .aapm-academy-sidebar--collapsed {
+    padding-inline: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-brand {
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__brand-row {
+    flex-direction: column;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__brand-link {
+    justify-items: center;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__progress {
+    display: none;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__progress-meta span,
+  .aapm-academy-sidebar--collapsed .t7-sidebar-group-label,
+  .aapm-academy-sidebar--collapsed .t7-nav-label {
+    display: none;
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-group {
+    gap: var(--t7-ref-space-1);
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-group + .t7-sidebar-group {
+    margin-top: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-nav {
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-item .t7-nav-item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-footer {
+    justify-items: center;
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__account {
+    width: auto;
+    padding-inline: var(--t7-ref-space-2);
+  }
+
+  .t7-mobile-sidebar .aapm-academy-sidebar {
+    height: auto;
+    overflow: visible;
+    padding: var(--t7-ref-space-4);
+  }
+
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-brand,
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-footer {
+    padding-inline: 0;
+  }
+
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-nav {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-inline: 0;
+  }
+
+  /* On small screens the Academy content owns the vertical scrollport. This
+   * deliberately lets the canonical AppShell topbar scroll away with content
+   * rather than acting as a sticky, permanently reserved header. */
+  @media (max-width: 860px) {
+    /* Match the AppShell mobile rule's direct-child anatomy so this product
+     * decision wins without an !important override. */
+    .aapm-t7-app-shell.t7-app-shell[data-sidebar="true"] > .t7-app-main > .t7-app-topbar {
+      display: none;
+    }
+
+    .aapm-t7-app-shell .t7-app-main {
+      display: block;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+    }
+
+    .aapm-t7-app-shell .t7-app-content,
+    .aapm-t7-app-shell [data-t7-region="scrollport"] {
+      display: block;
+      min-height: auto;
+    }
+
+    .aapm-t7-app-shell [data-t7-region="scrollport"] {
+      overflow: visible;
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar__theme-mobile {
+      display: inline-flex;
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .aapm-token-rail {
+    min-width: 0;
+    width: 100%;
+    max-width: var(--aapm-shell-content-max);
+    margin-inline: auto;
+    padding-inline: var(--aapm-shell-page-gutter);
+  }
+
+  .aapm-token-divider {
+    border-color: hsl(var(--surface-border));
+  }
+
+  .aapm-token-inset {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-data);
+    background: hsl(var(--surface-inset));
+  }
+
+  /* Product-level layout roles. Feature pages can use these classes instead
+   * of recreating their own radius, border, and surface recipes. */
+  .aapm-token-card {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--surface-default));
+    box-shadow: var(--surface-shadow);
+  }
+
+  .aapm-token-panel {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-default));
+    box-shadow: var(--surface-shadow);
+  }
+
+  .aapm-token-form {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--form-canvas));
+  }
+
+  .aapm-token-control {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+  }
+
+  .aapm-token-menu {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--menu-canvas));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  .aapm-token-menu-item {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-token-tooltip {
+    border-radius: var(--radius-control);
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  .aapm-token-tabs {
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-token-toolbar {
+    background: hsl(var(--surface-subtle) / 0.96);
+    box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
+  }
+
+  .aapm-token-tab {
+    border-radius: calc(var(--radius-control) - 0.2rem);
+  }
+
+  .aapm-token-alert {
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-token-icon {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-token-popover {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-overlay);
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+  }
+
+  .aapm-token-scrim {
+    background: hsl(var(--t7-scrim-hsl, var(--foreground)) / 0.42);
+  }
+
+  .aapm-token-sheet {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+    transition-duration: var(--t7-duration-overlay);
+    transition-timing-function: var(--t7-ease-enter, ease);
+  }
+
+  .aapm-token-sheet[data-state="closed"] {
+    transition-duration: var(--t7-duration-exit);
+    transition-timing-function: var(--t7-ease-exit, ease);
+  }
+
+  .aapm-token-drawer {
+    border-radius: var(--radius-overlay) var(--radius-overlay) 0 0;
+  }
+
+  .aapm-token-command-dialog {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .aapm-token-otp-slot {
+  border-color: hsl(var(--surface-border));
+  background: hsl(var(--control-canvas));
+}
+
+/* A four-up KPI card can be narrower than the metric plus a trend label on
+ * medium desktop widths. Give the trend its own row before text can collide;
+ * the component's container query keeps the rule local to a KPI card. */
+@container (max-width: 250px) {
+  .aapm-t7-runtime .aapm-kpi-cluster[data-variant="cards"][data-has-trend="true"] .t7-kpi-item-primary {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--t7-control-gap-sm);
+  }
+
+  .aapm-kpi-cluster .t7-kpi-item-trend {
+    padding-bottom: 0;
+  }
+}
+
+  .aapm-token-table {
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-data);
+    background: hsl(var(--surface-default));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .aapm-token-table thead {
+    background: hsl(var(--table-header-canvas));
+  }
+
+  .aapm-token-table tbody tr:hover {
+    background: hsl(var(--table-row-hover));
+  }
+
+  .aapm-token-table :is(th, td) {
+    border-color: hsl(var(--table-divider));
+  }
+
+  /* T7's semantic Table returns a scroll wrapper around its native table.
+   * The compatibility bridge tags the inner table, so style the actual
+   * wrapper instead of creating a second border/scroll container in feature
+   * code. */
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) {
+    border-color: hsl(var(--table-divider));
+    border-radius: var(--radius-data);
+    background: hsl(var(--surface-default));
+  }
+
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) :is(th, td) {
+    border-color: hsl(var(--table-divider));
+  }
+
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) tbody tr:hover {
+    background: hsl(var(--table-row-hover));
+  }
+
+  /* A table placed inside a canonical Surface borrows that Surface's border
+   * and radius. Removing the nested frame keeps dashboard/admin cards from
+   * looking like two unrelated cards stacked on top of one another. */
+  .t7-surface > .t7-table-wrap {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table) {
+    margin-block: var(--t7-ref-space-3);
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table) > .t7-table {
+    min-width: max-content;
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table--editor) {
+    margin-block: 0;
+  }
+
+  /* Legacy utility geometry is deliberately bridged by semantic role rather
+   * than by module. This covers existing card, panel, form, icon, and state
+   * surfaces while source call sites are progressively moved to primitives.
+   * Full pills stay intentional and are therefore excluded. */
+  .aapm-t7-runtime .rounded-sm,
+  .aapm-t7-runtime .rounded-md,
+  .aapm-t7-runtime .rounded-lg {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime .rounded-xl {
+    border-radius: var(--radius-panel);
+  }
+
+  .aapm-t7-runtime .rounded-2xl {
+    border-radius: var(--radius-card);
+  }
+
+  /* Once a feature declares its semantic role, that role owns geometry even
+   * when a legacy utility remains on the same element. This is the final
+   * precedence layer that makes migrated and unmigrated components visually
+   * indistinguishable. */
+  .aapm-t7-runtime :where(.aapm-token-control, .aapm-token-menu-item, .aapm-token-tab, .aapm-token-icon)[class*="rounded-"] {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime :where(.aapm-token-card, .aapm-token-form)[class*="rounded-"] {
+    border-radius: var(--radius-card);
+  }
+
+  .aapm-t7-runtime :where(.aapm-token-panel, .aapm-token-menu, .aapm-token-alert, .aapm-token-popover)[class*="rounded-"] {
+    border-radius: var(--radius-panel);
+  }
+
+  .aapm-t7-runtime .shadow-sm {
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-t7-runtime .shadow-md {
+    box-shadow: var(--t7-shadow-raised, var(--surface-shadow-hover));
+  }
+
+  .aapm-t7-runtime .shadow-lg {
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  /* Radix-owned compatibility overlays share the same canvas, elevation,
+   * and menu anatomy as canonical T7 overlays. */
+  .aapm-t7-runtime :where([role="dialog"], [role="menu"], [role="listbox"]) {
+    border-color: hsl(var(--surface-border));
+    background-color: hsl(var(--popup-canvas));
+  }
+
+  .aapm-t7-runtime :where([role="menu"], [role="listbox"]) {
+    border-radius: var(--radius-panel);
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  .aapm-t7-runtime :where([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"]) {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime [role="tooltip"] {
+    border-radius: var(--radius-control);
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
   }
 
   /*
@@ -895,12 +1301,19 @@
     }
   }
 
+  .aapm-icon {
+    display: inline-block;
+    flex: none;
+    color: currentColor;
+    vertical-align: middle;
+  }
+
   .aapm-icon-tile {
     box-shadow: inset 0 1px 0 hsl(var(--background) / 0.58),
       0 4px 10px hsl(var(--foreground) / 0.04);
     transition-property: background-color, border-color, box-shadow, transform;
-    transition-duration: var(--duration-fast);
-    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-duration: var(--t7-transition-fast, var(--duration-fast));
+    transition-timing-function: var(--t7-easing-standard, ease);
   }
 
   .aapm-icon-tile::before {
@@ -922,7 +1335,7 @@
   }
 
   .aapm-icon-tile:hover {
-    box-shadow: var(--card-shadow-hover);
+    box-shadow: var(--t7-shadow-raised, var(--card-shadow-hover));
     transform: translateY(-1px);
   }
 
@@ -939,13 +1352,14 @@
   }
 
   .aapm-field {
+    border-radius: var(--radius-control);
     transition-property: background-color, border-color, box-shadow;
     transition-duration: var(--duration-fast);
   }
 
   .aapm-field:focus-within {
-    border-color: hsl(var(--aapm-green-700) / 0.68);
-    box-shadow: 0 0 0 3px hsl(var(--aapm-lime-500) / 0.2);
+    border-color: hsl(var(--ring) / 0.68);
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
   }
 
   input:-webkit-autofill,
@@ -1889,23 +2303,18 @@
     isolation: isolate;
   }
 
-  /* On wide private-app screens the quick assistant is a contextual dock,
-   * not a second layer that hides the roadmap beneath it. Reserve the same
-   * right rail as the desktop panel so the page reflows before APPI opens.
-   * Narrow screens keep the existing modal-style overlay and backdrop. */
+  /* APPI is a fixed overlay. It must not mutate the shell content box when it
+   * opens: changing padding here caused the entire page/scrollbar to jump.
+   * The panel owns its own canvas and remains visually above the route. */
   @media (min-width: 75rem) {
     .aapm-ai-floating-backdrop {
       display: none;
-    }
-
-    .academy-shell:has(.aapm-ai-floating-panel) .academy-shell__content {
-      padding-right: calc(25rem + 1.25rem);
     }
   }
 
   .aapm-ai-floating-panel__header,
   .aapm-ai-floating-composer {
-    background: hsl(var(--background) / 0.98);
+    background: hsl(var(--popup-canvas) / 0.98);
   }
 
   .aapm-ai-floating-transcript {
@@ -1934,7 +2343,7 @@
     }
 
     .aapm-ai-floating-panel {
-      border-radius: 1.1rem;
+      border-radius: var(--radius-overlay);
     }
 
     .aapm-ai-floating-panel__header {
@@ -2029,7 +2438,8 @@
     animation: aapm-ai-answer-caret 0.9s steps(1, end) infinite;
   }
 
-  .aapm-ai-table-wrap {
+  .aapm-ai-table-wrap,
+  .t7-table-wrap:has(> .aapm-ai-markdown-table) {
     display: block;
     min-width: 0;
     max-width: 100%;
@@ -2038,12 +2448,13 @@
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-data);
     background: hsl(var(--surface-default));
   }
 
-  .aapm-ai-table-wrap table {
+  .aapm-ai-table-wrap table,
+  .aapm-ai-markdown-table {
     width: 100%;
     min-width: 32rem;
     border-collapse: collapse;
@@ -2052,26 +2463,30 @@
   }
 
   .aapm-ai-table-wrap th,
-  .aapm-ai-table-wrap td {
-    padding: 0.7rem 0.8rem;
+  .aapm-ai-table-wrap td,
+  .aapm-ai-markdown-table th,
+  .aapm-ai-markdown-table td {
+    padding: var(--t7-table-cell-padding-block, 0.7rem) var(--t7-table-cell-padding-inline, 0.8rem);
     text-align: left;
     vertical-align: top;
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--surface-border));
   }
 
-  .aapm-ai-table-wrap th {
+  .aapm-ai-table-wrap th,
+  .aapm-ai-markdown-table th {
     color: hsl(var(--foreground));
     font-weight: 650;
-    background: hsl(var(--surface-subtle));
+    background: hsl(var(--table-header-canvas));
   }
 
-  .aapm-ai-table-wrap tr:last-child td {
+  .aapm-ai-table-wrap tr:last-child td,
+  .aapm-ai-markdown-table tr:last-child td {
     border-bottom: 0;
   }
 
   .aapm-ai-inline-code {
     padding: 0.08rem 0.32rem;
-    border-radius: 0.28rem;
+    border-radius: var(--radius-sm);
     background: hsl(var(--muted));
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -2084,7 +2499,7 @@
     margin-top: 1rem;
     overflow-x: auto;
     padding: 0.85rem 0.95rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-card);
     background: hsl(var(--foreground));
     color: hsl(var(--background));
     font-size: 0.78rem;
@@ -2100,8 +2515,8 @@
     justify-content: center;
     overflow-x: auto;
     padding: 1rem;
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-card);
     background: hsl(var(--surface-default));
   }
 
@@ -2191,7 +2606,8 @@
     @apply bg-transparent p-0;
   }
   .markdown-body blockquote {
-    @apply border-l-4 border-amber-300 pl-3 italic text-muted-foreground my-3;
+    @apply border-l-4 pl-3 italic text-muted-foreground my-3;
+    border-left-color: hsl(var(--tint-orange-border));
   }
   .markdown-body table {
     @apply min-w-full w-max border-collapse text-sm;

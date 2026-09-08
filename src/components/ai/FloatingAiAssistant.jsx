@@ -16,7 +16,7 @@ import {
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import AiQuickActions from "@/components/ai/AiQuickActions";
-import { Button, ConfirmDialog, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, Table, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
@@ -105,11 +105,7 @@ function BubbleAnswer({ content }) {
         strong: ({ children }) => (
           <strong className="font-semibold text-foreground">{children}</strong>
         ),
-        table: ({ children }) => (
-          <div className="aapm-ai-table-wrap">
-            <table>{children}</table>
-          </div>
-        ),
+        table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
         th: ({ children }) => <th>{children}</th>,
         td: ({ children }) => <td>{children}</td>,
         code: ({ className, children, ...props }) => {
@@ -356,7 +352,7 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
-          className={`aapm-ai-panel aapm-ai-floating-panel fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-[0_24px_60px_hsl(var(--foreground)/0.18)] sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`aapm-ai-panel aapm-ai-floating-panel aapm-token-popover fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
           <header className="aapm-ai-floating-panel__header flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -438,7 +434,7 @@ export default function FloatingAiAssistant() {
                     KPI aktif dapat ikut dibaca. Percakapan ini tersimpan khusus
                     di akun Anda.
                   </p>
-                  <div className="mt-5 divide-y divide-border rounded-xl border border-border">
+                  <div className="mt-5 divide-y divide-border rounded-[var(--radius-card)] border border-border">
                     <p className="px-3 py-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
                       AKSI CEPAT
                     </p>
@@ -449,7 +445,7 @@ export default function FloatingAiAssistant() {
                         onClick={() => handleAction(action)}
                         className="group flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-tint-orange/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-tint-orange text-brand-orange">
                           <AapmIcon name={action.icon} className="h-4 w-4" />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -473,13 +469,13 @@ export default function FloatingAiAssistant() {
                   message.role === "user" ? (
                     <div
                   key={message.id}
-                  className="ml-auto min-w-0 max-w-[86%] break-words rounded-2xl rounded-br-md bg-brand-green px-3 py-2 text-xs leading-5 text-white [overflow-wrap:anywhere]"
+                  className="ml-auto min-w-0 max-w-[86%] break-words rounded-[var(--radius-card)] rounded-br-[var(--radius-control)] bg-brand-green px-3 py-2 text-xs leading-5 text-white [overflow-wrap:anywhere]"
                 >
                       {message.image?.dataUrl && (
                         <img
                           src={message.image.dataUrl}
                           alt="Foto yang dikirim untuk dianalisis"
-                          className="mb-2 max-h-40 w-full rounded-xl object-cover"
+                          className="mb-2 max-h-40 w-full rounded-[var(--radius-control)] object-cover"
                         />
                       )}
                       {message.content}
@@ -573,7 +569,7 @@ export default function FloatingAiAssistant() {
               <button
                 type="button"
                 onClick={jumpToLatest}
-                className="absolute bottom-[5.7rem] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 py-1.5 text-[10px] font-semibold text-foreground shadow-[0_8px_24px_hsl(var(--foreground)/0.14)] backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                className="absolute bottom-[5.7rem] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-[hsl(var(--popup-canvas)/.95)] px-2.5 py-1.5 text-[10px] font-semibold text-foreground shadow-[0_8px_24px_hsl(var(--foreground)/0.14)] backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
               >
                 <AapmIcon name="chevronDown" className="h-3 w-3 text-brand-orange" />
                 Ke terbaru
@@ -582,7 +578,7 @@ export default function FloatingAiAssistant() {
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
-                className="aapm-ai-history-sheet absolute inset-0 z-20 flex min-h-0 min-w-0 flex-col overflow-hidden bg-background"
+                className="aapm-ai-history-sheet aapm-token-sheet absolute inset-0 z-20 flex min-h-0 min-w-0 flex-col overflow-hidden"
               >
                 <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <div className="min-w-0">
@@ -654,7 +650,7 @@ export default function FloatingAiAssistant() {
               </aside>
             )}
           </div>
-          <footer className="aapm-ai-floating-composer shrink-0 border-t border-border bg-background p-3">
+          <footer className="aapm-ai-floating-composer shrink-0 border-t border-border p-3">
             <AiComposer
               input={promptDraft}
               setInput={setPromptDraft}
@@ -730,7 +726,7 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="aapm-ai-launcher fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-orange/30 bg-background/95 p-1.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand-orange/65 hover:shadow-[0_16px_32px_hsl(var(--foreground)/0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:bottom-5 sm:right-5 sm:h-12 sm:w-auto sm:justify-start sm:gap-2 sm:py-1.5 sm:pl-2 sm:pr-2.5"
+          className="aapm-ai-launcher fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-overlay)] border border-brand-orange/30 bg-[hsl(var(--popup-canvas)/.95)] p-1.5 shadow-[0_12px_28px_hsl(var(--foreground)/0.16)] ring-1 ring-brand-orange/10 backdrop-blur-xl transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand-orange/65 hover:shadow-[0_16px_32px_hsl(var(--foreground)/0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 sm:bottom-5 sm:right-5 sm:h-12 sm:w-auto sm:justify-start sm:gap-2 sm:py-1.5 sm:pl-2 sm:pr-2.5"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >

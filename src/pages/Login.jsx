@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button, Input, Label } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";
@@ -74,8 +72,8 @@ export default function Login() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
           <LoginLabel htmlFor="email" className="text-xs font-semibold text-foreground">Alamat email</LoginLabel>
-          <div className="aapm-field relative rounded-xl">
-            <AapmIcon name="mail" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="aapm-field aapm-token-control relative rounded-xl">
+            <AapmIcon name="mail" className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-foreground/55" />
             <LoginInput
               id="email"
               type="email"
