@@ -39,6 +39,16 @@
     --space-5: 1.25rem;
     --space-6: 1.5rem;
     --space-8: 2rem;
+    /* Product shell geometry. Ten4Seven owns the runtime header token; the
+     * fallback keeps pre-provider auth/error surfaces aligned as well. */
+    --aapm-shell-header-height: var(--t7-header-height, 4rem);
+    --aapm-shell-sidebar-width: 16.5rem;
+    --aapm-shell-sidebar-collapsed-width: 4.75rem;
+    --aapm-shell-content-max: var(--t7-content-max, 82.5rem);
+    --aapm-admin-content-max: 93.75rem;
+    --aapm-admin-wide-max: 112.5rem;
+    --aapm-editor-content-max: 80rem;
+    --aapm-reading-measure: 72ch;
     --radius-sm: 0.625rem;
     --radius-md: 0.875rem;
     --radius-lg: 1.25rem;

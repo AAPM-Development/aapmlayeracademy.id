@@ -4,7 +4,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 const activityMeta = {
   question: {
     icon: "solar:chat-round-line-bold-duotone",
-    className: "bg-tint-blue text-tint-blue-foreground",
+    className: "bg-tint-lime text-tint-lime-foreground",
   },
   response: {
     icon: "solar:check-circle-bold-duotone",

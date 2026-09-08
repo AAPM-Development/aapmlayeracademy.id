@@ -56,7 +56,7 @@ export default function Certification() {
 
       <div className="mb-7 grid gap-3 sm:grid-cols-3">
         <Metric icon="course" label="Tingkat belajar" value="14" detail={`${completedModules} modul selesai`} tone="green" />
-        <Metric icon="modules" label="Modul inti" value={totalModules} detail="Roadmap Academy" tone="blue" />
+        <Metric icon="modules" label="Modul inti" value={totalModules} detail="Roadmap Academy" tone="lime" />
         <Metric icon="award" label="Tingkat profesional" value="6" detail={`${certificates.length} sertifikat dimiliki`} tone="orange" />
       </div>
 

@@ -5,7 +5,11 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import PageHeader from "@/components/layout/PageHeader";
 
 export function AdminPageFrame({ eyebrow = "Administrasi", title, description, actions, children, wide = false, editor = false }) {
-  const widthClass = editor ? "max-w-7xl" : wide ? "max-w-[1800px]" : "max-w-[1500px]";
+  const widthClass = editor
+    ? "max-w-[var(--aapm-editor-content-max)]"
+    : wide
+      ? "max-w-[var(--aapm-admin-wide-max)]"
+      : "max-w-[var(--aapm-admin-content-max)]";
   return (
     <div className={`mx-auto w-full ${widthClass} p-4 sm:p-6 lg:p-8`} data-t7-rail="application">
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />

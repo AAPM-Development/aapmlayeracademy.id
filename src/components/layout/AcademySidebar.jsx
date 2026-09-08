@@ -29,13 +29,15 @@ export default function AcademySidebar({
     <aside
       className={cn(
         "relative flex h-full min-h-0 flex-col border-r border-[hsl(var(--surface-border))] bg-surface-subtle transition-[width] duration-200",
-        collapsed ? "w-[76px]" : "w-[264px]",
+        collapsed
+          ? "w-[var(--aapm-shell-sidebar-collapsed-width)]"
+          : "w-[var(--aapm-shell-sidebar-width)]",
         className,
       )}
     >
       <div
         className={cn(
-          "relative flex h-[73px] shrink-0 items-center border-b border-[hsl(var(--surface-border))]",
+          "relative flex h-[var(--aapm-shell-header-height)] shrink-0 items-center border-b border-[hsl(var(--surface-border))]",
           collapsed
             ? "justify-center gap-1 px-2"
             : "justify-between gap-3 px-5",

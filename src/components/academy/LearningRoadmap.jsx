@@ -14,15 +14,15 @@ import {
 const learningTracks = [
   { key: "foundation", kicker: "Bab 01", title: "Fondasi flock", description: "Bangun cara berpikir sistem sebelum masuk ke keputusan produksi.", levels: [1, 2, 3], icon: "solar:layers-bold-duotone", accent: "green" },
   { key: "production", kicker: "Bab 02", title: "Sistem produksi", description: "Hubungkan pakan, air, dan lingkungan menjadi ritme operasional.", levels: [4, 5, 6], icon: "solar:settings-minimalistic-bold-duotone", accent: "orange" },
-  { key: "control", kicker: "Bab 03", title: "Kontrol mutu & data", description: "Jaga kesehatan, biosecurity, kualitas telur, dan sinyal KPI.", levels: [7, 8, 9, 10], icon: "solar:chart-square-bold-duotone", accent: "blue" },
-  { key: "leadership", kicker: "Bab 04", title: "Keputusan & kepemimpinan", description: "Naik dari membaca angka menjadi memimpin perbaikan farm.", levels: [11, 12, 13, 14], icon: "solar:cup-star-bold-duotone", accent: "violet" },
+  { key: "control", kicker: "Bab 03", title: "Kontrol mutu & data", description: "Jaga kesehatan, biosecurity, kualitas telur, dan sinyal KPI.", levels: [7, 8, 9, 10], icon: "solar:chart-square-bold-duotone", accent: "lime" },
+  { key: "leadership", kicker: "Bab 04", title: "Keputusan & kepemimpinan", description: "Naik dari membaca angka menjadi memimpin perbaikan farm.", levels: [11, 12, 13, 14], icon: "solar:cup-star-bold-duotone", accent: "neutral" },
 ];
 
 const accentStyles = {
   green: { section: "border-tint-green-border bg-tint-green/30", icon: "bg-tint-green text-tint-green-foreground", line: "bg-brand-green" },
   orange: { section: "border-tint-orange-border bg-tint-orange/30", icon: "bg-tint-orange text-tint-orange-foreground", line: "bg-brand-orange" },
-  blue: { section: "border-tint-blue-border bg-tint-blue/30", icon: "bg-tint-blue text-tint-blue-foreground", line: "bg-info" },
-  violet: { section: "border-tint-violet-border bg-tint-violet/30", icon: "bg-tint-violet text-tint-violet-foreground", line: "bg-tint-violet-foreground" },
+  lime: { section: "border-tint-lime-border bg-tint-lime/30", icon: "bg-tint-lime text-tint-lime-foreground", line: "bg-brand-lime" },
+  neutral: { section: "border-border bg-surface-subtle", icon: "bg-surface-inset text-muted-foreground", line: "bg-muted-foreground" },
 };
 
 const moduleIdentity = {
@@ -30,29 +30,28 @@ const moduleIdentity = {
   2: { icon: "modules", tone: "green" },
   3: { icon: "progress", tone: "orange" },
   4: { icon: "egg", tone: "orange" },
-  5: { icon: "solar:waterdrops-bold-duotone", tone: "blue" },
-  6: { icon: "solar:wind-bold-duotone", tone: "blue" },
+  5: { icon: "solar:waterdrops-bold-duotone", tone: "lime" },
+  6: { icon: "solar:wind-bold-duotone", tone: "lime" },
   7: { icon: "solar:medical-kit-bold", tone: "orange" },
   8: { icon: "shield", tone: "green" },
   9: { icon: "solar:clipboard-check-bold-duotone", tone: "orange" },
-  10: { icon: "kpi", tone: "blue" },
-  11: { icon: "finance", tone: "violet" },
+  10: { icon: "kpi", tone: "lime" },
+  11: { icon: "finance", tone: "orange" },
   12: { icon: "course", tone: "green" },
-  13: { icon: "analytics", tone: "violet" },
-  14: { icon: "award", tone: "violet" },
+  13: { icon: "analytics", tone: "orange" },
+  14: { icon: "award", tone: "orange" },
 };
 
 const moduleIdentityStyles = {
   green: "bg-tint-green text-tint-green-foreground",
   orange: "bg-tint-orange text-tint-orange-foreground",
-  blue: "bg-tint-blue text-tint-blue-foreground",
-  violet: "bg-tint-violet text-tint-violet-foreground",
+  lime: "bg-tint-lime text-tint-lime-foreground",
 };
 
 const statusMeta = {
   completed: { label: "Selesai", icon: "solar:check-circle-bold", className: "bg-success/10 text-success" },
   current: { label: "Lanjutkan", icon: "solar:play-circle-bold-duotone", className: "bg-tint-orange text-tint-orange-foreground" },
-  available: { label: "Tersedia", icon: "solar:lock-keyhole-minimalistic-unlocked-bold-duotone", className: "bg-tint-blue text-tint-blue-foreground" },
+  available: { label: "Tersedia", icon: "solar:lock-keyhole-minimalistic-unlocked-bold-duotone", className: "bg-surface-inset text-muted-foreground" },
   locked: { label: "Terkunci", icon: "solar:lock-keyhole-bold-duotone", className: "bg-muted text-muted-foreground" },
 };
 
@@ -75,7 +74,7 @@ function ModuleTile({ module, state }) {
       "group relative min-w-0 overflow-hidden rounded-xl border p-3.5 transition-[border-color,box-shadow,transform,background-color] sm:p-4",
       isCurrent && "border-brand-orange/45 bg-tint-orange shadow-[0_10px_30px_hsl(var(--aapm-orange-700)/0.10)]",
       state === "completed" && "border-border bg-background",
-      state === "available" && "border-tint-blue-border bg-background",
+      state === "available" && "border-border bg-background",
       state === "locked" && "cursor-not-allowed border-border/75 bg-surface-subtle/65",
       state !== "locked" && "hover:-translate-y-0.5 hover:border-brand-orange/35 hover:shadow-md",
     )}>
@@ -85,7 +84,7 @@ function ModuleTile({ module, state }) {
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold",
           state === "completed" && "bg-tint-green text-brand-green",
           isCurrent && "bg-brand-orange text-white",
-          state === "available" && "bg-tint-blue text-tint-blue-foreground",
+          state === "available" && "bg-surface-inset text-muted-foreground",
           state === "locked" && "bg-muted text-muted-foreground",
         )}>
           {state === "completed" ? <AapmIcon name="solar:check-read-bold-duotone" className="h-5 w-5" /> : state === "locked" ? <AapmIcon name="solar:lock-keyhole-bold-duotone" className="h-4 w-4" /> : String(module.moduleNumber).padStart(2, "0")}

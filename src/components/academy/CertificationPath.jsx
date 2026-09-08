@@ -5,14 +5,11 @@ import { cn } from "@/lib/utils";
 import { certificationTiers, getCertificationState, getCompletedModuleSet } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
 
-const tierTones = ["green", "lime", "blue", "orange", "violet", "slate"];
+const tierTones = ["green", "lime", "orange", "green", "lime", "orange"];
 const progressTones = {
   green: "bg-tint-green-foreground",
   lime: "bg-tint-lime-foreground",
-  blue: "bg-tint-blue-foreground",
   orange: "bg-tint-orange-foreground",
-  violet: "bg-tint-violet-foreground",
-  slate: "bg-tint-slate-foreground",
 };
 
 function TierIcon({ status = "locked" } = {}) {

@@ -248,10 +248,10 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
         </button>
       </div>
 
-      <div className="relative min-w-0 bg-slate-950/5 p-2 sm:p-4" aria-busy={status === "loading"}>
+      <div className="relative min-w-0 bg-muted/40 p-2 sm:p-4" aria-busy={status === "loading"}>
         <div ref={targetRef} className="min-h-[13rem] w-full min-w-0 overflow-hidden rounded-xl bg-white" />
         {status === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/5 px-5 text-center text-sm text-muted-foreground">
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/40 px-5 text-center text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 shadow-sm">
               <AapmIcon name="loading" className="h-4 w-4 animate-spin text-brand-green" />
               Memuat presentasi…

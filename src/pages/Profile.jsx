@@ -31,8 +31,9 @@ import {
 function Metric({ icon, label, value, detail, tone = "green" }) {
   const tones = {
     green: "border-tint-green-border bg-tint-green text-brand-green",
+    lime: "border-tint-lime-border bg-tint-lime text-tint-lime-foreground",
     orange: "border-tint-orange-border bg-tint-orange text-brand-orange",
-    violet: "border-tint-violet-border bg-tint-violet text-tint-violet-foreground",
+    violet: "border-tint-lime-border bg-tint-lime text-tint-lime-foreground",
   };
   return (
     <Surface className="relative overflow-hidden p-4">
@@ -225,7 +226,7 @@ export default function Profile() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon="course" label="Modul selesai" value={learning.completedModules || 0} detail={`${learning.progressPercent || 0}% dari kurikulum`} />
         <Metric icon="target" label="Rata-rata kuis" value={learning.quizAverage === null || learning.quizAverage === undefined ? "—" : `${learning.quizAverage}%`} detail="Dihitung dari nilai tersimpan" tone="orange" />
-        <Metric icon="clock" label="Waktu belajar" value={`${Math.floor((learning.timeSpentMinutes || 0) / 60)}j`} detail={`${(learning.timeSpentMinutes || 0) % 60} menit tercatat`} tone="violet" />
+        <Metric icon="clock" label="Waktu belajar" value={`${Math.floor((learning.timeSpentMinutes || 0) / 60)}j`} detail={`${(learning.timeSpentMinutes || 0) % 60} menit tercatat`} tone="lime" />
         <Metric icon="certificate" label="Sertifikat" value={learning.certificateCount || 0} detail="Diterbitkan oleh Academy" />
       </section>
 

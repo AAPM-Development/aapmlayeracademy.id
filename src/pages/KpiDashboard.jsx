@@ -70,7 +70,7 @@ export default function KpiDashboard() {
     { label: "Avg HDP", value: `${avg("henDayProduction")}%`, detail: "Hen day production", icon: "egg", tone: "orange" },
     { label: "Avg FCR", value: avg("fcr") || "—", detail: "Feed conversion", icon: "trend", tone: "green" },
     { label: "Total profit", value: `Rp ${(profit / 1000000).toFixed(1)}jt`, detail: profit >= 0 ? "Margin positif" : "Perlu review biaya", icon: "finance", tone: profit >= 0 ? "green" : "orange" },
-    { label: "Avg egg weight", value: `${avg("eggWeight")} g`, detail: "Berat telur", icon: "weight", tone: "blue" },
+    { label: "Avg egg weight", value: `${avg("eggWeight")} g`, detail: "Berat telur", icon: "weight", tone: "lime" },
   ];
 
   return (
@@ -121,7 +121,7 @@ function KpiStat({ label, value, detail, icon, tone, index }) {
   const accent = {
     green: { border: "border-t-brand-green", icon: "text-brand-green" },
     orange: { border: "border-t-brand-orange", icon: "text-brand-orange" },
-    blue: { border: "border-t-info", icon: "text-info" },
+    blue: { border: "border-t-brand-lime", icon: "text-tint-lime-foreground" },
   }[tone] || { border: "border-t-brand-orange", icon: "text-brand-orange" };
   return <Card className={cn("academy-enter aapm-interactive-card border border-border border-t-[3px] bg-card shadow-none", accent.border)} style={{ animationDelay: `${index * 60}ms` }}><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><AapmIcon name={icon} className={cn("h-5 w-5", accent.icon)} /><span className="text-[10px] font-medium text-muted-foreground">KPI farm</span></div><div className="mt-4 truncate text-xl font-semibold tracking-[-0.04em] tabular-nums">{value}</div><div className="mt-1 text-xs font-medium text-foreground/80">{label}</div><div className="mt-1 text-[11px] text-muted-foreground">{detail}</div></CardContent></Card>;
 }

@@ -9,10 +9,10 @@ import { formatAdminDate } from "@/components/admin/adminUtils";
 
 const metricAppearance = {
   learners: { tone: "green", icon: "users" },
-  active: { tone: "blue", icon: "analytics" },
+  active: { tone: "lime", icon: "analytics" },
   courses: { tone: "orange", icon: "course" },
-  completion: { tone: "violet", icon: "certificate" },
-  analytics: { tone: "slate", icon: "analytics" },
+  completion: { tone: "green", icon: "certificate" },
+  analytics: { tone: "neutral", icon: "analytics" },
 };
 
 export default function AdminOverview() {

@@ -13,9 +13,11 @@ const iconTileVariants = cva(
         green: "border-tint-green-border/60 bg-tint-green text-tint-green-foreground",
         lime: "border-tint-lime-border/70 bg-tint-lime text-tint-lime-foreground",
         orange: "border-tint-orange-border/70 bg-tint-orange text-tint-orange-foreground",
-        blue: "border-tint-blue-border/70 bg-tint-blue text-tint-blue-foreground",
-        violet: "border-tint-violet-border/70 bg-tint-violet text-tint-violet-foreground",
-        slate: "border-tint-slate-border/70 bg-tint-slate text-tint-slate-foreground",
+        /* Legacy tone names remain source-compatible, but resolve to the
+         * approved AAPM palette instead of leaking recipe blue/violet hues. */
+        blue: "border-tint-lime-border/70 bg-tint-lime text-tint-lime-foreground",
+        violet: "border-tint-orange-border/70 bg-tint-orange text-tint-orange-foreground",
+        slate: "border-border/60 bg-surface-inset text-muted-foreground",
       },
       size: {
         sm: "h-8 w-8 [&_svg]:size-4",

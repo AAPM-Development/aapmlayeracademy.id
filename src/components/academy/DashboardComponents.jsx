@@ -174,16 +174,16 @@ export function DashboardMetricStrip({
       label: "Rata-rata nilai kuis",
       detail: `${scored.length} kuis tersimpan`,
       icon: "solar:target-bold-duotone",
-      iconTone: "blue",
-      accent: "border-t-info",
-      ring: "border-info",
+      iconTone: "lime",
+      accent: "border-t-brand-lime",
+      ring: "border-brand-lime",
     },
     {
       value: activeLevel?.name || "Foundation",
       label: "Level saat ini",
       detail: "Jalur profesional",
       icon: "solar:cup-star-bold",
-      iconTone: "violet",
+      iconTone: "green",
       accent: "border-t-brand-orange",
       ring: "border-brand-orange",
     },
@@ -260,7 +260,7 @@ const dashboardTracks = [
     name: "Expert",
     description: "Ambil keputusan lintas fungsi dan pimpin perbaikan farm.",
     levels: [14],
-    tone: "slate",
+    tone: "neutral",
     icon: "solar:cup-star-bold",
   },
 ];
@@ -283,10 +283,10 @@ export function LearningTracks({ modules = [], progress = [] } = {}) {
       bar: "bg-tint-orange-foreground",
       label: "text-tint-orange-foreground",
     },
-    slate: {
-      card: "border-tint-slate-border bg-tint-slate",
-      bar: "bg-tint-slate-foreground",
-      label: "text-tint-slate-foreground",
+    neutral: {
+      card: "border-border bg-surface-subtle",
+      bar: "bg-muted-foreground",
+      label: "text-foreground",
     },
   };
 

@@ -8,17 +8,17 @@ import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 const tools = [
   { id: "fcr", name: "FCR", icon: "solar:chart-square-bold-duotone", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
   { id: "eggmass", name: "Egg Mass", icon: "solar:chart-2-bold-duotone", tone: "orange", description: "Ukur output telur per ekor per hari." },
-  { id: "uniformity", name: "Uniformity", icon: "solar:ruler-bold-duotone", tone: "blue", description: "Lihat konsistensi bobot flock." },
+  { id: "uniformity", name: "Uniformity", icon: "solar:ruler-bold-duotone", tone: "lime", description: "Lihat konsistensi bobot flock." },
   { id: "mortality", name: "Mortality", icon: "solar:graph-down-bold-duotone", tone: "orange", description: "Pantau kehilangan dan livability." },
   {
     id: "waterfeed",
     name: "Water/Feed Ratio",
     icon: "solar:waterdrops-bold-duotone",
-    tone: "blue",
+    tone: "lime",
     description: "Deteksi perubahan konsumsi air dan pakan.",
   },
   { id: "ventilation", name: "Ventilasi", icon: "solar:wind-bold-duotone", tone: "green", description: "Terjemahkan volume kandang menjadi airflow." },
-  { id: "roi", name: "ROI & Break Even", icon: "solar:money-bag-bold-duotone", tone: "violet", description: "Uji kelayakan keputusan investasi farm." },
+  { id: "roi", name: "ROI & Break Even", icon: "solar:money-bag-bold-duotone", tone: "orange", description: "Uji kelayakan keputusan investasi farm." },
 ];
 
 export default function Calculators() {

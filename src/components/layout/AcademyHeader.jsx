@@ -18,7 +18,7 @@ export default function AcademyHeader({
   const displayName = user?.full_name || user?.email || "Peserta";
 
   return (
-    <header className="sticky top-0 z-30 flex h-[73px] shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-[var(--aapm-shell-header-height)] shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         {showMobileMenu && (
           <IconButton

@@ -124,7 +124,7 @@ const markdownComponents = {
 
 export function EditorialMarkdown({ children = "", className = "" }) {
   return (
-    <div className={cn("markdown-body min-w-0 max-w-[72ch] break-words text-base leading-7", className)}>
+    <div className={cn("markdown-body min-w-0 max-w-[var(--aapm-reading-measure)] break-words text-base leading-7", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkUnderline]} components={markdownComponents}>
         {children}
       </ReactMarkdown>
