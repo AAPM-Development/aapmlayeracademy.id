@@ -348,7 +348,7 @@ export default function FloatingAiAssistant() {
           type="button"
           aria-label="Tutup APPI"
           onClick={closePanel}
-          className={`aapm-ai-floating-backdrop fixed inset-0 z-[79] bg-foreground/20 backdrop-blur-[1px] sm:hidden ${closing ? "aapm-ai-floating-backdrop--exit" : ""}`}
+          className={`aapm-ai-floating-backdrop fixed inset-0 z-[79] bg-foreground/20 backdrop-blur-[1px] ${closing ? "aapm-ai-floating-backdrop--exit" : ""}`}
         />
       )}
       {open && (

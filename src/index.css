@@ -1884,6 +1884,10 @@
    * right rail as the desktop panel so the page reflows before APPI opens.
    * Narrow screens keep the existing modal-style overlay and backdrop. */
   @media (min-width: 75rem) {
+    .aapm-ai-floating-backdrop {
+      display: none;
+    }
+
     .academy-shell:has(.aapm-ai-floating-panel) .academy-shell__content {
       padding-right: calc(25rem + 1.25rem);
     }

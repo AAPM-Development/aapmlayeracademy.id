@@ -1,0 +1,1 @@
+import{j as p,c as m}from"./index-DVU39KGf.js";function s({children:t=null,className:a="",...n}={}){return p.jsx("div",{className:m("mx-auto min-w-0 w-full max-w-[var(--t7-content-max)] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",a),"data-t7-rail":"application",...n,children:t})}export{s as C};
