@@ -1,5 +1,6 @@
 import React from "react";
 import { Icon as IconifyIcon } from "@iconify/react";
+import { IconNames, T7Icon } from "@ten4seven/ui";
 import { cn } from "@/lib/utils";
 import { solarIconData } from "./solarIconData";
 
@@ -83,6 +84,73 @@ export const aapmIconSources = Object.freeze({
 
 export const aapmIconNames = Object.freeze(Object.keys(aapmIconSources));
 
+// The existing AAPM names stay stable for feature code while known glyphs are
+// resolved to the canonical Ten4Seven semantic registry. Provider-specific
+// Solar names remain supported below for authored content and legacy edge
+// cases that have no canonical equivalent yet.
+const semanticIconByAapmName = Object.freeze({
+  dashboard: "dashboard",
+  course: "book",
+  modules: "book",
+  assessment: "file",
+  users: "users",
+  analytics: "analytics",
+  kpi: "kpi",
+  certificate: "approve",
+  media: "image",
+  menu: "menu",
+  close: "close",
+  chevronLeft: "chevronLeft",
+  chevronRight: "chevronRight",
+  chevronDown: "chevronDown",
+  chevronUp: "chevronUp",
+  arrowLeft: "arrowLeft",
+  arrowRight: "arrowRight",
+  undo: "refresh",
+  redo: "refresh",
+  // There is no logout glyph in the canonical registry yet; keep the
+  // authored Solar logout mark rather than changing the meaning to an arrow.
+  progress: "progress",
+  themeLight: "sun",
+  themeDark: "moon",
+  lock: "lock",
+  mail: "communication",
+  eye: "eye",
+  eyeOff: "eyeOff",
+  loading: "refresh",
+  add: "add",
+  search: "search",
+  alert: "warning",
+  alertCircle: "danger",
+  check: "check",
+  checkRead: "success",
+  closeCircle: "close",
+  more: "more",
+  minus: "clear",
+  sidebar: "sidebar",
+  grip: "sort",
+  flag: "warning",
+  award: "approve",
+  graduation: "approve",
+  refresh: "refresh",
+  edit: "edit",
+  delete: "delete",
+  egg: "chart",
+  weight: "chart",
+  finance: "finance",
+  trend: "trendUp",
+  target: "chart",
+  shield: "admin",
+  circle: "pending",
+  play: "preview",
+  download: "download",
+  info: "info",
+  clock: "clock",
+  reorder: "sort",
+  fileCheck: "fileCheck",
+  settings: "settings",
+});
+
 function AiMark({ className = "", alt = "", ...props }) {
   // When a caller only sets a text size (for example in a badge), the mark
   // follows that text size. Explicit h/w utilities still win for icon buttons.
@@ -100,6 +168,19 @@ function AiMark({ className = "", alt = "", ...props }) {
 }
 
 export default function AapmIcon({ name = "dashboard", className = "", alt = "", ...props }) {
+  const semanticName = semanticIconByAapmName[name];
+
+  if (semanticName && IconNames.includes(semanticName)) {
+    return (
+      <T7Icon
+        name={semanticName}
+        label={alt || undefined}
+        className={cn("h-5 w-5 shrink-0", className)}
+        {...props}
+      />
+    );
+  }
+
   const icon = aapmIconSources[name] || (name.includes(":") ? name : aapmIconSources.dashboard);
 
   if (name === "ai") return <AiMark className={className} alt={alt} {...props} />;

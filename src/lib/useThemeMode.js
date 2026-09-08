@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useState } from "react";
+
+const ThemeModeContext = createContext(null);
 
 function readStoredTheme() {
   if (typeof window === "undefined") return "light";
@@ -20,7 +22,7 @@ function applyTheme(mode) {
   document.documentElement.style.colorScheme = mode;
 }
 
-export function useThemeMode() {
+function useThemeModeState() {
   const [mode, setMode] = useState(readStoredTheme);
 
   useEffect(() => {
@@ -37,4 +39,25 @@ export function useThemeMode() {
   }, []);
 
   return { mode, toggleTheme };
+}
+
+/**
+ * One theme-mode owner for the whole Academy tree. Ten4SevenProvider consumes
+ * this state so the canonical token runtime and the existing dark-mode
+ * compatibility class always move together.
+ */
+export function ThemeModeProvider({ children }) {
+  const value = useThemeModeState();
+
+  return createElement(ThemeModeContext.Provider, { value }, children);
+}
+
+export function useThemeMode() {
+  const value = useContext(ThemeModeContext);
+
+  if (!value) {
+    throw new Error("useThemeMode must be used inside ThemeModeProvider");
+  }
+
+  return value;
 }

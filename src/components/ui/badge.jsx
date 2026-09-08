@@ -1,41 +1,55 @@
 // @ts-nocheck
 import * as React from "react"
-import { cva } from "class-variance-authority";
+import { cva } from "class-variance-authority"
 
+import { Badge as T7Badge } from "@ten4seven/ui"
 import { cn } from "@/lib/utils"
 
-const badgeVariants = cva(
-  "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
-        soft: "border-transparent bg-surface-subtle text-foreground",
-        success: "border-transparent bg-success/10 text-success",
-        warning: "border-transparent bg-warning/10 text-warning",
-        info: "border-transparent bg-info/10 text-info",
-        ai: "border-transparent bg-ai/10 text-ai",
-      },
+const badgeVariants = cva("t7-badge inline-flex items-center gap-1.5", {
+  variants: {
+    variant: {
+      default: "aapm-t7-badge-primary",
+      secondary: "aapm-t7-badge-neutral",
+      destructive: "aapm-t7-badge-danger",
+      outline: "aapm-t7-badge-neutral",
+      soft: "aapm-t7-badge-neutral",
+      success: "aapm-t7-badge-success",
+      warning: "aapm-t7-badge-warning",
+      info: "aapm-t7-badge-info",
+      ai: "aapm-t7-badge-accent",
     },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
+  },
+  defaultVariants: { variant: "default" },
+})
 
-/** @param {{ className?: string, variant?: string, [key: string]: any }} props */
-function Badge({
-  className = "",
+const toneByVariant = {
+  default: "primary",
+  secondary: "neutral",
+  destructive: "danger",
+  outline: "neutral",
+  soft: "neutral",
+  success: "success",
+  warning: "warning",
+  info: "neutral",
+  ai: "primary",
+}
+
+/** Badge compatibility wrapper backed by the canonical status vocabulary. */
+/** @type {any} */
+const Badge = React.forwardRef(({
+  className,
   variant = "default",
   ...props
-} = {}) {
-  return (<div className={cn(badgeVariants({ variant }), className)} {...props} />);
-}
+} = {}, ref) => (
+  <T7Badge
+    ref={ref}
+    tone={toneByVariant[variant] || "neutral"}
+    className={cn(badgeVariants({ variant }), className)}
+    data-t7-bridge="academy-badge"
+    {...props}
+  />
+))
+
+Badge.displayName = "Badge"
 
 export { Badge, badgeVariants }

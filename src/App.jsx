@@ -10,6 +10,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
 import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
+import { exactColor, Ten4SevenProvider } from '@ten4seven/ui';
+import { ThemeModeProvider, useThemeMode } from '@/lib/useThemeMode';
 
 const Layout = lazy(() => loadRouteModule('layout'));
 const AdminShell = lazy(() => loadRouteModule('adminShell'));
@@ -47,6 +49,31 @@ function RouteLoading() {
       </span>
       Menyiapkan halaman…
     </div>
+  );
+}
+
+function Ten4SevenRuntime({ children }) {
+  const { mode } = useThemeMode();
+
+  return (
+    <Ten4SevenProvider
+      theme="product"
+      preferences={{ appearance: mode, density: 'default' }}
+      overrides={{
+        // Product recipe supplies composition; approved AAPM colors own the
+        // action/accent roles instead of silently falling back to indigo/cyan.
+        // Emerald keeps any non-brand semantic fallback in the same green
+        // family; data series still use the spectrum chart palette.
+        config: {
+          palette: 'emerald',
+          primary: exactColor('#318139'),
+          accent: exactColor('#d4451a'),
+        },
+      }}
+      className="aapm-t7-runtime"
+    >
+      {children}
+    </Ten4SevenProvider>
   );
 }
 
@@ -124,15 +151,19 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <ThemeModeProvider>
+      <Ten4SevenRuntime>
+        <AuthProvider>
+          <QueryClientProvider client={queryClientInstance}>
+            <Router>
+              <ScrollToTop />
+              <AuthenticatedApp />
+            </Router>
+            <Toaster />
+          </QueryClientProvider>
+        </AuthProvider>
+      </Ten4SevenRuntime>
+    </ThemeModeProvider>
   )
 }
 

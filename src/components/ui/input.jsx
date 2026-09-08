@@ -1,19 +1,18 @@
+// @ts-nocheck
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+import { Input as T7Input } from "@ten4seven/ui"
 
-const Input = React.forwardRef(({ className, type, ...props }, ref) => {
-  return (
-    (<input
-      type={type}
-      className={cn(
-        "flex h-11 w-full rounded-xl border border-input bg-surface-elevated px-3 py-1 text-base shadow-none transition-[border-color,box-shadow,background-color] duration-150 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-brand-green/65 focus-visible:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        className
-      )}
-      ref={ref}
-      {...props} />)
-  );
-})
+/**
+ * Academy input compatibility wrapper. Ten4Seven owns field geometry, focus,
+ * disabled, and error tokens while existing callers can keep their current
+ * native-input props and separate Label components.
+ */
+/** @type {any} */
+const Input = React.forwardRef(({ className, ...props }, ref) => (
+  <T7Input ref={ref} className={className} {...props} />
+))
+
 Input.displayName = "Input"
 
 export { Input }

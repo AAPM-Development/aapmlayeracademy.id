@@ -1,42 +1,87 @@
 // @ts-nocheck
-import * as React from "react";
-import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cva } from "class-variance-authority"
 
-// Product-level surface vocabulary. Feature code should choose a semantic
-// treatment instead of recreating shadows, tints, and borders ad hoc.
-const surfaceVariants = cva(
-  "rounded-[var(--card-radius)] border text-foreground transition-[background-color,border-color,box-shadow,transform] duration-200",
-  {
-    variants: {
-      variant: {
-        default: "border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] shadow-[var(--surface-shadow)]",
-        muted: "border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-muted))] shadow-none",
-        accent: "border-[hsl(var(--surface-accent-border))] bg-[hsl(var(--surface-accent))] shadow-none",
-        inverse: "border-foreground bg-foreground text-background shadow-none",
-        interactive: "aapm-interactive-card border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] shadow-none focus-within:border-brand-green/45",
-        selected: "border-brand-green/50 bg-brand-green/5 shadow-none ring-1 ring-brand-green/10",
-      },
-      tone: {
-        neutral: "",
-        green: "border-tint-green-border bg-tint-green",
-        lime: "border-tint-lime-border bg-tint-lime",
-        orange: "border-tint-orange-border bg-tint-orange",
-        blue: "border-tint-blue-border bg-tint-blue",
-        violet: "border-tint-violet-border bg-tint-violet",
-        slate: "border-tint-slate-border bg-tint-slate",
-      },
+import { Surface as T7Surface } from "@ten4seven/ui"
+import { cn } from "@/lib/utils"
+
+const surfaceVariants = cva("t7-surface", {
+  variants: {
+    variant: {
+      default: "aapm-t7-surface-base",
+      muted: "aapm-t7-surface-subtle",
+      accent: "aapm-t7-surface-accent",
+      inverse: "aapm-t7-surface-inverse",
+      interactive: "aapm-t7-surface-interactive",
+      selected: "aapm-t7-surface-selected",
     },
-    defaultVariants: {
-      variant: "default",
-      tone: "neutral",
+    tone: {
+      neutral: "",
+      green: "",
+      lime: "",
+      orange: "",
+      blue: "",
+      violet: "",
+      slate: "",
     },
   },
-);
+  defaultVariants: { variant: "default", tone: "neutral" },
+})
 
-const Surface = React.forwardRef(({ className, variant, tone, ...props }, ref) => (
-  <div ref={ref} className={cn(surfaceVariants({ variant, tone }), className)} {...props} />
-));
-Surface.displayName = "Surface";
+const semanticToneByLegacyTone = {
+  neutral: "base",
+  green: "success",
+  lime: "accent",
+  orange: "warning",
+  blue: "info",
+  violet: "accent",
+  slate: "subtle",
+}
 
-export { Surface, surfaceVariants };
+const semanticToneByVariant = {
+  default: "base",
+  muted: "subtle",
+  accent: "accent",
+  inverse: "base",
+  interactive: "base",
+  selected: "accent",
+}
+
+/**
+ * Surface is now rendered by Ten4Seven. Legacy `variant`/`tone` values are
+ * translated to the canonical surface vocabulary so feature code and its
+ * business state remain unchanged during migration.
+ */
+/** @type {any} */
+const Surface = function Surface({
+  as = "div",
+  className,
+  variant = "default",
+  tone = "neutral",
+  ...props
+} = {}) {
+  const semanticTone =
+    semanticToneByLegacyTone[tone] || semanticToneByVariant[variant] || "base"
+  const emphasis =
+    variant === "inverse"
+      ? "inverse"
+      : variant === "accent" ||
+          variant === "selected" ||
+          tone !== "neutral"
+        ? "soft"
+        : undefined
+
+  return (
+    <T7Surface
+      as={as}
+      tone={semanticTone}
+      emphasis={emphasis}
+      className={cn(surfaceVariants({ variant, tone }), className)}
+      data-t7-bridge="academy-surface"
+      data-legacy-variant={variant}
+      data-legacy-tone={tone}
+      {...props}
+    />
+  )
+}
+
+export { Surface, surfaceVariants }

@@ -182,6 +182,303 @@
     --toast-loading-border: var(--tint-violet-border);
   }
 
+  /*
+   * Ten4Seven is the runtime token owner. The legacy Academy utilities remain
+   * source-compatible, but resolve through the active T7 semantic variables so
+   * one provider controls canvas, type, density, radii, state colour, and
+   * elevation across learner, admin, and auth routes.
+   */
+  .aapm-t7-runtime {
+    --aapm-green-950: var(--t7-primary-active-hsl);
+    --aapm-green-900: var(--t7-primary-active-hsl);
+    --aapm-green-800: var(--t7-primary-hover-hsl);
+    --aapm-green-700: var(--t7-primary-hsl);
+    --aapm-green-100: 141 43% 92%;
+    /* Lime is a bounded learning accent, not a second name for the authored
+     * AAPM orange accent. Keeping the roles separate prevents learning cues
+     * from turning every highlight into an orange action cue. */
+    --aapm-lime-500: 77.09 84.36% 64.9%;
+    --aapm-lime-100: 77 100% 91%;
+    --aapm-orange-700: var(--t7-accent-hsl);
+    --aapm-orange-100: 25 100% 93%;
+    --aapm-ink: var(--t7-foreground-hsl);
+    --aapm-paper: var(--t7-background-hsl);
+
+    --background: var(--t7-background-hsl);
+    --foreground: var(--t7-foreground-hsl);
+    --card: var(--t7-surface-hsl);
+    --card-foreground: var(--t7-foreground-hsl);
+    --popover: var(--t7-surface-raised-hsl);
+    --popover-foreground: var(--t7-foreground-hsl);
+    --primary: var(--t7-action-primary-hsl);
+    --primary-foreground: var(--t7-action-primary-foreground-hsl);
+    --secondary: var(--t7-action-secondary-background-hsl);
+    --secondary-foreground: var(--t7-action-secondary-foreground-hsl);
+    --muted: var(--t7-muted-hsl);
+    --muted-foreground: var(--t7-muted-foreground-hsl);
+    --accent: var(--t7-surface-emphasis-soft-hsl);
+    --accent-foreground: var(--t7-foreground-hsl);
+    --destructive: var(--t7-action-danger-hsl);
+    --destructive-foreground: var(--t7-action-danger-foreground-hsl);
+    --border: var(--t7-border-hsl);
+    --input: var(--t7-field-border-hsl);
+    --ring: var(--t7-focus-hsl);
+    --chart-1: var(--t7-primary-hsl);
+    --chart-2: var(--t7-chart-2-hsl, var(--t7-info-hsl));
+    --chart-3: var(--t7-chart-3-hsl, var(--t7-warning-hsl));
+    --chart-4: var(--t7-chart-4-hsl, var(--t7-accent-hsl));
+    --chart-5: var(--t7-chart-5-hsl, var(--t7-surface-emphasis-accent-hsl));
+    --radius: var(--t7-radius-control);
+
+    --brand-aapm-green: var(--t7-primary-hsl);
+    --brand-aapm-lime: var(--aapm-lime-500);
+    --brand-aapm-orange: var(--t7-accent-hsl);
+    --brand-foreground: var(--t7-foreground-hsl);
+    --brand-foreground-muted: var(--t7-muted-foreground-hsl);
+
+    --surface: var(--t7-surface-hsl);
+    --surface-default: var(--t7-surface-hsl);
+    --surface-subtle: var(--t7-surface-subtle-hsl);
+    --surface-muted: var(--t7-surface-muted-hsl);
+    --surface-elevated: var(--t7-surface-raised-hsl);
+    --surface-hover: var(--t7-surface-subtle-hsl);
+    --surface-inset: var(--t7-surface-muted-hsl);
+    --surface-border: var(--t7-border-hsl);
+    --surface-accent: var(--t7-surface-emphasis-soft-hsl);
+    --surface-accent-border: var(--t7-primary-hsl);
+
+    /* Low-chroma surfaces remain quiet; status tokens below still carry the
+     * saturated success/warning meaning for indicators and validation. */
+    --tint-green: 141 43% 93%;
+    --tint-green-foreground: var(--t7-primary-hsl);
+    --tint-green-border: 141 38% 78%;
+    --tint-lime: var(--aapm-lime-100);
+    --tint-lime-foreground: 91 62% 23%;
+    --tint-lime-border: 78 79% 65%;
+    --tint-orange: 25 100% 93%;
+    --tint-orange-foreground: var(--t7-accent-hsl);
+    --tint-orange-border: 24 78% 78%;
+    --tint-blue: 201 100% 95%;
+    --tint-blue-foreground: 198 100% 40%;
+    --tint-blue-border: 201 82% 84%;
+    --tint-violet: 252 100% 96%;
+    --tint-violet-foreground: 258 72% 56%;
+    --tint-violet-border: 254 100% 89%;
+    --tint-slate: var(--t7-muted-hsl);
+    --tint-slate-foreground: var(--t7-muted-foreground-strong-hsl);
+    --tint-slate-border: var(--t7-border-hsl);
+
+    --success: var(--t7-success-hsl);
+    --warning: var(--t7-warning-hsl);
+    --danger: var(--t7-danger-hsl);
+    --info: var(--t7-info-hsl);
+    --ai: var(--t7-accent-hsl);
+    --ai-foreground: var(--t7-primary-foreground-hsl);
+    --learning-active: var(--aapm-lime-500);
+    --learning-complete: var(--t7-success-hsl);
+    --learning-locked: var(--t7-muted-foreground-hsl);
+    --metric-positive: var(--t7-success-hsl);
+    --metric-negative: var(--t7-danger-hsl);
+    --metric-neutral: var(--t7-muted-foreground-hsl);
+
+    --font-heading: var(--t7-type-heading-lg-family, var(--t7-font-ui));
+    --font-body: var(--t7-font-ui);
+    --font-display: var(--t7-type-display-lg-family, var(--t7-font-ui));
+    --font-mono: var(--t7-font-mono);
+    --sidebar-background: var(--t7-surface-subtle-hsl);
+    --sidebar-foreground: var(--t7-foreground-hsl);
+    --sidebar-primary: var(--t7-primary-hsl);
+    --sidebar-primary-foreground: var(--t7-primary-foreground-hsl);
+    --sidebar-accent: var(--t7-surface-emphasis-soft-hsl);
+    --sidebar-accent-foreground: var(--t7-primary-hsl);
+    --sidebar-border: var(--t7-border-hsl);
+    --sidebar-ring: var(--t7-focus-hsl);
+
+    --card-radius: var(--t7-radius-card);
+    --card-padding: var(--t7-card-padding);
+    --card-shadow: var(--t7-shadow-card);
+    --card-shadow-hover: var(--t7-shadow-raised);
+    --surface-shadow: var(--t7-shadow-card);
+    --surface-shadow-hover: var(--t7-shadow-raised);
+    --duration-fast: var(--t7-duration-instant, 120ms);
+    --duration-normal: var(--t7-duration-standard, 180ms);
+  }
+
+  /* Dark mode keeps the same learning hue but lowers its luminance and uses
+   * a darker tint so the accent remains legible without a neon canvas. */
+  .aapm-t7-runtime[data-t7-mode="dark"] {
+    --aapm-lime-500: 77 79% 64%;
+    --aapm-lime-100: 77 43% 20%;
+    --brand-aapm-lime: var(--aapm-lime-500);
+    --tint-lime: var(--aapm-lime-100);
+    --tint-lime-foreground: 78 100% 71%;
+    --tint-lime-border: 77 47% 34%;
+    --tint-green: 145 35% 18%;
+    --tint-green-foreground: 145 70% 72%;
+    --tint-green-border: 145 35% 28%;
+    --tint-orange: 29 45% 20%;
+    --tint-orange-foreground: 34 100% 72%;
+    --tint-orange-border: 29 45% 32%;
+    --tint-blue: 201 45% 19%;
+    --tint-blue-foreground: 198 100% 72%;
+    --tint-blue-border: 201 42% 30%;
+    --tint-violet: 252 35% 20%;
+    --tint-violet-foreground: 258 100% 80%;
+    --tint-violet-border: 254 35% 32%;
+    --tint-slate: 214 24% 19%;
+    --tint-slate-foreground: 214 44% 76%;
+    --tint-slate-border: 214 24% 30%;
+    --learning-active: var(--aapm-lime-500);
+  }
+
+  /* Slot-based compatibility controls inherit the same canonical button
+   * contract when a Radix primitive owns the actual element. */
+  .aapm-t7-button-primary {
+    background: hsl(var(--t7-action-primary-hsl));
+    color: hsl(var(--t7-action-primary-foreground-hsl));
+    box-shadow: var(--t7-shadow-button);
+  }
+  .aapm-t7-button-primary:hover {
+    background: hsl(var(--t7-action-primary-hover-hsl));
+  }
+  .aapm-t7-button-secondary {
+    border-color: hsl(var(--t7-border-strong-hsl));
+    background: hsl(var(--t7-action-secondary-background-hsl));
+    color: hsl(var(--t7-action-secondary-foreground-hsl));
+  }
+  .aapm-t7-button-secondary:hover {
+    border-color: hsl(var(--t7-action-secondary-hover-hsl) / 0.52);
+    color: hsl(var(--t7-action-secondary-hover-hsl));
+    background: hsl(var(--t7-action-secondary-hover-hsl) / 0.06);
+  }
+  .aapm-t7-button-quiet {
+    background: transparent;
+    color: hsl(var(--t7-action-quiet-foreground-hsl));
+  }
+  .aapm-t7-button-quiet:hover {
+    background: hsl(var(--t7-action-quiet-hover-hsl));
+    color: hsl(var(--t7-action-secondary-foreground-hsl));
+  }
+  .aapm-t7-button-danger {
+    background: hsl(var(--t7-action-danger-hsl));
+    color: hsl(var(--t7-action-danger-foreground-hsl));
+  }
+  .aapm-t7-button-danger:hover {
+    filter: brightness(0.92);
+  }
+  .aapm-t7-button-link {
+    background: transparent;
+    color: hsl(var(--t7-primary-hsl));
+  }
+  .aapm-t7-button-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  /*
+   * A few existing inverse/brand calls intentionally opt a canonical button
+   * into a different bounded color (for example the orange CTA inside the
+   * green dashboard hero). Attribute selectors keep those explicit consumer
+   * choices stronger than the canonical `[data-intent]` rule without changing
+   * the default intent mapping for every other button.
+   */
+  .t7-button[class~="bg-brand-orange"] {
+    background: hsl(var(--t7-accent-hsl));
+  }
+  .t7-button[class~="bg-brand-orange"]:hover {
+    background: hsl(var(--t7-accent-hover-hsl));
+  }
+  .t7-button[class~="text-brand-orange"] {
+    color: hsl(var(--t7-accent-hsl));
+  }
+  .t7-button[class~="text-white"] {
+    color: hsl(0 0% 100%);
+  }
+  .t7-button[class*="bg-white/"] {
+    background: hsl(0 0% 100% / 0.05);
+  }
+  .t7-button[class*="bg-white/"]:hover {
+    background: hsl(0 0% 100% / 0.12);
+  }
+  .aapm-t7-button-sm {
+    min-height: var(--t7-control-height-sm);
+    padding-inline: var(--t7-control-padding-inline-small);
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+  .aapm-t7-button-md {
+    min-height: var(--t7-control-height);
+  }
+  .aapm-t7-button-lg {
+    min-height: var(--t7-control-height-lg);
+    padding-inline: var(--t7-control-padding-inline-large);
+    font-size: var(--t7-type-body-lg-size);
+    line-height: var(--t7-type-body-lg-line-height);
+  }
+  .aapm-t7-button-icon {
+    width: var(--t7-control-height);
+    min-width: var(--t7-control-height);
+    padding-inline: 0;
+  }
+
+  /* Badge variants retained by legacy feature call sites, expressed with
+   * Ten4Seven semantic state tokens rather than product-specific hex values. */
+  .aapm-t7-badge-primary {
+    border-color: hsl(var(--t7-primary-hsl) / 0.28);
+    background: hsl(var(--t7-primary-hsl) / 0.1);
+    color: hsl(var(--t7-primary-badge-foreground-hsl, var(--t7-primary-active-hsl)));
+  }
+  .aapm-t7-badge-success {
+    border-color: hsl(var(--t7-success-hsl) / 0.28);
+    background: hsl(var(--t7-success-hsl) / 0.1);
+    color: hsl(var(--t7-success-foreground-hsl, var(--t7-success-hsl)));
+  }
+  .aapm-t7-badge-warning {
+    border-color: hsl(var(--t7-warning-hsl) / 0.32);
+    background: hsl(var(--t7-warning-hsl) / 0.12);
+    color: hsl(var(--t7-warning-foreground-hsl, var(--t7-warning-hsl)));
+  }
+  .aapm-t7-badge-danger {
+    border-color: hsl(var(--t7-danger-hsl) / 0.28);
+    background: hsl(var(--t7-danger-hsl) / 0.1);
+    color: hsl(var(--t7-danger-badge-foreground-hsl, var(--t7-muted-foreground-strong-hsl)));
+  }
+  .aapm-t7-badge-info {
+    border-color: hsl(var(--t7-info-hsl) / 0.28);
+    background: hsl(var(--t7-info-hsl) / 0.1);
+    color: hsl(var(--t7-info-hsl));
+  }
+  .aapm-t7-badge-accent {
+    border-color: hsl(var(--t7-accent-hsl) / 0.28);
+    background: hsl(var(--t7-accent-hsl) / 0.1);
+    color: hsl(var(--t7-accent-hsl));
+  }
+  .aapm-t7-badge-neutral {
+    border-color: hsl(var(--t7-border-hsl));
+    background: hsl(var(--t7-muted-hsl));
+    color: hsl(var(--t7-muted-foreground-strong-hsl, var(--t7-foreground-hsl)));
+  }
+
+  .aapm-t7-surface-interactive {
+    transition:
+      border-color var(--t7-transition-fast),
+      box-shadow var(--t7-transition-fast),
+      transform var(--t7-transition-fast);
+  }
+  .aapm-t7-surface-interactive:hover,
+  .aapm-t7-surface-interactive:focus-within {
+    border-color: hsl(var(--t7-primary-hsl) / 0.42);
+    box-shadow: var(--t7-shadow-raised);
+  }
+  .aapm-t7-surface-interactive:focus-within {
+    outline: none;
+    box-shadow: var(--t7-focus-ring);
+  }
+  .aapm-t7-surface-selected {
+    border-color: hsl(var(--t7-primary-hsl) / 0.52);
+    background: hsl(var(--t7-primary-hsl) / 0.06);
+    box-shadow: var(--t7-focus-ring-inset);
+  }
+
   .dark {
     --background: 220 12% 8%;
     --foreground: 210 20% 96%;
