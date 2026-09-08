@@ -60,7 +60,7 @@ export default function AcademyShell() {
           </SheetContent>
         </Sheet>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="academy-shell__content flex min-w-0 flex-1 flex-col">
           <AcademyHeader
             onOpenMobile={() => setMobileOpen(true)}
             showMobileMenu={false}

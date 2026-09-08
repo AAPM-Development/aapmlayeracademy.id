@@ -1879,6 +1879,16 @@
     isolation: isolate;
   }
 
+  /* On wide private-app screens the quick assistant is a contextual dock,
+   * not a second layer that hides the roadmap beneath it. Reserve the same
+   * right rail as the desktop panel so the page reflows before APPI opens.
+   * Narrow screens keep the existing modal-style overlay and backdrop. */
+  @media (min-width: 75rem) {
+    .academy-shell:has(.aapm-ai-floating-panel) .academy-shell__content {
+      padding-right: calc(25rem + 1.25rem);
+    }
+  }
+
   .aapm-ai-floating-panel__header,
   .aapm-ai-floating-composer {
     background: hsl(var(--background) / 0.98);

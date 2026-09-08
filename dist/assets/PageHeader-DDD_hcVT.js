@@ -1,1 +1,0 @@
-import{j as t,ae as d,c as i}from"./index-DUXdTrnp.js";const p=function({eyebrow:e="",title:a="",description:r="",actions:s=null,className:n="",...o}={}){return t.jsx(d,{overline:e||void 0,title:a,description:r||void 0,actions:s,className:i("mb-7",n),"data-t7-bridge":"academy-page-header",...o})};export{p as P};
