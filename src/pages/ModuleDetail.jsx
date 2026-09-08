@@ -16,7 +16,7 @@ import {
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
 import { sortModules } from "@/lib/academyData";
-import { hasEditorialVideo } from "@/lib/editorialDocument";
+import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
 import { useParams } from "react-router-dom";
 
 const hasText = (value) => typeof value === "string" && value.trim().length > 0;
@@ -52,6 +52,7 @@ export default function ModuleDetail() {
   const previous = index > 0 ? sortedModules[index - 1] : null;
   const next = index >= 0 ? sortedModules[index + 1] || null : null;
   const editorialVideoIsPresent = useMemo(() => hasEditorialVideo(module?.editorialContent), [module?.editorialContent]);
+  const editorialNavigationItems = useMemo(() => editorialLearnerNavigationItems(module?.editorialContent), [module?.editorialContent]);
   const legacyVideoIsPresent = useMemo(() => [
     module?.videoUrl,
     module?.videoEmbedUrl,
@@ -60,12 +61,16 @@ export default function ModuleDetail() {
   ].some(hasText), [module?.videoUrl, module?.videoEmbedUrl, module?.video, module?.videoScript]);
   const objectivesArePresent = hasListContent(module?.learningObjectives) || hasListContent(module?.keyTakeaways);
   const practiceIsPresent = hasText(module?.practicalAssignment) || hasListContent(module?.checklist);
-  const learnerSections = useMemo(() => lessonSections.filter((section) => {
+  const learnerSections = useMemo(() => {
+    const visibleSections = lessonSections.filter((section) => {
     if (section.id === "video") return !editorialVideoIsPresent && legacyVideoIsPresent;
     if (section.id === "objectives") return objectivesArePresent;
     if (section.id === "practical") return practiceIsPresent;
     return true;
-  }), [editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
+    });
+    const [contentSection, ...remainingSections] = visibleSections;
+    return [contentSection, ...editorialNavigationItems, ...remainingSections].filter(Boolean);
+  }, [editorialNavigationItems, editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
 
   useEffect(() => {
     if (!module) return undefined;

@@ -13,6 +13,11 @@ import {
   IconButton,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Textarea,
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
@@ -20,14 +25,13 @@ import { safeEditorialImage } from "@/lib/editorialUrls";
 import {
   EDITORIAL_TEXT_LIMIT,
   createEditorialBlock,
+  createEditorialDocument,
   createEditorialSlide,
-  createInlineEditorialDocument,
-  editorialContentBlocks,
-  editorialInlineContent,
+  editorialBlockAnchorId,
   editorialTextLength,
-  editorialVideoBlocks,
   editorialBlockLibrary,
-  ensureEditorialDocument,
+  editorialComposerBlocks,
+  getEditorialQualitySignals,
 } from "@/lib/editorialDocument";
 
 const blockMeta = Object.fromEntries(editorialBlockLibrary.map((item) => [item.type, item]));
@@ -36,8 +40,7 @@ const MAX_PRESENTATION_UPLOAD_BYTES = 50 * 1024 * 1024;
 const imageExtensions = /\.(?:jpe?g|png|gif|webp|avif)$/i;
 const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 
-const contentBlockAnchorId = (id) => `editorial-content-block-${id}`;
-const videoBlockAnchorId = (id) => `editorial-video-block-${id}`;
+const contentBlockAnchorId = editorialBlockAnchorId;
 
 function Field({ label, children, hint = "", id, required = false, error = "" }) {
   const descriptionId = id && (hint || error) ? `${id}-description` : undefined;
@@ -81,7 +84,37 @@ function imageFileIssue(file) {
   return "";
 }
 
-function SourceImagePreview({ src, alt }) {
+const imagePreviewRatio = {
+  natural: "",
+  wide: "aspect-video",
+  standard: "aspect-[4/3]",
+  square: "aspect-square",
+};
+
+function useImageDimensions(src) {
+  const [dimensions, setDimensions] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!src || imageUrlIssue(src)) {
+      setDimensions(null);
+      return undefined;
+    }
+    let active = true;
+    const image = new Image();
+    image.onload = () => {
+      if (active) setDimensions({ width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onerror = () => {
+      if (active) setDimensions(null);
+    };
+    image.src = src;
+    return () => { active = false; };
+  }, [src]);
+
+  return dimensions;
+}
+
+function SourceImagePreview({ src, alt, ratio = "wide", width = "standard" }) {
   const [failed, setFailed] = React.useState(false);
   const issue = imageUrlIssue(src);
 
@@ -89,17 +122,19 @@ function SourceImagePreview({ src, alt }) {
 
   if (!src || issue) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface-subtle">
-      {failed ? (
-        <p className="p-3 text-xs leading-5 text-danger" role="alert">Pratinjau tidak dapat dimuat. Periksa URL atau unggah gambar.</p>
-      ) : (
-        <img src={src} alt={alt || ""} className="aspect-video w-full object-cover" onError={() => setFailed(true)} />
-      )}
+    <div className={cn("overflow-hidden rounded-xl border border-border bg-surface-subtle", width === "wide" ? "max-w-none" : "max-w-3xl")}>
+      <div className={cn("bg-muted", imagePreviewRatio[ratio] || "")}>
+        {failed ? (
+          <p className="p-3 text-xs leading-5 text-danger" role="alert">Pratinjau tidak dapat dimuat. Periksa URL atau unggah gambar.</p>
+        ) : (
+          <img src={src} alt={alt || ""} className={cn("w-full", ratio === "natural" ? "h-auto object-contain" : "h-full object-cover")} onError={() => setFailed(true)} />
+        )}
+      </div>
     </div>
   );
 }
 
-function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar / GIF", hint }) {
+function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar / GIF", hint, previewRatio = "wide", previewWidth = "standard" }) {
   const [uploadState, setUploadState] = React.useState({ status: "idle", message: "" });
   const sourceIssue = imageUrlIssue(value);
   const uploadId = `${id}-upload`;
@@ -157,9 +192,22 @@ function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar 
         <span className="text-[11px] leading-5 text-muted-foreground">Maks. 20 MB · JPG, PNG, GIF, WebP, AVIF</span>
       </div>
       {uploadState.status !== "idle" && <p className={cn("text-[11px] leading-5", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
-      <SourceImagePreview src={value} alt={alt} />
+      <SourceImagePreview src={value} alt={alt} ratio={previewRatio} width={previewWidth} />
     </div>
   );
+}
+
+function ImageProportionHint({ src, ratio }) {
+  const dimensions = useImageDimensions(src);
+  if (!src || !dimensions) return null;
+  const isPortrait = dimensions.height > dimensions.width * 1.2;
+  const size = `${dimensions.width.toLocaleString("id-ID")} × ${dimensions.height.toLocaleString("id-ID")} px`;
+  const message = ratio === "natural" && isPortrait
+    ? "Gambar portrait akan tampil tinggi pada learner. Pertimbangkan 4:3 atau 16:9 jika gambar berfungsi sebagai sela konten."
+    : ratio === "natural"
+      ? "Rasio asli dipertahankan di learner."
+      : "Gambar akan di-crop sesuai rasio pilihan; pastikan subjek utama berada di tengah frame.";
+  return <p className={cn("rounded-xl border px-3 py-2 text-[11px] leading-5", ratio === "natural" && isPortrait ? "border-amber-500/25 bg-amber-500/5 text-amber-800 dark:text-amber-200" : "border-border bg-surface-subtle text-muted-foreground")}><span className="font-semibold text-foreground">{size}</span> · {message}</p>;
 }
 
 function DecorativeImageControl({ id, decorative, onChange }) {
@@ -279,38 +327,68 @@ function SlidesBlockFields({ block, onChange }) {
   );
 }
 
+function VideoBlockFields({ block, onChange }) {
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const hasUrl = Boolean(block.url?.trim());
+  const urlId = `${block.id}-url`;
+  const captionId = `${block.id}-caption`;
+  return (
+    <div className="space-y-4">
+      <Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, atau file video HTTPS/internal.">
+        <Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required />
+      </Field>
+      <Field id={captionId} label="Keterangan untuk learner (disarankan)" hint="Sebutkan apa yang perlu diperhatikan atau dilakukan setelah menonton.">
+        <Textarea id={captionId} rows={2} maxLength={600} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Contoh: Perhatikan tiga tanda awal perubahan kualitas air." />
+      </Field>
+      {hasUrl && <Button type="button" size="sm" variant="outline" onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup pratinjau" : "Pratinjau video"}</Button>}
+      {previewOpen && hasUrl && <div className="border-t border-border pt-3"><LessonMedia module={{ title: block.caption || "Video materi", videoUrl: block.url }} /></div>}
+    </div>
+  );
+}
+
 function ContentBlockFields({ block, onChange }) {
   const set = (field, value) => onChange({ [field]: value });
   const fieldId = (field) => `${block.id}-${field}`;
   switch (block.type) {
+    case "richText":
+      return <div className="space-y-2"><p className="text-xs leading-5 text-muted-foreground">Gunakan paragraf untuk narasi. Tambahkan blok teks baru bila ingin menyisipkan media di antara dua bagian tulisan.</p><RichTextEditor id={fieldId("rich-text")} value={block.content || ""} onChange={(content) => set("content", content)} /></div>;
     case "slides": return <SlidesBlockFields block={block} onChange={onChange} />;
-    case "image": return <div className="space-y-3"><ImageSourceField id={fieldId("image-source")} value={block.src || ""} alt={block.alt || ""} onValueChange={(src) => set("src", src)} />{block.src && <DecorativeImageControl id={fieldId("image-decorative")} decorative={block.decorative !== false} onChange={(decorative) => set("decorative", decorative)} />}<div className="grid gap-3 sm:grid-cols-2">{block.decorative === false && <Field id={fieldId("image-alt")} label="Alt text" hint="Wajib untuk gambar yang membawa informasi."><Input id={fieldId("image-alt")} value={block.alt || ""} maxLength={280} onChange={(event) => set("alt", event.target.value)} /></Field>}<Field id={fieldId("image-caption")} label="Keterangan (opsional)"><Input id={fieldId("image-caption")} value={block.caption || ""} maxLength={600} onChange={(event) => set("caption", event.target.value)} /></Field></div></div>;
+    case "image": return (
+      <div className="space-y-3">
+        <ImageSourceField id={fieldId("image-source")} value={block.src || ""} alt={block.alt || ""} onValueChange={(src) => set("src", src)} previewRatio={block.ratio || "natural"} previewWidth={block.width || "standard"} />
+        {block.src && <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id={fieldId("image-ratio")} label="Rasio tampilan"><Select value={block.ratio || "natural"} onValueChange={(ratio) => set("ratio", ratio)}><SelectTrigger id={fieldId("image-ratio")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="natural">Rasio asli</SelectItem><SelectItem value="wide">16:9 · lebar</SelectItem><SelectItem value="standard">4:3 · standar</SelectItem><SelectItem value="square">1:1 · persegi</SelectItem></SelectContent></Select></Field>
+            <Field id={fieldId("image-width")} label="Lebar di learner"><Select value={block.width || "standard"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("image-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standard">Standar · sejajar narasi</SelectItem><SelectItem value="wide">Lebar · menonjol</SelectItem></SelectContent></Select></Field>
+          </div>
+          <ImageProportionHint src={block.src} ratio={block.ratio || "natural"} />
+          <DecorativeImageControl id={fieldId("image-decorative")} decorative={block.decorative !== false} onChange={(decorative) => set("decorative", decorative)} />
+        </>}
+        <div className="grid gap-3 sm:grid-cols-2">{block.decorative === false && <Field id={fieldId("image-alt")} label="Alt text" hint="Wajib untuk gambar yang membawa informasi."><Input id={fieldId("image-alt")} value={block.alt || ""} maxLength={280} onChange={(event) => set("alt", event.target.value)} /></Field>}<Field id={fieldId("image-caption")} label="Keterangan (opsional)"><Input id={fieldId("image-caption")} value={block.caption || ""} maxLength={600} onChange={(event) => set("caption", event.target.value)} /></Field></div>
+      </div>
+    );
     case "table": return <TableBlockFields block={block} onChange={onChange} />;
-    case "heading": return <Field id={fieldId("heading-content")} label="Judul bagian"><Input id={fieldId("heading-content")} value={block.content || ""} maxLength={500} onChange={(event) => set("content", event.target.value)} /></Field>;
+    case "heading": return <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]"><Field id={fieldId("heading-content")} label="Judul bagian"><Input id={fieldId("heading-content")} value={block.content || ""} maxLength={500} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("heading-level")} label="Hierarki"><Select value={String(block.level || 2)} onValueChange={(level) => set("level", Number(level))}><SelectTrigger id={fieldId("heading-level")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2">Bagian utama</SelectItem><SelectItem value="3">Subbagian</SelectItem><SelectItem value="4">Detail</SelectItem></SelectContent></Select></Field></div>;
+    case "video": return <VideoBlockFields block={block} onChange={onChange} />;
     case "link": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field><div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div></div>;
     case "cta": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("cta-label")} label="Label tombol"><Input id={fieldId("cta-label")} value={block.label || ""} maxLength={120} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field></div>;
     case "callout": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("callout-title")} label="Judul sorotan"><Input id={fieldId("callout-title")} value={block.title || ""} maxLength={160} onChange={(event) => set("title", event.target.value)} /></Field><Field id={fieldId("callout-content")} label="Isi sorotan"><Textarea id={fieldId("callout-content")} rows={2} maxLength={2400} value={block.content || ""} onChange={(event) => set("content", event.target.value)} /></Field></div>;
-    case "divider": return null;
+    case "divider": return <p className="text-xs leading-5 text-muted-foreground">Pemisah visual ini tidak membutuhkan pengaturan tambahan.</p>;
     default: return null;
   }
 }
 
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
-  return <article id={contentBlockAnchorId(block.id)} className={cn("scroll-mt-28 rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5", block.type === "slides" && "border-brand-orange/25")} data-editorial-content-block={block.type} data-editorial-content-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", block.type === "slides" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  const mediaTone = ["image", "slides", "video"].includes(block.type);
+  return <article id={contentBlockAnchorId(block.id)} className={cn("scroll-mt-28 rounded-2xl border bg-background p-4 shadow-sm sm:p-5", mediaTone ? "border-brand-orange/25" : "border-border")} data-editorial-block={block.type} data-editorial-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", mediaTone ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green")}><AapmIcon name={meta?.icon || "solar:widget-2-bold"} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
 }
 
-function VideoCard({ block, index, total, onChange, onMove, onRemove }) {
-  const hasUrl = Boolean(block.url?.trim());
-  const [previewOpen, setPreviewOpen] = React.useState(false);
-  const urlId = `${block.id}-url`;
-  const captionId = `${block.id}-caption`;
-  return <article id={videoBlockAnchorId(block.id)} className="scroll-mt-28 rounded-2xl border border-brand-orange/20 bg-background p-4 shadow-sm" data-editorial-video-card><div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-3"><div className="flex min-w-0 items-center gap-2"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-4 w-4" /></span><div className="min-w-0"><div className="text-sm font-semibold">Video {index + 1}</div>{hasUrl && <div className="text-[10px] text-brand-green">Siap</div>}</div></div><div className="ml-auto flex items-center gap-1">{hasUrl && <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-[11px]" onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : "Pratinjau"}</Button>}{total > 1 && <div role="group" aria-label={`Atur urutan Video ${index + 1}`} className="flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan Video ${index + 1}`} tooltip="Naikkan video" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan Video ${index + 1}`} tooltip="Turunkan video" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton></div>}<IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus Video ${index + 1}`} tooltip="Hapus video" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="space-y-4"><Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, atau file video HTTPS/internal."><Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required /></Field><Field id={captionId} label="Keterangan (opsional)"><Textarea id={captionId} rows={2} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Keterangan video" /></Field>{previewOpen && hasUrl && <div className="border-t border-border pt-3"><LessonMedia module={{ title: `Video ${index + 1}`, videoUrl: block.url }} /></div>}</div></article>;
-}
-
-const insertableTypes = ["slides", "image", "table", "callout", "link", "cta", "divider"];
+const insertableTypes = editorialBlockLibrary.map((block) => block.type);
 
 const quickBlockLabels = Object.freeze({
+  richText: "Teks kaya",
+  heading: "Judul",
   slides: "Slide",
   image: "Gambar",
   table: "Tabel",
@@ -327,11 +405,6 @@ export const editorialInsertActions = Object.freeze([
     label: quickBlockLabels[type],
     icon: blockMeta[type]?.icon || "add",
   })),
-  {
-    type: "video",
-    label: quickBlockLabels.video,
-    icon: "solar:play-circle-bold",
-  },
 ]);
 
 function EditorialOutlineList({ items, activeItemId, onNavigate }) {
@@ -366,7 +439,7 @@ function EditorialOutlineList({ items, activeItemId, onNavigate }) {
 
 function EditorialOutline({ items, activeItemId, onNavigate }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const elementCount = Math.max(0, items.length - 1);
+  const elementCount = items.length;
   const navigate = (id) => {
     onNavigate(id);
     setMobileOpen(false);
@@ -393,47 +466,53 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
   );
 }
 
+function outlineLabelForBlock(block, index) {
+  const detail = String(block.content || block.title || block.caption || block.label || "").trim();
+  if (detail) return detail.slice(0, 72);
+  return `${blockMeta[block.type]?.label || "Elemen materi"} ${index + 1}`;
+}
+
+function EditorialQualityPanel({ signals, onNavigate }) {
+  const blocking = signals.filter((signal) => signal.severity === "blocking");
+  const advice = signals.filter((signal) => signal.severity !== "blocking");
+  const status = blocking.length ? "Lengkapi sebelum simpan" : advice.length ? "Periksa kualitas materi" : "Siap untuk disimpan";
+  const tone = blocking.length ? "border-danger/25 bg-danger/5" : advice.length ? "border-amber-500/25 bg-amber-500/5" : "border-brand-green/25 bg-brand-green/5";
+  const icon = blocking.length ? "solar:danger-triangle-bold" : advice.length ? "solar:lightbulb-bolt-bold-duotone" : "checkRead";
+  const iconTone = blocking.length ? "text-danger" : advice.length ? "text-amber-700 dark:text-amber-300" : "text-brand-green";
+
+  return (
+    <section className={cn("rounded-2xl border p-4 shadow-sm", tone)} aria-label="Pemeriksaan kualitas materi" data-editorial-quality={blocking.length ? "blocking" : advice.length ? "advice" : "ready"}>
+      <div className="flex flex-wrap items-start gap-3">
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70", iconTone)}><AapmIcon name={icon} className="h-4 w-4" /></span>
+        <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">{status}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pemeriksaan ini membantu kualitas learner; keputusan isi dan urutan tetap di tangan editor.</p></div>
+        <Badge variant="outline" className="bg-background/60 text-[10px]">{blocking.length ? `${blocking.length} perlu dilengkapi` : advice.length ? `${advice.length} catatan` : "Tidak ada catatan"}</Badge>
+      </div>
+      {signals.length > 0 && <ul className="mt-3 space-y-2 border-t border-current/10 pt-3 text-xs leading-5 text-muted-foreground">{signals.map((signal, index) => <li key={`${signal.code}-${signal.blockId || index}`} className="flex items-start gap-2"><AapmIcon name={signal.severity === "blocking" ? "solar:danger-circle-bold" : "solar:info-circle-bold"} className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", signal.severity === "blocking" ? "text-danger" : "text-muted-foreground")} /><span className="min-w-0 flex-1">{signal.message}</span>{signal.blockId && <Button type="button" size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-[10px]" onClick={() => onNavigate(contentBlockAnchorId(signal.blockId))}>Lihat</Button>}</li>)}</ul>}
+    </section>
+  );
+}
+
 const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange }, ref) {
-  const editorialDocument = ensureEditorialDocument(value);
-  const storedVideos = editorialVideoBlocks(value);
-  const videos = storedVideos.length ? storedVideos : legacyVideoUrl.trim() ? [{ id: "legacy-video", type: "video", url: legacyVideoUrl, caption: "" }] : [];
-  const inlineContent = editorialInlineContent(value, fallback);
-  const contentBlocks = editorialContentBlocks(value);
-  const richTextBlock = editorialDocument.blocks.find((block) => block.type === "richText");
-  const existingIds = new Set(editorialDocument.blocks.map((block) => block.id));
-  const richTextId = richTextBlock?.id || (existingIds.has("inline-content") ? "inline-content-text" : "inline-content");
-  const textLength = editorialTextLength(createInlineEditorialDocument(inlineContent, videos, richTextId, contentBlocks).blocks);
-  const outlineItems = React.useMemo(() => [
-    {
-      id: "editorial-main-canvas",
-      label: "Kanvas teks",
-      icon: "solar:pen-new-square-bold",
-      tone: "canvas",
-    },
-    ...contentBlocks.map((block, index) => ({
-      id: contentBlockAnchorId(block.id),
-      label: `${blockMeta[block.type]?.label || "Elemen"} ${index + 1}`,
-      icon: blockMeta[block.type]?.icon || "solar:widget-2-bold",
-      tone: block.type === "slides" ? "media" : "canvas",
-    })),
-    ...videos.map((video, index) => ({
-      id: videoBlockAnchorId(video.id),
-      label: `Video ${index + 1}`,
-      icon: "solar:play-circle-bold",
-      tone: "media",
-    })),
-  ], [contentBlocks, textLength, videos]);
-  const hasOutline = contentBlocks.length + videos.length > 0;
+  const blocks = editorialComposerBlocks(value, fallback, legacyVideoUrl);
+  const textLength = editorialTextLength(blocks);
+  const qualitySignals = React.useMemo(() => getEditorialQualitySignals(blocks), [blocks]);
+  const blockingSignals = qualitySignals.filter((signal) => signal.severity === "blocking");
+  const outlineItems = React.useMemo(() => blocks.map((block, index) => ({
+    id: contentBlockAnchorId(block.id),
+    label: outlineLabelForBlock(block, index),
+    icon: blockMeta[block.type]?.icon || "solar:widget-2-bold",
+    tone: ["image", "slides", "video"].includes(block.type) ? "media" : "canvas",
+  })), [blocks]);
+  const hasOutline = blocks.length > 0;
   const outlineItemKey = outlineItems.map((item) => item.id).join("|");
   const [announcement, setAnnouncement] = React.useState("");
-  const [pendingVideoDelete, setPendingVideoDelete] = React.useState(null);
-  const [pendingContentBlockDelete, setPendingContentBlockDelete] = React.useState(null);
-  const [activeOutlineId, setActiveOutlineId] = React.useState("editorial-main-canvas");
+  const [pendingBlockDelete, setPendingBlockDelete] = React.useState(null);
+  const [activeOutlineId, setActiveOutlineId] = React.useState("");
   const quickScrollTargetRef = React.useRef("");
   const outlineNavigationLockRef = React.useRef(0);
 
-  const commit = (nextContent = inlineContent, nextContentBlocks = contentBlocks, nextVideos = videos) => {
-    const nextDocument = createInlineEditorialDocument(nextContent, nextVideos, richTextId, nextContentBlocks);
+  const commit = (nextBlocks) => {
+    const nextDocument = createEditorialDocument(nextBlocks);
     if (editorialTextLength(nextDocument.blocks) > EDITORIAL_TEXT_LIMIT) {
       setAnnouncement("Isi materi sudah mencapai batas maksimum.");
       return false;
@@ -442,8 +521,7 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
     if (legacyVideoUrl.trim()) onLegacyVideoChange?.("");
     return true;
   };
-  const updateInlineContent = (nextContent) => commit(nextContent, contentBlocks, videos);
-  const updateContentBlock = (index, patch) => commit(inlineContent, contentBlocks.map((block, currentIndex) => currentIndex === index ? { ...block, ...patch } : block), videos);
+  const updateBlock = (index, patch) => commit(blocks.map((block, currentIndex) => currentIndex === index ? { ...block, ...patch } : block));
   const scrollToSection = (sectionId) => {
     if (typeof document === "undefined") return;
     document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -456,8 +534,8 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
 
   React.useEffect(() => {
     if (outlineItemKey.split("|").includes(activeOutlineId)) return;
-    setActiveOutlineId("editorial-main-canvas");
-  }, [activeOutlineId, outlineItemKey]);
+    setActiveOutlineId(outlineItems[0]?.id || "");
+  }, [activeOutlineId, outlineItemKey, outlineItems]);
 
   React.useEffect(() => {
     if (!hasOutline || typeof window === "undefined" || typeof window.IntersectionObserver !== "function") return undefined;
@@ -479,38 +557,41 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
 
   const addContentBlock = (type) => {
     const block = createEditorialBlock(type);
-    if (!block || contentBlocks.length >= 79) return;
+    if (!block || blocks.length >= 80) return;
     quickScrollTargetRef.current = block.id;
-    if (!commit(inlineContent, [...contentBlocks, block], videos)) {
+    const activeBlockId = activeOutlineId.startsWith("editorial-block-")
+      ? activeOutlineId.slice("editorial-block-".length)
+      : "";
+    const activeIndex = blocks.findIndex((item) => item.id === activeBlockId);
+    const insertionIndex = activeIndex >= 0 ? activeIndex + 1 : blocks.length;
+    const nextBlocks = [...blocks];
+    nextBlocks.splice(insertionIndex, 0, block);
+    if (!commit(nextBlocks)) {
       quickScrollTargetRef.current = "";
       return;
     }
-    setAnnouncement(`${blockMeta[type]?.label || "Elemen"} ditambahkan setelah kanvas teks.`);
+    setAnnouncement(`${blockMeta[type]?.label || "Elemen"} ditambahkan pada urutan ${insertionIndex + 1}.`);
   };
-  const moveContentBlock = (sourceIndex, destinationIndex) => { commit(inlineContent, moveInList(contentBlocks, sourceIndex, destinationIndex), videos); setAnnouncement(`Elemen dipindahkan ke urutan ${destinationIndex + 1}.`); };
-  const requestRemoveContentBlock = (index) => { const block = contentBlocks[index]; if (block) setPendingContentBlockDelete({ index, label: blockMeta[block.type]?.label || "elemen" }); };
-  const removeContentBlock = () => { const index = pendingContentBlockDelete?.index; if (!Number.isInteger(index) || !contentBlocks[index]) return; commit(inlineContent, contentBlocks.filter((_, currentIndex) => currentIndex !== index), videos); setAnnouncement(`${pendingContentBlockDelete.label} dihapus.`); setPendingContentBlockDelete(null); };
-  const addVideo = () => {
-    const nextVideo = createEditorialBlock("video");
-    if (!nextVideo) return;
-    quickScrollTargetRef.current = nextVideo.id;
-    if (!commit(inlineContent, contentBlocks, [...videos, nextVideo])) {
-      quickScrollTargetRef.current = "";
-      return;
-    }
-    setAnnouncement(`Video ${videos.length + 1} ditambahkan.`);
+  const moveContentBlock = (sourceIndex, destinationIndex) => {
+    if (commit(moveInList(blocks, sourceIndex, destinationIndex))) setAnnouncement(`Elemen dipindahkan ke urutan ${destinationIndex + 1}.`);
   };
-  const updateVideo = (index, patch) => commit(inlineContent, contentBlocks, videos.map((video, currentIndex) => currentIndex === index ? { ...video, ...patch } : video));
-  const moveVideo = (sourceIndex, destinationIndex) => { commit(inlineContent, contentBlocks, moveInList(videos, sourceIndex, destinationIndex)); setAnnouncement(`Video dipindahkan ke posisi ${destinationIndex + 1}.`); };
-  const requestRemoveVideo = (index) => { if (videos[index]) setPendingVideoDelete({ index }); };
-  const removeVideo = () => { const index = pendingVideoDelete?.index; if (!Number.isInteger(index) || !videos[index]) return; commit(inlineContent, contentBlocks, videos.filter((_, currentIndex) => currentIndex !== index)); setAnnouncement(`Video ${index + 1} dihapus.`); setPendingVideoDelete(null); };
+  const requestRemoveContentBlock = (index) => {
+    const block = blocks[index];
+    if (block) setPendingBlockDelete({ index, label: blockMeta[block.type]?.label || "elemen" });
+  };
+  const removeContentBlock = () => {
+    const index = pendingBlockDelete?.index;
+    if (!Number.isInteger(index) || !blocks[index]) return;
+    if (commit(blocks.filter((_, currentIndex) => currentIndex !== index))) setAnnouncement(`${pendingBlockDelete.label} dihapus.`);
+    setPendingBlockDelete(null);
+  };
 
   React.useEffect(() => {
     const targetId = quickScrollTargetRef.current;
     if (!targetId || typeof window === "undefined" || typeof document === "undefined") return undefined;
 
     const frameId = window.requestAnimationFrame(() => {
-      const target = document.getElementById(contentBlockAnchorId(targetId)) || document.getElementById(videoBlockAnchorId(targetId));
+      const target = document.getElementById(contentBlockAnchorId(targetId));
       if (!target) return;
       target.scrollIntoView({ behavior: "smooth", block: "start" });
       setActiveOutlineId(target.id);
@@ -518,68 +599,48 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
     });
     quickScrollTargetRef.current = "";
     return () => window.cancelAnimationFrame(frameId);
-  }, [contentBlocks, videos]);
-
-  const addVideoAndReveal = () => {
-    addVideo();
-    scrollToSection("editorial-video-section");
-  };
+  }, [blocks]);
 
   React.useImperativeHandle(ref, () => ({
-    addElement: (type) => {
-      if (type === "video") {
-        addVideoAndReveal();
-        return;
-      }
-      addContentBlock(type);
+    addElement: addContentBlock,
+    validate: () => {
+      if (!blockingSignals.length) return true;
+      const first = blockingSignals[0];
+      if (first?.blockId) navigateOutline(contentBlockAnchorId(first.blockId));
+      setAnnouncement(`Lengkapi ${blockingSignals.length} elemen sebelum menyimpan modul.`);
+      return false;
     },
-  }), [addContentBlock, addVideoAndReveal]);
+  }), [addContentBlock, blockingSignals, navigateOutline]);
 
   return (
-    <div className="space-y-5" data-editorial-mode="hybrid">
+    <div className="space-y-5" data-editorial-mode="ordered-flow">
       <div className="sr-only" aria-live="polite">{announcement}</div>
+
+      <section className="rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span>
+            <div className="min-w-0"><h3 className="text-sm font-semibold">Alur materi</h3><p className="mt-0.5 max-w-2xl text-xs leading-5 text-muted-foreground">Learner melihat setiap blok sesuai urutan ini. Sisipkan teks, gambar, slide, video, tabel, atau aksi di titik yang tepat dalam narasi.</p></div>
+          </div>
+          <Badge variant="soft" className="bg-tint-green text-brand-green">{blocks.length} blok · {textLength.toLocaleString("id-ID")} byte konten</Badge>
+        </div>
+      </section>
+
+      <EditorialQualityPanel signals={qualitySignals} onNavigate={navigateOutline} />
 
       <div className={cn("grid min-w-0 gap-4", hasOutline && "xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-start")}>
         {hasOutline && <EditorialOutline items={outlineItems} activeItemId={activeOutlineId} onNavigate={navigateOutline} />}
         <div className={cn("min-w-0 space-y-5", hasOutline && "xl:col-start-1 xl:row-start-1")}>
-          <section id="editorial-main-canvas" className="scroll-mt-28 rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span>
-                <h3 className="text-sm font-semibold">Materi</h3>
-              </div>
-              <Badge variant="soft" className="bg-tint-green text-brand-green">{textLength.toLocaleString("id-ID")} byte teks</Badge>
-            </div>
-            <div className="mt-4"><RichTextEditor id="module-inline-editor" value={inlineContent} onChange={updateInlineContent} /></div>
-            {(contentBlocks.length > 0 || videos.length > 0) && <div id="editorial-insert-rail" className="mt-3 border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground" data-editorial-insert-rail>
-              {contentBlocks.length > 0 && <span className="font-semibold text-foreground">{contentBlocks.length} elemen</span>}
-              {contentBlocks.length > 0 && videos.length > 0 && <span aria-hidden="true"> · </span>}
-              {videos.length > 0 && <span className="font-semibold text-brand-orange">{videos.length} video</span>}
-            </div>}
-          </section>
+          {blocks.length ? <section className="space-y-3" aria-label="Alur blok materi"><div className="flex flex-wrap items-center justify-between gap-2 px-1"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Urutan learner</p><Badge variant="outline">{blocks.length} blok</Badge></div><div className="space-y-3">{blocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => updateBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div></section> : <section className="rounded-2xl border border-dashed border-brand-green/30 bg-brand-green/5 p-5 text-center"><AapmIcon name="solar:document-add-bold" className="mx-auto h-6 w-6 text-brand-green" /><h3 className="mt-3 text-sm font-semibold">Mulai dari blok pertama</h3><p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">Pilih teks kaya untuk menulis narasi, lalu tambahkan media atau struktur saat dibutuhkan.</p></section>}
 
-          {contentBlocks.length > 0 && (
-            <section id="editorial-structured-blocks" className="scroll-mt-24 space-y-3" aria-label="Elemen materi terstruktur">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-1"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Elemen tersisip</p><Badge variant="outline">{contentBlocks.length} elemen</Badge></div>
-              <div className="space-y-3">{contentBlocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={contentBlocks.length} onChange={(patch) => updateContentBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div>
-            </section>
-          )}
-
-          <section id="editorial-video-section" className="scroll-mt-24 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-4 shadow-sm sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange"><AapmIcon name="solar:play-circle-bold" className="h-5 w-5" /></span>
-                <h3 className="text-sm font-semibold">Video pembelajaran</h3>
-              </div>
-              <Button type="button" size="sm" variant="outline" onClick={addVideo}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah video</Button>
-            </div>
-             {videos.length ? <div className="mt-4 space-y-3">{videos.map((video, index) => <VideoCard key={video.id} block={video} index={index} total={videos.length} onChange={(patch) => updateVideo(index, patch)} onMove={moveVideo} onRemove={requestRemoveVideo} />)}</div> : <div className="mt-4 rounded-xl border border-dashed border-brand-orange/25 bg-background/70 px-4 py-5 text-center text-xs leading-5 text-muted-foreground">Belum ada video.</div>}
+          <section id="editorial-insert-rail" className="rounded-2xl border border-dashed border-border bg-surface-subtle/60 p-4" aria-label="Tambah blok materi" data-editorial-insert-rail>
+            <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-semibold">Tambah ke alur</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Blok baru disisipkan setelah blok yang sedang aktif di daftar isi, atau di akhir alur.</p></div><Badge variant="outline" className="text-[10px]">Maks. 80 blok</Badge></div>
+            <div className="mt-3 flex flex-wrap gap-2">{editorialInsertActions.map((action) => <Button key={action.type} type="button" size="sm" variant="outline" className="h-10" disabled={blocks.length >= 80} onClick={() => addContentBlock(action.type)}><AapmIcon name={action.icon} className="h-3.5 w-3.5" />{action.label}</Button>)}</div>
           </section>
         </div>
       </div>
 
-      <ConfirmDialog open={Boolean(pendingContentBlockDelete)} onOpenChange={(open) => !open && setPendingContentBlockDelete(null)} title="Hapus elemen materi?" description={`${pendingContentBlockDelete?.label || "Elemen"} akan dihapus dari alur learner. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus elemen" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeContentBlock} />
-      <ConfirmDialog open={Boolean(pendingVideoDelete)} onOpenChange={(open) => !open && setPendingVideoDelete(null)} title="Hapus video?" description={`Video ${pendingVideoDelete ? pendingVideoDelete.index + 1 : ""} akan dihapus dari modul. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus video" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeVideo} />
+      <ConfirmDialog open={Boolean(pendingBlockDelete)} onOpenChange={(open) => !open && setPendingBlockDelete(null)} title="Hapus blok materi?" description={`${pendingBlockDelete?.label || "Elemen"} akan dihapus dari alur learner. Perubahan baru tersimpan setelah Anda menekan Simpan modul.`} confirmLabel="Hapus blok" cancelLabel="Batal" icon="solar:trash-bin-trash-bold" destructive onConfirm={removeContentBlock} />
     </div>
   );
   });

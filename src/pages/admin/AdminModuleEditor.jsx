@@ -768,6 +768,14 @@ export default function AdminModuleEditor() {
   };
   const save = async (event) => {
     event.preventDefault();
+    if (editorialComposerRef.current?.validate?.() === false) {
+      toast({
+        variant: "destructive",
+        title: "Lengkapi blok materi terlebih dahulu",
+        description: "Periksa kartu kualitas di Materi utama, lalu lengkapi blok yang ditandai.",
+      });
+      return;
+    }
     const payload = {
       ...form,
       levelNumber: Number(form.levelNumber),
@@ -1041,7 +1049,7 @@ export default function AdminModuleEditor() {
                 </div>
               </div>
             </section>
-            <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-xs text-muted-foreground"><AapmIcon name={isDirty ? "edit" : "checkRead"} className={`h-4 w-4 ${isDirty ? "text-brand-orange" : "text-brand-green"}`} /> {isDirty ? "Perubahan lokal belum tersimpan." : "Perubahan hanya aktif setelah disimpan."}</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></div>
+            <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><AapmIcon name={isDirty ? "edit" : "checkRead"} className={`mt-0.5 h-4 w-4 shrink-0 ${isDirty ? "text-brand-orange" : "text-brand-green"}`} /> {isDirty ? "Perubahan lokal belum tersimpan. Draft pemulihan tersimpan di browser ini, bukan di server." : "Belum ada perubahan lokal. Learner menerima materi setelah Simpan modul."}</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></div>
             </form>
           </div>
         </TabsContent>

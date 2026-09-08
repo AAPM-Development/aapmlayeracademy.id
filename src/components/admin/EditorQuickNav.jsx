@@ -128,7 +128,7 @@ export default function EditorQuickNav({
           <span className="text-[10px] font-semibold text-muted-foreground">{sections.length ? `${activeIndex + 1}/${sections.length}` : "0/0"}</span>
         </div>
         <Badge variant="soft" className={cn("hidden h-6 items-center px-2 text-[10px] sm:inline-flex", isDirty ? "bg-tint-orange text-tint-orange-foreground" : "bg-tint-green text-brand-green")}>
-          {isDirty ? "Draft" : "Siap"}
+          {isDirty ? "Draft lokal" : "Tersimpan"}
         </Badge>
         <AddElementMenu items={elementItems} onAddElement={onAddElement} />
         {onPreview && (

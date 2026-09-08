@@ -6,7 +6,7 @@ import { Button, Card, CardContent } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
-import { parseEditorialDocument } from "@/lib/editorialDocument";
+import { editorialBlockAnchorId, parseEditorialDocument } from "@/lib/editorialDocument";
 import {
   safeEditorialImage as getSafeEditorialImage,
   safeEditorialLink as getSafeEditorialLink,
@@ -89,6 +89,12 @@ function MarkdownTable({ children, ...props }) {
 }
 
 const markdownComponents = {
+  h1: ({ node: _node, children, className, ...props }) => (
+    // The lesson title already owns the document H1. Author-entered H1 text is
+    // visually retained but rendered as an H2 so the learner page keeps a
+    // meaningful heading hierarchy.
+    <h2 {...props} className={cn("mb-3 mt-7 text-xl font-semibold tracking-[-0.015em] text-foreground", className)}>{children}</h2>
+  ),
   a: ({ href, children, ...props }) => (
     <SafeLink
       {...props}
@@ -118,7 +124,7 @@ const markdownComponents = {
 
 export function EditorialMarkdown({ children = "", className = "" }) {
   return (
-    <div className={cn("markdown-body min-w-0 break-words", className)}>
+    <div className={cn("markdown-body min-w-0 max-w-[72ch] break-words text-base leading-7", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkUnderline]} components={markdownComponents}>
         {children}
       </ReactMarkdown>
@@ -342,7 +348,9 @@ export function EditorialContent({ document, fallback = "", title = "Materi modu
   return (
     <div className="min-w-0 space-y-6">
       {editorial.blocks.map((block) => (
-        <EditorialBlock key={block.id} block={block} title={title} />
+        <div key={block.id} id={editorialBlockAnchorId(block.id)} className="scroll-mt-24">
+          <EditorialBlock block={block} title={title} />
+        </div>
       ))}
     </div>
   );

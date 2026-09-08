@@ -3,11 +3,10 @@ import assert from "node:assert/strict";
 import {
   createEditorialBlock,
   createEditorialDocument,
-  createInlineEditorialDocument,
-  editorialContentBlocks,
-  editorialInlineContent,
-  editorialVideoBlocks,
+  editorialComposerBlocks,
+  editorialLearnerNavigationItems,
   ensureEditorialDocument,
+  getEditorialQualitySignals,
   parseEditorialDocument,
 } from "../src/lib/editorialDocument.js";
 import {
@@ -54,7 +53,7 @@ test("editorial blocks preserve legacy Markdown and normalize a rich-text block"
   assert.deepEqual(ensured, document);
 });
 
-test("hybrid editorial mode keeps structured elements beside the inline text canvas", () => {
+test("editorial composer preserves one ordered flow of text and media blocks", () => {
   const legacy = createEditorialDocument([
     { id: "heading", type: "heading", content: "Pemeriksaan harian", level: 2 },
     { id: "copy", type: "richText", content: "Gunakan **checklist** ini." },
@@ -65,20 +64,31 @@ test("hybrid editorial mode keeps structured elements beside the inline text can
     { id: "video", type: "video", url: "https://youtu.be/demo", caption: "Video utama" },
   ]);
 
-  const inline = editorialInlineContent(legacy);
-  assert.match(inline, /## Pemeriksaan harian/);
-  assert.match(inline, /Gunakan \*\*checklist\*\* ini\./);
-  assert.doesNotMatch(inline, /Indikator|Kandang ayam|Panduan|Langkah pertama/);
-  assert.doesNotMatch(inline, /youtu\.be/);
-  assert.equal(editorialVideoBlocks(legacy).length, 1);
-  assert.deepEqual(editorialContentBlocks(legacy).map((block) => block.type), ["table", "image", "slides", "link"]);
+  const blocks = editorialComposerBlocks(legacy);
+  assert.deepEqual(blocks.map((block) => block.type), ["heading", "richText", "table", "image", "slides", "link", "video"]);
+  assert.deepEqual(blocks.map((block) => block.id), ["heading", "copy", "table", "image", "slides", "link", "video"]);
 
-  const simple = createInlineEditorialDocument(inline, editorialVideoBlocks(legacy), "inline-content", editorialContentBlocks(legacy));
-  assert.equal(simple.blocks.length, 6);
-  assert.equal(simple.blocks[0].id, "inline-content");
-  assert.equal(simple.blocks[0].type, "richText");
-  assert.equal(simple.blocks[3].type, "slides");
-  assert.equal(simple.blocks[5].type, "video");
+  const reordered = [blocks[1], blocks[0], ...blocks.slice(2)];
+  const saved = createEditorialDocument(reordered);
+  assert.deepEqual(saved.blocks.map((block) => block.id), ["copy", "heading", "table", "image", "slides", "link", "video"]);
+
+  const fallback = editorialComposerBlocks(null, "Narasi awal", "https://youtu.be/fallback");
+  assert.deepEqual(fallback.map((block) => block.type), ["richText", "video"]);
+  assert.deepEqual(editorialLearnerNavigationItems(legacy).map((item) => item.label), ["Pemeriksaan harian", "Target", "Kandang ayam", "Presentasi", "Panduan", "Video utama"]);
+});
+
+test("editorial quality guardrails distinguish incomplete blocks from authoring advice", () => {
+  const signals = getEditorialQualitySignals([
+    { id: "copy", type: "richText", content: "" },
+    { id: "image", type: "image", src: "/uploads/kandang.webp", decorative: true, ratio: "natural", width: "standard" },
+    { id: "cta", type: "cta", label: "Mulai", url: "/modules/2" },
+    { id: "video", type: "video", url: "https://youtu.be/demo", caption: "" },
+  ]);
+
+  assert.ok(signals.some((signal) => signal.severity === "blocking" && signal.blockId === "copy"));
+  assert.ok(signals.some((signal) => signal.code === "image-natural-ratio" && signal.blockId === "image"));
+  assert.ok(signals.some((signal) => signal.code === "cta-before-video" && signal.blockId === "cta"));
+  assert.ok(signals.some((signal) => signal.code === "video-caption" && signal.blockId === "video"));
 });
 
 test("editorial URL policy rejects dangerous links and unsafe media paths", () => {

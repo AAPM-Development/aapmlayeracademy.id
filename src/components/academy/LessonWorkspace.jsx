@@ -80,16 +80,22 @@ export function trustedVideoSource(value) {
 }
 
 export function LessonMedia({ module = null } = {}) {
-  if (!module) return null;
+  const [loadedEmbedSource, setLoadedEmbedSource] = React.useState("");
   const mediaUrl =
-    typeof module.videoUrl === "string" && module.videoUrl.trim()
+    typeof module?.videoUrl === "string" && module.videoUrl.trim()
       ? module.videoUrl
-      : typeof module.videoEmbedUrl === "string" && module.videoEmbedUrl.trim()
+      : typeof module?.videoEmbedUrl === "string" && module.videoEmbedUrl.trim()
         ? module.videoEmbedUrl
-        : typeof module.video === "string" && module.video.trim()
+        : typeof module?.video === "string" && module.video.trim()
           ? module.video
           : null;
   const source = trustedVideoSource(mediaUrl);
+
+  React.useEffect(() => {
+    setLoadedEmbedSource("");
+  }, [source?.src]);
+
+  if (!module) return null;
 
   if (source) {
     return (
@@ -103,15 +109,19 @@ export function LessonMedia({ module = null } = {}) {
             src={source.src}
           />
         ) : (
-          <iframe
-            className="absolute inset-0 h-full w-full"
-            src={source.src}
-            title={`Video ${module.title || ""}`.trim()}
-            loading="lazy"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
+          <>
+            {loadedEmbedSource !== source.src && <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black px-5 text-center text-xs text-white/80" aria-live="polite"><div><AapmIcon name="solar:play-circle-bold" className="mx-auto mb-2 h-6 w-6 text-brand-orange" />Memuat video…</div></div>}
+            <iframe
+              className="absolute inset-0 h-full w-full"
+              src={source.src}
+              title={`Video ${module.title || ""}`.trim()}
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              onLoad={() => setLoadedEmbedSource(source.src)}
+            />
+          </>
         )}
       </div>
     );
@@ -198,7 +208,7 @@ export function LessonSidebar({
                 onClick={() => onSectionChange(section.id)}
                 aria-current={active ? "location" : undefined}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   active
                     ? "bg-brand-orange/10 text-brand-orange"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",

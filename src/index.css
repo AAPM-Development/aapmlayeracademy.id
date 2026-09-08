@@ -1834,7 +1834,7 @@
   }
 
   .markdown-body {
-    @apply text-sm leading-relaxed text-foreground;
+    @apply text-base leading-7 text-foreground;
   }
   .markdown-body h1 {
     @apply text-xl font-bold mt-6 mb-2;

@@ -284,6 +284,143 @@ export function createEditorialDocument(blocks = []) {
   };
 }
 
+// The learner already renders blocks in their stored order. The editor used to
+// split the same document into a text canvas, structured blocks, and a video
+// list before rebuilding it on every change. Keep this adapter deliberately
+// small: it gives the composer one ordered flow while preserving all existing
+// document IDs and block positions.
+export function editorialComposerBlocks(value, fallback = "", legacyVideoUrl = "") {
+  const document = parseEditorialDocument(value);
+  if (document?.blocks.length) return document.blocks;
+
+  const blocks = [];
+  if (typeof fallback === "string" && fallback.trim()) {
+    blocks.push({ id: "inline-content", type: "richText", content: fallback });
+  }
+  if (typeof legacyVideoUrl === "string" && legacyVideoUrl.trim()) {
+    blocks.push({ id: "legacy-video", type: "video", url: legacyVideoUrl, caption: "" });
+  }
+  return createEditorialDocument(blocks).blocks;
+}
+
+export function editorialBlockAnchorId(blockId) {
+  return `editorial-block-${blockId}`;
+}
+
+const editorialBlockLabels = {
+  image: "Gambar",
+  slides: "Presentasi",
+  video: "Video",
+  table: "Tabel",
+  link: "Tautan",
+  cta: "Aksi lanjutan",
+  callout: "Sorotan",
+  divider: "Pemisah",
+};
+
+const editorialBlockIcons = {
+  image: "solar:gallery-bold",
+  slides: "solar:slider-vertical-bold",
+  video: "solar:play-circle-bold",
+  table: "solar:widget-2-bold",
+  link: "solar:link-bold",
+  cta: "solar:cursor-bold",
+  callout: "solar:lightbulb-bolt-bold-duotone",
+  divider: "solar:minus-circle-bold",
+};
+
+export function editorialLearnerNavigationItems(value) {
+  const document = parseEditorialDocument(value);
+  if (!document?.blocks.length) return [];
+
+  return document.blocks.flatMap((block) => {
+    if (block.type === "richText" || block.type === "divider") return [];
+    const heading = block.type === "heading" ? String(block.content || "").trim() : "";
+    const label = heading
+      || String(block.title || block.caption || block.label || (!block.decorative && block.alt) || editorialBlockLabels[block.type] || "Materi").trim();
+    if (!label) return [];
+    return [{
+      id: editorialBlockAnchorId(block.id),
+      label,
+      icon: block.type === "heading" ? "solar:text-bold" : editorialBlockIcons[block.type] || "solar:file-text-bold",
+    }];
+  });
+}
+
+function blockHasText(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function incompleteEditorialBlockMessage(block) {
+  switch (block.type) {
+    case "richText":
+      return blockHasText(block.content) ? "" : "Teks kaya masih kosong.";
+    case "heading":
+      return blockHasText(block.content) ? "" : "Judul bagian masih kosong.";
+    case "image":
+      if (!blockHasText(block.src)) return "Gambar belum memiliki sumber.";
+      if (block.decorative === false && !blockHasText(block.alt)) return "Gambar bermakna memerlukan alt text.";
+      return "";
+    case "video":
+      return blockHasText(block.url) ? "" : "Video belum memiliki tautan.";
+    case "link":
+      return blockHasText(block.label) && blockHasText(block.url) ? "" : "Tautan memerlukan label dan URL.";
+    case "cta":
+      return blockHasText(block.label) && blockHasText(block.url) ? "" : "Tombol aksi memerlukan label dan URL.";
+    case "callout":
+      return blockHasText(block.title) || blockHasText(block.content) ? "" : "Sorotan masih kosong.";
+    case "table": {
+      const hasColumn = Array.isArray(block.columns) && block.columns.every(blockHasText);
+      const hasRow = Array.isArray(block.rows) && block.rows.length > 0;
+      return hasColumn && hasRow ? "" : "Tabel memerlukan judul kolom dan setidaknya satu baris.";
+    }
+    case "slides":
+      if (block.source === "pptx") return blockHasText(block.pptxUrl) ? "" : "Presentasi PPTX belum dipilih.";
+      return Array.isArray(block.slides) && block.slides.some((slide) => (
+        blockHasText(slide?.title) || blockHasText(slide?.content) || blockHasText(slide?.src)
+      )) ? "" : "Rangkaian slide masih kosong.";
+    default:
+      return "";
+  }
+}
+
+// These are editorial guardrails, not a replacement for server-side
+// validation. "blocking" signals stop an incomplete card reaching the API;
+// "advice" signals leave the author in control of the curriculum decision.
+export function getEditorialQualitySignals(blocks = []) {
+  const document = createEditorialDocument(blocks);
+  const signals = [];
+  const richTextCharacters = document.blocks
+    .filter((block) => block.type === "richText")
+    .reduce((total, block) => total + String(block.content || "").replace(/\s+/g, " ").trim().length, 0);
+  const mediaBlocks = document.blocks.filter((block) => ["image", "slides", "video"].includes(block.type));
+
+  if (!document.blocks.length) {
+    signals.push({ severity: "advice", code: "empty-document", message: "Belum ada blok materi. Anda masih dapat menyimpan struktur modul sebagai draft." });
+    return signals;
+  }
+
+  document.blocks.forEach((block, index) => {
+    const message = incompleteEditorialBlockMessage(block);
+    if (message) signals.push({ severity: "blocking", code: `incomplete-${block.type}`, blockId: block.id, message });
+    if (block.type === "video" && blockHasText(block.url) && !blockHasText(block.caption)) {
+      signals.push({ severity: "advice", code: "video-caption", blockId: block.id, message: "Tambahkan keterangan singkat agar tujuan video jelas sebelum diputar." });
+    }
+    if (block.type === "image" && block.ratio === "natural") {
+      signals.push({ severity: "advice", code: "image-natural-ratio", blockId: block.id, message: "Gambar memakai rasio asli. Periksa tinggi tampilannya di learner, khususnya untuk gambar portrait." });
+    }
+    if (block.type === "cta" && document.blocks.slice(index + 1).some((next) => next.type === "video")) {
+      signals.push({ severity: "advice", code: "cta-before-video", blockId: block.id, message: "Tombol aksi berada sebelum video berikutnya; pastikan ini memang urutan belajar yang diinginkan." });
+    }
+  });
+
+  if (mediaBlocks.length > 0 && richTextCharacters > 0 && richTextCharacters < 280) {
+    signals.push({ severity: "advice", code: "media-heavy", message: "Narasi masih sangat singkat dibanding media. Tambahkan konteks, instruksi, atau refleksi agar learner memahami peran setiap media." });
+  }
+
+  return signals;
+}
+
 export function ensureEditorialDocument(value) {
   return parseEditorialDocument(value) || createEditorialDocument();
 }
