@@ -22,6 +22,7 @@ import {
 
 export { Button, buttonVariants } from "@/components/ui/button";
 export { Input } from "@/components/ui/input";
+export { PasswordInput } from "@/components/ui/password-input";
 export { Textarea } from "@/components/ui/textarea";
 export { Label } from "@/components/ui/label";
 export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton } from "@/components/ui/select";
