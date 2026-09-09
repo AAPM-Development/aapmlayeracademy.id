@@ -1,1 +1,0 @@
-import{j as p,c as l}from"./index-CdE1JJH8.js";function s({children:a=null,className:t="",...n}={}){return p.jsx("div",{className:l("mx-auto min-w-0 w-full max-w-[var(--aapm-shell-content-max)] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",t),"data-t7-rail":"application",...n,children:a})}export{s as C};

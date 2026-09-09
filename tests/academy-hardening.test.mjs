@@ -28,6 +28,10 @@ import {
   getNextModule,
   getProgressSummary,
 } from "../src/lib/academyData.js";
+import {
+  EDITORIAL_PRESENTATION_MAX_BYTES,
+  EDITORIAL_PRESENTATION_MAX_SLIDES,
+} from "../src/lib/editorialLimits.js";
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -75,6 +79,11 @@ test("editorial composer preserves one ordered flow of text and media blocks", (
   const fallback = editorialComposerBlocks(null, "Narasi awal", "https://youtu.be/fallback");
   assert.deepEqual(fallback.map((block) => block.type), ["richText", "video"]);
   assert.deepEqual(editorialLearnerNavigationItems(legacy).map((item) => item.label), ["Pemeriksaan harian", "Target", "Kandang ayam", "Presentasi", "Panduan", "Video utama"]);
+});
+
+test("PPTX authoring and learner limits stay on the 50 MB contract", () => {
+  assert.equal(EDITORIAL_PRESENTATION_MAX_BYTES, 50 * 1024 * 1024);
+  assert.equal(EDITORIAL_PRESENTATION_MAX_SLIDES, 50);
 });
 
 test("editorial quality guardrails distinguish incomplete blocks from authoring advice", () => {

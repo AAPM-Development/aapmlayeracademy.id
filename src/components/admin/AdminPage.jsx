@@ -3,15 +3,16 @@ import React from "react";
 import { Button, Surface } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import PageHeader from "@/components/layout/PageHeader";
+import { cn } from "@/lib/utils";
 
 export function AdminPageFrame({ eyebrow = "Administrasi", title, description, actions, children, wide = false, editor = false }) {
   const widthClass = editor
-    ? "max-w-[var(--aapm-editor-content-max)]"
+    ? "aapm-admin-editor-frame"
     : wide
       ? "max-w-[var(--aapm-admin-wide-max)]"
       : "max-w-[var(--aapm-admin-content-max)]";
   return (
-    <div className={`mx-auto w-full ${widthClass} p-4 sm:p-6 lg:p-8`} data-t7-rail="application">
+    <div className={cn("mx-auto w-full min-w-0 p-4 sm:p-6 lg:p-8", widthClass)} data-t7-rail="application">
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
       {children}
     </div>

@@ -49,7 +49,10 @@
     --aapm-shell-content-max: var(--t7-content-max, 82.5rem);
     --aapm-admin-content-max: 93.75rem;
     --aapm-admin-wide-max: 112.5rem;
-    --aapm-editor-content-max: 80rem;
+    /* The editor is a workspace, not a reading card. Keep enough horizontal
+     * room for the command bar, outline, and field labels without leaving a
+     * large unused desktop gutter around the canvas. */
+    --aapm-editor-content-max: 100rem;
     --aapm-reading-measure: 72ch;
     --radius-sm: 0.625rem;
     --radius-md: 0.875rem;
@@ -1020,6 +1023,75 @@
   .aapm-token-toolbar {
     background: hsl(var(--surface-subtle) / 0.96);
     box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
+  }
+
+  .aapm-admin-editor-frame {
+    max-width: min(100%, var(--aapm-editor-content-max));
+  }
+
+  /* Editorial workspace anatomy. These roles keep the editor's hierarchy
+   * stable while feature JSX can continue using the shared primitives. */
+  .aapm-editor-command-bar {
+    min-height: 3.25rem;
+    padding: var(--space-2);
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-elevated) / 0.96);
+    box-shadow: var(--surface-shadow);
+    backdrop-filter: blur(12px);
+  }
+
+  .aapm-editor-command-bar .aapm-editor-section-link {
+    min-height: 2.25rem;
+  }
+
+  .aapm-editor-command-actions {
+    min-height: 2.25rem;
+  }
+
+  .aapm-editorial-summary {
+    background: hsl(var(--surface-subtle) / 0.72);
+  }
+
+  .aapm-editorial-layout {
+    align-items: start;
+  }
+
+  .aapm-editorial-block {
+    scroll-margin-top: 6.5rem;
+  }
+
+  .aapm-editorial-block > :last-child {
+    min-width: 0;
+  }
+
+  .aapm-editorial-outline {
+    min-width: 0;
+  }
+
+  .aapm-editorial-outline > aside {
+    background: hsl(var(--surface-elevated) / 0.96);
+  }
+
+  .aapm-editorial-insert-rail {
+    background: hsl(var(--surface-subtle) / 0.56);
+  }
+
+  @media (max-width: 860px) {
+    .aapm-editor-command-bar {
+      position: static;
+      backdrop-filter: none;
+    }
+
+    .aapm-editor-command-actions {
+      width: 100%;
+      border-top: 1px solid hsl(var(--surface-border));
+      padding-top: var(--space-2);
+    }
+
+    .aapm-editor-command-actions > :last-child {
+      margin-left: auto;
+    }
   }
 
   .aapm-token-tab {
@@ -2711,6 +2783,18 @@
 
   .aapm-rich-editor__content {
     @apply min-h-[22rem] max-h-[42rem] overflow-y-auto bg-background px-5 py-5 text-[15px] leading-7 text-foreground outline-none selection:bg-brand-orange/15;
+  }
+
+  /* Keep authored prose at a learner-readable measure even when the editor
+   * workspace expands on desktop. Wide media/table blocks remain free to use
+   * their own layout; only prose primitives are constrained. */
+  .aapm-rich-editor__content > :is(p, h1, h2, h3, ul, ol, blockquote) {
+    max-width: var(--aapm-reading-measure);
+    margin-inline: auto;
+  }
+
+  .aapm-rich-editor__content > :is(ul, ol) {
+    padding-inline-start: 2rem;
   }
   .aapm-rich-editor__content p {
     @apply my-2 first:mt-0 last:mb-0;

@@ -29,6 +29,7 @@ import {
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { safeEditorialImage } from "@/lib/editorialUrls";
+import { EDITORIAL_PRESENTATION_MAX_BYTES } from "@/lib/editorialLimits";
 import {
   EDITORIAL_TEXT_LIMIT,
   createEditorialBlock,
@@ -60,7 +61,7 @@ const editorIconByType = Object.freeze({
 
 const editorIcon = (type) => editorIconByType[type] || "file";
 const MAX_IMAGE_UPLOAD_BYTES = 20 * 1024 * 1024;
-const MAX_PRESENTATION_UPLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_PRESENTATION_UPLOAD_BYTES = EDITORIAL_PRESENTATION_MAX_BYTES;
 const imageExtensions = /\.(?:jpe?g|png|gif|webp|avif)$/i;
 const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 
@@ -337,7 +338,7 @@ function SlidesBlockFields({ block, onChange }) {
   return (
     <div className="space-y-3">
       <Field id={`${block.id}-slides-title`} label="Judul rangkaian slide (opsional)"><Input id={`${block.id}-slides-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Judul rangkaian slide" /></Field>
-      <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="text-xs font-semibold">Sumber slide</div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source === "pptx" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source === "pptx" ? "Ganti PPTX" : "Unggah PPTX"}</label></Button></div></div></div>
+      <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="text-xs font-semibold">Sumber slide</div><div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source === "pptx" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source === "pptx" ? "Ganti PPTX" : "Unggah PPTX"}</label></Button><span className="text-[11px] leading-5 text-muted-foreground">Maks. 50 MB · .pptx</span></div></div></div>
       {pendingPresentation && <div className="flex flex-col gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/5 p-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5">PPTX baru akan menggantikan {slides.length} slide manual di elemen ini.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void uploadPresentationFile(pendingPresentation)}>Gunakan PPTX</Button><Button type="button" size="sm" variant="outline" onClick={() => setPendingPresentation(null)}>Batal</Button></div></div>}
       {uploadState.status !== "idle" && <p className={cn("text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
       {source === "pptx" ? <div className="rounded-xl border border-border bg-background p-4 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 shrink-0 text-brand-orange" /><div className="min-w-0"><div className="truncate text-sm font-semibold">{block.pptxName || "Presentasi PowerPoint"}</div><div className="text-[10px] text-muted-foreground">{block.slideCount || 0} slide</div></div></div><div className="flex flex-wrap items-center justify-end gap-2"><Badge variant="soft" className="bg-tint-green text-brand-green">PPTX</Badge><Button type="button" size="sm" variant="outline" disabled={!block.pptxUrl} onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : "Pratinjau"}</Button></div></div>{previewOpen && block.pptxUrl && <div className="mt-3 border-t border-border pt-3"><PptxCarousel src={block.pptxUrl} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} compact /></div>}</div> : <>
@@ -403,7 +404,7 @@ function ContentBlockFields({ block, onChange }) {
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
   const mediaTone = ["image", "slides", "video"].includes(block.type);
-  return <article id={contentBlockAnchorId(block.id)} className={cn("aapm-token-card scroll-mt-28 p-4 sm:p-5", mediaTone ? "border-brand-orange/25" : "border-border")} data-editorial-block={block.type} data-editorial-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><IconTile icon={editorIcon(block.type)} tone={mediaTone ? "orange" : "green"} size="md" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  return <article id={contentBlockAnchorId(block.id)} className={cn("aapm-editorial-block aapm-token-card scroll-mt-28 p-4 sm:p-5", mediaTone ? "border-brand-orange/25" : "border-border")} data-editorial-block={block.type} data-editorial-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><IconTile icon={editorIcon(block.type)} tone={mediaTone ? "orange" : "green"} size="md" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
 }
 
 const insertableTypes = editorialBlockLibrary.map((block) => block.type);
@@ -468,8 +469,8 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
   };
 
   return (
-    <div className="min-w-0 xl:col-start-2 xl:row-start-1 xl:sticky xl:top-24 xl:self-start" data-editorial-outline>
-      <section className="rounded-xl border border-border bg-surface-subtle/70 p-2 xl:hidden">
+    <div className="aapm-editorial-outline min-w-0 xl:col-start-2 xl:row-start-1 xl:sticky xl:top-24 xl:self-start" data-editorial-outline>
+      <section className="aapm-token-panel rounded-xl border border-border bg-surface-subtle/70 p-2 xl:hidden">
         <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50" aria-expanded={mobileOpen} aria-controls="editorial-outline-mobile-list" onClick={() => setMobileOpen((open) => !open)}>
           <IconTile icon="table" tone="green" size="sm" />
           <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Daftar isi</span><span className="block text-[10px] leading-4 text-muted-foreground">{elementCount} elemen</span></span>
@@ -478,7 +479,7 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
         {mobileOpen && <div id="editorial-outline-mobile-list" className="mt-2 max-h-72 overflow-y-auto border-t border-border pt-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={navigate} /></div>}
       </section>
 
-      <aside className="hidden overflow-hidden rounded-xl border border-border bg-background/95 shadow-sm xl:block" aria-label="Daftar isi editor">
+      <aside className="aapm-token-panel hidden overflow-hidden rounded-xl border border-border bg-background/95 shadow-sm xl:block" aria-label="Daftar isi editor">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
           <div className="flex min-w-0 items-center gap-2"><IconTile icon="table" tone="green" size="sm" /><div><h3 className="text-xs font-semibold">Daftar isi</h3><p className="text-[10px] text-muted-foreground">{elementCount} elemen</p></div></div>
         </div>
@@ -503,7 +504,7 @@ function EditorialQualityPanel({ signals, onNavigate }) {
   const iconTone = blocking.length ? "text-danger" : advice.length ? "text-tint-orange-foreground" : "text-tint-green-foreground";
 
   return (
-    <section className={cn("aapm-token-alert rounded-2xl border p-4 shadow-sm", tone)} aria-label="Pemeriksaan kualitas materi" data-editorial-quality={blocking.length ? "blocking" : advice.length ? "advice" : "ready"}>
+    <section className={cn("aapm-editorial-quality aapm-token-alert rounded-2xl border p-4 shadow-sm", tone)} aria-label="Pemeriksaan kualitas materi" data-editorial-quality={blocking.length ? "blocking" : advice.length ? "advice" : "ready"}>
       <div className="flex flex-wrap items-start gap-3">
         <span className={cn("aapm-token-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70", iconTone)}><AapmIcon name={icon} className="h-4 w-4" /></span>
         <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold">{status}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pemeriksaan ini membantu kualitas learner; keputusan isi dan urutan tetap di tangan editor.</p></div>
@@ -635,10 +636,10 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
   }), [addContentBlock, blockingSignals, navigateOutline]);
 
   return (
-    <div className="space-y-5" data-editorial-mode="ordered-flow">
+    <div className="aapm-editorial-composer space-y-5" data-editorial-mode="ordered-flow">
       <div className="sr-only" aria-live="polite">{announcement}</div>
 
-      <section className="rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
+      <section className="aapm-editorial-summary aapm-token-panel rounded-2xl border border-border bg-surface-elevated p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tint-green text-brand-green"><AapmIcon name="solar:pen-new-square-bold" className="h-5 w-5" /></span>
@@ -650,12 +651,12 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
 
       <EditorialQualityPanel signals={qualitySignals} onNavigate={navigateOutline} />
 
-      <div className={cn("grid min-w-0 gap-4", hasOutline && "xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-start")}>
+      <div className={cn("aapm-editorial-layout grid min-w-0 gap-5", hasOutline && "xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start")}>
         {hasOutline && <EditorialOutline items={outlineItems} activeItemId={activeOutlineId} onNavigate={navigateOutline} />}
         <div className={cn("min-w-0 space-y-5", hasOutline && "xl:col-start-1 xl:row-start-1")}>
           {blocks.length ? <section className="space-y-3" aria-label="Alur blok materi"><div className="flex flex-wrap items-center justify-between gap-2 px-1"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Urutan learner</p><Badge variant="outline">{blocks.length} blok</Badge></div><div className="space-y-3">{blocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => updateBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div></section> : <section className="rounded-2xl border border-dashed border-brand-green/30 bg-brand-green/5 p-5 text-center"><AapmIcon name="solar:document-add-bold" className="mx-auto h-6 w-6 text-brand-green" /><h3 className="mt-3 text-sm font-semibold">Mulai dari blok pertama</h3><p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">Pilih teks kaya untuk menulis narasi, lalu tambahkan media atau struktur saat dibutuhkan.</p></section>}
 
-          <section id="editorial-insert-rail" className="rounded-2xl border border-dashed border-border bg-surface-subtle/60 p-4" aria-label="Tambah blok materi" data-editorial-insert-rail>
+          <section id="editorial-insert-rail" className="aapm-editorial-insert-rail rounded-2xl border border-dashed border-border bg-surface-subtle/60 p-4" aria-label="Tambah blok materi" data-editorial-insert-rail>
             <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-semibold">Tambah ke alur</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Blok baru disisipkan setelah blok yang sedang aktif di daftar isi, atau di akhir alur.</p></div><Badge variant="outline" className="text-[10px]">Maks. 80 blok</Badge></div>
             <div className="mt-3 flex flex-wrap gap-2">{editorialInsertActions.map((action) => <Button key={action.type} type="button" size="sm" variant="outline" className="h-10" disabled={blocks.length >= 80} onClick={() => addContentBlock(action.type)}><AapmIcon name={action.icon} className="h-3.5 w-3.5" />{action.label}</Button>)}</div>
           </section>

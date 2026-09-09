@@ -1,9 +1,13 @@
 // @ts-nocheck
 import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
+import {
+  EDITORIAL_PRESENTATION_MAX_BYTES,
+  EDITORIAL_PRESENTATION_MAX_SLIDES,
+} from "@/lib/editorialLimits";
 
-const MAX_PPTX_BYTES = 50 * 1024 * 1024;
-const MAX_PPTX_SLIDES = 50;
+const MAX_PPTX_BYTES = EDITORIAL_PRESENTATION_MAX_BYTES;
+const MAX_PPTX_SLIDES = EDITORIAL_PRESENTATION_MAX_SLIDES;
 
 function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
