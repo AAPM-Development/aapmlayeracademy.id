@@ -1,6 +1,17 @@
 -- Native MySQL schema for cPanel staging/production.
 -- The API also creates these tables automatically on first request.
 
+-- The migration runner records additive database changes separately from
+-- application content.  DDL in this file remains safe to run on a new
+-- database; existing cPanel databases should use `database/migrate.php` so
+-- every index change is checked before it is applied.
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  migration_key VARCHAR(160) NOT NULL,
+  checksum CHAR(64) NOT NULL,
+  applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (migration_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   email VARCHAR(190) NOT NULL,
@@ -19,6 +30,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   user_id BIGINT UNSIGNED NOT NULL,
   bio TEXT NOT NULL,
   hall_of_fame_opt_in TINYINT(1) NOT NULL DEFAULT 0,
+  avatar_data MEDIUMTEXT NOT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id),
   CONSTRAINT user_profiles_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -77,7 +89,8 @@ CREATE TABLE IF NOT EXISTS course_modules (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY course_modules_number_unique (module_number),
-  KEY course_modules_order_idx (sort_order)
+  KEY course_modules_order_idx (sort_order),
+  KEY course_modules_chapter_order_idx (level_number, sort_order, module_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS quiz_questions (
@@ -109,6 +122,7 @@ CREATE TABLE IF NOT EXISTS user_progress (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY user_progress_unique (user_id, module_number),
+  KEY user_progress_user_updated_idx (user_id, updated_at, module_number),
   CONSTRAINT user_progress_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -123,6 +137,7 @@ CREATE TABLE IF NOT EXISTS certificates (
   issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY certificates_unique (user_id, level_number, exam_type),
+  KEY certificates_user_issued_idx (user_id, issued_at, id),
   CONSTRAINT certificates_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -173,6 +188,21 @@ CREATE TABLE IF NOT EXISTS ai_chat_messages (
   PRIMARY KEY (id),
   KEY ai_chat_messages_conversation_idx (conversation_id, id),
   CONSTRAINT ai_chat_messages_conversation_fk FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ai_activity_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  conversation_id BIGINT UNSIGNED NULL,
+  event_type VARCHAR(32) NOT NULL,
+  label VARCHAR(160) NOT NULL,
+  detail VARCHAR(280) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY ai_activity_user_created_idx (user_id, created_at),
+  KEY ai_activity_conversation_idx (conversation_id),
+  CONSTRAINT ai_activity_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT ai_activity_conversation_fk FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS app_settings (

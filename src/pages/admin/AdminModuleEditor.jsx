@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
@@ -38,6 +38,7 @@ import {
   useCreateAdminModule,
   useDeleteAdminModule,
   useDeleteAdminQuestion,
+  useAdminAiSettings,
   useSaveAdminQuestion,
   useUpdateAdminModule,
 } from "@/lib/useAdminData";
@@ -246,6 +247,18 @@ function AiModuleDraft({ form, onApply, toast }) {
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { data: aiSettings, error: aiSettingsError, isLoading: isLoadingAiSettings } = useAdminAiSettings();
+  const providerReady = aiSettings
+    ? Boolean(aiSettings.enabled && aiSettings.apiKeyConfigured)
+    : null;
+
+  const providerStatus = aiSettingsError
+    ? { label: "Status provider belum terbaca", icon: "info", className: "bg-surface-subtle text-muted-foreground" }
+    : isLoadingAiSettings
+      ? { label: "Memeriksa provider…", icon: "refresh", className: "bg-surface-subtle text-muted-foreground" }
+      : providerReady
+        ? { label: `${aiSettings.providerLabel || "Provider AI"} siap`, icon: "checkRead", className: "bg-tint-green text-tint-green-foreground" }
+        : { label: "Provider perlu disiapkan", icon: "info", className: "bg-tint-orange text-tint-orange-foreground" };
 
   const generate = async () => {
     setIsGenerating(true);
@@ -263,6 +276,13 @@ function AiModuleDraft({ form, onApply, toast }) {
           instruction.trim() ? `Fokus tambahan editor: ${instruction.trim().slice(0, 400)}` : "",
         ].filter(Boolean).join("\n\n"),
       });
+      if (response?.fallback || (response?.providerStatus && response.providerStatus !== "ready")) {
+        throw new Error(
+          response?.notice
+            ? `${response.notice} Buka Pengaturan AI untuk mengaktifkan provider sebelum membuat draf.`
+            : "Provider AI belum siap. Buka Pengaturan AI untuk mengaktifkan provider sebelum membuat draf.",
+        );
+      }
       const parsed = parseAiModuleDraft(response?.reply);
       if (!parsed) throw new Error("APPI belum mengembalikan draf terstruktur. Coba lagi dengan fokus yang lebih spesifik.");
       setDraft(parsed);
@@ -291,6 +311,13 @@ function AiModuleDraft({ form, onApply, toast }) {
           <p className="text-xs font-semibold">Bantu isi dengan APPI</p>
           <p className="mt-0.5 text-[10px] text-muted-foreground">Buat draf tujuan, insight, tugas, dan checklist tanpa menimpa isi sebelum Anda menyetujuinya.</p>
         </div>
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+          <Badge variant="soft" className={`max-w-full truncate text-[10px] ${providerStatus.className}`}>
+            <AapmIcon name={providerStatus.icon} className={`h-3 w-3 ${providerStatus.icon === "refresh" ? "animate-spin" : ""}`} />
+            {providerStatus.label}
+          </Badge>
+          {providerReady === false && <Link to="/admin/ai-settings" className="text-[10px] font-semibold text-brand-orange hover:underline">Buka Pengaturan AI</Link>}
+        </div>
         <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 px-2.5 text-[11px]" onClick={() => setOpen((current) => !current)}>
           <AapmIcon name={open ? "chevronUp" : "ai"} className="h-3.5 w-3.5" />
           {open ? "Tutup" : "Buat draf"}
@@ -298,6 +325,13 @@ function AiModuleDraft({ form, onApply, toast }) {
       </div>
       {open && (
         <div className="mt-3 border-t border-brand-orange/20 pt-3">
+          {providerReady === false && (
+            <div role="status" className="mb-3 flex flex-wrap items-start gap-2 rounded-[var(--radius-control)] border border-brand-orange/20 bg-background/70 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+              <AapmIcon name="info" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
+              <span className="min-w-0 flex-1">Provider aktif belum memiliki credential atau sedang dimatikan. Fallback lokal tetap aman, tetapi tidak menghasilkan draf JSON terstruktur untuk editor.</span>
+              <Link to="/admin/ai-settings" className="shrink-0 font-semibold text-brand-orange hover:underline">Konfigurasi</Link>
+            </div>
+          )}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={instruction}

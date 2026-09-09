@@ -5,12 +5,11 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
+  IconTile,
+  T7Checkbox,
 } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
-
-const LearningCheckbox = /** @type {any} */ (Checkbox);
 
 export const lessonSections = [
   { id: "content", label: "Materi", icon: "solar:file-text-bold" },
@@ -305,21 +304,32 @@ export function LessonSection({
 }
 
 export function LessonChecklist({ items = [], style = "checkbox", density = "comfortable" } = {}) {
+  const listId = React.useId();
   return (
     <ul className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
       {items.map((item, index) => {
-        const id = `checklist-${index}`;
+        const id = `${listId}-checklist-${index}`;
         return (
           <li
             key={`${item}-${index}`}
             className={cn(
-              "flex items-start gap-3 rounded-md px-1 text-sm leading-6 transition-colors",
+              "rounded-md px-2 transition-colors",
               density === "compact" ? "py-1.5" : "py-2",
               style === "checkbox" && "hover:bg-surface-subtle",
             )}
           >
-            {style === "list" ? <AapmIcon name="arrowRight" className="mt-1 h-4 w-4 shrink-0 text-brand-orange" /> : <LearningCheckbox id={id} className="mt-1" />}
-            {style === "list" ? <span className="min-w-0">{item}</span> : <label htmlFor={id} className="min-w-0 cursor-pointer">{item}</label>}
+            {style === "list" ? (
+              <div className="flex items-start gap-2.5 text-sm leading-6">
+                <AapmIcon name="arrowRight" className="mt-1 h-4 w-4 shrink-0 text-brand-orange" />
+                <span className="min-w-0">{item}</span>
+              </div>
+            ) : (
+              <T7Checkbox
+                id={id}
+                label={item}
+                className="items-start gap-2.5"
+              />
+            )}
           </li>
         );
       })}
@@ -332,18 +342,32 @@ export function LessonInsightList({
   icon = "solar:lightbulb-bolt-bold-duotone",
   density = "comfortable",
   iconClassName = "text-brand-orange",
+  marker = "number",
 } = {}) {
   return (
-    <ul className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
+    <ol className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
       {items.map((item, index) => (
-        <li key={`${item}-${index}`} className="flex gap-3 text-sm leading-6">
-          <AapmIcon
-            name={icon}
-            className={cn("mt-1 h-4 w-4 shrink-0", iconClassName)}
-          />
-          <span>{item}</span>
+        <li key={`${item}-${index}`} className="flex items-start gap-2.5 text-sm leading-6">
+          {marker === "icon" ? (
+            <AapmIcon
+              name={icon}
+              className={cn("mt-1 h-4 w-4 shrink-0", iconClassName)}
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className={cn(
+                "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-semibold tabular-nums",
+                iconClassName,
+                "border-current/25 bg-current/5",
+              )}
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+          )}
+          <span className="min-w-0">{item}</span>
         </li>
       ))}
-    </ul>
+    </ol>
   );
 }

@@ -4,18 +4,9 @@ import { IconNames, T7Icon } from "@ten4seven/ui";
 import { cn } from "@/lib/utils";
 import { solarIconData } from "./solarIconData";
 
-// APPI's semantic AI mark stays in the Iconify pipeline, but uses a local
-// glyph so the product can own the legible "AI" silhouette instead of
-// borrowing a generic magic-stick or CPU icon. It deliberately has no tile,
-// border, or background; callers decide whether a surrounding control needs
-// a surface.
-export const aapmAiIconData = Object.freeze({
-  body: [
-    '<path fill="currentColor" fill-rule="evenodd" d="M3.25 40 13.5 8.75A2.5 2.5 0 0 1 15.87 7h4.28a2.5 2.5 0 0 1 2.38 1.75L32.75 40H26.1l-2.03-6.85H11.95L9.9 40H3.25Zm10.53-12.7h8.55l-4.28-14.1-4.27 14.1Z"/><path fill="currentColor" d="M34 7h6v33h-6z"/><path class="aapm-ai-mark__spark" d="m41.5 1.5 2.2 4.4 4.3 2.1-4.3 2.1-2.2 4.4-2.2-4.4L35 8l4.3-2.1 2.2-4.4Z"/>',
-  ].join(""),
-  height: 48,
-  width: 48,
-});
+// Ten4Seven does not currently expose a truthful AI glyph. APPI therefore
+// uses the local Solar sparkle source below and lets the T7 token bridge own
+// its size and colour; no bespoke mark is embedded in the component.
 
 // Minimal UI's sidebar uses the Solar collection through Iconify. Keeping the
 // semantic names here avoids scattering provider-specific icon strings across
@@ -28,7 +19,7 @@ export const aapmIconSources = Object.freeze({
   users: "solar:users-group-rounded-bold-duotone",
   analytics: "solar:chart-square-bold-duotone",
   kpi: "solar:chart-2-bold-duotone",
-  ai: "aapm:ai-mark",
+  ai: "solar:stars-minimalistic-bold-duotone",
   certificate: "solar:verified-check-bold",
   media: "solar:gallery-wide-bold",
   menu: "solar:list-bold",
@@ -321,22 +312,6 @@ const semanticIconBySourceName = Object.freeze({
 // glyphs as the registry grows.
 export const aapmSemanticIconNames = semanticIconByAapmName;
 
-function AiMark({ className = "", alt = "", ...props }) {
-  // When a caller only sets a text size (for example in a badge), the mark
-  // follows that text size. Explicit h/w utilities still win for icon buttons.
-  const hasExplicitSize = /(?:^|\s)(?:h|w|size)-/.test(className);
-
-  return <IconifyIcon
-    icon={aapmAiIconData}
-    className={cn("aapm-ai-mark", !hasExplicitSize && "h-[1em] w-[1em]", className)}
-    role={alt ? "img" : undefined}
-    aria-label={alt || undefined}
-    aria-hidden={alt ? undefined : true}
-    focusable="false"
-    {...props}
-  />;
-}
-
 export default function AapmIcon({ name = "dashboard", className = "", alt = "", ...props }) {
   const semanticName = semanticIconByAapmName[name] || semanticIconBySourceName[name];
 
@@ -353,8 +328,6 @@ export default function AapmIcon({ name = "dashboard", className = "", alt = "",
   }
 
   const icon = aapmIconSources[name] || (name.includes(":") ? name : aapmIconSources.dashboard);
-
-  if (name === "ai") return <AiMark className={className} alt={alt} {...props} />;
 
   return (
     <IconifyIcon

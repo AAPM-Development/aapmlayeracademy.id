@@ -17,6 +17,7 @@ import {
   Sparkline as T7SparklinePrimitive,
   SectionHeader as T7SectionHeaderPrimitive,
   TrendIndicator as T7TrendIndicator,
+  Checkbox as T7CheckboxPrimitive,
 } from "@ten4seven/ui";
 
 // AAPM's product-facing primitive facade.
@@ -70,6 +71,10 @@ export const FormGrid = T7FormGrid;
 export const FormSection = T7FormSection;
 export const MetricCard = T7MetricCard;
 export const TrendIndicator = T7TrendIndicator;
+// Learner-facing checklists use the canonical Ten4Seven input contract. The
+// legacy Radix Checkbox remains exported as Checkbox for editor forms that
+// depend on its controlled `onCheckedChange` API.
+export const T7Checkbox = T7CheckboxPrimitive;
 
 /**
  * SectionHeader keeps lesson and admin surfaces on the same Ten4Seven

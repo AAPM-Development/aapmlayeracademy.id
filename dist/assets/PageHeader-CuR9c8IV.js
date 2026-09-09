@@ -1,0 +1,1 @@
+import{j as o,aq as t,s as i}from"./index-B7cxCWmQ.js";const p=function({eyebrow:e="",title:a="",description:r="",actions:s=null,className:d="",...n}={}){return o.jsx(t,{overline:e||void 0,title:a,description:r||void 0,actions:s,className:i("mb-7",d),"data-t7-bridge":"academy-page-header",...n})};export{p as A};

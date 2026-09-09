@@ -2481,21 +2481,6 @@
     animation: aapm-ai-decor-alert 2.8s 420ms ease-in-out infinite;
   }
 
-  .aapm-ai-mark {
-    display: inline-block;
-    flex: none;
-    overflow: visible;
-    color: currentColor;
-    vertical-align: middle;
-  }
-
-  .aapm-ai-mark__spark {
-    fill: hsl(var(--aapm-lime-500));
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: aapm-ai-mark-spark 4.2s ease-in-out infinite;
-  }
-
   .aapm-ai-profile-avatar {
     position: relative;
     display: inline-flex;
@@ -2573,22 +2558,6 @@
     }
     76% {
       transform: translateY(0) scale(1.018) rotate(0.4deg);
-    }
-  }
-
-  @keyframes aapm-ai-mark-spark {
-    0%,
-    100% {
-      opacity: 0.72;
-      transform: translateY(0) scale(0.9);
-    }
-    45% {
-      opacity: 1;
-      transform: translateY(-0.08em) scale(1.08);
-    }
-    70% {
-      opacity: 0.84;
-      transform: translateY(0.02em) scale(0.96);
     }
   }
 

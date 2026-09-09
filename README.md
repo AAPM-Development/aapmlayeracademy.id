@@ -60,7 +60,9 @@ The API exposes:
 
 All mutating authenticated requests use the session's CSRF token. PHP creates
 the table structure automatically on first request; `database/schema.sql` is
-provided for explicit MySQL setup and `database/seed.php` loads demo content.
+provided for explicit MySQL setup. `database/seed.php` is reserved for a new
+or deliberately refreshed content database, while `database/migrate.php`
+handles additive changes on an existing learner database.
 
 New accounts and password resets require at least 8 characters containing a
 letter and a number. Login and reset attempts are throttled per IP/account,
@@ -111,9 +113,24 @@ git push origin develop
 
 7. In cPanel Git Version Control for the staging repository, choose `Update
    from Remote`, then `Deploy HEAD Commit`.
-8. Run the seed from the checked-out repository with `php database/seed.php`.
+8. For a new, empty database only, run the content seed from the checked-out
+   repository with `php database/seed.php`. For an existing database, run the
+   additive, idempotent migration and integrity check instead:
+
+   ```powershell
+   php database/migrate.php --plan --verify
+   php database/migrate.php --apply --verify
+   ```
+
+   The migration creates `schema_migrations`, adds only the missing
+   read-model indexes, and never deletes or rewrites learner rows. Take the
+   normal cPanel/phpMyAdmin database backup first; run it on staging before a
+   shared production database and schedule a quiet window for the metadata
+   lock. The verifier keeps the intentional global final-exam `module_number`
+   `0` exception visible and reports chapter-name conflicts for editorial
+   review rather than changing content automatically.
 9. Verify `https://staging.aapmlayeracademy.id/api/health` and log in with the
-   demo account.
+   demo account (on a seeded empty database).
 
 Production remains connected to `main` and is not changed by staging deploys.
 Promote a tested commit to `main` only after the native staging smoke test
