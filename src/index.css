@@ -1111,6 +1111,79 @@
     border-color: hsl(var(--table-divider));
   }
 
+  /* One table contract for operational data, editorial blocks, and the KPI
+   * dashboard. The component still owns its geometry; these aliases only
+   * connect the canonical T7 roles to Academy's product tokens. */
+  .aapm-data-table,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) {
+    --t7-border-hsl: var(--table-divider);
+    --t7-surface-hsl: var(--surface-default);
+    --t7-surface-subtle-hsl: var(--table-header-canvas);
+    --t7-table-cell-padding-inline: var(--space-4);
+    --t7-table-cell-padding-block: var(--space-3);
+  }
+
+  .aapm-data-table .t7-table,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) > .t7-table {
+    min-width: max(100%, 500px);
+  }
+
+  .aapm-data-table .t7-table :is(th, td),
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table :is(th, td) {
+    vertical-align: middle;
+  }
+
+  .aapm-data-table .t7-table th,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table th {
+    background: hsl(var(--table-header-canvas));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-data-table .t7-table tbody tr,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table tbody tr {
+    border-bottom-color: hsl(var(--table-divider) / 0.72);
+  }
+
+  .aapm-data-table .t7-table tbody tr:hover,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table tbody tr:hover {
+    background: hsl(var(--table-row-hover));
+  }
+
+  .aapm-data-table .t7-table-stacked-row {
+    background: hsl(var(--surface-default));
+    border-bottom-color: hsl(var(--table-divider) / 0.72);
+  }
+
+  .aapm-data-table .t7-table-stacked-label {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-table-caption {
+    display: block;
+    margin-block: var(--space-3);
+    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+    line-height: 1.35rem;
+    text-align: left;
+  }
+
+  .aapm-table-footer {
+    border-top: 1px solid hsl(var(--table-divider));
+    background: hsl(var(--surface-subtle));
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .aapm-kpi-cluster {
+    --t7-kpi-gap: var(--space-4);
+    --t7-kpi-padding: var(--space-5);
+  }
+
+  .aapm-sparkline {
+    display: block;
+    max-width: 100%;
+  }
+
   /* T7's semantic Table returns a scroll wrapper around its native table.
    * The compatibility bridge tags the inner table, so style the actual
    * wrapper instead of creating a second border/scroll container in feature
@@ -1147,6 +1220,20 @@
 
   .t7-table-wrap:has(> .aapm-editorial-table--editor) {
     margin-block: 0;
+    --t7-surface-hsl: var(--form-canvas);
+    --t7-surface-subtle-hsl: var(--table-header-canvas);
+    --t7-border-hsl: var(--table-divider);
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table--editor) :is(input, textarea) {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table--editor) :is(input, textarea):focus-visible {
+    border-color: hsl(var(--t7-primary-hsl));
+    box-shadow: 0 0 0 3px hsl(var(--t7-focus-hsl) / 0.16);
   }
 
   /* Legacy utility geometry is deliberately bridged by semantic role rather

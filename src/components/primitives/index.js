@@ -1,3 +1,22 @@
+// @ts-nocheck
+import React from "react";
+import { cn } from "@/lib/utils";
+
+import {
+  BarChart as T7BarChartPrimitive,
+  ChartPanel as T7ChartPanelPrimitive,
+  DataTable as T7DataTablePrimitive,
+  DataTableColumnPicker as T7DataTableColumnPicker,
+  FilterToolbar as T7FilterToolbar,
+  FormGrid as T7FormGrid,
+  FormSection as T7FormSection,
+  KPICluster as T7KPIClusterPrimitive,
+  LineChart as T7LineChartPrimitive,
+  MetricCard as T7MetricCard,
+  Sparkline as T7SparklinePrimitive,
+  TrendIndicator as T7TrendIndicator,
+} from "@ten4seven/ui";
+
 // AAPM's product-facing primitive facade.
 // Vendor/Radix details stay behind this boundary so feature code has one import surface.
 
@@ -37,21 +56,46 @@ export { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 export { Slider } from "@/components/ui/slider";
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
 export { Calendar } from "@/components/ui/calendar";
-// Data-dense views use the canonical Ten4Seven contracts directly. Keeping
-// these behind the product facade prevents feature pages from importing a
-// second table/chart/form system by accident.
-export {
-  BarChart as T7BarChart,
-  ChartPanel,
-  DataTable,
-  DataTableColumnPicker,
-  FilterToolbar,
-  FormGrid,
-  FormSection,
-  KPICluster,
-  LineChart as T7LineChart,
-  MetricCard,
-  Sparkline,
-  TrendIndicator,
-} from "@ten4seven/ui";
+// Data-dense views use the canonical Ten4Seven contracts directly. The small
+// adapters below are intentionally boring: they only attach Academy's
+// semantic bridge hooks and safe defaults, so a table/KPI/chart cannot drift
+// into a second local visual system as it moves between learner and admin.
+export const T7BarChart = T7BarChartPrimitive;
+export const DataTableColumnPicker = T7DataTableColumnPicker;
+export const FilterToolbar = T7FilterToolbar;
+export const FormGrid = T7FormGrid;
+export const FormSection = T7FormSection;
+export const MetricCard = T7MetricCard;
+export const TrendIndicator = T7TrendIndicator;
+
+/** @type {any} */
+export const DataTable = ({ className, density = "default", responsive = "scroll", ...props } = {}) => {
+  return React.createElement(T7DataTablePrimitive, {
+    ...props,
+    density,
+    responsive,
+    className: cn("aapm-data-table", className),
+    "data-t7-bridge": "academy-data-table",
+  });
+};
+
+/** @type {any} */
+export const ChartPanel = ({ className, ...props } = {}) => {
+  return React.createElement(T7ChartPanelPrimitive, { ...props, className: cn("aapm-chart-panel", className), "data-t7-bridge": "academy-chart-panel" });
+};
+
+/** @type {any} */
+export const T7LineChart = ({ className, ...props } = {}) => {
+  return React.createElement(T7LineChartPrimitive, { ...props, className: cn("aapm-line-chart", className), "data-t7-bridge": "academy-line-chart" });
+};
+
+/** @type {any} */
+export const KPICluster = ({ className, ...props } = {}) => {
+  return React.createElement(T7KPIClusterPrimitive, { ...props, className: cn("aapm-kpi-cluster", className), "data-t7-bridge": "academy-kpi-cluster" });
+};
+
+/** @type {any} */
+export const Sparkline = ({ className, ...props } = {}) => {
+  return React.createElement(T7SparklinePrimitive, { ...props, className: cn("aapm-sparkline", className), "data-t7-bridge": "academy-sparkline" });
+};
 export { useToast } from "@/components/ui/use-toast";
