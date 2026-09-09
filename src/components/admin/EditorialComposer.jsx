@@ -3,7 +3,7 @@ import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
-import PptxCarousel from "@/components/academy/PptxCarousel";
+import EditorialPresentation from "@/components/academy/EditorialPresentation";
 import { nativeApi } from "@/api/nativeClient";
 import {
   Badge,
@@ -30,6 +30,12 @@ import {
 import { cn } from "@/lib/utils";
 import { safeEditorialImage } from "@/lib/editorialUrls";
 import { EDITORIAL_PRESENTATION_MAX_BYTES } from "@/lib/editorialLimits";
+import {
+  EDITORIAL_PRESENTATION_ACCEPT,
+  editorialPresentationMeta,
+  getEditorialPresentationFormat,
+  getEditorialPresentationFormatFromName,
+} from "@/lib/editorialPresentation";
 import {
   EDITORIAL_TEXT_LIMIT,
   createEditorialBlock,
@@ -299,7 +305,7 @@ function TableBlockFields({ block, onChange }) {
 }
 
 function SlidesBlockFields({ block, onChange }) {
-  const source = block.source === "pptx" ? "pptx" : "manual";
+  const source = getEditorialPresentationFormat(block.presentationFormat || block.source) || "manual";
   const slides = Array.isArray(block.slides) ? block.slides : [];
   const [uploadState, setUploadState] = React.useState({ status: "idle", message: "" });
   const [pendingPresentation, setPendingPresentation] = React.useState(null);
@@ -310,24 +316,37 @@ function SlidesBlockFields({ block, onChange }) {
 
   const uploadPresentationFile = async (file) => {
     if (!file) return;
-    if (!/\.pptx$/i.test(file.name || "")) {
-      setUploadState({ status: "error", message: "Gunakan berkas PowerPoint .pptx. Format .ppt lama belum didukung." });
+    const format = getEditorialPresentationFormatFromName(file.name);
+    if (!format) {
+      setUploadState({ status: "error", message: "Gunakan .pptx, .ppt, .key (Keynote), .odp, atau .pdf." });
       return;
     }
     if (file.size < 1 || file.size > MAX_PRESENTATION_UPLOAD_BYTES) {
-      setUploadState({ status: "error", message: `Ukuran PPTX maksimal ${readableBytes(MAX_PRESENTATION_UPLOAD_BYTES)}.` });
+      setUploadState({ status: "error", message: `Ukuran file maksimal ${readableBytes(MAX_PRESENTATION_UPLOAD_BYTES)}.` });
       return;
     }
-    setUploadState({ status: "loading", message: "Memeriksa dan mengunggah PPTX…" });
+    const meta = editorialPresentationMeta(format);
+    setUploadState({ status: "loading", message: `Memeriksa dan mengunggah ${meta.shortLabel}…` });
     try {
       const result = await nativeApi.admin.media.uploadPresentation(file);
       const presentation = result?.presentation;
-      if (!presentation?.url || !presentation?.slideCount) throw new Error("Respons unggahan PPTX tidak lengkap.");
-      onChange({ source: "pptx", pptxUrl: presentation.url, pptxName: presentation.name || file.name, slideCount: presentation.slideCount, slides: [] });
+      if (!presentation?.url || !presentation?.format) throw new Error("Respons unggahan presentasi tidak lengkap.");
+      const uploadedFormat = getEditorialPresentationFormat(presentation.format) || format;
+      onChange({
+        source: uploadedFormat,
+        presentationFormat: uploadedFormat,
+        presentationUrl: presentation.url,
+        presentationName: presentation.name || file.name,
+        presentationMime: presentation.mime || file.type || "",
+        presentationSize: Number(presentation.size) || file.size,
+        slideCount: Number(presentation.slideCount) || 0,
+        ...(uploadedFormat === "pptx" ? { pptxUrl: presentation.url, pptxName: presentation.name || file.name } : { pptxUrl: "", pptxName: "" }),
+        slides: [],
+      });
       setPendingPresentation(null);
-      setUploadState({ status: "success", message: "PPTX siap." });
+      setUploadState({ status: "success", message: `${meta.shortLabel} siap.` });
     } catch (error) {
-      setUploadState({ status: "error", message: error?.message || "PPTX tidak dapat diunggah." });
+      setUploadState({ status: "error", message: error?.message || `${meta.shortLabel} tidak dapat diunggah.` });
     }
   };
 
@@ -342,30 +361,30 @@ function SlidesBlockFields({ block, onChange }) {
   };
 
   const switchToManual = () => {
-    if (source === "pptx") {
+    if (source !== "manual") {
       setPendingAction({ type: "switch-to-manual" });
       return;
     }
-    onChange({ source: "manual", pptxUrl: "", pptxName: "", slideCount: 0, slides: slides.length ? slides : [createEditorialSlide(1)] });
+    onChange({ source: "manual", presentationFormat: "", presentationUrl: "", presentationName: "", presentationMime: "", presentationSize: 0, pptxUrl: "", pptxName: "", slideCount: 0, slides: slides.length ? slides : [createEditorialSlide(1)] });
   };
 
   const confirmAction = () => {
     if (pendingAction?.type === "delete-slide") onChange({ slides: slides.filter((_, currentIndex) => currentIndex !== pendingAction.index) });
-    if (pendingAction?.type === "switch-to-manual") onChange({ source: "manual", pptxUrl: "", pptxName: "", slideCount: 0, slides: slides.length ? slides : [createEditorialSlide(1)] });
+    if (pendingAction?.type === "switch-to-manual") onChange({ source: "manual", presentationFormat: "", presentationUrl: "", presentationName: "", presentationMime: "", presentationSize: 0, pptxUrl: "", pptxName: "", slideCount: 0, slides: slides.length ? slides : [createEditorialSlide(1)] });
     setPendingAction(null);
   };
 
   const pendingTitle = pendingAction?.type === "delete-slide" ? "Hapus slide?" : "Kembali ke slide manual?";
-  const pendingDescription = pendingAction?.type === "delete-slide" ? `Slide ${(pendingAction?.index ?? 0) + 1} akan dihapus dari rangkaian ini.` : "Referensi PPTX akan dilepas dari elemen ini. File PPTX di server tidak dihapus.";
+  const pendingDescription = pendingAction?.type === "delete-slide" ? `Slide ${(pendingAction?.index ?? 0) + 1} akan dihapus dari rangkaian ini.` : "Referensi file presentasi akan dilepas dari elemen ini. File di server tidak dihapus.";
 
   return (
     <div className="space-y-3">
       <Field id={`${block.id}-slides-title`} label="Judul rangkaian slide (opsional)"><Input id={`${block.id}-slides-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Judul rangkaian slide" /></Field>
       <AlignmentField id={`${block.id}-slides-align`} value={block.align || "left"} onChange={(align) => onChange({ align })} label="Rata rangkaian" />
-      <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="text-xs font-semibold">Sumber slide</div><div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source === "pptx" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source === "pptx" ? "Ganti PPTX" : "Unggah PPTX"}</label></Button><span className="text-[11px] leading-5 text-muted-foreground">Maks. 50 MB · .pptx</span></div></div></div>
-      {pendingPresentation && <div className="flex flex-col gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/5 p-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5">PPTX baru akan menggantikan {slides.length} slide manual di elemen ini.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void uploadPresentationFile(pendingPresentation)}>Gunakan PPTX</Button><Button type="button" size="sm" variant="outline" onClick={() => setPendingPresentation(null)}>Batal</Button></div></div>}
+      <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-semibold">Sumber slide</div><div className="mt-1 text-[11px] leading-5 text-muted-foreground">PPTX/PPT, Keynote, ODP, atau PDF · maksimal 50 MB</div></div><div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept={EDITORIAL_PRESENTATION_ACCEPT} className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source !== "manual" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source !== "manual" ? `Ganti ${editorialPresentationMeta(source).shortLabel}` : "Unggah file"}</label></Button></div></div></div>
+      {pendingPresentation && <div className="flex flex-col gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/5 p-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5">File presentasi baru akan menggantikan {slides.length} slide manual di elemen ini.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void uploadPresentationFile(pendingPresentation)}>Gunakan file</Button><Button type="button" size="sm" variant="outline" onClick={() => setPendingPresentation(null)}>Batal</Button></div></div>}
       {uploadState.status !== "idle" && <p className={cn("text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
-      {source === "pptx" ? <div className="rounded-xl border border-border bg-background p-4 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 shrink-0 text-brand-orange" /><div className="min-w-0"><div className="truncate text-sm font-semibold">{block.pptxName || "Presentasi PowerPoint"}</div><div className="text-[10px] text-muted-foreground">{block.slideCount || 0} slide</div></div></div><div className="flex flex-wrap items-center justify-end gap-2"><Badge variant="soft" className="bg-tint-green text-brand-green">PPTX</Badge><Button type="button" size="sm" variant="outline" disabled={!block.pptxUrl} onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : "Pratinjau"}</Button></div></div>{previewOpen && block.pptxUrl && <div className="mt-3 border-t border-border pt-3"><PptxCarousel src={block.pptxUrl} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} compact /></div>}</div> : <>
+      {source !== "manual" ? <div className="rounded-xl border border-border bg-background p-4 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 shrink-0 text-brand-orange" /><div className="min-w-0"><div className="truncate text-sm font-semibold">{block.presentationName || block.pptxName || "File presentasi"}</div><div className="text-[10px] text-muted-foreground">{source === "pptx" && block.slideCount ? `${block.slideCount} slide · ` : ""}{editorialPresentationMeta(source).label}</div></div></div><div className="flex flex-wrap items-center justify-end gap-2"><Badge variant="soft" className="bg-tint-green text-brand-green">{editorialPresentationMeta(source).shortLabel}</Badge><Button type="button" size="sm" variant="outline" disabled={!block.presentationUrl && !block.pptxUrl} onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : source === "ppt" || source === "key" || source === "odp" ? "Lihat file" : "Pratinjau"}</Button></div></div>{previewOpen && (block.presentationUrl || block.pptxUrl) && <div className="mt-3 border-t border-border pt-3"><EditorialPresentation src={block.presentationUrl || block.pptxUrl} format={source} title={block.title || block.presentationName || block.pptxName || "Presentasi"} name={block.presentationName || block.pptxName} declaredSlideCount={block.slideCount} compact /></div>}</div> : <>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-subtle p-3"><div className="text-xs font-semibold">Rangkaian slide manual</div><Button type="button" size="sm" variant="outline" disabled={slides.length >= 12} onClick={() => onChange({ slides: [...slides, createEditorialSlide(slides.length + 1)] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah slide</Button></div>
         <div className="space-y-3">{slides.map((slide, index) => <article key={slide.id} className="rounded-xl border border-border bg-background p-3 shadow-sm sm:p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3"><span className="text-xs font-semibold">Slide {index + 1} dari {slides.length}</span><div className="flex flex-wrap gap-1.5"><IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Naikkan slide ${index + 1}`} tooltip="Naikkan slide satu posisi" disabled={index === 0} onClick={() => onChange({ slides: moveInList(slides, index, index - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Turunkan slide ${index + 1}`} tooltip="Turunkan slide satu posisi" disabled={index === slides.length - 1} onClick={() => onChange({ slides: moveInList(slides, index, index + 1) })}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-10 w-10 p-0 text-danger hover:bg-danger/5 sm:h-8 sm:w-8" label={`Hapus slide ${index + 1}`} tooltip="Hapus slide" disabled={slides.length <= 1} onClick={() => setPendingAction({ type: "delete-slide", index })}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="grid gap-3 lg:grid-cols-2"><Field id={`${block.id}-slide-${index}-title`} label="Judul slide"><Input id={`${block.id}-slide-${index}-title`} value={slide.title || ""} maxLength={180} onChange={(event) => updateSlide(index, { title: event.target.value })} /></Field><div className="lg:col-span-2"><ImageSourceField id={`${block.id}-slide-${index}-image`} label="Gambar slide (opsional)" value={slide.src || ""} alt={slide.alt || ""} onValueChange={(src) => updateSlide(index, { src })} hint="Pilih gambar dari komputer atau masukkan URL HTTPS." /></div><div className="lg:col-span-2"><Field id={`${block.id}-slide-${index}-content`} label="Isi slide (opsional)"><Textarea id={`${block.id}-slide-${index}-content`} rows={3} maxLength={3000} value={slide.content || ""} onChange={(event) => updateSlide(index, { content: event.target.value })} placeholder="Ringkas poin utama slide ini." /></Field></div>{slide.src && <div className="space-y-3 lg:col-span-2"><DecorativeImageControl id={`${block.id}-slide-${index}-decorative`} decorative={slide.decorative !== false} onChange={(decorative) => updateSlide(index, { decorative })} />{slide.decorative === false && <Field id={`${block.id}-slide-${index}-alt`} label="Alt text gambar" hint="Wajib untuk gambar yang membawa informasi."><Input id={`${block.id}-slide-${index}-alt`} value={slide.alt || ""} maxLength={280} onChange={(event) => updateSlide(index, { alt: event.target.value })} /></Field>}</div>}</div></article>)}</div>
       </>}

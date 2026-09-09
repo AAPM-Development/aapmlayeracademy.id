@@ -1,4 +1,7 @@
 import { safeEditorialImage, safeEditorialLink } from "./editorialUrls.js";
+import {
+  getEditorialPresentationFormat,
+} from "./editorialPresentation.js";
 
 export const EDITORIAL_DOCUMENT_VERSION = 1;
 export const EDITORIAL_TEXT_LIMIT = 120000;
@@ -30,8 +33,8 @@ function textValuesForBlock(block) {
     return [block.title, ...columns, ...rows.flatMap((row) => Array.isArray(row) ? row : [])];
   }
   if (block.type === "slides") {
-    if (block.source === "pptx") {
-      return [block.title, block.pptxName];
+    if (getEditorialPresentationFormat(block.source)) {
+      return [block.title, block.presentationName || block.pptxName];
     }
     const slides = Array.isArray(block.slides) ? block.slides : [];
     return [block.title, ...slides.flatMap((slide) => [slide?.title, slide?.content, slide?.alt])];
@@ -148,17 +151,23 @@ function normaliseTable(block) {
 }
 
 function normaliseSlides(block) {
-  const source = block.source === "pptx" ? "pptx" : "manual";
-  if (source === "pptx") {
+  const source = getEditorialPresentationFormat(block.presentationFormat || block.source) || "manual";
+  if (source !== "manual") {
     const rawSlideCount = Number(block.slideCount);
+    const presentationUrl = text(block.presentationUrl || block.pptxUrl, 2048);
+    const presentationName = text(block.presentationName || block.pptxName, 180);
     return {
       title: text(block.title, 160),
       source,
-      pptxUrl: text(block.pptxUrl, 2048),
-      pptxName: text(block.pptxName, 180),
-      slideCount: Number.isInteger(rawSlideCount) && rawSlideCount >= 1 && rawSlideCount <= 50
-        ? rawSlideCount
-        : 1,
+      presentationUrl,
+      presentationName,
+      presentationFormat: source,
+      presentationMime: text(block.presentationMime, 160),
+      presentationSize: Number.isFinite(Number(block.presentationSize)) ? Number(block.presentationSize) : 0,
+      ...(source === "pptx" ? { pptxUrl: presentationUrl, pptxName: presentationName } : {}),
+      slideCount: source === "pptx"
+        ? (Number.isInteger(rawSlideCount) && rawSlideCount >= 1 && rawSlideCount <= 50 ? rawSlideCount : 1)
+        : 0,
       slides: [],
     };
   }
@@ -388,7 +397,7 @@ function incompleteEditorialBlockMessage(block) {
       return hasColumn && hasRow ? "" : "Tabel memerlukan judul kolom dan setidaknya satu baris.";
     }
     case "slides":
-      if (block.source === "pptx") return blockHasText(block.pptxUrl) ? "" : "Presentasi PPTX belum dipilih.";
+      if (getEditorialPresentationFormat(block.source)) return blockHasText(block.presentationUrl || block.pptxUrl) ? "" : "File presentasi belum dipilih.";
       return Array.isArray(block.slides) && block.slides.some((slide) => (
         blockHasText(slide?.title) || blockHasText(slide?.content) || blockHasText(slide?.src)
       )) ? "" : "Rangkaian slide masih kosong.";
@@ -476,9 +485,9 @@ function markdownTable(block) {
 }
 
 function markdownSlides(block) {
-  const title = escapeInlineMarkdown(block?.title || block?.pptxName || "", 180);
-  if (block?.source === "pptx") {
-    const link = safeMarkdownLink(block?.pptxUrl || "");
+  const title = escapeInlineMarkdown(block?.title || block?.presentationName || block?.pptxName || "", 180);
+  if (getEditorialPresentationFormat(block?.source)) {
+    const link = safeMarkdownLink(block?.presentationUrl || block?.pptxUrl || "");
     if (!link) return title ? `### ${title}` : "";
     return `${title ? `### ${title}\n\n` : ""}[Buka presentasi](${link})`;
   }

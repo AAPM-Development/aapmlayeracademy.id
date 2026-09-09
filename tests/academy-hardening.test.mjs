@@ -33,6 +33,11 @@ import {
   EDITORIAL_PRESENTATION_MAX_SLIDES,
 } from "../src/lib/editorialLimits.js";
 import { normaliseSvgBlipMarkup } from "../src/lib/pptxCompatibility.js";
+import {
+  EDITORIAL_PRESENTATION_ACCEPT,
+  getEditorialPresentationFormatFromName,
+  getEditorialPresentationFormatFromUrl,
+} from "../src/lib/editorialPresentation.js";
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -85,6 +90,32 @@ test("editorial composer preserves one ordered flow of text and media blocks", (
 test("PPTX authoring and learner limits stay on the 50 MB contract", () => {
   assert.equal(EDITORIAL_PRESENTATION_MAX_BYTES, 50 * 1024 * 1024);
   assert.equal(EDITORIAL_PRESENTATION_MAX_SLIDES, 50);
+});
+
+test("editorial presentation compatibility keeps common formats explicit", () => {
+  assert.equal(getEditorialPresentationFormatFromName("materi.PPTX"), "pptx");
+  assert.equal(getEditorialPresentationFormatFromName("materi.ppt"), "ppt");
+  assert.equal(getEditorialPresentationFormatFromName("materi.key"), "key");
+  assert.equal(getEditorialPresentationFormatFromName("materi.odp"), "odp");
+  assert.equal(getEditorialPresentationFormatFromName("materi.pdf"), "pdf");
+  assert.equal(getEditorialPresentationFormatFromName("materi.exe"), null);
+  assert.equal(getEditorialPresentationFormatFromUrl("/uploads/editorial/presentations/2026/09/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.key"), "key");
+  assert.match(EDITORIAL_PRESENTATION_ACCEPT, /\.pptx/);
+  assert.match(EDITORIAL_PRESENTATION_ACCEPT, /\.key/);
+  assert.match(EDITORIAL_PRESENTATION_ACCEPT, /application\/pdf/);
+
+  const parsed = parseEditorialDocument(JSON.stringify({
+    version: 1,
+    blocks: [{
+      id: "pdf",
+      type: "slides",
+      source: "pdf",
+      presentationUrl: "/uploads/editorial/presentations/2026/09/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf",
+      presentationName: "materi.pdf",
+    }],
+  }));
+  assert.equal(parsed.blocks[0].source, "pdf");
+  assert.equal(parsed.blocks[0].presentationUrl.endsWith(".pdf"), true);
 });
 
 test("editorial presentation controls normalize with backward-compatible defaults", () => {

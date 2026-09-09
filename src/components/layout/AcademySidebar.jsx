@@ -2,8 +2,9 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, IconButton, NavItem, Progress, Sidebar } from "@ten4seven/ui";
 import AppBrand from "@/components/AppBrand";
-import { academyNavigation, getNavigationMeta } from "./academyNavigation";
+import SidebarUserCard from "./SidebarUserCard";
 import { cn } from "@/lib/utils";
+import { academyNavigation, getNavigationMeta } from "./academyNavigation";
 import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import { preloadRoute } from "@/lib/routePreloaders";
 
@@ -117,11 +118,12 @@ export default function AcademySidebar({
 
   const footer = (
     <div className="aapm-academy-sidebar__footer-content">
-      <NavItem
+      <SidebarUserCard
+        user={user}
+        name={displayName}
+        context={isAdmin ? "Admin Academy" : "Peserta Layer Farm"}
+        collapsed={collapsed}
         active={activeKey === "/profile"}
-        className="aapm-academy-sidebar__account"
-        icon="user"
-        label={collapsed ? "Profil" : displayName}
         onClick={() => navigateTo("/profile")}
       />
       {isAdmin && (

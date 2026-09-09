@@ -6,19 +6,19 @@ import { Badge, IconTile, Input, Surface } from "@/components/primitives";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
 const tools = [
-  { id: "fcr", name: "FCR", icon: "analytics", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
-  { id: "eggmass", name: "Egg Mass", icon: "chart", tone: "orange", description: "Ukur output telur per ekor per hari." },
-  { id: "uniformity", name: "Uniformity", icon: "chart", tone: "lime", description: "Lihat konsistensi bobot flock." },
-  { id: "mortality", name: "Mortality", icon: "trendDown", tone: "orange", description: "Pantau kehilangan dan livability." },
+  { id: "fcr", name: "FCR", icon: "equalRatio", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
+  { id: "eggmass", name: "Egg Mass", icon: "egg", tone: "orange", description: "Ukur output telur per ekor per hari." },
+  { id: "uniformity", name: "Uniformity", icon: "weight", tone: "lime", description: "Lihat konsistensi bobot flock." },
+  { id: "mortality", name: "Mortality", icon: "mortality", tone: "orange", description: "Pantau kehilangan dan livability." },
   {
     id: "waterfeed",
     name: "Water/Feed Ratio",
-    icon: "progress",
+    icon: "waterRate",
     tone: "lime",
     description: "Deteksi perubahan konsumsi air dan pakan.",
   },
-  { id: "ventilation", name: "Ventilasi", icon: "settings", tone: "green", description: "Terjemahkan volume kandang menjadi airflow." },
-  { id: "roi", name: "ROI & Break Even", icon: "finance", tone: "orange", description: "Uji kelayakan keputusan investasi farm." },
+  { id: "ventilation", name: "Ventilasi", icon: "hvac", tone: "green", description: "Terjemahkan volume kandang menjadi airflow." },
+  { id: "roi", name: "ROI & Break Even", icon: "marginalRoi", tone: "orange", description: "Uji kelayakan keputusan investasi farm." },
 ];
 
 export default function Calculators() {
@@ -82,12 +82,12 @@ export default function Calculators() {
   );
 }
 
-function CalculatorCard({ title, formula, children, result }) {
+function CalculatorCard({ title, formula, children, result, icon = "analytics", tone = "orange" }) {
   return (
     <Surface className="aapm-token-card relative min-w-0 max-w-full overflow-hidden p-5 sm:p-6" data-t7-region="calculator-card">
       <div className="absolute inset-x-0 top-0 h-1 bg-brand-orange" />
       <div className="mb-4 flex items-start gap-3">
-        <IconTile icon="analytics" tone="orange" size="md" />
+        <IconTile icon={icon} tone={tone} size="md" />
         <div className="min-w-0"><h2 className="font-semibold">{title}</h2><p className="mt-1 text-xs text-muted-foreground">Masukkan angka aktual untuk mendapatkan indikator awal.</p></div>
       </div>
       {formula && (
@@ -145,6 +145,8 @@ function FcrCalc() {
     <CalculatorCard
       title="Feed Conversion Ratio (FCR)"
       formula="FCR = Total Feed (kg) ÷ Egg Mass (kg), Egg Mass = Total Eggs × Egg Weight ÷ 1000"
+      icon="equalRatio"
+      tone="green"
     >
       <Field
         label="Total Konsumsi Pakan"
@@ -202,6 +204,8 @@ function EggMassCalc() {
     <CalculatorCard
       title="Egg Mass per Ekor per Hari"
       formula="Egg Mass = HDP(%) × Egg Weight(g) ÷ 100"
+      icon="egg"
+      tone="orange"
     >
       <Field
         label="Hen Day Production"
@@ -241,6 +245,8 @@ function UniformityCalc() {
     <CalculatorCard
       title="Uniformity (%)"
       formula="Uniformity = (Jumlah ayam dalam ±10% berat rata-rata ÷ Total ayam) × 100"
+      icon="weight"
+      tone="lime"
     >
       <Field
         label="Berat Rata-rata"
@@ -286,6 +292,8 @@ function MortalityCalc() {
     <CalculatorCard
       title="Mortality & Livability"
       formula="Mortality = (Jumlah Mati ÷ Populasi Awal) × 100  |  Livability = 100 − Mortality"
+      icon="mortality"
+      tone="orange"
     >
       <Field
         label="Jumlah Ayam Mati"
@@ -323,6 +331,8 @@ function WaterFeedCalc() {
     <CalculatorCard
       title="Water/Feed Ratio"
       formula="Ratio = Water Intake (ml) ÷ Feed Intake (g)  — Normal: 1.8–2.2"
+      icon="waterRate"
+      tone="lime"
     >
       <Field
         label="Konsumsi Air"
@@ -371,6 +381,8 @@ function VentilationCalc() {
     <CalculatorCard
       title="Kebutuhan Ventilasi & Jumlah Fan"
       formula="Min vent (m³/min) = berat total (kg) × 0.014 | Tunnel = × 0.07 | Fan 36″ ≈ 340 m³/min"
+      icon="hvac"
+      tone="green"
     >
       <Field
         label="Jumlah Ayam"
@@ -432,6 +444,8 @@ function RoiCalc() {
     <CalculatorCard
       title="ROI & Break Even Point"
       formula="Gross Margin = Revenue − OPEX | BEP = CAPEX ÷ Margin | ROI = (Margin ÷ CAPEX) × 100"
+      icon="marginalRoi"
+      tone="orange"
     >
       <Field
         label="CAPEX"

@@ -1871,14 +1871,18 @@ function normalise_editorial_image_url($value): string
     return $url;
 }
 
-function normalise_editorial_presentation_url($value): string
+function normalise_editorial_presentation_url($value, string $format = ''): string
 {
     $url = trim((string) $value);
     $path = normalise_editorial_internal_path($url);
     $parts = $path !== null ? parse_url($path) : null;
     $pathname = is_array($parts) ? (string) ($parts['path'] ?? '') : '';
-    if ($path === null || !preg_match('#^/uploads/editorial/presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.pptx$#i', $pathname)) {
-        error_response('Presentasi editorial harus berasal dari unggahan PPTX yang dikelola.', 422, 'invalid_presentation_url');
+    if ($path === null || !preg_match('#^/uploads/editorial/presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(pptx|ppt|key|odp|pdf)$#i', $pathname, $matches)) {
+        error_response('Presentasi editorial harus berasal dari unggahan PowerPoint, Keynote, ODP, atau PDF yang dikelola.', 422, 'invalid_presentation_url');
+    }
+    $actualFormat = strtolower((string) ($matches[1] ?? ''));
+    if ($format !== '' && strtolower($format) !== $actualFormat) {
+        error_response('Format presentasi tidak sesuai dengan file yang diunggah.', 422, 'invalid_presentation_url');
     }
     return $path;
 }
@@ -2068,18 +2072,29 @@ function normalise_editorial_content($value): string
             $alignment = (string) ($block['align'] ?? 'left');
             if (!in_array($alignment, $allowedAlignments, true)) error_response('Perataan rangkaian slide tidak valid.', 422, 'invalid_editorial_content');
             $normalised['align'] = $alignment;
-            $source = (string) ($block['source'] ?? 'manual');
-            if ($source === 'pptx') {
-                $normalised['source'] = 'pptx';
-                $normalised['pptxUrl'] = normalise_editorial_presentation_url($block['pptxUrl'] ?? '');
-                $normalised['pptxName'] = profile_text($block['pptxName'] ?? '', 180);
+            $source = strtolower((string) ($block['presentationFormat'] ?? $block['source'] ?? 'manual'));
+            $allowedPresentationSources = ['pptx', 'ppt', 'key', 'odp', 'pdf'];
+            if (in_array($source, $allowedPresentationSources, true)) {
+                $presentationUrl = normalise_editorial_presentation_url($block['presentationUrl'] ?? $block['pptxUrl'] ?? '', $source);
+                $presentationName = profile_text($block['presentationName'] ?? $block['pptxName'] ?? '', 180);
+                $normalised['source'] = $source;
+                $normalised['presentationFormat'] = $source;
+                $normalised['presentationUrl'] = $presentationUrl;
+                $normalised['presentationName'] = $presentationName;
+                $normalised['presentationMime'] = profile_text($block['presentationMime'] ?? '', 160);
+                $presentationSize = (int) ($block['presentationSize'] ?? 0);
+                $normalised['presentationSize'] = max(0, min(EDITORIAL_PRESENTATION_MAX_BYTES, $presentationSize));
+                if ($source === 'pptx') {
+                    $normalised['pptxUrl'] = $presentationUrl;
+                    $normalised['pptxName'] = $presentationName;
+                }
                 $slideCount = (int) ($block['slideCount'] ?? 0);
-                if ($slideCount < 1 || $slideCount > 50) {
+                if ($source === 'pptx' && ($slideCount < 1 || $slideCount > 50)) {
                     error_response('Jumlah slide PowerPoint tidak valid.', 422, 'invalid_editorial_content');
                 }
                 $normalised['slideCount'] = $slideCount;
                 $normalised['slides'] = [];
-                $totalLength += strlen($normalised['title']) + strlen($normalised['pptxName']);
+                $totalLength += strlen($normalised['title']) + strlen($normalised['presentationName']);
                 $hasContent = true;
             } elseif ($source === 'manual') {
                 $normalised['source'] = 'manual';

@@ -732,6 +732,14 @@
     padding: 0;
   }
 
+  /* Admin labels are operational nouns, not optional metadata. Give the
+   * canonical sidebar enough measure to keep them readable at desktop widths
+   * while leaving the learner rail on its established geometry. */
+  .aapm-t7-app-shell.aapm-admin-shell {
+    --aapm-shell-sidebar-width: 18rem;
+    --t7-sidebar-width: var(--aapm-shell-sidebar-width);
+  }
+
   .aapm-t7-app-shell--collapsed[data-sidebar] {
     grid-template-columns: var(--aapm-shell-sidebar-collapsed-width) minmax(0, 1fr);
   }
@@ -878,10 +886,88 @@
     padding: var(--t7-ref-space-3) var(--t7-ref-space-2) 0;
   }
 
-  .aapm-academy-sidebar__account,
   .aapm-academy-sidebar__logout {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  /* Identity is a compact card, not another navigation row. Keep the card
+   * inside the canonical footer rhythm and let the avatar carry recognition
+   * when the rail is collapsed. */
+  .aapm-sidebar-user-card {
+    display: flex;
+    min-width: 0;
+    width: 100%;
+    align-items: center;
+    gap: var(--t7-ref-space-2);
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--t7-radius-control);
+    background: hsl(var(--surface-default) / 0.72);
+    padding: var(--t7-ref-space-2);
+    color: hsl(var(--t7-foreground-hsl));
+    cursor: pointer;
+    text-align: left;
+    transition:
+      border-color var(--t7-transition-fast),
+      background-color var(--t7-transition-fast),
+      color var(--t7-transition-fast);
+  }
+
+  .aapm-sidebar-user-card:hover {
+    border-color: hsl(var(--tint-green-border));
+    background: hsl(var(--tint-green) / 0.62);
+  }
+
+  .aapm-sidebar-user-card:focus-visible {
+    outline: 2px solid hsl(var(--t7-focus-hsl));
+    outline-offset: 2px;
+  }
+
+  .aapm-sidebar-user-card[data-active="true"] {
+    border-color: hsl(var(--tint-green-border));
+    background: hsl(var(--tint-green));
+    color: hsl(var(--t7-primary-hsl));
+  }
+
+  .aapm-sidebar-user-card__avatar {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid hsl(var(--tint-green-border));
+  }
+
+  .aapm-sidebar-user-card__copy {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 2px;
+  }
+
+  .aapm-sidebar-user-card__name,
+  .aapm-sidebar-user-card__meta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aapm-sidebar-user-card__name {
+    color: inherit;
+    font-size: var(--t7-type-nav-size);
+    font-weight: var(--t7-type-nav-active-weight);
+    line-height: var(--t7-type-nav-line-height);
+  }
+
+  .aapm-sidebar-user-card__meta {
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+
+  .aapm-sidebar-user-card__chevron {
+    flex: none;
+    width: var(--t7-icon-navigation);
+    height: var(--t7-icon-navigation);
+    color: hsl(var(--t7-muted-foreground-hsl));
   }
 
   .aapm-academy-sidebar__theme-mobile {
@@ -927,6 +1013,20 @@
     letter-spacing: 0.14em;
     line-height: var(--t7-type-caption-line-height);
     text-transform: uppercase;
+  }
+
+  /* Admin navigation labels carry the task name. If a translated or longer
+   * label exceeds the available rail, wrap it instead of hiding its meaning
+   * behind an ellipsis. The wider desktop rail above keeps the normal case on
+   * one line. */
+  .aapm-admin-sidebar .t7-nav-label {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .aapm-admin-sidebar .t7-nav-item {
+    min-height: var(--t7-touch-target-min);
   }
 
   .aapm-academy-sidebar--collapsed {
@@ -977,9 +1077,14 @@
     padding-inline: 0;
   }
 
-  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__account {
+  .aapm-academy-sidebar--collapsed .aapm-sidebar-user-card {
     width: auto;
     padding-inline: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-sidebar-user-card__avatar {
+    width: 2.125rem;
+    height: 2.125rem;
   }
 
   .t7-mobile-sidebar .aapm-academy-sidebar {
@@ -991,6 +1096,13 @@
   .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-brand,
   .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-footer {
     padding-inline: 0;
+  }
+
+  /* A drawer is content-height, so the desktop auto margin would otherwise
+   * create an empty lower half before the account/workspace actions. Keep the
+   * footer directly after navigation in the mobile sidepanel. */
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-footer {
+    margin-top: var(--t7-ref-space-4);
   }
 
   .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-nav {
