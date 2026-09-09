@@ -95,6 +95,8 @@ const aiList = (value, limit = 4) => {
 function normaliseAiModuleDraft(value) {
   if (!value || typeof value !== "object") return null;
   const draft = {
+    title: typeof value.title === "string" ? value.title.trim().slice(0, 180) : "",
+    summary: typeof value.summary === "string" ? value.summary.trim().slice(0, 600) : "",
     learningObjectives: aiList(value.learningObjectives),
     keyTakeaways: aiList(value.keyTakeaways),
     checklist: aiList(value.checklist),
@@ -102,7 +104,7 @@ function normaliseAiModuleDraft(value) {
       ? value.practicalAssignment.trim().slice(0, 1200)
       : "",
   };
-  return draft.learningObjectives.length || draft.keyTakeaways.length || draft.checklist.length || draft.practicalAssignment
+  return draft.title || draft.summary || draft.learningObjectives.length || draft.keyTakeaways.length || draft.checklist.length || draft.practicalAssignment
     ? draft
     : null;
 }
@@ -246,7 +248,10 @@ function AiModuleDraft({ form, onApply, toast }) {
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(null);
+  const [rewriteDraft, setRewriteDraft] = useState(null);
+  const [pendingRewrite, setPendingRewrite] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
   const { data: aiSettings, error: aiSettingsError, isLoading: isLoadingAiSettings } = useAdminAiSettings();
   const providerReady = aiSettings
     ? Boolean(aiSettings.enabled && aiSettings.apiKeyConfigured)
@@ -270,7 +275,7 @@ function AiModuleDraft({ form, onApply, toast }) {
         message: [
           "Anda adalah editor kurikulum AAPM. Buat draf konten learner dalam bahasa Indonesia yang ringkas, spesifik, dan dapat diamati.",
           "Kembalikan SATU objek JSON valid tanpa markdown, tanpa code fence, dan tanpa penjelasan tambahan dengan bentuk persis:",
-          '{"learningObjectives":["maksimal 3 tujuan"],"keyTakeaways":["maksimal 3 poin penting"],"checklist":["maksimal 3 cek observasi"],"practicalAssignment":"satu tugas praktik singkat"}',
+          '{"title":"judul modul yang lebih jelas","summary":"ringkasan modul maksimal 2 kalimat","learningObjectives":["maksimal 3 tujuan"],"keyTakeaways":["maksimal 3 poin penting"],"checklist":["maksimal 3 cek observasi"],"practicalAssignment":"satu tugas praktik singkat"}',
           "Tujuan harus memakai kata kerja aktif. Checklist harus bisa diverifikasi learner. Jangan mengarang angka atau klaim medis.",
           context,
           instruction.trim() ? `Fokus tambahan editor: ${instruction.trim().slice(0, 400)}` : "",
@@ -294,6 +299,38 @@ function AiModuleDraft({ form, onApply, toast }) {
     }
   };
 
+  const rewrite = async () => {
+    setIsRewriting(true);
+    try {
+      const context = editorialContextForAi(form);
+      const response = await nativeApi.ai.assistant({
+        includeFarmContext: false,
+        farmContext: [],
+        message: [
+          "Anda adalah copywriter kurikulum AAPM. Tulis ulang isi modul yang sudah ada dalam bahasa Indonesia agar lebih jelas, ringkas, konsisten, dan mudah dipindai learner.",
+          "Pertahankan maksud, fakta, urutan, dan batasan keselamatan dari naskah asli. Jangan menambah angka, klaim medis, atau informasi baru.",
+          "Kembalikan SATU objek JSON valid tanpa markdown, code fence, atau penjelasan tambahan dengan bentuk persis:",
+          '{"learningObjectives":["maksimal 3 tujuan"],"keyTakeaways":["maksimal 3 poin penting"],"checklist":["maksimal 3 cek observasi"],"practicalAssignment":"satu tugas praktik singkat"}',
+          "Setiap item harus satu kalimat aktif. Jika suatu bagian kosong, kembalikan array kosong atau string kosong.",
+          context,
+          `Isi saat ini:\nJudul:\n${String(form?.title || "")}\nRingkasan:\n${String(form?.summary || "")}\nTujuan:\n${String(form?.learningObjectives || "")}\nPoin penting:\n${String(form?.keyTakeaways || "")}\nChecklist:\n${String(form?.checklist || "")}\nTugas praktik:\n${String(form?.practicalAssignment || "")}`,
+          instruction.trim() ? `Gaya copywriting yang diminta editor: ${instruction.trim().slice(0, 400)}` : "Gaya: editorial, lugas, dan profesional.",
+        ].filter(Boolean).join("\n\n"),
+      });
+      if (response?.fallback || (response?.providerStatus && response.providerStatus !== "ready")) {
+        throw new Error(response?.notice ? `${response.notice} Buka Pengaturan AI untuk mengaktifkan provider sebelum rewrite.` : "Provider AI belum siap. Buka Pengaturan AI untuk menjalankan rewrite.");
+      }
+      const parsed = parseAiModuleDraft(response?.reply);
+      if (!parsed) throw new Error("APPI belum mengembalikan rewrite terstruktur. Coba lagi dengan instruksi yang lebih spesifik.");
+      setRewriteDraft(parsed);
+      toast({ title: "Rewrite APPI siap ditinjau", description: "Tidak ada isi yang diganti sebelum Anda mengonfirmasi hasilnya." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Rewrite APPI belum siap", description: error?.message || "APPI tidak dapat menulis ulang modul saat ini." });
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
   const applyDraft = () => {
     if (!draft) return;
     onApply(draft);
@@ -301,7 +338,16 @@ function AiModuleDraft({ form, onApply, toast }) {
     toast({ title: "Draf APPI diterapkan", description: "Tinjau poin-poinnya sebelum menyimpan modul." });
   };
 
+  const applyRewrite = () => {
+    if (!rewriteDraft) return;
+    onApply(rewriteDraft);
+    setRewriteDraft(null);
+    setPendingRewrite(false);
+    toast({ title: "Rewrite APPI diterapkan", description: "Isi lokal berubah sebagai draft. Periksa kembali, lalu pilih Simpan modul." });
+  };
+
   return (
+    <>
     <div className="aapm-token-card border border-brand-orange/25 bg-tint-orange/35 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background text-brand-orange">
@@ -338,11 +384,15 @@ function AiModuleDraft({ form, onApply, toast }) {
               onChange={(event) => setInstruction(event.target.value)}
               placeholder="Opsional: fokus, level learner, atau konteks tugas…"
               className="h-9 min-w-0 flex-1 text-xs"
-              disabled={isGenerating}
+              disabled={isGenerating || isRewriting}
             />
-            <Button type="button" size="sm" className="h-9 shrink-0" onClick={generate} disabled={isGenerating || !String(form?.title || form?.summary || "").trim()}>
+            <Button type="button" size="sm" className="h-9 shrink-0" onClick={generate} disabled={isGenerating || isRewriting || !String(form?.title || form?.summary || "").trim()}>
               <AapmIcon name={isGenerating ? "refresh" : "ai"} className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
               {isGenerating ? "Menyusun…" : "Generate"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-9 shrink-0" onClick={rewrite} disabled={isGenerating || isRewriting || !String(form?.title || form?.summary || form?.learningObjectives || form?.keyTakeaways || form?.checklist || form?.practicalAssignment || "").trim()}>
+              <AapmIcon name={isRewriting ? "refresh" : "edit"} className={`h-3.5 w-3.5 ${isRewriting ? "animate-spin" : ""}`} />
+              {isRewriting ? "Rewrite…" : "Rewrite isi"}
             </Button>
           </div>
           {draft && (
@@ -373,9 +423,37 @@ function AiModuleDraft({ form, onApply, toast }) {
               </div>
             </div>
           )}
+          {rewriteDraft && (
+            <div className="mt-3 rounded-[var(--radius-control)] border border-brand-orange/35 bg-background p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div><p className="text-xs font-semibold">Pratinjau rewrite copywriting</p><p className="mt-0.5 text-[10px] text-muted-foreground">Hasil ini hanya usulan sampai Anda mengonfirmasi penggantian isi.</p></div>
+                <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground text-[10px]">Konfirmasi diperlukan</Badge>
+              </div>
+              <div className="grid gap-2 text-[11px] sm:grid-cols-2">
+                {[['Judul', rewriteDraft.title], ['Ringkasan', rewriteDraft.summary]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><p className="mt-1 text-muted-foreground">{value}</p></div>)}
+                {[["Tujuan", rewriteDraft.learningObjectives], ["Poin penting", rewriteDraft.keyTakeaways], ["Checklist", rewriteDraft.checklist]].map(([label, items]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><ul className="mt-1 space-y-0.5 text-muted-foreground">{items.map((item) => <li key={item}>• {item}</li>)}</ul></div>)}
+                <div className="rounded-lg bg-surface-subtle p-2 sm:col-span-2"><p className="font-semibold text-foreground">Tugas praktik</p><p className="mt-1 text-muted-foreground">{rewriteDraft.practicalAssignment || "—"}</p></div>
+              </div>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button type="button" size="sm" variant="ghost" className="h-8 text-[11px]" onClick={() => setRewriteDraft(null)}>Buang rewrite</Button>
+                <Button type="button" size="sm" className="h-8 text-[11px]" onClick={() => setPendingRewrite(true)}><AapmIcon name="checkRead" className="h-3.5 w-3.5" /> Tinjau & terapkan</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
+    <ConfirmDialog
+      open={pendingRewrite}
+      onOpenChange={setPendingRewrite}
+      title="Ganti isi modul dengan rewrite APPI?"
+      description="APPI hanya memberi usulan copywriting. Setelah dikonfirmasi, judul, ringkasan, tujuan, poin penting, checklist, dan tugas praktik akan diganti sebagai perubahan lokal. Anda tetap harus meninjau lalu memilih Simpan modul."
+      confirmLabel="Terapkan rewrite"
+      cancelLabel="Kembali ke pratinjau"
+      icon="solar:stars-minimalistic-bold-duotone"
+      onConfirm={applyRewrite}
+    />
+    </>
   );
 }
 
@@ -1423,6 +1501,8 @@ export default function AdminModuleEditor() {
                   form={form}
                   toast={toast}
                   onApply={(draft) => {
+                    if (draft.title) set("title", draft.title);
+                    if (draft.summary) set("summary", draft.summary);
                     set("learningObjectives", draft.learningObjectives.join("\n"));
                     set("keyTakeaways", draft.keyTakeaways.join("\n"));
                     set("checklist", draft.checklist.join("\n"));

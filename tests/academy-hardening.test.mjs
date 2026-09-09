@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   createEditorialBlock,
   createEditorialDocument,
@@ -38,6 +39,8 @@ import {
   getEditorialPresentationFormatFromName,
   getEditorialPresentationFormatFromUrl,
 } from "../src/lib/editorialPresentation.js";
+
+const readWorkspaceFile = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -324,4 +327,24 @@ test("progress metrics count only active catalog modules", () => {
     completedSet: new Set([1]),
   });
   assert.equal(getNextModule(modules, progress)?.moduleNumber, 2);
+});
+
+test("PWA metadata uses the canonical app icon and leaves API responses uncached", () => {
+  const manifest = JSON.parse(readWorkspaceFile("../public/manifest.json"));
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.scope, "/");
+  assert.equal(manifest.icons?.[0]?.src, "/brand/aapm/pwa-main.svg");
+  assert.equal(manifest.icons?.[0]?.purpose, "any maskable");
+
+  const serviceWorker = readWorkspaceFile("../public/sw.js");
+  assert.match(serviceWorker, /request\.method !== "GET"/);
+  assert.match(serviceWorker, /url\.pathname\.startsWith\("\/api\/"\)/);
+});
+
+test("admin APPI rewrite remains preview-first and requires explicit confirmation", () => {
+  const editor = readWorkspaceFile("../src/pages/admin/AdminModuleEditor.jsx");
+  assert.match(editor, /Rewrite isi/);
+  assert.match(editor, /Pratinjau rewrite copywriting/);
+  assert.match(editor, /Ganti isi modul dengan rewrite APPI/);
+  assert.match(editor, /onConfirm=\{applyRewrite\}/);
 });

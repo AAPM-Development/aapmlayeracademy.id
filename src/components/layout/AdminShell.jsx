@@ -233,7 +233,7 @@ export default function AdminShell() {
       )}
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-t7-region="content-shell">
-        <main ref={mainScrollRef} className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0" data-t7-region="scrollport"><Outlet /></main>
+        <main ref={mainScrollRef} className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0" data-t7-region="scrollport"><Outlet /></main>
         <MobileBottomNav
           onOpenMenu={openCanonicalNavigation}
           items={[

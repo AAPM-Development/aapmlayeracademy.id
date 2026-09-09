@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
@@ -7,8 +7,46 @@ import { Badge, Button, IconTile, KPICluster, Surface, useToast } from "@/compon
 import { useCertificates, useIssueCertificate, useModules, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { useAuth } from "@/lib/AuthContext";
+
+async function downloadCertificatePdf(certificate) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  doc.setFillColor(247, 250, 247);
+  doc.rect(0, 0, width, height, "F");
+  doc.setDrawColor(49, 129, 57);
+  doc.setLineWidth(1.2);
+  doc.rect(12, 12, width - 24, height - 24);
+  doc.setTextColor(49, 129, 57);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("AAPM LAYER ACADEMY", width / 2, 30, { align: "center" });
+  doc.setTextColor(34, 34, 34);
+  doc.setFontSize(28);
+  doc.text("SERTIFIKAT KOMPETENSI", width / 2, 58, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text("diberikan kepada", width / 2, 72, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text(String(certificate.holderName || "Peserta Academy"), width / 2, 88, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text(`Atas pencapaian ${certificate.levelName || `Tingkat ${certificate.levelNumber}`}`, width / 2, 103, { align: "center" });
+  doc.text(`Nilai ${Number(certificate.score || 0)}% · ${certificate.examType || "level"}`, width / 2, 112, { align: "center" });
+  doc.setTextColor(100, 100, 100);
+  doc.setFontSize(9);
+  doc.text(`Diterbitkan ${certificate.issuedAt ? new Date(certificate.issuedAt).toLocaleDateString("id-ID") : "AAPM Academy"}`, width / 2, 132, { align: "center" });
+  doc.text(`ID sertifikat: ${certificate.id}`, width / 2, 139, { align: "center" });
+  const slug = String(certificate.levelName || `tingkat-${certificate.levelNumber}`).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  doc.save(`sertifikat-aapm-${slug || "academy"}.pdf`);
+}
 
 export default function Certification() {
+  const { user } = useAuth();
+  const [downloadingId, setDownloadingId] = useState(null);
   const { data: modules = [], isLoading: modulesLoading } = useModules();
   const { data: progress = [] } = useUserProgress();
   const { data: certificates = [] } = useCertificates();
@@ -27,7 +65,7 @@ export default function Certification() {
 
   const claim = async (tier) => {
     try {
-      await issueCertificate({ levelNumber: tier.number, levelName: tier.name, score: 100, examType: "level", holderName: "Peserta Layer Farm Academy" });
+      await issueCertificate({ levelNumber: tier.number, levelName: tier.name, score: 100, examType: "level", holderName: user?.full_name || user?.email || "Peserta Layer Farm Academy" });
       toast({ title: "Sertifikat diterbitkan", description: `${tier.name} siap dilihat di profil Anda.` });
     } catch (error) {
       toast({ variant: "destructive", title: "Sertifikat belum diterbitkan", description: error.message });
@@ -92,7 +130,7 @@ export default function Certification() {
 
       <section><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Jalur sertifikasi</div><h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Pilih bukti kompetensi berikutnya</h2><p className="mt-1 text-sm text-muted-foreground">Status tingkat berubah berdasarkan progress yang tersimpan di akun Anda.</p></div><span className="text-xs text-muted-foreground">{certificates.length} sertifikat tersimpan</span></div><CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} /></section>
 
-      {certificates.length > 0 && <section className="mt-8"><div className="mb-3 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Riwayat saya</div><h2 className="mt-1 text-lg font-semibold">Sertifikat saya</h2></div><Link to="/profile" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka profil <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div><div className="grid gap-3 md:grid-cols-2">{certificates.map((certificate) => <Surface key={certificate.id} variant="interactive" className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"><div className="flex items-center gap-3"><IconTile icon="award" tone="orange" size="md" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Tingkat {certificate.levelNumber}</div><div className="mt-1 text-sm font-semibold">{certificate.levelName}</div><div className="mt-1 text-xs text-muted-foreground">{certificate.holderName} · Nilai {certificate.score}%</div></div></div><Button type="button" variant="outline" size="sm" disabled><AapmIcon name="download" /> Unduh PDF</Button></Surface>)}</div></section>}
+      {certificates.length > 0 && <section className="mt-8"><div className="mb-3 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Bukti tersimpan</div><h2 className="mt-1 text-lg font-semibold">Sertifikat saya</h2><p className="mt-1 text-xs text-muted-foreground">Setiap kartu adalah bukti yang diterbitkan dari progress dan evaluasi akun ini.</p></div><Link to="/profile" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka profil <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div><div className="grid gap-3 md:grid-cols-2">{certificates.map((certificate) => <Surface key={certificate.id} variant="interactive" className="aapm-certificate-card flex flex-col gap-4 p-4 sm:p-5"><div className="flex items-start gap-3"><IconTile icon="award" tone="orange" size="md" /><div className="min-w-0 flex-1"><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Tingkat {certificate.levelNumber}</div><div className="mt-1 text-sm font-semibold">{certificate.levelName}</div><div className="mt-1 text-xs text-muted-foreground">{certificate.holderName} · Nilai {certificate.score}%</div><div className="mt-1 text-[11px] text-muted-foreground">Diterbitkan {certificate.issuedAt ? new Date(certificate.issuedAt).toLocaleDateString("id-ID") : "—"}</div></div></div><div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><Badge variant="soft" className="bg-tint-green text-tint-green-foreground">Bukti valid di akun</Badge><Button type="button" variant="outline" size="sm" onClick={async () => { setDownloadingId(certificate.id); try { await downloadCertificatePdf(certificate); } catch (error) { toast({ variant: "destructive", title: "Sertifikat belum dapat diunduh", description: error?.message || "Coba lagi." }); } finally { setDownloadingId(null); } }} disabled={downloadingId === certificate.id}><AapmIcon name={downloadingId === certificate.id ? "refresh" : "download"} className={downloadingId === certificate.id ? "animate-spin" : undefined} />{downloadingId === certificate.id ? "Menyiapkan…" : "Unduh PDF"}</Button></div></Surface>)}</div></section>}
     </ContentContainer>
   );
 }

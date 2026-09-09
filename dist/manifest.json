@@ -1,22 +1,19 @@
 {
   "name": "AAPM Layer Academy",
   "short_name": "AAPM Academy",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#ffffff",
   "theme_color": "#318139",
   "icons": [
     {
-      "src": "/brand/aapm/pwa-academy.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
       "src": "/brand/aapm/pwa-main.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }

@@ -1216,6 +1216,82 @@
       width: 100%;
       justify-content: flex-start;
     }
+
+    /* The drawer is content-height on phones. Keep each group intrinsic so
+     * the viewport does not turn unused height into giant gaps between nav
+     * items (the same issue is especially visible in an installed PWA). */
+    .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      align-content: flex-start;
+      gap: var(--t7-ref-space-3);
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-group {
+      display: grid;
+      gap: var(--t7-ref-space-1);
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-group + .t7-sidebar-group {
+      margin-top: 0;
+    }
+
+    /* Stacked DataTable rows are the right mobile grammar, but the canonical
+     * default panel inset is too generous for admin records. This is a
+     * narrow composition override only; labels, values, focus, and semantics
+     * remain owned by the Ten4Seven table primitive. */
+    .aapm-data-table .t7-table-stacked-row {
+      gap: var(--t7-ref-space-2);
+      padding: var(--t7-ref-space-3) var(--t7-ref-space-4);
+    }
+
+    .aapm-data-table .t7-table-stacked-fields {
+      gap: var(--t7-ref-space-2);
+    }
+
+    .aapm-data-table .t7-table-stacked-field {
+      grid-template-columns: minmax(5.5rem, 0.34fr) minmax(0, 0.66fr);
+      gap: var(--t7-ref-space-2);
+    }
+
+    .aapm-data-table .t7-table-stacked-field[data-align="right"] {
+      text-align: left;
+    }
+
+    .aapm-data-table .t7-table-stacked-label {
+      font-size: 0.68rem;
+      line-height: 1.1rem;
+    }
+
+    .aapm-data-table .t7-table-stacked-value {
+      font-size: 0.8rem;
+      line-height: 1.2rem;
+    }
+
+    .aapm-admin-editor-frame,
+    .aapm-admin-editor-frame .aapm-editor-section {
+      min-width: 0;
+    }
+
+    .aapm-admin-editor-frame .aapm-editor-section {
+      scroll-margin-top: 1rem;
+    }
+
+    .aapm-admin-editor-frame .aapm-editorial-layout {
+      gap: var(--t7-ref-space-3);
+    }
+
+    .aapm-admin-editor-frame .aapm-editorial-block__body {
+      padding: var(--t7-ref-space-3);
+    }
+
+    .aapm-admin-editor-frame .aapm-editor-point-card {
+      padding: var(--t7-ref-space-3);
+    }
+
+    .aapm-admin-editor-frame .aapm-editor-command-bar {
+      margin-inline: 0;
+    }
   }
 
   .aapm-token-rail {
