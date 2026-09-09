@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Button, IconButton, NavItem, Progress, Sidebar } from "@ten4seven/ui";
+import { Badge, Button, IconButton, NavItem, Progress, Sidebar } from "@ten4seven/ui";
 import AppBrand from "@/components/AppBrand";
 import { academyNavigation, getNavigationMeta } from "./academyNavigation";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,15 @@ function buildSidebarGroups(isAdmin) {
     groups.push({
       key: "admin",
       label: "Ruang kerja",
-      items: [{ key: "/admin", label: "Panel admin", icon: "dashboard" }],
+      items: [{
+        key: "/admin",
+        label: "Panel admin",
+        icon: "admin",
+        // Keep the admin entry visible without turning the learner shell into
+        // a second navigation system. Sidebar renders this through its
+        // canonical badge slot, so the emphasis follows the active T7 theme.
+        badge: <Badge tone="warning">Admin</Badge>,
+      }],
     });
   }
 
@@ -64,7 +72,9 @@ export default function AcademySidebar({
   const isAdmin = user?.role === "admin";
   const groups = buildSidebarGroups(isAdmin);
   const routeItems = groups.flatMap((group) => group.items);
-  const activeKey = getNavigationMeta(location.pathname).to || location.pathname;
+  const activeKey = isAdmin && location.pathname.startsWith("/admin")
+    ? "/admin"
+    : getNavigationMeta(location.pathname).to || location.pathname;
   const progressDescription = `${completed} dari ${total} modul selesai`;
 
   const navigateTo = (to) => {

@@ -848,6 +848,21 @@
     display: none;
   }
 
+  /* Admin uses the same canonical sidebar anatomy as learner. The only
+   * product-specific composition is the small context label beneath the
+   * shared Academy mark; navigation color, density, radius, focus, and motion
+   * stay owned by Ten4Seven tokens. */
+  .aapm-admin-sidebar__context {
+    display: block;
+    padding: 0 var(--t7-ref-space-2);
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    font-weight: var(--t7-type-button-weight);
+    letter-spacing: 0.14em;
+    line-height: var(--t7-type-caption-line-height);
+    text-transform: uppercase;
+  }
+
   .aapm-academy-sidebar--collapsed {
     padding-inline: var(--t7-ref-space-2);
   }

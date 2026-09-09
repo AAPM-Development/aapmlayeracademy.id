@@ -379,8 +379,13 @@ function editorial_validate_pptx(string $tmpName, string $originalName): int
             if (preg_match('#^ppt/slides/slide[0-9]+\.xml$#i', $entry)) {
                 $slides += 1;
             }
-            if (preg_match('#^ppt/(?:vbaProject\.bin|embeddings/.+)$|\.svg$#i', $entry)) {
-                error_response('Presentasi berisi konten aktif atau media yang tidak didukung.', 422, 'invalid_presentation');
+            // The learner renderer sanitises SVG markup before inserting it into
+            // the DOM, so SVG images are a supported part of an ordinary PPTX
+            // deck. Keep rejecting executable/embedded package parts instead:
+            // macros, ActiveX controls, and OLE/package embeddings cannot be
+            // rendered safely or predictably in the learner carousel.
+            if (preg_match('#^ppt/(?:vbaProject\.bin|embeddings/[^/]+|activeX/[^/]+|controls/[^/]+)$#i', $entry)) {
+                error_response('Presentasi berisi konten aktif atau media tertanam yang belum didukung (macro, ActiveX, atau OLE).', 422, 'invalid_presentation');
             }
             if (preg_match('/\.rels$/i', $entry)) {
                 if ($entryBytes > 1048576) {
