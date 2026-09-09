@@ -201,6 +201,20 @@
     --ai-stream-success: var(--aapm-green-700);
     --ai-stream-radius: var(--radius-md);
     --ai-stream-shadow: 0 10px 24px -22px rgba(19, 64, 35, 0.42);
+    /* APPI surface roles. These resolve through the same Ten4Seven canvas,
+     * border, radius, and elevation tokens as the rest of Academy. */
+    --ai-frame-canvas: var(--surface-default);
+    --ai-frame-border: var(--surface-border);
+    --ai-frame-shadow: var(--surface-shadow);
+    --ai-card-canvas: var(--surface-default);
+    --ai-card-muted-canvas: var(--surface-subtle);
+    --ai-card-border: var(--surface-border);
+    --ai-card-hover: var(--tint-orange);
+    --ai-user-canvas: var(--aapm-green-700);
+    --ai-user-foreground: 0 0% 100%;
+    --ai-assistant-canvas: var(--surface-subtle);
+    --ai-assistant-border: var(--surface-border);
+    --ai-composer-canvas: var(--control-canvas);
   }
 
   /*
@@ -2373,6 +2387,167 @@
     }
   }
 
+  /* APPI composition grammar. The workspace is one frame; cards and
+   * message surfaces sit inside it on the shared Academy reference grid. */
+  .aapm-ai-frame {
+    border: 1px solid hsl(var(--ai-frame-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--ai-frame-canvas));
+    box-shadow: var(--ai-frame-shadow);
+  }
+
+  .aapm-ai-card {
+    border: 1px solid hsl(var(--ai-card-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--ai-card-canvas));
+  }
+
+  .aapm-ai-card--interactive {
+    transition:
+      border-color var(--duration-normal),
+      background-color var(--duration-normal),
+      box-shadow var(--duration-normal),
+      transform var(--duration-normal);
+  }
+
+  .aapm-ai-card--interactive:hover {
+    border-color: hsl(var(--aapm-orange-700) / 0.42);
+    background: hsl(var(--ai-card-hover) / 0.34);
+    box-shadow: var(--surface-shadow-hover);
+    transform: translateY(-1px);
+  }
+
+  .aapm-ai-card--interactive:focus-visible {
+    outline: none;
+    border-color: hsl(var(--aapm-orange-700) / 0.62);
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-suggestion-card {
+    min-height: 5.25rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .aapm-ai-answer-card {
+    padding: 1rem 1.125rem;
+    border-left: 3px solid hsl(var(--aapm-orange-700) / 0.46);
+    border-radius: var(--radius-card);
+    background: hsl(var(--ai-assistant-canvas) / 0.72);
+  }
+
+  .aapm-ai-answer-card--compact {
+    padding: 0.7rem 0.8rem;
+    border-left-width: 2px;
+  }
+
+  .aapm-ai-user-bubble {
+    border-radius: var(--radius-card) var(--radius-card) var(--radius-control)
+      var(--radius-card);
+    background: hsl(var(--ai-user-canvas));
+    color: hsl(var(--ai-user-foreground));
+    box-shadow: var(--t7-shadow-raised, var(--surface-shadow));
+  }
+
+  .aapm-ai-composer-frame {
+    background: hsl(var(--ai-composer-canvas));
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-ai-composer-frame:focus-within {
+    border-color: hsl(var(--aapm-orange-700) / 0.68);
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-composer-frame__footer {
+    background: hsl(var(--surface-subtle) / 0.68);
+  }
+
+  .aapm-ai-segmented {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-ai-segmented__item {
+    min-width: 0;
+    border-radius: calc(var(--radius-control) - 0.2rem);
+    color: hsl(var(--muted-foreground));
+    transition:
+      background-color var(--duration-fast),
+      color var(--duration-fast),
+      box-shadow var(--duration-fast);
+  }
+
+  .aapm-ai-segmented__item[data-active="true"] {
+    background: hsl(var(--surface-default));
+    color: hsl(var(--foreground));
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-ai-search-control {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+  }
+
+  .aapm-ai-search-control:focus-within {
+    border-color: hsl(var(--aapm-orange-700) / 0.58);
+    box-shadow: 0 0 0 3px hsl(var(--aapm-orange-700) / 0.12);
+  }
+
+  .aapm-ai-history-group {
+    overflow: hidden;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--surface-default) / 0.72);
+  }
+
+  .aapm-ai-history-row {
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.72);
+    transition: background-color var(--duration-fast);
+  }
+
+  .aapm-ai-history-row:last-child {
+    border-bottom: 0;
+  }
+
+  .aapm-ai-history-row[data-active="true"] {
+    background: hsl(var(--tint-orange) / 0.76);
+  }
+
+  .aapm-ai-history-row:not([data-active="true"]):hover {
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-ai-quick-action-chip {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle) / 0.72);
+    transition:
+      border-color var(--duration-fast),
+      background-color var(--duration-fast),
+      color var(--duration-fast);
+  }
+
+  .aapm-ai-quick-action-chip:hover {
+    border-color: hsl(var(--aapm-orange-700) / 0.42);
+    background: hsl(var(--tint-orange));
+    color: hsl(var(--foreground));
+  }
+
+  .aapm-ai-alert {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-ai-floating-panel {
+    border-color: hsl(var(--ai-frame-border));
+    box-shadow: var(--t7-shadow-overlay, var(--ai-frame-shadow));
+  }
+
   .aapm-ai-companion-dock {
     pointer-events: none;
     position: absolute;
@@ -2502,6 +2677,13 @@
   }
 
   @media (max-width: 639px) {
+    .aapm-ai-workspace.aapm-ai-frame {
+      border-right: 0;
+      border-left: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
     .aapm-ai-workspace__header {
       min-height: 3.5rem;
     }
@@ -2731,6 +2913,12 @@
     .aapm-ai-profile-avatar,
     .aapm-ai-profile-avatar > .aapm-ai-presence,
     .aapm-ai-profile-avatar::after {
+      transition: none;
+    }
+
+    .aapm-ai-card--interactive,
+    .aapm-ai-segmented__item,
+    .aapm-ai-quick-action-chip {
       transition: none;
     }
 

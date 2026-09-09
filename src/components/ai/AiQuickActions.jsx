@@ -185,7 +185,7 @@ export default function AiQuickActions({
             key={action.label}
             type="button"
             onClick={() => onSelect(action.prompt)}
-            className="group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-subtle/60 px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:border-brand-orange/40 hover:bg-tint-orange hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange disabled:pointer-events-none disabled:opacity-50"
+            className="aapm-ai-quick-action-chip group inline-flex min-w-0 max-w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange disabled:pointer-events-none disabled:opacity-50"
             disabled={disabled}
           >
             <AapmIcon

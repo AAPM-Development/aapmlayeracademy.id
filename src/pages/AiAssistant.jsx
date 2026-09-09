@@ -269,7 +269,7 @@ function AssistantMessage({
       {message.content && (
         <>
           <div
-            className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
+            className={`aapm-ai-response aapm-ai-answer-card ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
           >
             <MarkdownAnswer content={message.content} />
             {canCollapse && collapsed && (
@@ -398,7 +398,7 @@ function ConversationList({
   );
 
   return (
-    <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border bg-surface-subtle/25 lg:flex lg:flex-col">
+    <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
       <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-4">
         <div className="min-w-0">
           <p className="text-xs font-semibold">Percakapan</p>
@@ -473,7 +473,7 @@ function ConversationList({
             <Link
               key={tool.to}
               to={tool.to}
-              className="flex items-center gap-2 rounded-lg px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-surface-default hover:text-foreground"
+              className="aapm-ai-tool-link flex items-center gap-2 rounded-[var(--radius-control)] px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-surface-default hover:text-foreground"
             >
               <AapmIcon
                 name={tool.icon}
@@ -567,7 +567,7 @@ function MobileConversationSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Riwayat percakapan APPI"
-        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border bg-[hsl(var(--popup-canvas))] shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
+        className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border lg:hidden"
       >
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
@@ -837,7 +837,7 @@ export default function AiAssistant() {
   };
 
   return (
-    <div className="aapm-ai-workspace flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="aapm-ai-workspace aapm-ai-frame flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
         conversationTotal={conversationTotal}
@@ -858,7 +858,7 @@ export default function AiAssistant() {
         onLoadMore={loadMoreConversations}
       />
       <section className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-        <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2.5 sm:px-6 lg:px-8">
+        <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-default px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
             <AiProfileAvatar
               size="sm"
@@ -937,7 +937,7 @@ export default function AiAssistant() {
           >
             <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
               {historyError && !conversationsError && (
-                <div className="mb-5 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-tint-orange-border bg-tint-orange px-3 py-2.5 text-xs text-tint-orange-foreground">
+                <div className="aapm-ai-alert mb-5 flex min-w-0 items-center justify-between gap-3 border border-tint-orange-border bg-tint-orange px-3 py-2.5 text-xs text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron. Chat Anda tidak dihapus.</span>
                   <button type="button" onClick={refreshHistory} className="shrink-0 font-semibold text-brand-orange hover:text-brand-orange/75">
                     Coba lagi
@@ -964,7 +964,7 @@ export default function AiAssistant() {
                         key={suggestion.id}
                         type="button"
                         onClick={() => submit(suggestion.prompt)}
-                        className="group min-w-0 rounded-xl border border-border bg-surface-default px-3.5 py-3 text-left text-xs leading-5 text-muted-foreground transition-[border-color,background-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-orange/35 hover:bg-tint-orange hover:text-foreground hover:shadow-[0_8px_22px_hsl(var(--aapm-orange-700)/0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="aapm-ai-card aapm-ai-card--interactive aapm-ai-suggestion-card group min-w-0 text-left text-xs leading-5 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <span className="flex min-w-0 items-start gap-2.5">
                           <AapmIcon
@@ -989,12 +989,12 @@ export default function AiAssistant() {
                   {messages.map((message, index) =>
                     message.role === "user" ? (
                       <div key={message.id} className="flex min-w-0 max-w-full justify-end">
-                        <div className="min-w-0 max-w-[84%] break-words rounded-2xl rounded-br-md bg-brand-green px-3.5 py-2.5 text-sm leading-6 text-white shadow-sm [overflow-wrap:anywhere] sm:max-w-[88%]">
+                        <div className="aapm-ai-user-bubble min-w-0 max-w-[84%] break-words px-3.5 py-2.5 text-sm leading-6 [overflow-wrap:anywhere] sm:max-w-[88%]">
                           {message.image?.dataUrl && (
                             <img
                               src={message.image.dataUrl}
                               alt="Foto yang dikirim untuk dianalisis"
-                              className="mb-2.5 max-h-56 w-full rounded-xl object-cover"
+                              className="mb-2.5 max-h-56 w-full rounded-[var(--radius-control)] object-cover"
                             />
                           )}
                           {message.content}
@@ -1032,7 +1032,7 @@ export default function AiAssistant() {
             </button>
           )}
         </div>
-        <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
+        <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-surface-default px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto min-w-0 max-w-3xl">
             <AiComposer
               input={promptDraft}

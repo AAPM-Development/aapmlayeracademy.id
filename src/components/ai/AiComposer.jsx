@@ -51,13 +51,13 @@ export default function AiComposer({
         className="sr-only"
       />
 
-      <div className="aapm-token-panel min-w-0 overflow-hidden transition-[border-color,box-shadow] focus-within:border-brand-orange/70 focus-within:shadow-[var(--t7-focus-ring)]">
+      <div className="aapm-token-panel aapm-ai-composer-frame min-w-0 overflow-hidden transition-[border-color,box-shadow]">
         {imageAttachment && (
           <div className="flex min-w-0 items-center gap-2 border-b border-border/70 bg-surface-subtle/75 px-3 py-2">
             <img
               src={imageAttachment.dataUrl}
               alt="Pratinjau foto lampiran"
-              className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-border"
+              className="h-9 w-9 shrink-0 rounded-[var(--radius-control)] object-cover ring-1 ring-border"
             />
             <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground">
               {imageAttachment.name}
@@ -91,7 +91,7 @@ export default function AiComposer({
           className={`block max-h-[10.5rem] min-h-[2.75rem] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 leading-5 outline-none placeholder:text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}
         />
 
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2 py-1.5">
+        <div className="aapm-ai-composer-frame__footer flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2 py-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <Button
               type="button"

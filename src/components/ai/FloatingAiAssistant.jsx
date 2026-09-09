@@ -420,7 +420,7 @@ export default function FloatingAiAssistant() {
             >
               <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
               {historyError && !conversationsError && (
-                <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+                <div className="aapm-ai-alert flex min-w-0 items-center justify-between gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron.</span>
                   <button type="button" onClick={refreshHistory} className="shrink-0 font-semibold text-brand-orange">Coba lagi</button>
                 </div>
@@ -434,7 +434,7 @@ export default function FloatingAiAssistant() {
                     KPI aktif dapat ikut dibaca. Percakapan ini tersimpan khusus
                     di akun Anda.
                   </p>
-                  <div className="mt-5 divide-y divide-border rounded-[var(--radius-card)] border border-border">
+                  <div className="aapm-ai-card aapm-ai-quick-actions-card mt-5 divide-y divide-border">
                     <p className="px-3 py-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
                       AKSI CEPAT
                     </p>
@@ -443,7 +443,7 @@ export default function FloatingAiAssistant() {
                         key={action.label}
                         type="button"
                         onClick={() => handleAction(action)}
-                        className="group flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-tint-orange/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="aapm-ai-quick-action group flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-tint-orange/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-tint-orange text-brand-orange">
                           <AapmIcon name={action.icon} className="h-4 w-4" />
@@ -469,7 +469,7 @@ export default function FloatingAiAssistant() {
                   message.role === "user" ? (
                     <div
                   key={message.id}
-                  className="ml-auto min-w-0 max-w-[86%] break-words rounded-[var(--radius-card)] rounded-br-[var(--radius-control)] bg-brand-green px-3 py-2 text-xs leading-5 text-white [overflow-wrap:anywhere]"
+                  className="aapm-ai-user-bubble ml-auto min-w-0 max-w-[86%] break-words px-3 py-2 text-xs [overflow-wrap:anywhere]"
                 >
                       {message.image?.dataUrl && (
                         <img
@@ -503,7 +503,7 @@ export default function FloatingAiAssistant() {
                       )}
                       {message.content && (
                         <div
-                          className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
+                          className={`aapm-ai-response aapm-ai-answer-card aapm-ai-answer-card--compact ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
                         >
                           <BubbleAnswer content={message.content} />
                         </div>
@@ -515,7 +515,7 @@ export default function FloatingAiAssistant() {
                         </p>
                       )}
                       {!message.streaming && !message.error && !message.persisted && message.content && (
-                        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+                        <div className="aapm-ai-alert mt-2 flex flex-wrap items-center gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
                           <AapmIcon name="solar:refresh-circle-bold-duotone" className="h-3 w-3 shrink-0 text-brand-orange" />
                           <span>Belum tersimpan. Jawaban tetap tampil di layar.</span>
                           <button
