@@ -43,7 +43,7 @@ export default function Home() {
 
   return (
     <ContentContainer>
-      <DashboardWelcome user={user} nextModule={nextModule} />
+      <DashboardWelcome user={user} nextModule={nextModule} modules={modules} progress={progress} />
       <DashboardMetricStrip isLoading={learningLoading} modules={modules} progress={progress} nextModule={nextModule} />
 
       {learningError ? (

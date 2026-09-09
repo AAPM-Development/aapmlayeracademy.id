@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   BarChart as T7BarChartPrimitive,
   ChartPanel as T7ChartPanelPrimitive,
+  CircularProgress as T7CircularProgressPrimitive,
   DataTable as T7DataTablePrimitive,
   DataTableColumnPicker as T7DataTableColumnPicker,
   FilterToolbar as T7FilterToolbar,
@@ -98,5 +99,8 @@ export const KPICluster = ({ className, ...props } = {}) => {
 /** @type {any} */
 export const Sparkline = ({ className, ...props } = {}) => {
   return React.createElement(T7SparklinePrimitive, { ...props, className: cn("aapm-sparkline", className), "data-t7-bridge": "academy-sparkline" });
+};
+export const CircularProgress = ({ className, ...props } = {}) => {
+  return React.createElement(T7CircularProgressPrimitive, { ...props, className: cn("aapm-circular-progress", className), "data-t7-bridge": "academy-circular-progress" });
 };
 export { useToast } from "@/components/ui/use-toast";

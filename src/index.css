@@ -741,6 +741,32 @@
     background: hsl(var(--surface-default) / 0.94);
   }
 
+  /* Keep the account trigger a single flex row. Ten4Seven wraps Button
+   * children in .t7-button-label; without an explicit row contract the
+   * avatar, name, and chevron can collapse into the label box at narrow
+   * widths and appear clipped. */
+  .academy-header__account-trigger {
+    max-width: min(100%, 15rem);
+    overflow: visible;
+  }
+
+  .academy-header__account-trigger > .t7-button-label {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: var(--t7-control-gap);
+    overflow: visible;
+    white-space: nowrap;
+  }
+
+  .academy-header__account-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .aapm-token-sidebar {
     border-color: hsl(var(--surface-border));
     background: hsl(var(--surface-subtle));
@@ -1169,6 +1195,72 @@
     box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
   }
 
+  /* Toasts are global feedback, so keep one canonical group anchored at the
+   * top centre of the viewport. The compact geometry leaves the page visible
+   * underneath while each item keeps its own provider-managed deadline. */
+  .aapm-t7-runtime .t7-toaster {
+    top: max(12px, env(safe-area-inset-top));
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(332px, calc(100vw - 24px));
+    gap: 6px;
+    transform: translateX(-50%);
+  }
+
+  .aapm-t7-runtime .t7-toast {
+    grid-template-columns: 26px minmax(0, 1fr) auto auto;
+    min-height: 44px;
+    gap: 7px;
+    border-radius: var(--radius-panel);
+    padding: 6px 7px;
+  }
+
+  .aapm-t7-runtime .t7-toast-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime .t7-toast-icon > svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .aapm-t7-runtime .t7-toast > div {
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .aapm-t7-runtime .t7-toast strong {
+    overflow: hidden;
+    font-size: var(--t7-type-caption-size);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aapm-t7-runtime .t7-toast p {
+    overflow: hidden;
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aapm-t7-runtime .t7-toast .t7-icon-button {
+    width: 26px;
+    height: 26px;
+    min-height: 26px;
+    padding: 4px;
+  }
+
+  .aapm-t7-runtime .t7-toast .t7-button {
+    min-height: 28px;
+    padding-inline: 7px;
+    font-size: 0.6875rem;
+  }
+
   .aapm-token-scrim {
     background: hsl(var(--t7-scrim-hsl, var(--foreground)) / 0.42);
   }
@@ -1309,6 +1401,44 @@
   .aapm-sparkline {
     display: block;
     max-width: 100%;
+  }
+
+  .aapm-dashboard-progress .t7-progress-track {
+    height: 6px;
+    background: hsl(var(--t7-muted-hsl));
+  }
+
+  .aapm-dashboard-progress--green .t7-progress-track > span {
+    background: hsl(var(--t7-primary-hsl));
+  }
+
+  .aapm-dashboard-progress--orange .t7-progress-track > span {
+    background: hsl(var(--t7-accent-hsl));
+  }
+
+  .aapm-dashboard-progress--info .t7-progress-track > span {
+    background: hsl(var(--t7-info-hsl));
+  }
+
+  /* Dashboard's one circular cue is reserved for course completion. Keep the
+   * T7 geometry while changing only the local semantic colours on the dark
+   * hero surface, so the ring remains legible without inventing a new widget. */
+  .aapm-dashboard-ring--hero {
+    --t7-primary-hsl: var(--aapm-lime-500);
+    --t7-muted-hsl: 0 0% 100% / 0.22;
+    --t7-foreground-hsl: 0 0% 100%;
+  }
+
+  .aapm-dashboard-ring--hero .t7-circular-progress-track {
+    stroke: hsl(0 0% 100% / 0.22);
+  }
+
+  .aapm-dashboard-ring--hero .t7-circular-progress-value {
+    stroke: hsl(var(--aapm-lime-500));
+  }
+
+  .aapm-dashboard-ring--hero > span {
+    color: hsl(0 0% 100%);
   }
 
   /* T7's semantic Table returns a scroll wrapper around its native table.
@@ -2456,14 +2586,13 @@
 
   .aapm-ai-answer-card {
     padding: 1rem 1.125rem;
-    border-left: 3px solid hsl(var(--aapm-orange-700) / 0.46);
+    border: 1px solid hsl(var(--surface-border) / 0.78);
     border-radius: var(--radius-card);
     background: hsl(var(--ai-assistant-canvas) / 0.72);
   }
 
   .aapm-ai-answer-card--compact {
     padding: 0.7rem 0.8rem;
-    border-left-width: 2px;
   }
 
   .aapm-ai-user-bubble {
@@ -2569,17 +2698,68 @@
     border-radius: var(--radius-control);
   }
 
+  /* Delivery metadata stays useful without becoming a second card below every
+   * answer. Action links retain the recovery paths for provider and history
+   * failures while the normal saved state remains visually quiet. */
+  .aapm-ai-status-line {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.7rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.6875rem;
+    line-height: 1.35;
+  }
+
+  .aapm-ai-status-line--compact {
+    margin-top: 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .aapm-ai-status-line--warning {
+    color: hsl(var(--tint-orange-foreground));
+  }
+
+  .aapm-ai-status-line--success {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-ai-status-line--error {
+    color: hsl(var(--danger));
+  }
+
+  .aapm-ai-status-line__action {
+    color: hsl(var(--aapm-orange-700));
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 0.0625rem;
+    text-underline-offset: 0.15em;
+    transition: color var(--duration-fast);
+  }
+
+  .aapm-ai-status-line__action:hover {
+    color: hsl(var(--aapm-orange-700) / 0.75);
+  }
+
+  .aapm-ai-status-line__action:focus-visible {
+    border-radius: var(--radius-control);
+    outline: none;
+    box-shadow: var(--t7-focus-ring);
+  }
+
   .aapm-ai-floating-panel {
     border-color: hsl(var(--ai-frame-border));
     box-shadow: var(--t7-shadow-overlay, var(--ai-frame-shadow));
   }
 
-  /* The collapsed APPI entry is a compact overlay, not a second brand
-   * surface. It inherits the same popup canvas, border, radius, and elevation
-   * contract as the expanded panel while retaining the orange action cue. */
+  /* The collapsed APPI entry is one compact control, not a second brand
+   * surface. It inherits the same neutral canvas, border, radius, and
+   * elevation contract as the expanded panel. */
   .aapm-ai-launcher {
-    border-color: hsl(var(--tint-orange-border));
-    background: hsl(var(--popup-canvas) / 0.96);
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-default) / 0.96);
     box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
     transition:
       transform var(--duration-fast),
@@ -2588,30 +2768,20 @@
   }
 
   .aapm-ai-launcher:hover {
-    border-color: hsl(var(--aapm-orange-700) / 0.64);
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-subtle));
     box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
 
   .aapm-ai-launcher:focus-visible {
     outline: none;
-    border-color: hsl(var(--aapm-orange-700) / 0.72);
+    border-color: hsl(var(--aapm-orange-700) / 0.58);
     box-shadow: var(--t7-focus-ring);
   }
 
   .aapm-ai-launcher > .aapm-ai-profile-avatar {
-    box-shadow:
-      0 0 0 2px hsl(var(--popup-canvas)),
-      0 4px 12px hsl(var(--aapm-orange-700) / 0.18);
-  }
-
-  .aapm-ai-launcher__submit {
-    background: hsl(var(--aapm-orange-700));
-    color: hsl(var(--aapm-paper));
-  }
-
-  .aapm-ai-launcher__submit:hover {
-    background: hsl(var(--aapm-orange-700) / 0.88);
+    box-shadow: none;
   }
 
   .aapm-ai-companion-dock {
@@ -2738,9 +2908,7 @@
   }
 
   .aapm-ai-launcher .aapm-ai-profile-avatar {
-    box-shadow:
-      0 0 0 2px hsl(var(--background)),
-      0 4px 12px hsl(var(--aapm-orange-700) / 0.18);
+    box-shadow: none;
   }
 
   @media (max-width: 639px) {

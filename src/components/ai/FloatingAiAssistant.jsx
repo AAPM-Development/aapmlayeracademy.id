@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
+import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
@@ -50,6 +51,13 @@ const quickActions = [
     icon: "solar:calculator-bold-duotone",
   },
 ];
+
+function findLastAssistantMessageIndex(messages = []) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "assistant") return index;
+  }
+  return -1;
+}
 
 function pageContextForPath(pathname) {
   if (pathname === "/calculators") return "calculators";
@@ -265,6 +273,7 @@ export default function FloatingAiAssistant() {
     saved: "Tersimpan di akun",
     attention: "Periksa riwayat",
   }[historySyncState] || activeConversation?.title || "Siap membantu dari halaman ini";
+  const lastAssistantMessageIndex = findLastAssistantMessageIndex(messages);
   const openPanel = () => {
     setClosing(false);
     setOpen(true);
@@ -418,7 +427,7 @@ export default function FloatingAiAssistant() {
               aria-label="Transkrip percakapan APPI cepat"
               className="aapm-ai-floating-transcript aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
             >
-              <div className="flex min-h-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
+              <div className="flex min-h-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden">
               {historyError && !conversationsError && (
                 <div className="aapm-ai-alert flex min-w-0 items-center justify-between gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron.</span>
@@ -465,7 +474,7 @@ export default function FloatingAiAssistant() {
                   </div>
                 </div>
               ) : (
-                messages.map((message) =>
+                messages.map((message, index) =>
                   message.role === "user" ? (
                     <div
                   key={message.id}
@@ -484,15 +493,9 @@ export default function FloatingAiAssistant() {
                     <article
                       key={message.id}
                       className="min-w-0 max-w-full break-words text-xs leading-5"
+                      aria-label="Jawaban APPI"
                     >
-                      <div className="mb-1.5 flex items-center gap-1.5 font-semibold">
-                        <AapmIcon
-                          name="ai"
-                          className="h-3.5 w-3.5 text-brand-orange"
-                        />{" "}
-                        APPI
-                        {message.streaming && <span className="sr-only">sedang menjawab</span>}
-                      </div>
+                      {message.streaming && <span className="sr-only">APPI sedang menjawab</span>}
                       {message.streaming && (
                         <AiStreamActivity
                           label={streamStatus}
@@ -508,48 +511,15 @@ export default function FloatingAiAssistant() {
                           <BubbleAnswer content={message.content} />
                         </div>
                       )}
-                      {message.fallback && (
-                        <p className="mt-2 text-[10px] text-brand-orange">
-                          {message.notice ||
-                            "Respons lokal tersimpan; provider dapat dicoba kembali di workspace penuh."}
-                        </p>
-                      )}
-                      {!message.streaming && !message.error && !message.persisted && message.content && (
-                        <div className="aapm-ai-alert mt-2 flex flex-wrap items-center gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
-                          <AapmIcon name="solar:refresh-circle-bold-duotone" className="h-3 w-3 shrink-0 text-brand-orange" />
-                          <span>Belum tersimpan. Jawaban tetap tampil di layar.</span>
-                          <button
-                            type="button"
-                            onClick={() => retryPersistAssistant(message)}
-                            disabled={Boolean(retryingMessageId) || isStreaming}
-                            className="font-semibold text-brand-orange underline underline-offset-2 disabled:opacity-60"
-                          >
-                            {retryingMessageId === message.id ? "Menyimpan…" : "Coba simpan lagi"}
-                          </button>
-                        </div>
-                      )}
-                      {message.error && (
-                        <p className="mt-2 text-[10px] text-danger">
-                          Permintaan belum dapat diproses.
-                        </p>
-                      )}
-                      {!message.streaming && (message.provider || message.persisted) && (
-                        <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-                          <AapmIcon
-                            name={message.persisted ? "solar:check-circle-bold-duotone" : "solar:refresh-circle-bold-duotone"}
-                            className={`h-3 w-3 shrink-0 ${message.persisted ? "text-brand-green" : "text-brand-orange"}`}
-                          />
-                          <span className="truncate">
-                            {message.persisted ? "Tersimpan di riwayat akun" : "Belum tersimpan"}
-                            {message.provider
-                              ? message.fallback
-                                ? " · Respons lokal"
-                                : ` · ${message.provider === "openrouter" ? "OpenRouter" : message.provider}${message.model ? ` · ${message.model}` : ""}`
-                              : ""}
-                          </span>
-                        </p>
-                      )}
-                      {!message.streaming && !message.error && (
+                      <AiMessageMeta
+                        message={message}
+                        onRetryPersistence={retryPersistAssistant}
+                        persistenceRetrying={retryingMessageId === message.id}
+                        disabled={isStreaming}
+                        compact
+                        showMeta={index === lastAssistantMessageIndex || !message.persisted}
+                      />
+                      {index === lastAssistantMessageIndex && !message.streaming && !message.error && (
                         <AiQuickActions
                           content={message.content}
                           pathname={location.pathname}
@@ -726,20 +696,12 @@ export default function FloatingAiAssistant() {
         <button
           type="button"
           onClick={openPanel}
-          className="aapm-ai-launcher aapm-token-popover fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-11 w-11 items-center justify-center p-1.5 backdrop-blur-xl sm:bottom-5 sm:right-5 sm:h-12 sm:w-auto sm:justify-start sm:gap-2 sm:py-1.5 sm:pl-2 sm:pr-2.5"
+          className="aapm-ai-launcher aapm-token-popover fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-10 w-10 items-center justify-center p-1 sm:bottom-5 sm:right-5 sm:h-10 sm:w-auto sm:justify-start sm:gap-1.5 sm:py-1 sm:pl-1.5 sm:pr-2"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >
-          <AiProfileAvatar size="sm" state="idle" label="" />
-          <span className="hidden flex-col sm:flex">
-            <span className="text-sm font-semibold leading-4">Tanya APPI</span>
-            <span className="mt-0.5 text-[10px] text-brand-orange/80">
-              AAPM Intelligence
-            </span>
-          </span>
-          <span className="aapm-ai-launcher__submit hidden h-7 w-7 items-center justify-center rounded-full sm:flex">
-            <AapmIcon name="solar:arrow-up-bold" className="h-3 w-3" />
-          </span>
+          <AiProfileAvatar size="xs" state="idle" label="" />
+          <span className="hidden text-xs font-semibold leading-4 text-foreground sm:inline">Tanya APPI</span>
         </button>
       )}
     </>

@@ -1,1 +1,0 @@
-import{j as e,z as s,n}from"./index-BQx1wnLo.js";function m({className:a="",...t}={}){return e.jsx(s,{className:n("aapm-t7-skeleton-compat",a),"data-t7-bridge":"academy-skeleton",...t})}export{m as S};

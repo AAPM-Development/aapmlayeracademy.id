@@ -37,7 +37,7 @@ export default function AcademyHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
         <Badge variant="soft" className="hidden gap-2 bg-surface-subtle text-xs font-medium text-muted-foreground lg:inline-flex">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
            Ruang Academy
@@ -51,11 +51,11 @@ export default function AcademyHeader({
               type="button"
               variant="ghost"
               aria-label={`Buka menu akun ${displayName}`}
-              className="h-9 gap-2 px-2 sm:px-3"
+              className="academy-header__account-trigger h-9 min-w-0 max-w-full gap-2 px-2 sm:px-3"
             >
               <ProfileAvatar user={user} name={displayName} className="h-7 w-7" />
-              <span className="hidden max-w-[140px] truncate text-xs font-medium sm:inline">{displayName}</span>
-              <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="academy-header__account-name hidden max-w-[140px] min-w-0 truncate text-xs font-medium sm:inline">{displayName}</span>
+              <AapmIcon name="chevronDown" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">

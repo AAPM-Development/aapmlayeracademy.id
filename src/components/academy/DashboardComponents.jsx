@@ -8,10 +8,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CircularProgress,
   IconTile,
   KPICluster,
   Progress,
   Skeleton,
+  Sparkline,
 } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,48 @@ import {
   learningLevels,
   TOTAL_MODULES,
 } from "@/lib/academyData";
+
+function clampPercent(value) {
+  return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
+function buildCourseSignal(modules = [], completedSet = new Set()) {
+  const ordered = [...modules].sort(
+    (a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0),
+  );
+  if (!ordered.length) return [0];
+
+  let completed = 0;
+  return [
+    0,
+    ...ordered.map((module) => {
+      if (completedSet.has(Number(module.moduleNumber))) completed += 1;
+      return Math.round((completed / ordered.length) * 100);
+    }),
+  ];
+}
+
+function buildQuizSignal(progress = []) {
+  const values = [...progress]
+    .filter((item) => item?.quizTotal)
+    .sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0))
+    .map((item) =>
+      clampPercent(((item.quizScore || 0) / item.quizTotal) * 100),
+    );
+
+  return values;
+}
+
+function DashboardRing({ value, label, className = "", size = 54 }) {
+  return (
+    <CircularProgress
+      value={clampPercent(value)}
+      label={label}
+      size={size}
+      className={cn("aapm-dashboard-ring", className)}
+    />
+  );
+}
 
 export function ContinueLearning({ module = null, progress = null } = {}) {
   if (!module) {
@@ -135,7 +179,7 @@ export function DashboardMetricStrip({
   }
 
   const progressSummary = getProgressSummary(modules, progress, TOTAL_MODULES);
-  const { completed, total, percent: coursePercent } = progressSummary;
+  const { completed, total, percent: coursePercent, completedSet } = progressSummary;
   const scored = progress.filter((item) => item?.quizTotal);
   const average = scored.length
     ? Math.round(
@@ -151,24 +195,31 @@ export function DashboardMetricStrip({
     : modules.length
       ? learningLevels[learningLevels.length - 1]
       : learningLevels[0];
+  const activeLevelProgress = activeLevel
+    ? getLevelProgress(activeLevel.number, modules, completedSet).percent
+    : 0;
+  const courseSignal = buildCourseSignal(modules, completedSet);
+  const quizSignal = buildQuizSignal(progress);
   const metrics = [
     {
       value: `${completed}/${total}`,
       label: "Modul selesai",
       icon: "check",
-      note: "Jalur belajar",
+      note: "Kemajuan tersimpan",
       tone: "success",
       colorway: 1,
-      emphasis: "solid",
+      emphasis: "soft",
+      chart: <Sparkline values={courseSignal} colorway={1} tone="success" label="Kemajuan modul tersimpan" />,
     },
     {
       value: `${coursePercent}%`,
       label: "Progress kursus",
       icon: "progress",
-      note: "Ritme belajar",
+      note: "Ritme belajar saat ini",
       tone: "warning",
       colorway: 3,
-      emphasis: "solid",
+      emphasis: "soft",
+      progress: <Progress value={coursePercent} aria-label={`Progress kursus ${coursePercent}%`} className="aapm-dashboard-progress aapm-dashboard-progress--orange" />,
     },
     {
       value: `${average}%`,
@@ -177,16 +228,27 @@ export function DashboardMetricStrip({
       icon: "analytics",
       tone: "info",
       colorway: 2,
-      emphasis: "solid",
+      emphasis: "soft",
+      ...(scored.length
+        ? {
+            progress: <Progress value={average} aria-label={`Rata-rata nilai kuis ${average}%`} className="aapm-dashboard-progress aapm-dashboard-progress--info" />,
+          }
+        : {}),
+      ...(quizSignal.length >= 2
+        ? {
+            chart: <Sparkline values={quizSignal} colorway={2} tone="info" label="Sinyal nilai kuis" />,
+          }
+        : {}),
     },
     {
       value: activeLevel?.name || "Foundation",
       label: "Level saat ini",
-      note: "Jalur profesional",
+      note: `${activeLevelProgress}% level terselesaikan`,
       icon: "approve",
       tone: "accent",
       colorway: 4,
-      emphasis: "solid",
+      emphasis: "soft",
+      progress: <Progress value={activeLevelProgress} aria-label={`Progress level ${activeLevel?.name || "saat ini"} ${activeLevelProgress}%`} className="aapm-dashboard-progress aapm-dashboard-progress--green" />,
     },
   ];
 
@@ -597,8 +659,20 @@ export function QuickToolGrid() {
   );
 }
 
-export function DashboardWelcome({ user = null, nextModule = null } = {}) {
+export function DashboardWelcome({
+  user = null,
+  nextModule = null,
+  modules = [],
+  progress = [],
+} = {}) {
   const name = user?.full_name || user?.email?.split("@")[0] || "Learner";
+  const progressSummary = getProgressSummary(modules, progress, TOTAL_MODULES);
+  const { completed, total, percent: coursePercent } = progressSummary;
+  const focusLabel = nextModule
+    ? `M${nextModule.moduleNumber}`
+    : total > 0 && completed >= total
+      ? "✓"
+      : "—";
   const cycle = [
     "DOC & brooding",
     "Growing",
@@ -611,7 +685,7 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
   return (
     <section className="academy-enter mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] border border-border bg-card shadow-[var(--surface-shadow)]">
       <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
-        <div className="relative overflow-hidden bg-brand-green px-5 py-6 text-white sm:px-8 sm:py-8">
+        <div className="relative overflow-hidden bg-brand-green px-5 py-6 text-white sm:px-8 sm:py-7">
           <div className="pointer-events-none absolute -right-14 -top-14 h-44 w-44 rounded-full border-[18px] border-brand-lime/15" />
           <div className="pointer-events-none absolute bottom-0 right-16 h-20 w-20 rounded-full border border-brand-orange/30" />
           <div className="relative">
@@ -621,19 +695,34 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
             >
               <AapmIcon name="ai" className="shrink-0 text-[11px]" /> Ruang belajar
             </Badge>
-            <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-[1.05] tracking-[-0.045em] sm:text-[2.55rem]">
+            <h1 className="mt-4 max-w-2xl text-3xl font-semibold leading-[1.05] tracking-[-0.045em] sm:text-[2.55rem]">
               Selamat datang, {name}.
               <span className="mt-1 block text-brand-lime">Belajar dengan arah.</span>
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">
               Baca sinyal farm, kuasai konsep inti, lalu bawa keputusan yang lebih presisi kembali ke lapangan.
             </p>
-            <div className="mt-6 grid max-w-xl grid-cols-3 divide-x divide-white/15 rounded-xl border border-white/15 bg-white/5">
-              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">22</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
-              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">14</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
-              <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold text-brand-lime">1</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
+            <div className="mt-5 flex max-w-xl flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/15 rounded-xl border border-white/15 bg-white/5">
+                <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">{total}</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
+                <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">{learningLevels.length}</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
+                <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold text-brand-lime">{focusLabel}</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
+              </div>
+              <div className="flex shrink-0 items-center gap-3 rounded-xl border border-white/15 bg-black/10 px-3 py-2.5">
+                <DashboardRing
+                  value={coursePercent}
+                  label={`Progress kursus ${coursePercent}%`}
+                  size={58}
+                  className="aapm-dashboard-ring--hero"
+                />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">Perjalanan kursus</div>
+                  <div className="mt-0.5 text-sm font-semibold text-white">{completed}/{total} modul</div>
+                  <div className="mt-0.5 text-[10px] text-white/60">Progress tersimpan</div>
+                </div>
+              </div>
             </div>
-            <div className="mt-6 grid w-full max-w-xl gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            <div className="mt-5 grid w-full max-w-xl gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
               <Button asChild className="h-11 w-full bg-brand-orange px-4 text-white shadow-sm hover:bg-brand-orange/90 sm:w-auto">
                 <Link
                   to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/modules"}
@@ -672,7 +761,7 @@ export function DashboardWelcome({ user = null, nextModule = null } = {}) {
               </li>
             ))}
           </ol>
-          <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-xs">
+          <div className="mt-auto flex items-center justify-between border-t border-border pt-4 text-xs">
             <span className="text-muted-foreground">6 fase utama</span>
             <Link to="/modules" className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80">Lihat roadmap <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link>
           </div>

@@ -9,7 +9,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
 import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
-import { exactColor, Ten4SevenProvider, ToastProvider, Toaster } from '@ten4seven/ui';
+import { exactColor, Ten4SevenProvider, ToastProvider } from '@ten4seven/ui';
 import { ThemeModeProvider, useThemeMode } from '@/lib/useThemeMode';
 
 const Layout = lazy(() => loadRouteModule('layout'));
@@ -172,7 +172,6 @@ function App() {
                 <ScrollToTop />
                 <AuthenticatedApp />
               </Router>
-              <Toaster />
             </QueryClientProvider>
           </AuthProvider>
         </ToastProvider>
