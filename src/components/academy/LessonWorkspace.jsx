@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Checkbox,
-  IconTile,
 } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
@@ -296,28 +295,31 @@ export function LessonSection({
 } = {}) {
   return (
     <section id={id} className={cn("scroll-mt-24", className)}>
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-        <AapmIcon name={icon} className="h-4 w-4 text-brand-orange" /> {title}
+      <div className="flex items-center gap-2 border-b border-border/70 pb-2.5">
+        <AapmIcon name={icon} className="h-4 w-4 shrink-0 text-brand-orange" />
+        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
       </div>
-      {children}
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
 
-export function LessonChecklist({ items = [] } = {}) {
+export function LessonChecklist({ items = [], style = "checkbox", density = "comfortable" } = {}) {
   return (
-    <ul className="space-y-2">
+    <ul className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
       {items.map((item, index) => {
         const id = `checklist-${index}`;
         return (
           <li
             key={`${item}-${index}`}
-            className="flex items-start gap-2 text-sm leading-6"
+            className={cn(
+              "flex items-start gap-3 rounded-md px-1 text-sm leading-6 transition-colors",
+              density === "compact" ? "py-1.5" : "py-2",
+              style === "checkbox" && "hover:bg-surface-subtle",
+            )}
           >
-            <LearningCheckbox id={id} className="mt-1" />
-            <label htmlFor={id} className="cursor-pointer">
-              {item}
-            </label>
+            {style === "list" ? <AapmIcon name="arrowRight" className="mt-1 h-4 w-4 shrink-0 text-brand-orange" /> : <LearningCheckbox id={id} className="mt-1" />}
+            {style === "list" ? <span className="min-w-0">{item}</span> : <label htmlFor={id} className="min-w-0 cursor-pointer">{item}</label>}
           </li>
         );
       })}
@@ -328,14 +330,16 @@ export function LessonChecklist({ items = [] } = {}) {
 export function LessonInsightList({
   items = [],
   icon = "solar:lightbulb-bolt-bold-duotone",
+  density = "comfortable",
+  iconClassName = "text-brand-orange",
 } = {}) {
   return (
-    <ul className="space-y-2">
+    <ul className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
       {items.map((item, index) => (
-        <li key={`${item}-${index}`} className="flex gap-2 text-sm leading-6">
+        <li key={`${item}-${index}`} className="flex gap-3 text-sm leading-6">
           <AapmIcon
             name={icon}
-            className="mt-1 h-4 w-4 shrink-0 text-brand-orange"
+            className={cn("mt-1 h-4 w-4 shrink-0", iconClassName)}
           />
           <span>{item}</span>
         </li>

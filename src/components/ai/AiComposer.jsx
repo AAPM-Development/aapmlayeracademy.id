@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, Switch } from "@/components/primitives";
+import { Button, Surface, Switch } from "@/components/primitives";
+
+const ComposerSurface = /** @type {any} */ (Surface);
 
 /**
  * The single composer used by the full APPI workspace and the quick panel.
@@ -40,7 +42,7 @@ export default function AiComposer({
   }, [compact, input]);
 
   return (
-    <div className={`min-w-0 w-full ${compact ? "text-xs" : "text-sm"}`}>
+    <div className={`aapm-ai-composer min-w-0 w-full ${compact ? "aapm-ai-composer--compact text-xs" : "text-sm"}`}>
       <input
         ref={imageInputRef}
         id={idPrefix}
@@ -51,7 +53,10 @@ export default function AiComposer({
         className="sr-only"
       />
 
-      <div className="aapm-token-panel aapm-ai-composer-frame min-w-0 overflow-hidden transition-[border-color,box-shadow]">
+      <ComposerSurface
+        as="div"
+        className="aapm-ai-composer-frame min-w-0 overflow-hidden transition-[border-color,box-shadow]"
+      >
         {imageAttachment && (
           <div className="flex min-w-0 items-center gap-2 border-b border-border/70 bg-surface-subtle/75 px-3 py-2">
             <img
@@ -92,25 +97,28 @@ export default function AiComposer({
         />
 
         <div className="aapm-ai-composer-frame__footer flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2 py-1.5">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="aapm-ai-composer-tools flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size={compact ? "sm" : "icon"}
               onClick={() => imageInputRef?.current?.click()}
               disabled={isStreaming}
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"
+              className={compact
+                ? "aapm-ai-attachment-control h-8 shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"
+                : "h-8 w-8 shrink-0 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"}
               aria-label="Lampirkan foto farm"
               title="Lampirkan foto farm"
             >
-              <AapmIcon name="solar:gallery-add-bold-duotone" className="h-4 w-4" />
+              <AapmIcon name="solar:gallery-add-bold-duotone" className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-4 w-4"} />
+              {compact && <span className="text-[11px] font-semibold">Foto</span>}
             </Button>
-            <span className="hidden max-w-[11rem] truncate text-[10px] text-muted-foreground sm:inline-flex">
+            <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[10px] text-muted-foreground sm:inline-flex">
               <AapmIcon name="solar:map-point-bold-duotone" className="mr-1 h-3.5 w-3.5 shrink-0 text-brand-orange" />
-              {contextLabel}
+              <span className="truncate">{contextLabel}</span>
             </span>
             {showFarmToggle && (
-              <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+              <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
                 <Switch
                   checked={includeFarm}
                   onCheckedChange={onIncludeFarmChange}
@@ -121,7 +129,7 @@ export default function AiComposer({
                 Pakai KPI
               </label>
             )}
-            <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+            <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
               <Switch
                 checked={allowWebSearch}
                 onCheckedChange={onAllowWebSearchChange}
@@ -138,7 +146,7 @@ export default function AiComposer({
             type="button"
             onClick={onSubmit}
             disabled={!hasContent || isStreaming}
-              className="h-9 min-w-[4.75rem] shrink-0 gap-1.5 bg-brand-orange px-3 text-white hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
+            className="aapm-ai-send-control h-9 min-w-[4.75rem] shrink-0 gap-1.5 bg-brand-orange px-3 text-white hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
             aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim pertanyaan"}
             title="Kirim pertanyaan"
           >
@@ -146,7 +154,7 @@ export default function AiComposer({
             <span className="text-xs font-semibold">{isStreaming ? "Menjawab…" : "Kirim"}</span>
           </Button>
         </div>
-      </div>
+      </ComposerSurface>
 
       {attachmentError && (
         <p className="mt-1.5 text-[10px] font-medium text-danger">{attachmentError}</p>

@@ -1,26 +1,15 @@
 // @ts-nocheck
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { AppShell, Button as T7Button, NavItem, Sidebar } from "@ten4seven/ui";
+import { AppShell, Button as T7Button, IconButton, NavItem, Sidebar } from "@ten4seven/ui";
 import AppBrand from "@/components/AppBrand";
-import ProfileAvatar from "@/components/ProfileAvatar";
 import SidebarUserCard from "./SidebarUserCard";
-import AapmIcon from "@/components/icons/AapmIcon";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  IconButton,
-} from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useThemeMode } from "@/lib/useThemeMode";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import { adminPrimaryNavigation, adminSecondaryNavigation, getAdminNavigationMeta } from "@/components/admin/adminNavigationItems";
 import MobileBottomNav from "./MobileBottomNav";
+import AcademyHeader from "./AcademyHeader";
 import { preloadRoute } from "@/lib/routePreloaders";
 
 const canonicalIconByRoute = Object.freeze({
@@ -55,6 +44,8 @@ function buildAdminSidebarGroups() {
 }
 
 function AdminSidebar({
+  collapsed = false,
+  onToggle = null,
   onNavigate = () => {},
   onLogout = () => {},
   onToggleTheme = null,
@@ -94,8 +85,20 @@ function AdminSidebar({
           className="aapm-academy-sidebar__brand-link"
           aria-label="Kembali ke ringkasan admin"
         >
-          <AppBrand variant="logo" className="h-auto w-[152px] max-w-full" />
+          <AppBrand
+            variant={collapsed ? "icon" : "logo"}
+            className={collapsed ? "h-8 w-8" : "h-auto w-[152px] max-w-full"}
+          />
         </Link>
+        {onToggle && (
+          <IconButton
+            icon={collapsed ? "chevronRight" : "chevronLeft"}
+            label={collapsed ? "Buka sidebar" : "Ciutkan sidebar"}
+            intent="quiet"
+            size="sm"
+            onClick={onToggle}
+          />
+        )}
       </div>
       <span className="aapm-admin-sidebar__context">Ruang admin</span>
     </div>
@@ -114,6 +117,7 @@ function AdminSidebar({
         user={user}
         name={displayName}
         context="Admin Academy"
+        collapsed={collapsed}
         active={location.pathname === "/profile"}
         onClick={() => navigateTo("/profile")}
       />
@@ -129,16 +133,18 @@ function AdminSidebar({
           {themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}
         </T7Button>
       )}
-      <T7Button
-        type="button"
-        intent="quiet"
-        size="sm"
-        leadingIcon="arrowLeft"
-        className="aapm-academy-sidebar__logout"
-        onClick={onLogout}
-      >
-        Keluar
-      </T7Button>
+      {!collapsed && (
+        <T7Button
+          type="button"
+          intent="quiet"
+          size="sm"
+          leadingIcon="arrowLeft"
+          className="aapm-academy-sidebar__logout"
+          onClick={onLogout}
+        >
+          Keluar
+        </T7Button>
+      )}
     </div>
   );
 
@@ -146,7 +152,7 @@ function AdminSidebar({
     <Sidebar
       activeKey={activeKey}
       brand={brand}
-      className="aapm-token-sidebar aapm-academy-sidebar aapm-admin-sidebar"
+      className={`aapm-token-sidebar aapm-academy-sidebar aapm-admin-sidebar ${collapsed ? "aapm-academy-sidebar--collapsed" : ""}`}
       data-t7-region="admin-sidebar"
       footer={footer}
       groups={groups}
@@ -159,12 +165,36 @@ function AdminSidebar({
 }
 
 export default function AdminShell() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isDesktopSidebar, setIsDesktopSidebar] = useState(() =>
+    typeof window === "undefined" || window.matchMedia("(min-width: 861px)").matches,
+  );
   const { user, logout } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
   const location = useLocation();
-  const displayName = user?.full_name || user?.email || "Admin";
   const page = getAdminNavigationMeta(location.pathname);
   const mainScrollRef = useScrollEdgeFade();
+  const effectiveSidebarCollapsed = isDesktopSidebar && sidebarCollapsed;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 861px)");
+    const syncViewport = () => setIsDesktopSidebar(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
+
+  // The admin AppShell also preserves its scrollport across route changes.
+  // Always begin a new surface at its heading instead of inheriting the
+  // previous editor/list position on narrow screens.
+  useEffect(() => {
+    document
+      .querySelector("#admin-app-shell [data-t7-region=scrollport]")
+      ?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   const openCanonicalNavigation = () => {
     document
       .getElementById("admin-app-shell")
@@ -176,36 +206,30 @@ export default function AdminShell() {
     <AppShell
       id="admin-app-shell"
       contentAs="div"
-      className="academy-shell aapm-token-shell aapm-t7-app-shell aapm-admin-shell"
+      className={`academy-shell aapm-token-shell aapm-t7-app-shell aapm-admin-shell ${effectiveSidebarCollapsed ? "aapm-t7-app-shell--collapsed" : ""}`}
       data-t7-region="admin-shell"
-      sidebar={<AdminSidebar user={user} onLogout={logout} onToggleTheme={toggleTheme} themeMode={mode} />}
+      sidebar={(
+        <AdminSidebar
+          collapsed={effectiveSidebarCollapsed}
+          onToggle={isDesktopSidebar ? () => setSidebarCollapsed((current) => !current) : null}
+          user={user}
+          onLogout={logout}
+          onToggleTheme={toggleTheme}
+          themeMode={mode}
+        />
+      )}
       topbar={(
-        <div className="aapm-token-header flex h-[var(--aapm-shell-header-height)] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-8" data-t7-region="topbar">
-          <div className="flex min-w-0 items-center gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ruang admin</div><div className="truncate text-sm font-semibold">{page.label}</div></div></div>
-          <div className="flex items-center gap-1.5">
-            <Button asChild variant="ghost" className="hidden text-xs sm:inline-flex"><Link to="/"><AapmIcon name="dashboard" className="h-4 w-4" /> Buka Academy</Link></Button>
-            <IconButton variant="ghost" onClick={toggleTheme} label={mode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}><AapmIcon name={mode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" /></IconButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" className="h-9 gap-2 px-2 sm:px-3">
-                  <ProfileAvatar user={user} name={displayName} className="h-7 w-7" />
-                  <span className="hidden max-w-[140px] truncate text-xs font-medium sm:inline">{displayName}</span>
-                  <AapmIcon name="chevronDown" className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="truncate text-sm font-semibold">{displayName}</div>
-                  <div className="mt-1 truncate text-xs text-muted-foreground">Admin Academy</div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link to="/"><AapmIcon name="dashboard" className="mr-2 h-4 w-4" /> Buka Academy learner</Link></DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => logout()}><AapmIcon name="logout" className="mr-2 h-4 w-4" /> Keluar</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+        <AcademyHeader
+          showMobileMenu={false}
+          pageOverride={{ ...page, group: "Ruang admin" }}
+          workspaceBadgeLabel="Ruang admin"
+          workspaceAction={{ to: "/", label: "Buka Academy", icon: "dashboard" }}
+          accountContextOverride="Admin Academy"
+          themeMode={mode}
+          onToggleTheme={toggleTheme}
+          onLogout={logout}
+          user={user}
+        />
       )}
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-t7-region="content-shell">

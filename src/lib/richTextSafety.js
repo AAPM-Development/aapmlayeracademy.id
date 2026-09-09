@@ -1,4 +1,4 @@
-import { safeEditorialLink } from "./editorialUrls.js";
+import { safeEditorialImage, safeEditorialLink } from "./editorialUrls.js";
 
 const allowedNodeTypes = new Set([
   "doc",
@@ -8,6 +8,7 @@ const allowedNodeTypes = new Set([
   "orderedList",
   "listItem",
   "blockquote",
+  "image",
   "hardBreak",
   "text",
 ]);
@@ -42,6 +43,21 @@ function safeNode(node, depth = 0) {
   }
 
   if (type === "hardBreak") return { type };
+
+  if (type === "image") {
+    const src = safeEditorialImage(node.attrs?.src);
+    if (!src) return null;
+    const alt = safeText(node.attrs?.alt, 280);
+    const title = safeText(node.attrs?.title, 160);
+    return {
+      type,
+      attrs: {
+        src,
+        alt,
+        title: title || null,
+      },
+    };
+  }
 
   const result = { type };
   if (type === "heading") {
@@ -93,6 +109,7 @@ const allowedPasteTags = new Set([
   "li",
   "blockquote",
   "a",
+  "img",
 ]);
 const unwrapPasteTags = new Set(["div", "section", "article", "span", "font"]);
 const removePasteTags = new Set(["script", "style", "iframe", "object", "embed", "svg", "math", "form", "input", "textarea", "select", "button"]);
@@ -118,6 +135,21 @@ function cleanPasteNode(node) {
     Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
     if (href) element.setAttribute("href", href);
     else element.replaceWith(...Array.from(element.childNodes));
+    return;
+  }
+
+  if (tag === "img") {
+    const src = safeEditorialImage(element.getAttribute("src"));
+    const alt = safeText(element.getAttribute("alt"), 280);
+    const title = safeText(element.getAttribute("title"), 160);
+    Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
+    if (!src) {
+      element.remove();
+      return;
+    }
+    element.setAttribute("src", src);
+    if (alt) element.setAttribute("alt", alt);
+    if (title) element.setAttribute("title", title);
     return;
   }
 

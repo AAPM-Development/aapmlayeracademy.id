@@ -633,6 +633,8 @@ function buildStats(rows, { preview = false } = {}) {
   if (preview) {
     const hdp = numericValues(rows, "henDayProduction");
     const mortality = numericValues(rows, "mortality");
+    const hdpSeries = completeSeries(rows, "henDayProduction");
+    const mortalitySeries = completeSeries(rows, "mortality");
     // Population and egg count are snapshots, not additive measures across
     // dates. Use the latest available date so a two-date preview cannot look
     // like a single farm with double-counted inventory.
@@ -648,8 +650,8 @@ function buildStats(rows, { preview = false } = {}) {
         tone: "warning",
         colorway: 3,
         emphasis: "solid",
-        chart: chartFor(hdp, "HDP preview", 3, "warning"),
-        trend: trendFor(hdp),
+        chart: chartFor(hdpSeries, "HDP preview", 3, "warning"),
+        trend: trendFor(hdpSeries),
       },
       {
         icon: "users",
@@ -659,7 +661,7 @@ function buildStats(rows, { preview = false } = {}) {
         tone: "info",
         colorway: 2,
         emphasis: "solid",
-        chart: chartFor(rows.map((row) => row.populationEnd), "Populasi akhir", 2, "info"),
+        chart: chartFor(completeSeries(rows, "populationEnd"), "Populasi akhir", 2, "info"),
       },
       {
         icon: "package",
@@ -669,7 +671,7 @@ function buildStats(rows, { preview = false } = {}) {
         tone: "accent",
         colorway: 4,
         emphasis: "solid",
-        chart: chartFor(rows.map((row) => row.eggCount), "Total telur", 4, "chart"),
+        chart: chartFor(completeSeries(rows, "eggCount"), "Total telur", 4, "chart"),
       },
       {
         icon: "warning",
@@ -679,8 +681,8 @@ function buildStats(rows, { preview = false } = {}) {
         tone: "danger",
         colorway: 5,
         emphasis: "solid",
-        chart: chartFor(mortality, "Mortality preview", 5, "danger"),
-        trend: trendFor(mortality, { lowerIsBetter: true }),
+        chart: chartFor(mortalitySeries, "Mortality preview", 5, "danger"),
+        trend: trendFor(mortalitySeries, { lowerIsBetter: true }),
       },
     ];
   }
@@ -688,6 +690,9 @@ function buildStats(rows, { preview = false } = {}) {
   const hdp = numericValues(rows, "henDayProduction");
   const fcr = numericValues(rows, "fcr");
   const eggWeight = numericValues(rows, "eggWeight");
+  const hdpSeries = completeSeries(rows, "henDayProduction");
+  const fcrSeries = completeSeries(rows, "fcr");
+  const eggWeightSeries = completeSeries(rows, "eggWeight");
   const profit = rows
     .map((row) => {
       const revenue = toNumber(row.revenue);
@@ -695,6 +700,11 @@ function buildStats(rows, { preview = false } = {}) {
       return Number.isFinite(revenue) && Number.isFinite(cost) ? revenue - cost : NaN;
     })
     .filter((value) => Number.isFinite(value));
+  const profitSeries = completeDerivedSeries(rows, (row) => {
+    const revenue = toNumber(row.revenue);
+    const cost = toNumber(row.cost);
+    return Number.isFinite(revenue) && Number.isFinite(cost) ? revenue - cost : NaN;
+  });
   const totalProfit = profit.reduce(
     (sum, value) => sum + (Number.isFinite(value) ? value : 0),
     0,
@@ -708,8 +718,8 @@ function buildStats(rows, { preview = false } = {}) {
       tone: "warning",
       colorway: 3,
       emphasis: "solid",
-      chart: chartFor(hdp, "HDP", 3, "warning"),
-      trend: trendFor(hdp),
+      chart: chartFor(hdpSeries, "HDP", 3, "warning"),
+      trend: trendFor(hdpSeries),
     },
       {
         icon: "progress",
@@ -719,8 +729,8 @@ function buildStats(rows, { preview = false } = {}) {
       tone: "success",
       colorway: 1,
       emphasis: "solid",
-      chart: chartFor(fcr, "FCR", 1, "success"),
-      trend: trendFor(fcr, { lowerIsBetter: true }),
+      chart: chartFor(fcrSeries, "FCR", 1, "success"),
+      trend: trendFor(fcrSeries, { lowerIsBetter: true }),
     },
     {
       icon: "finance",
@@ -734,8 +744,8 @@ function buildStats(rows, { preview = false } = {}) {
       tone: totalProfit >= 0 ? "info" : "danger",
       colorway: 2,
       emphasis: "solid",
-      chart: chartFor(profit, "Profit", 2, totalProfit >= 0 ? "info" : "danger"),
-      trend: trendFor(profit),
+      chart: chartFor(profitSeries, "Profit", 2, totalProfit >= 0 ? "info" : "danger"),
+      trend: trendFor(profitSeries),
     },
     {
       icon: "package",
@@ -745,19 +755,22 @@ function buildStats(rows, { preview = false } = {}) {
       tone: "accent",
       colorway: 4,
       emphasis: "solid",
-      chart: chartFor(eggWeight, "Egg weight", 4, "chart"),
-      trend: trendFor(eggWeight),
+      chart: chartFor(eggWeightSeries, "Egg weight", 4, "chart"),
+      trend: trendFor(eggWeightSeries),
     },
   ];
 }
 
 function chartFor(values, label, colorway, tone) {
-  const usable = values.filter((value) => Number.isFinite(toNumber(value)));
-  return usable.length > 1 ? (
+  const usable = values.map(toNumber);
+  // A graphical cue must preserve the source grain. Do not silently remove a
+  // missing period and connect two non-adjacent observations as if they were
+  // consecutive; the caller can still show the numeric aggregate and note.
+  return usable.length > 1 && usable.every((value) => Number.isFinite(value)) ? (
     <Sparkline
       aria-label={label}
       label={label}
-      values={usable.map((value) => toNumber(value))}
+      values={usable}
       colorway={colorway}
       tone={tone}
     />
@@ -765,10 +778,8 @@ function chartFor(values, label, colorway, tone) {
 }
 
 function trendFor(values, { lowerIsBetter = false } = {}) {
-  const usable = values
-    .filter((value) => Number.isFinite(toNumber(value)))
-    .map(toNumber);
-  if (usable.length < 2 || usable[0] === 0) return null;
+  const usable = values.map(toNumber);
+  if (usable.length < 2 || !usable.every((value) => Number.isFinite(value)) || usable[0] === 0) return null;
   const first = usable[0];
   const last = usable[usable.length - 1];
   const delta = ((last - first) / Math.abs(first)) * 100;
@@ -802,6 +813,12 @@ function chartSeries(rows, key, label) {
 function completeSeries(rows, key) {
   if (!rows.length) return [];
   const values = rows.map((row) => toNumber(row[key]));
+  return values.every((value) => Number.isFinite(value)) ? values : [];
+}
+
+function completeDerivedSeries(rows, derive) {
+  if (!rows.length) return [];
+  const values = rows.map(derive);
   return values.every((value) => Number.isFinite(value)) ? values : [];
 }
 

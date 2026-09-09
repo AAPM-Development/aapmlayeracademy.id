@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, useToast } from "@/components/primitives";
-import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
+import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import LearningFocusShell from "@/components/layout/LearningFocusShell";
 import {
-  LessonChecklist,
   LessonHeader,
-  LessonInsightList,
   LessonMedia,
   LessonNavigation,
   LessonSection,
@@ -127,19 +125,7 @@ export default function ModuleDetail() {
           </LessonSection>
         )}
 
-        {objectivesArePresent && <LessonSection id="objectives" title="Tujuan & insight" icon="solar:target-bold-duotone">
-          <div className="grid gap-6 sm:grid-cols-2">
-            {hasListContent(module.learningObjectives) && <div><div className="mb-3 text-sm font-semibold">Tujuan pembelajaran</div><LessonInsightList items={module.learningObjectives || []} icon="solar:target-bold-duotone" /></div>}
-            {hasListContent(module.keyTakeaways) && <div><div className="mb-3 text-sm font-semibold"><AapmIcon name="solar:lightbulb-bolt-bold-duotone" className="mr-1 inline h-4 w-4 text-brand-orange" /> Inti pembelajaran</div><LessonInsightList items={module.keyTakeaways || []} /></div>}
-          </div>
-        </LessonSection>}
-
-        {practiceIsPresent && <LessonSection id="practical" title="Praktik" icon="solar:clipboard-check-bold-duotone">
-          <Card className="border-brand-green/20 bg-brand-green/5 shadow-none"><CardContent className="p-5">
-            {hasText(module.practicalAssignment) && <><div className="mb-3 text-sm font-semibold">Tugas praktik</div><p className="text-sm leading-6 text-muted-foreground">{module.practicalAssignment}</p></>}
-            {hasListContent(module.checklist) && <div className={hasText(module.practicalAssignment) ? "mt-5 border-t border-brand-green/15 pt-5" : ""}><div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand-green">Checklist observasi</div><LessonChecklist items={module.checklist} /></div>}
-          </CardContent></Card>
-        </LessonSection>}
+        {(objectivesArePresent || practiceIsPresent) && <LessonStructuredContent module={module} document={module.editorialContent} />}
       </div>
     </LearningFocusShell>
   );

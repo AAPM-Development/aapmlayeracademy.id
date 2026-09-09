@@ -54,14 +54,16 @@
      * large unused desktop gutter around the canvas. */
     --aapm-editor-content-max: 100rem;
     --aapm-reading-measure: 72ch;
-    --radius-sm: 0.625rem;
-    --radius-md: 0.875rem;
-    --radius-lg: 1.25rem;
+    /* Pre-provider/auth fallback mirrors the compact Academy geometry. Once
+     * the runtime mounts, Ten4Seven owns these roles through its variables. */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.625rem;
+    --radius-lg: 0.875rem;
     /* Geometry is role-based. Feature code may still use legacy Tailwind
      * utilities, but the runtime maps those utilities to these shared roles
      * instead of allowing every route to keep a private radius scale. */
     --radius-control: var(--radius-md);
-    --radius-panel: 1rem;
+    --radius-panel: 0.75rem;
     --radius-data: var(--radius-panel);
     --radius-card: var(--radius-lg);
     --radius-overlay: var(--radius-panel);
@@ -470,6 +472,80 @@
   .t7-button[class*="bg-white/"]:hover {
     background: hsl(0 0% 100% / 0.12);
   }
+  /* Editorial CTA palette stays on the same semantic scale as dashboard
+   * surfaces. Authors choose a bounded tone; they never inject arbitrary
+   * colors into learner content. */
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="green"] {
+    background: hsl(var(--brand-aapm-green));
+    color: hsl(var(--primary-foreground));
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="orange"] {
+    background: hsl(var(--brand-aapm-orange));
+    color: hsl(0 0% 100%);
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="blue"] {
+    background: hsl(var(--tint-blue-foreground));
+    color: hsl(0 0% 100%);
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="violet"] {
+    background: hsl(var(--tint-violet-foreground));
+    color: hsl(0 0% 100%);
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="neutral"] {
+    border: 1px solid hsl(var(--surface-border));
+    background: hsl(var(--surface-subtle));
+    color: hsl(var(--foreground));
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="green"]:hover {
+    background: hsl(var(--aapm-green-800));
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="orange"]:hover {
+    background: hsl(var(--aapm-orange-700) / 0.88);
+  }
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="blue"]:hover,
+  .t7-button[data-editorial-cta-variant="primary"][data-editorial-cta-tone="violet"]:hover {
+    filter: brightness(0.93);
+  }
+  .t7-button[data-editorial-cta-radius="sm"] { border-radius: var(--radius-sm); }
+  .t7-button[data-editorial-cta-radius="md"] { border-radius: var(--radius-control); }
+  .t7-button[data-editorial-cta-radius="lg"] { border-radius: var(--radius-lg); }
+  .t7-button[data-editorial-cta-radius="pill"] { border-radius: 999px; }
+  /* Secondary and outline actions keep their structural variant while the
+   * selected semantic tone still remains visible in the editor and learner. */
+  .t7-button[data-editorial-cta-variant="secondary"][data-editorial-cta-tone="green"],
+  .t7-button[data-editorial-cta-variant="outline"][data-editorial-cta-tone="green"] {
+    border-color: hsl(var(--brand-aapm-green) / 0.34);
+    background: hsl(var(--brand-aapm-green) / 0.06);
+    color: hsl(var(--brand-aapm-green));
+  }
+  .t7-button[data-editorial-cta-variant="secondary"][data-editorial-cta-tone="orange"],
+  .t7-button[data-editorial-cta-variant="outline"][data-editorial-cta-tone="orange"] {
+    border-color: hsl(var(--brand-aapm-orange) / 0.34);
+    background: hsl(var(--brand-aapm-orange) / 0.06);
+    color: hsl(var(--brand-aapm-orange));
+  }
+  .t7-button[data-editorial-cta-variant="secondary"][data-editorial-cta-tone="blue"],
+  .t7-button[data-editorial-cta-variant="outline"][data-editorial-cta-tone="blue"] {
+    border-color: hsl(var(--tint-blue-border));
+    background: hsl(var(--tint-blue));
+    color: hsl(var(--tint-blue-foreground));
+  }
+  .t7-button[data-editorial-cta-variant="secondary"][data-editorial-cta-tone="violet"],
+  .t7-button[data-editorial-cta-variant="outline"][data-editorial-cta-tone="violet"] {
+    border-color: hsl(var(--tint-violet-border));
+    background: hsl(var(--tint-violet));
+    color: hsl(var(--tint-violet-foreground));
+  }
+  .t7-button[data-editorial-cta-variant="secondary"][data-editorial-cta-tone="neutral"],
+  .t7-button[data-editorial-cta-variant="outline"][data-editorial-cta-tone="neutral"] {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-subtle));
+    color: hsl(var(--foreground));
+  }
+  .t7-button[data-editorial-cta-variant="secondary"][data-editorial-cta-tone]:hover,
+  .t7-button[data-editorial-cta-variant="outline"][data-editorial-cta-tone]:hover {
+    filter: brightness(0.96);
+  }
   .aapm-t7-button-sm {
     min-height: var(--t7-control-height-sm);
     padding-inline: var(--t7-control-padding-inline-small);
@@ -730,14 +806,6 @@
 
   .aapm-t7-app-shell > .t7-app-main > .t7-app-topbar {
     padding: 0;
-  }
-
-  /* Admin labels are operational nouns, not optional metadata. Give the
-   * canonical sidebar enough measure to keep them readable at desktop widths
-   * while leaving the learner rail on its established geometry. */
-  .aapm-t7-app-shell.aapm-admin-shell {
-    --aapm-shell-sidebar-width: 18rem;
-    --t7-sidebar-width: var(--aapm-shell-sidebar-width);
   }
 
   .aapm-t7-app-shell--collapsed[data-sidebar] {
@@ -1006,7 +1074,8 @@
    * stay owned by Ten4Seven tokens. */
   .aapm-admin-sidebar__context {
     display: block;
-    padding: 0 var(--t7-ref-space-2);
+    padding: 0 var(--t7-ref-space-2) var(--t7-ref-space-3);
+    border-bottom: 1px solid hsl(var(--t7-border-hsl));
     color: hsl(var(--t7-muted-foreground-hsl));
     font-size: var(--t7-type-caption-size);
     font-weight: var(--t7-type-button-weight);
@@ -1027,6 +1096,10 @@
 
   .aapm-admin-sidebar .t7-nav-item {
     min-height: var(--t7-touch-target-min);
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-admin-sidebar__context {
+    display: none;
   }
 
   .aapm-academy-sidebar--collapsed {
@@ -1225,21 +1298,39 @@
   /* Editorial workspace anatomy. These roles keep the editor's hierarchy
    * stable while feature JSX can continue using the shared primitives. */
   .aapm-editor-command-bar {
-    min-height: 3.25rem;
-    padding: var(--space-2);
-    border: 1px solid hsl(var(--surface-border));
-    border-radius: var(--radius-panel);
-    background: hsl(var(--surface-elevated) / 0.96);
-    box-shadow: var(--surface-shadow);
-    backdrop-filter: blur(12px);
+    min-height: 3rem;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.58);
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-elevated) / 0.9);
+    box-shadow: none;
+    backdrop-filter: blur(10px);
   }
 
   .aapm-editor-command-bar .aapm-editor-section-link {
-    min-height: 2.25rem;
+    min-height: 2rem;
+  }
+
+  .aapm-editor-command-bar .aapm-editor-section-link[data-active="true"] {
+    box-shadow: inset 0 -2px 0 hsl(var(--brand-aapm-orange) / 0.72);
+  }
+
+  .aapm-editor-current-location {
+    background: hsl(var(--surface-subtle) / 0.62);
+  }
+
+  .aapm-editor-section {
+    border-radius: var(--radius-card);
+    transition: background-color 160ms ease;
+  }
+
+  .aapm-editor-section[data-active="true"] {
+    background: hsl(var(--surface-subtle) / 0.2);
   }
 
   .aapm-editor-command-actions {
-    min-height: 2.25rem;
+    min-height: 2rem;
   }
 
   .aapm-editorial-summary {
@@ -1252,6 +1343,28 @@
 
   .aapm-editorial-block {
     scroll-margin-top: 6.5rem;
+    border-color: hsl(var(--surface-border) / 0.62) !important;
+    box-shadow: none;
+  }
+
+  .aapm-editorial-block__header {
+    border-bottom-color: hsl(var(--surface-border) / 0.52) !important;
+  }
+
+  .aapm-editor-point-card {
+    border-color: hsl(var(--surface-border) / 0.62) !important;
+    box-shadow: none;
+  }
+
+  .aapm-editor-point-row {
+    border: 1px solid hsl(var(--surface-border) / 0.42);
+    background: hsl(var(--surface-subtle) / 0.28);
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .aapm-editor-point-row:focus-within {
+    border-color: hsl(var(--brand-aapm-orange) / 0.42);
+    background: hsl(var(--surface-elevated) / 0.9);
   }
 
   .aapm-editorial-block > :last-child {
@@ -1264,6 +1377,12 @@
 
   .aapm-editorial-outline > aside {
     background: hsl(var(--surface-elevated) / 0.96);
+    border-color: hsl(var(--surface-border) / 0.62);
+    box-shadow: none;
+  }
+
+  .aapm-editorial-quality {
+    box-shadow: none;
   }
 
   .aapm-editorial-insert-rail {
@@ -1278,8 +1397,8 @@
 
     .aapm-editor-command-actions {
       width: 100%;
-      border-top: 1px solid hsl(var(--surface-border));
-      padding-top: var(--space-2);
+      border-top: 0;
+      padding-top: var(--space-1);
     }
 
     .aapm-editor-command-actions > :last-child {
@@ -1420,6 +1539,27 @@
   }
 }
 
+/* A four-up KPI card can still be too narrow for a long value plus a trend
+ * chip even above the primitive's hard 250px breakpoint. Stack the trend at
+ * the 340px container boundary so the value stays one readable scan target
+ * instead of wrapping units or percentages onto a second line. */
+@container (max-width: 340px) {
+  .aapm-t7-runtime .aapm-kpi-cluster[data-variant="cards"][data-has-trend="true"] .t7-kpi-item-primary {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--t7-control-gap-sm);
+  }
+
+  .aapm-t7-runtime .aapm-kpi-cluster[data-variant="cards"] .t7-kpi-item-trend {
+    justify-self: start;
+    padding-bottom: 0;
+  }
+}
+
+.aapm-t7-runtime .aapm-kpi-cluster .t7-kpi-item-value [data-t7-type="metric-lg"] {
+  white-space: nowrap;
+}
+
   .aapm-token-table {
     min-width: 0;
     max-width: 100%;
@@ -1450,8 +1590,9 @@
     --t7-border-hsl: var(--table-divider);
     --t7-surface-hsl: var(--surface-default);
     --t7-surface-subtle-hsl: var(--table-header-canvas);
-    --t7-table-cell-padding-inline: var(--space-4);
-    --t7-table-cell-padding-block: var(--space-3);
+    /* Do not pin table density here. The canonical data-table owns cell
+     * rhythm; the compact provider profile supplies the smaller inline
+     * inset, while this bridge only keeps the shared canvas and divider. */
   }
 
   .aapm-data-table .t7-table,
@@ -1506,8 +1647,15 @@
   }
 
   .aapm-kpi-cluster {
-    --t7-kpi-gap: var(--space-4);
-    --t7-kpi-padding: var(--space-5);
+    /* Let KPICluster consume the same compact profile as cards and tables. */
+    --t7-kpi-gap: var(--t7-control-gap, var(--space-3));
+    --t7-kpi-padding: var(--t7-card-padding, var(--space-5));
+  }
+
+  .aapm-kpi-cluster[data-variant="cards"] {
+    /* KPI cards are a cluster, so their outer rhythm must follow the same
+     * compact token as controls instead of the primitive's roomy default. */
+    gap: var(--t7-cluster-default, var(--t7-control-gap));
   }
 
   .aapm-sparkline {
@@ -1573,7 +1721,13 @@
 
   /* A table placed inside a canonical Surface borrows that Surface's border
    * and radius. Removing the nested frame keeps dashboard/admin cards from
-   * looking like two unrelated cards stacked on top of one another. */
+   * looking like two unrelated cards stacked on top of one another. Clip the
+   * table canvas at the same boundary so the header background follows the
+   * surface's rounded corners instead of cutting square through them. */
+  .t7-surface:has(> .t7-table-wrap) {
+    overflow: hidden;
+  }
+
   .t7-surface > .t7-table-wrap {
     border: 0;
     border-radius: 0;
@@ -2729,6 +2883,76 @@
     background: hsl(var(--surface-subtle) / 0.68);
   }
 
+  /* The floating composer is intentionally a two-level control: the message
+   * field carries the primary focus, while the footer groups lightweight
+   * utilities and leaves one clear send action. */
+  .aapm-ai-composer--compact .aapm-ai-composer-frame {
+    border-radius: var(--radius-panel);
+  }
+
+  .aapm-ai-composer--compact .aapm-ai-composer-frame > textarea {
+    min-height: 2.65rem;
+    padding: 0.7rem 0.75rem 0.55rem;
+  }
+
+  .aapm-ai-composer--compact .aapm-ai-composer-frame__footer {
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    background: hsl(var(--surface-subtle) / 0.54);
+  }
+
+  .aapm-ai-composer--compact .aapm-ai-composer-tools {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .aapm-ai-composer--compact .aapm-ai-composer-context {
+    flex: 1 1 auto;
+    max-width: 9.5rem;
+  }
+
+  .aapm-ai-attachment-control {
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-ai-attachment-control:hover,
+  .aapm-ai-attachment-control:focus-visible {
+    border-color: hsl(var(--aapm-orange-700) / 0.24);
+  }
+
+  .aapm-ai-composer-context {
+    align-items: center;
+    gap: 0.1rem;
+    min-height: 2rem;
+    padding-inline: 0.25rem;
+  }
+
+  .aapm-ai-composer-toggle {
+    min-height: 2rem;
+    border-radius: var(--radius-control);
+    padding-inline: 0.25rem;
+    transition:
+      background-color var(--duration-fast),
+      color var(--duration-fast);
+  }
+
+  .aapm-ai-composer-toggle:hover {
+    background: hsl(var(--surface-default) / 0.78);
+    color: hsl(var(--foreground));
+  }
+
+  .aapm-ai-composer--compact .aapm-ai-composer-toggle {
+    gap: 0.35rem;
+  }
+
+  .aapm-ai-composer--compact .aapm-ai-send-control {
+    min-height: 2rem;
+    border-radius: var(--radius-control);
+    padding-inline: 0.7rem;
+  }
+
   .aapm-ai-segmented {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2768,13 +2992,13 @@
 
   .aapm-ai-history-group {
     overflow: hidden;
-    border: 1px solid hsl(var(--surface-border));
-    border-radius: var(--radius-card);
+    border: 1px solid hsl(var(--surface-border) / 0.82);
+    border-radius: var(--radius-data);
     background: hsl(var(--surface-default) / 0.72);
   }
 
   .aapm-ai-history-row {
-    border-bottom: 1px solid hsl(var(--surface-border) / 0.72);
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.52);
     transition: background-color var(--duration-fast);
   }
 
@@ -3013,6 +3237,57 @@
   .aapm-ai-floating-composer {
     background: hsl(var(--surface-subtle) / 0.82);
     box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
+  }
+
+  .aapm-ai-floating-panel__header {
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.72);
+    background: hsl(var(--surface-default) / 0.96);
+    box-shadow: none;
+  }
+
+  .aapm-ai-floating-panel__status-line {
+    max-width: 13rem;
+  }
+
+  .aapm-ai-floating-panel__status-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    flex: none;
+    border-radius: 999px;
+    background: hsl(var(--muted-foreground) / 0.52);
+  }
+
+  .aapm-ai-floating-panel__status-dot[data-state="saved"] {
+    background: hsl(var(--aapm-green-700));
+  }
+
+  .aapm-ai-floating-panel__status-dot[data-state="saving"] {
+    background: hsl(var(--aapm-orange-700));
+    animation: aapm-ai-live-pulse 1.7s ease-out infinite;
+  }
+
+  .aapm-ai-floating-panel__status-dot[data-state="attention"] {
+    background: hsl(var(--danger));
+  }
+
+  .aapm-ai-floating-panel__icon-button {
+    border-radius: var(--radius-control);
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-ai-floating-panel__icon-button:hover {
+    color: hsl(var(--foreground));
+  }
+
+  /* The floating composer closes the frame from below. Keep one separator,
+   * on its top edge; the toolbar's default bottom inset would otherwise draw
+   * a second line in the wrong place. */
+  .aapm-ai-floating-composer {
+    box-shadow: inset 0 1px 0 hsl(var(--surface-border) / 0.72);
+  }
+
+  .aapm-ai-floating-composer__link-row {
+    min-height: 1rem;
   }
 
   .aapm-ai-floating-transcript {
@@ -3376,6 +3651,13 @@
   }
   .aapm-rich-editor__content blockquote {
     @apply my-3 border-l-2 border-brand-orange pl-3 italic text-muted-foreground;
+  }
+  .aapm-rich-editor__content img {
+    @apply my-4 block h-auto max-w-full rounded-[var(--t7-radius-data)] border border-border bg-surface-subtle object-contain;
+    margin-inline: auto;
+  }
+  .aapm-rich-editor__content img.ProseMirror-selectednode {
+    @apply border-brand-green ring-2 ring-brand-green/20;
   }
   .aapm-rich-editor__content a {
     @apply text-brand-orange underline decoration-brand-orange/40 underline-offset-2;

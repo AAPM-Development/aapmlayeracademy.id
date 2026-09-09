@@ -1,8 +1,10 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { nativeApi } from "@/api/nativeClient";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
+import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
 import EditorQuickNav from "@/components/admin/EditorQuickNav";
@@ -39,7 +41,7 @@ import {
   useSaveAdminQuestion,
   useUpdateAdminModule,
 } from "@/lib/useAdminData";
-import { hasEditorialVideo, parseEditorialDocument } from "@/lib/editorialDocument";
+import { hasEditorialVideo, normaliseEditorialPresentation, parseEditorialDocument } from "@/lib/editorialDocument";
 import { useAuth } from "@/lib/AuthContext";
 
 const emptyModule = {
@@ -77,14 +79,282 @@ const textToList = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const aiList = (value, limit = 4) => {
+  const values = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(/\r?\n|•/)
+      : [];
+  return values
+    .map((item) => String(item || "").replace(/^\s*(?:[-*]|\d+[.)])\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, limit);
+};
+
+function normaliseAiModuleDraft(value) {
+  if (!value || typeof value !== "object") return null;
+  const draft = {
+    learningObjectives: aiList(value.learningObjectives),
+    keyTakeaways: aiList(value.keyTakeaways),
+    checklist: aiList(value.checklist),
+    practicalAssignment: typeof value.practicalAssignment === "string"
+      ? value.practicalAssignment.trim().slice(0, 1200)
+      : "",
+  };
+  return draft.learningObjectives.length || draft.keyTakeaways.length || draft.checklist.length || draft.practicalAssignment
+    ? draft
+    : null;
+}
+
+function parseAiModuleDraft(reply) {
+  const raw = String(reply || "").trim();
+  if (!raw) return null;
+  const candidates = [
+    raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim(),
+  ];
+  const objectStart = raw.indexOf("{");
+  const objectEnd = raw.lastIndexOf("}");
+  if (objectStart >= 0 && objectEnd > objectStart) {
+    candidates.push(raw.slice(objectStart, objectEnd + 1));
+  }
+  for (const candidate of candidates) {
+    try {
+      const parsed = normaliseAiModuleDraft(JSON.parse(candidate));
+      if (parsed) return parsed;
+    } catch {
+      // APPI may wrap JSON in a short explanation; try the next candidate.
+    }
+  }
+  return null;
+}
+
+function editorialContextForAi(form) {
+  const document = parseEditorialDocument(form?.editorialContent);
+  const blocks = Array.isArray(document?.blocks) ? document.blocks : [];
+  const blockText = blocks
+    .flatMap((block) => [block?.title, block?.content, block?.caption, block?.description, block?.label])
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 2600);
+  return [
+    `Judul modul: ${String(form?.title || "").trim()}`,
+    `Kategori: ${String(form?.category || "").trim()}`,
+    `Ringkasan: ${String(form?.summary || "").trim()}`,
+    blockText ? `Materi utama:\n${blockText}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function CompactListField({ id, label, value, onChange, icon = "target", tone = "green" }) {
+  const rawPoints = String(value || "").split(/\r?\n/);
+  const points = rawPoints.length ? rawPoints : [""];
+  const count = textToList(String(value || "")).length;
+  const pointInputRefs = useRef([]);
+  const focusPointRef = useRef(null);
+
+  useEffect(() => {
+    if (focusPointRef.current === null) return;
+    const focusIndex = focusPointRef.current;
+    focusPointRef.current = null;
+    pointInputRefs.current[focusIndex]?.focus();
+  }, [points.length]);
+
+  const emitPoints = (nextPoints) => {
+    onChange({ target: { value: nextPoints.join("\n") } });
+  };
+
+  const insertPointAfter = (index) => {
+    const insertionIndex = Math.min(index + 1, points.length);
+    const nextPoints = [
+      ...points.slice(0, insertionIndex),
+      "",
+      ...points.slice(insertionIndex),
+    ];
+    focusPointRef.current = insertionIndex;
+    emitPoints(nextPoints);
+  };
+
+  const removePoint = (index) => {
+    const nextPoints = points.filter((_, pointIndex) => pointIndex !== index);
+    focusPointRef.current = Math.max(0, Math.min(index - 1, nextPoints.length - 1));
+    emitPoints(nextPoints.length ? nextPoints : [""]);
+  };
+
+  return (
+    <div className="aapm-editor-point-card aapm-token-card min-w-0 border border-border bg-background p-3">
+      <div className="mb-2 flex min-w-0 items-center gap-2">
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone === "orange" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green"}`}>
+          <AapmIcon name={icon} className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <Label htmlFor={`${id}-point-1`} className="text-xs font-semibold">{label}</Label>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">Satu baris = satu poin learner</p>
+        </div>
+        <Badge variant="soft" className="shrink-0 text-[10px]">{count} poin</Badge>
+      </div>
+      <div className="aapm-editor-point-list space-y-1.5" role="list" aria-label={`${label} untuk learner`}>
+        {points.map((point, index) => (
+          <div key={`${id}-point-${index + 1}`} className="aapm-editor-point-row flex min-w-0 items-center gap-1.5 rounded-[var(--radius-control)] p-1" role="listitem">
+            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ${tone === "orange" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green"}`} aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <Input
+              ref={(element) => { pointInputRefs.current[index] = element; }}
+              id={`${id}-point-${index + 1}`}
+              value={point}
+              onChange={(event) => {
+                const nextPoints = [...points];
+                nextPoints[index] = event.target.value;
+                emitPoints(nextPoints);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  insertPointAfter(index);
+                }
+              }}
+              className="h-8 min-w-0 flex-1 border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0"
+              placeholder={`Tulis poin ${index + 1}…`}
+              aria-label={`${label}, poin ${index + 1}`}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-danger"
+              onClick={() => removePoint(index)}
+              disabled={points.length === 1 && !point.trim()}
+              aria-label={`Hapus ${label.toLowerCase()} poin ${index + 1}`}
+              title={`Hapus poin ${index + 1}`}
+            >
+              <AapmIcon name="delete" className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[10px] text-muted-foreground">Nomor mengikuti urutan tampil di learner.</span>
+        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={() => insertPointAfter(points.length - 1)}>
+          <AapmIcon name="add" className="h-3.5 w-3.5" /> Tambah poin
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AiModuleDraft({ form, onApply, toast }) {
+  const [open, setOpen] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [draft, setDraft] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generate = async () => {
+    setIsGenerating(true);
+    try {
+      const context = editorialContextForAi(form);
+      const response = await nativeApi.ai.assistant({
+        includeFarmContext: false,
+        farmContext: [],
+        message: [
+          "Anda adalah editor kurikulum AAPM. Buat draf konten learner dalam bahasa Indonesia yang ringkas, spesifik, dan dapat diamati.",
+          "Kembalikan SATU objek JSON valid tanpa markdown, tanpa code fence, dan tanpa penjelasan tambahan dengan bentuk persis:",
+          '{"learningObjectives":["maksimal 3 tujuan"],"keyTakeaways":["maksimal 3 poin penting"],"checklist":["maksimal 3 cek observasi"],"practicalAssignment":"satu tugas praktik singkat"}',
+          "Tujuan harus memakai kata kerja aktif. Checklist harus bisa diverifikasi learner. Jangan mengarang angka atau klaim medis.",
+          context,
+          instruction.trim() ? `Fokus tambahan editor: ${instruction.trim().slice(0, 400)}` : "",
+        ].filter(Boolean).join("\n\n"),
+      });
+      const parsed = parseAiModuleDraft(response?.reply);
+      if (!parsed) throw new Error("APPI belum mengembalikan draf terstruktur. Coba lagi dengan fokus yang lebih spesifik.");
+      setDraft(parsed);
+      toast({ title: "Draf APPI siap", description: "Periksa hasilnya, lalu pilih Gunakan draf untuk memasukkannya ke form." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Draf APPI belum siap", description: error?.message || "APPI tidak dapat menyiapkan draf saat ini." });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const applyDraft = () => {
+    if (!draft) return;
+    onApply(draft);
+    setDraft(null);
+    toast({ title: "Draf APPI diterapkan", description: "Tinjau poin-poinnya sebelum menyimpan modul." });
+  };
+
+  return (
+    <div className="aapm-token-card border border-brand-orange/25 bg-tint-orange/35 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background text-brand-orange">
+          <AapmIcon name="ai" className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold">Bantu isi dengan APPI</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">Buat draf tujuan, insight, tugas, dan checklist tanpa menimpa isi sebelum Anda menyetujuinya.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 px-2.5 text-[11px]" onClick={() => setOpen((current) => !current)}>
+          <AapmIcon name={open ? "chevronUp" : "ai"} className="h-3.5 w-3.5" />
+          {open ? "Tutup" : "Buat draf"}
+        </Button>
+      </div>
+      {open && (
+        <div className="mt-3 border-t border-brand-orange/20 pt-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={instruction}
+              onChange={(event) => setInstruction(event.target.value)}
+              placeholder="Opsional: fokus, level learner, atau konteks tugas…"
+              className="h-9 min-w-0 flex-1 text-xs"
+              disabled={isGenerating}
+            />
+            <Button type="button" size="sm" className="h-9 shrink-0" onClick={generate} disabled={isGenerating || !String(form?.title || form?.summary || "").trim()}>
+              <AapmIcon name={isGenerating ? "refresh" : "ai"} className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+              {isGenerating ? "Menyusun…" : "Generate"}
+            </Button>
+          </div>
+          {draft && (
+            <div className="mt-3 rounded-[var(--radius-control)] border border-border bg-background p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold">Pratinjau draf</p>
+                <Badge variant="soft" className="text-[10px]">Belum diterapkan</Badge>
+              </div>
+              <div className="grid gap-2 text-[11px] sm:grid-cols-2">
+                {[
+                  ["Tujuan", draft.learningObjectives],
+                  ["Poin penting", draft.keyTakeaways],
+                  ["Checklist", draft.checklist],
+                ].map(([label, items]) => (
+                  <div key={label} className="rounded-lg bg-surface-subtle p-2">
+                    <p className="font-semibold text-foreground">{label}</p>
+                    <ul className="mt-1 space-y-0.5 text-muted-foreground">{items.map((item) => <li key={item}>• {item}</li>)}</ul>
+                  </div>
+                ))}
+                <div className="rounded-lg bg-surface-subtle p-2 sm:col-span-2">
+                  <p className="font-semibold text-foreground">Tugas praktik</p>
+                  <p className="mt-1 text-muted-foreground">{draft.practicalAssignment || "—"}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button type="button" size="sm" variant="ghost" className="h-8 text-[11px]" onClick={() => setDraft(null)}>Buang</Button>
+                <Button type="button" size="sm" className="h-8 text-[11px]" onClick={applyDraft}><AapmIcon name="checkRead" className="h-3.5 w-3.5" /> Gunakan draf</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const editorDraftPrefix = "aapm:academy:module-editor:v1";
+
+const moduleFormSnapshot = (value) => JSON.stringify(value || {});
 
 const EDITOR_SECTIONS = [
   {
     id: "module-section-identity",
     label: "Identitas",
     shortLabel: "Struktur",
-    detail: "Nomor, judul, dan ringkasan",
+    detail: "Chapter, nomor, judul, dan ringkasan",
     icon: "course",
   },
   {
@@ -162,8 +432,20 @@ function readEditorDraft(key) {
   if (!key || typeof window === "undefined") return null;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(key) || "null");
-    if (!parsed || typeof parsed !== "object" || !parsed.form || typeof parsed.form !== "object") return null;
-    return moduleFormFromDraft(parsed.form);
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !parsed.form ||
+      typeof parsed.form !== "object" ||
+      (parsed.version !== undefined && parsed.version !== 1 && parsed.version !== 2)
+    ) return null;
+    const form = moduleFormFromDraft(parsed.form);
+    if (!form) return null;
+    return {
+      form,
+      savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : "",
+      serverSnapshot: typeof parsed.serverSnapshot === "string" ? parsed.serverSnapshot : "",
+    };
   } catch {
     return null;
   }
@@ -178,10 +460,15 @@ function removeEditorDraft(key) {
   }
 }
 
-function writeEditorDraft(key, form) {
+function writeEditorDraft(key, form, serverSnapshot = "") {
   if (!key || typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(key, JSON.stringify({ version: 1, savedAt: new Date().toISOString(), form }));
+    window.localStorage.setItem(key, JSON.stringify({
+      version: 2,
+      savedAt: new Date().toISOString(),
+      serverSnapshot,
+      form,
+    }));
   } catch {
     // Storage failures must not block the editor.
   }
@@ -452,10 +739,24 @@ function QuestionEditor({ moduleId }) {
 
 export default function AdminModuleEditor() {
   const { courseId, moduleId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const isNew = moduleId === "new";
+  const newModuleParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const isNewChapter = isNew && newModuleParams.get("newChapter") === "1";
+  const newModuleDefaults = useMemo(() => {
+    if (!isNew) return emptyModule;
+    const levelNumber = Number(newModuleParams.get("levelNumber"));
+    const levelName = newModuleParams.get("levelName");
+    return {
+      ...emptyModule,
+      ...(Number.isInteger(levelNumber) && levelNumber >= 1 && levelNumber <= 20 ? { levelNumber } : {}),
+      ...(levelName ? { levelName } : {}),
+      ...(isNewChapter ? { levelName: "Chapter baru" } : {}),
+    };
+  }, [isNew, isNewChapter, newModuleParams]);
   const accountId = user?.id ? String(user.id) : "";
   const editorModuleId = isNew ? "new" : moduleId;
   const { data, isLoading, error, refetch } = useAdminModule(
@@ -474,6 +775,7 @@ export default function AdminModuleEditor() {
   const [activeSection, setActiveSection] = useState(EDITOR_SECTIONS[0].id);
   const [identityExpanded, setIdentityExpanded] = useState(isNew);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
+  const serverFormSnapshotRef = useRef(moduleFormSnapshot(emptyModule));
   const editorContextRef = useRef("");
   const formRef = useRef(form);
   const isDirtyRef = useRef(false);
@@ -485,13 +787,17 @@ export default function AdminModuleEditor() {
     [accountId, courseId, editorModuleId],
   );
   const editorContextKey = useMemo(
-    () => `${accountId}:${courseId}:${editorModuleId}`,
-    [accountId, courseId, editorModuleId],
+    () => `${accountId}:${courseId}:${editorModuleId}:${location.search}`,
+    [accountId, courseId, editorModuleId, location.search],
   );
   const draftKeyRef = useRef(draftKey);
-  const formSnapshot = useMemo(() => JSON.stringify(form), [form]);
+  const formSnapshot = useMemo(() => moduleFormSnapshot(form), [form]);
   const isDirty = editorReady && formSnapshot !== initialFormRef.current;
   const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
+  const editorialPresentation = useMemo(
+    () => normaliseEditorialPresentation(parseEditorialDocument(form.editorialContent)?.presentation),
+    [form.editorialContent],
+  );
   const isSaving = createModule.isPending || updateModule.isPending;
   const identityIsComplete = Boolean(
     String(form.levelNumber ?? "").trim() &&
@@ -537,32 +843,49 @@ export default function AdminModuleEditor() {
     if (!accountId || (!isNew && !module)) return;
     if (editorContextRef.current === editorContextKey) return;
 
-    const nextForm = isNew ? { ...emptyModule } : moduleFormFromApi(module);
+    const nextForm = isNew ? { ...newModuleDefaults } : moduleFormFromApi(module);
+    const nextServerSnapshot = moduleFormSnapshot(nextForm);
     editorContextRef.current = editorContextKey;
-    initialFormRef.current = JSON.stringify(nextForm);
+    serverFormSnapshotRef.current = nextServerSnapshot;
+    initialFormRef.current = nextServerSnapshot;
     setForm(nextForm);
     formRef.current = nextForm;
     setEditorReady(true);
 
     const draft = readEditorDraft(draftKey);
-    if (draft && JSON.stringify(draft) !== JSON.stringify(nextForm)) {
-      setPendingDraft({ key: draftKey, form: draft });
+    const draftSnapshot = draft ? moduleFormSnapshot(draft.form) : "";
+    const draftMatchesCurrentServer = draft?.serverSnapshot
+      ? draft.serverSnapshot === nextServerSnapshot
+      : false;
+    if (
+      draft &&
+      draftSnapshot !== nextServerSnapshot &&
+      (!draft.serverSnapshot || draftMatchesCurrentServer)
+    ) {
+      setPendingDraft({ key: draftKey, ...draft });
     } else {
       removeEditorDraft(draftKey);
       setPendingDraft(null);
     }
-  }, [accountId, data, draftKey, editorContextKey, isNew]);
+  }, [accountId, data, draftKey, editorContextKey, isNew, newModuleDefaults]);
 
   useEffect(() => {
     if (!editorReady || !isDirty || !draftKey) return undefined;
-    const timeoutId = window.setTimeout(() => writeEditorDraft(draftKey, form), 250);
+    const timeoutId = window.setTimeout(
+      () => writeEditorDraft(draftKey, form, serverFormSnapshotRef.current),
+      250,
+    );
     return () => window.clearTimeout(timeoutId);
   }, [draftKey, editorReady, form, isDirty]);
 
   useEffect(() => {
     if (!isDirty) return undefined;
     const handleBeforeUnload = (event) => {
-      writeEditorDraft(draftKeyRef.current, formRef.current);
+      writeEditorDraft(
+        draftKeyRef.current,
+        formRef.current,
+        serverFormSnapshotRef.current,
+      );
       event.preventDefault();
       event.returnValue = "";
     };
@@ -614,7 +937,11 @@ export default function AdminModuleEditor() {
         return;
       }
 
-      writeEditorDraft(draftKeyRef.current, formRef.current);
+      writeEditorDraft(
+        draftKeyRef.current,
+        formRef.current,
+        serverFormSnapshotRef.current,
+      );
       window.history.pushState(guard.sentinelState, "", guard.editorHref);
       promptNavigation({ type: "history-back" });
     };
@@ -658,7 +985,11 @@ export default function AdminModuleEditor() {
 
       event.preventDefault();
       event.stopPropagation();
-      writeEditorDraft(draftKeyRef.current, formRef.current);
+      writeEditorDraft(
+        draftKeyRef.current,
+        formRef.current,
+        serverFormSnapshotRef.current,
+      );
       promptNavigation({ target: nextTarget, type: "route" });
     };
 
@@ -741,13 +1072,28 @@ export default function AdminModuleEditor() {
       formRef.current = next;
       return next;
     });
+  const setEditorialPresentation = (section, key, value) => {
+    const current = parseEditorialDocument(form.editorialContent) || { version: 1, blocks: [] };
+    const presentation = normaliseEditorialPresentation(current.presentation);
+    set("editorialContent", {
+      ...current,
+      presentation: {
+        ...presentation,
+        [section]: { ...presentation[section], [key]: value },
+      },
+    });
+  };
   const requestNavigation = (target) => {
     if (!isDirty) {
       releaseHistoryGuard();
       navigate(target);
       return;
     }
-    writeEditorDraft(draftKeyRef.current, formRef.current);
+    writeEditorDraft(
+      draftKeyRef.current,
+      formRef.current,
+      serverFormSnapshotRef.current,
+    );
     promptNavigation({ target, type: "route" });
   };
   const scrollToEditorSection = (sectionId) => {
@@ -798,7 +1144,9 @@ export default function AdminModuleEditor() {
         description: "Perubahan langsung dipakai oleh Academy.",
       });
       const savedForm = saved?.id ? moduleFormFromApi(saved) : form;
-      initialFormRef.current = JSON.stringify(savedForm);
+      const savedSnapshot = moduleFormSnapshot(savedForm);
+      serverFormSnapshotRef.current = savedSnapshot;
+      initialFormRef.current = savedSnapshot;
       setForm(savedForm);
       formRef.current = savedForm;
       removeEditorDraft(draftKey);
@@ -875,10 +1223,10 @@ export default function AdminModuleEditor() {
       }
     >
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="aapm-scrollbar h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
-          <TabsTrigger value="content" className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs shadow-none data-[state=active]:border-brand-orange data-[state=active]:bg-transparent data-[state=active]:shadow-none">Konten modul</TabsTrigger>
-          <TabsTrigger value="preview" className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs shadow-none data-[state=active]:border-brand-orange data-[state=active]:bg-transparent data-[state=active]:shadow-none">Pratinjau learner</TabsTrigger>
-          <TabsTrigger value="assessment" disabled={isNew} className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs shadow-none data-[state=active]:border-brand-orange data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+        <TabsList className="aapm-editor-mode-tabs aapm-scrollbar h-auto w-full justify-start gap-1 overflow-x-auto rounded-[var(--radius-control)] bg-surface-subtle/60 p-1">
+          <TabsTrigger value="content" className="rounded-[var(--radius-control)] border-0 px-3 py-1.5 text-xs shadow-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Konten modul</TabsTrigger>
+          <TabsTrigger value="preview" className="rounded-[var(--radius-control)] border-0 px-3 py-1.5 text-xs shadow-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Pratinjau learner</TabsTrigger>
+          <TabsTrigger value="assessment" disabled={isNew} className="rounded-[var(--radius-control)] border-0 px-3 py-1.5 text-xs shadow-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
             Bank soal
           </TabsTrigger>
         </TabsList>
@@ -890,13 +1238,12 @@ export default function AdminModuleEditor() {
               onNavigate={scrollToEditorSection}
               onPreview={() => setActiveTab("preview")}
               onSave={submitEditorForm}
-              isDirty={isDirty}
               isSaving={isSaving}
               elementItems={editorialInsertActions}
               onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             />
             <form id="module-editor-form" onSubmit={save} className="space-y-5">
-            <section id="module-section-identity" className="scroll-mt-24 border-b border-border">
+            <section id="module-section-identity" className="aapm-editor-section scroll-mt-24 border-b border-border" data-active={activeSection === "module-section-identity" ? "true" : "false"}>
               <div className="grid gap-3 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div className="min-w-0">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Struktur</div>
@@ -912,7 +1259,7 @@ export default function AdminModuleEditor() {
                 </div>
               </div>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-3 sm:grid-cols-4">
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Level</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</dd></div>
+                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Chapter</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</dd></div>
                 <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Modul</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.moduleNumber || "—"}</dd></div>
                 <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Roadmap</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.order === "" ? "—" : form.order}</dd></div>
                 <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Kategori</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.category || "—"}</dd></div>
@@ -921,7 +1268,7 @@ export default function AdminModuleEditor() {
                 {!identityIsComplete && <div className="mb-3 flex justify-end"><span className="text-[10px] text-brand-orange">Lengkapi field wajib sebelum ditutup.</span></div>}
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1.5">
-                    <Label>Level</Label>
+                    <Label>Nomor chapter</Label>
                     <Input
                       type="number"
                       min="1"
@@ -932,7 +1279,7 @@ export default function AdminModuleEditor() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Nama level</Label>
+                    <Label>Nama chapter</Label>
                     <Input
                       value={form.levelName}
                       onChange={(event) => set("levelName", event.target.value)}
@@ -989,7 +1336,7 @@ export default function AdminModuleEditor() {
                 </div>
               </div>}
             </section>
-            <section id="module-section-content" className="scroll-mt-24">
+            <section id="module-section-content" className="aapm-editor-section scroll-mt-24" data-active={activeSection === "module-section-content" ? "true" : "false"}>
               <h2 className="mb-3 text-base font-semibold">Materi utama</h2>
               <EditorialComposer
                 ref={editorialComposerRef}
@@ -1006,45 +1353,100 @@ export default function AdminModuleEditor() {
                 }}
                 onLegacyVideoChange={(videoUrl) => set("videoUrl", videoUrl)}
               />
-              <div id="module-section-outcomes" className="mt-4 scroll-mt-24 grid gap-4 lg:grid-cols-3">
-                {[
-                  ["learningObjectives", "Tujuan pembelajaran"],
-                  ["keyTakeaways", "Poin penting"],
-                  ["checklist", "Checklist praktik"],
-                ].map(([key, label]) => (
-                  <div key={key} className="space-y-2">
-                    <Label>{label}</Label>
-                    <Textarea
-                      rows={5}
-                      value={form[key]}
-                      onChange={(event) => set(key, event.target.value)}
-                      placeholder="Satu item per baris"
-                    />
+              <div id="module-section-outcomes" className="aapm-editor-section mt-4 scroll-mt-24 space-y-3" data-active={activeSection === "module-section-outcomes" ? "true" : "false"}>
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold">Tujuan & insight</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Edit poin learner langsung. Satu poin per baris.</p>
                   </div>
-                ))}
+                  <Badge variant="outline" className="text-[10px]">Konten utama</Badge>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <CompactListField
+                    id="module-learning-objectives"
+                    label="Tujuan pembelajaran"
+                    icon="target"
+                    value={form.learningObjectives}
+                    onChange={(event) => set("learningObjectives", event.target.value)}
+                  />
+                  <CompactListField
+                    id="module-key-takeaways"
+                    label="Poin penting"
+                    icon="info"
+                    value={form.keyTakeaways}
+                    onChange={(event) => set("keyTakeaways", event.target.value)}
+                  />
+                  <CompactListField
+                    id="module-checklist"
+                    label="Checklist praktik"
+                    icon="checkRead"
+                    tone="orange"
+                    value={form.checklist}
+                    onChange={(event) => set("checklist", event.target.value)}
+                  />
+                </div>
+                <AiModuleDraft
+                  form={form}
+                  toast={toast}
+                  onApply={(draft) => {
+                    set("learningObjectives", draft.learningObjectives.join("\n"));
+                    set("keyTakeaways", draft.keyTakeaways.join("\n"));
+                    set("checklist", draft.checklist.join("\n"));
+                    set("practicalAssignment", draft.practicalAssignment);
+                  }}
+                />
+                <details className="rounded-[var(--radius-control)] border border-border bg-surface-subtle/45">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold [&::-webkit-details-marker]:hidden">
+                    <AapmIcon name="settings" className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="flex-1">Tampilan tujuan & insight</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">opsional</span>
+                    <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-muted-foreground" />
+                  </summary>
+                  <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-3">
+                    <div className="space-y-1.5"><Label>Layout</Label><Select value={editorialPresentation.objectives.layout} onValueChange={(value) => setEditorialPresentation("objectives", "layout", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="columns">Dua kolom</SelectItem><SelectItem value="stacked">Satu kolom</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-1.5"><Label>Aksen warna</Label><Select value={editorialPresentation.objectives.tone} onValueChange={(value) => setEditorialPresentation("objectives", "tone", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="neutral">Netral</SelectItem><SelectItem value="green">Hijau</SelectItem><SelectItem value="orange">Orange</SelectItem><SelectItem value="blue">Biru</SelectItem><SelectItem value="violet">Violet</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-1.5"><Label>Kepadatan</Label><Select value={editorialPresentation.objectives.density} onValueChange={(value) => setEditorialPresentation("objectives", "density", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></div>
+                  </div>
+                </details>
               </div>
-              <div id="module-section-practice" className="mt-4 scroll-mt-24 grid gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Tugas praktik</Label>
-                  <Textarea
-                    rows={4}
-                    value={form.practicalAssignment}
-                    onChange={(event) =>
-                      set("practicalAssignment", event.target.value)
-                    }
-                  />
+              <div id="module-section-practice" className="aapm-editor-section mt-4 scroll-mt-24 space-y-3" data-active={activeSection === "module-section-practice" ? "true" : "false"}>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="aapm-editor-point-card aapm-token-card min-w-0 border border-border bg-background p-3">
+                    <Label htmlFor="module-practical-assignment" className="text-xs font-semibold">Tugas praktik</Label>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Satu tugas yang dapat dikerjakan learner.</p>
+                    <Textarea id="module-practical-assignment" rows={3} className="mt-2 min-h-[6.25rem] resize-y text-sm" value={form.practicalAssignment} onChange={(event) => set("practicalAssignment", event.target.value)} placeholder="Tulis tugas praktik…" />
+                  </div>
+                  <div className="aapm-editor-point-card aapm-token-card min-w-0 border border-border bg-background p-3">
+                    <Label htmlFor="module-video-script" className="text-xs font-semibold">Naskah video</Label>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Opsional, tampil sebagai pendamping video.</p>
+                    <Textarea id="module-video-script" rows={3} className="mt-2 min-h-[6.25rem] resize-y text-sm" value={form.videoScript} onChange={(event) => set("videoScript", event.target.value)} placeholder="Tulis catatan video…" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Naskah video</Label>
-                  <Textarea
-                    rows={4}
-                    value={form.videoScript}
-                    onChange={(event) => set("videoScript", event.target.value)}
-                  />
-                </div>
+                <details className="rounded-[var(--radius-control)] border border-border bg-surface-subtle/45">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold [&::-webkit-details-marker]:hidden">
+                    <AapmIcon name="settings" className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="flex-1">Tampilan praktik & checklist</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">opsional</span>
+                    <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-muted-foreground" />
+                  </summary>
+                  <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-3">
+                    <div className="space-y-1.5"><Label>Aksen kartu</Label><Select value={editorialPresentation.practical.tone} onValueChange={(value) => setEditorialPresentation("practical", "tone", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="green">Hijau</SelectItem><SelectItem value="orange">Orange</SelectItem><SelectItem value="blue">Biru</SelectItem><SelectItem value="violet">Violet</SelectItem><SelectItem value="neutral">Netral</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-1.5"><Label>Kepadatan</Label><Select value={editorialPresentation.practical.density} onValueChange={(value) => setEditorialPresentation("practical", "density", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-1.5"><Label>Gaya checklist</Label><Select value={editorialPresentation.practical.checklistStyle} onValueChange={(value) => setEditorialPresentation("practical", "checklistStyle", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="checkbox">Checkbox interaktif</SelectItem><SelectItem value="list">Daftar ringkas</SelectItem></SelectContent></Select></div>
+                  </div>
+                </details>
               </div>
             </section>
-            <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><AapmIcon name={isDirty ? "edit" : "checkRead"} className={`mt-0.5 h-4 w-4 shrink-0 ${isDirty ? "text-brand-orange" : "text-brand-green"}`} /> {isDirty ? "Perubahan lokal belum tersimpan. Draft pemulihan tersimpan di browser ini, bukan di server." : "Belum ada perubahan lokal. Learner menerima materi setelah Simpan modul."}</div><Button type="submit" disabled={createModule.isPending || updateModule.isPending}>{createModule.isPending || updateModule.isPending ? "Menyimpan…" : "Simpan modul"}<AapmIcon name="checkRead" /></Button></div>
+            <div className="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 border-t border-border bg-background/95 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground" role="status" aria-live="polite">
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isSaving ? "animate-pulse bg-brand-orange" : isDirty ? "bg-brand-orange" : "bg-brand-green"}`} aria-hidden="true" />
+                <span className="truncate">{isSaving ? "Menyimpan…" : isDirty ? "Ada perubahan belum disimpan" : "Semua perubahan tersimpan"}</span>
+              </div>
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>
+                {isSaving ? "Menyimpan…" : "Simpan modul"}
+                <AapmIcon name={isSaving ? "refresh" : "checkRead"} className={isSaving ? "animate-spin" : undefined} />
+              </Button>
+            </div>
             </form>
           </div>
         </TabsContent>
@@ -1065,6 +1467,18 @@ export default function AdminModuleEditor() {
                     {form.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{form.videoScript}</p>}
                   </div>
                 )}
+                <div className="mt-7 space-y-8 border-t border-border pt-7">
+                  <LessonStructuredContent
+                    module={{
+                      ...form,
+                      learningObjectives: textToList(form.learningObjectives),
+                      keyTakeaways: textToList(form.keyTakeaways),
+                      checklist: textToList(form.checklist),
+                    }}
+                    document={form.editorialContent}
+                    withSectionIds={false}
+                  />
+                </div>
               </div>
             </div>
           </Surface>
@@ -1091,7 +1505,6 @@ export default function AdminModuleEditor() {
            if (!draft) return;
            setForm(draft.form);
            formRef.current = draft.form;
-           initialFormRef.current = JSON.stringify(form);
           removeEditorDraft(draft.key);
           setPendingDraft(null);
         }}

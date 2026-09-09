@@ -15,6 +15,7 @@ import {
   LineChart as T7LineChartPrimitive,
   MetricCard as T7MetricCard,
   Sparkline as T7SparklinePrimitive,
+  SectionHeader as T7SectionHeaderPrimitive,
   TrendIndicator as T7TrendIndicator,
 } from "@ten4seven/ui";
 
@@ -70,6 +71,19 @@ export const FormSection = T7FormSection;
 export const MetricCard = T7MetricCard;
 export const TrendIndicator = T7TrendIndicator;
 
+/**
+ * SectionHeader keeps lesson and admin surfaces on the same Ten4Seven
+ * heading grammar while still giving feature code one Academy import path.
+ */
+/** @type {any} */
+export const SectionHeader = ({ className, ...props } = {}) => {
+  return React.createElement(T7SectionHeaderPrimitive, {
+    ...props,
+    className: cn("aapm-section-header", className),
+    "data-t7-bridge": "academy-section-header",
+  });
+};
+
 /** @type {any} */
 export const DataTable = ({ className, density = "default", responsive = "scroll", ...props } = {}) => {
   return React.createElement(T7DataTablePrimitive, {
@@ -100,6 +114,7 @@ export const KPICluster = ({ className, ...props } = {}) => {
 export const Sparkline = ({ className, ...props } = {}) => {
   return React.createElement(T7SparklinePrimitive, { ...props, className: cn("aapm-sparkline", className), "data-t7-bridge": "academy-sparkline" });
 };
+/** @type {any} */
 export const CircularProgress = ({ className, ...props } = {}) => {
   return React.createElement(T7CircularProgressPrimitive, { ...props, className: cn("aapm-circular-progress", className), "data-t7-bridge": "academy-circular-progress" });
 };

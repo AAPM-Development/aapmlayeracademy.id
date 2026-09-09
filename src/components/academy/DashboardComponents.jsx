@@ -29,22 +29,6 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, Number(value) || 0));
 }
 
-function buildCourseSignal(modules = [], completedSet = new Set()) {
-  const ordered = [...modules].sort(
-    (a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0),
-  );
-  if (!ordered.length) return [0];
-
-  let completed = 0;
-  return [
-    0,
-    ...ordered.map((module) => {
-      if (completedSet.has(Number(module.moduleNumber))) completed += 1;
-      return Math.round((completed / ordered.length) * 100);
-    }),
-  ];
-}
-
 function buildQuizSignal(progress = []) {
   const values = [...progress]
     .filter((item) => item?.quizTotal)
@@ -198,7 +182,6 @@ export function DashboardMetricStrip({
   const activeLevelProgress = activeLevel
     ? getLevelProgress(activeLevel.number, modules, completedSet).percent
     : 0;
-  const courseSignal = buildCourseSignal(modules, completedSet);
   const quizSignal = buildQuizSignal(progress);
   const metrics = [
     {
@@ -209,7 +192,7 @@ export function DashboardMetricStrip({
       tone: "success",
       colorway: 1,
       emphasis: "soft",
-      chart: <Sparkline values={courseSignal} colorway={1} tone="success" label="Kemajuan modul tersimpan" />,
+      progress: <Progress value={coursePercent} aria-label={`${completed} dari ${total} modul selesai`} className="aapm-dashboard-progress aapm-dashboard-progress--green" />,
     },
     {
       value: `${coursePercent}%`,
@@ -683,11 +666,11 @@ export function DashboardWelcome({
   ];
 
   return (
-    <section className="academy-enter mb-6 overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] border border-border bg-card shadow-[var(--surface-shadow)]">
+    <section className="academy-enter aapm-dashboard-welcome mb-6 overflow-hidden rounded-[var(--radius-card)] border border-border bg-card shadow-[var(--surface-shadow)]">
       <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
-        <div className="relative overflow-hidden bg-brand-green px-5 py-6 text-white sm:px-8 sm:py-7">
-          <div className="pointer-events-none absolute -right-14 -top-14 h-44 w-44 rounded-full border-[18px] border-brand-lime/15" />
-          <div className="pointer-events-none absolute bottom-0 right-16 h-20 w-20 rounded-full border border-brand-orange/30" />
+        <div className="aapm-dashboard-welcome__hero relative overflow-hidden bg-brand-green px-5 py-5 text-white sm:px-7 sm:py-6">
+          <div className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full border-[16px] border-brand-lime/15" />
+          <div className="pointer-events-none absolute bottom-0 right-14 h-16 w-16 rounded-full border border-brand-orange/20" />
           <div className="relative">
             <Badge
               variant="soft"
@@ -695,35 +678,35 @@ export function DashboardWelcome({
             >
               <AapmIcon name="ai" className="shrink-0 text-[11px]" /> Ruang belajar
             </Badge>
-            <h1 className="mt-4 max-w-2xl text-3xl font-semibold leading-[1.05] tracking-[-0.045em] sm:text-[2.55rem]">
+            <h1 className="mt-3 max-w-2xl text-3xl font-semibold leading-[1.04] tracking-[-0.045em] sm:text-[2.35rem]">
               Selamat datang, {name}.
               <span className="mt-1 block text-brand-lime">Belajar dengan arah.</span>
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 sm:text-[0.95rem]">
+            <p className="mt-2 max-w-2xl text-sm leading-5 text-white/75 sm:text-[0.9rem]">
               Baca sinyal farm, kuasai konsep inti, lalu bawa keputusan yang lebih presisi kembali ke lapangan.
             </p>
-            <div className="mt-5 flex max-w-xl flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/15 rounded-xl border border-white/15 bg-white/5">
-                <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">{total}</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
-                <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold">{learningLevels.length}</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
-                <div className="px-3 py-3 sm:px-4"><div className="text-lg font-semibold text-brand-lime">{focusLabel}</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
+            <div className="mt-4 flex max-w-none flex-col gap-3 sm:flex-row sm:items-stretch">
+              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/15 rounded-[var(--radius-control)] border border-white/15 bg-white/5">
+                <div className="px-3 py-2.5 sm:px-3.5"><div className="text-lg font-semibold">{total}</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
+                <div className="px-3 py-2.5 sm:px-3.5"><div className="text-lg font-semibold">{learningLevels.length}</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
+                <div className="px-3 py-2.5 sm:px-3.5"><div className="text-lg font-semibold text-brand-lime">{focusLabel}</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
               </div>
-              <div className="flex shrink-0 items-center gap-3 rounded-xl border border-white/15 bg-black/10 px-3 py-2.5">
+              <div className="flex shrink-0 items-center gap-2.5 rounded-[var(--radius-control)] border border-white/15 bg-black/10 px-3 py-2">
                 <DashboardRing
                   value={coursePercent}
                   label={`Progress kursus ${coursePercent}%`}
-                  size={58}
+                  size={50}
                   className="aapm-dashboard-ring--hero"
                 />
                 <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">Perjalanan kursus</div>
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/60">Perjalanan kursus</div>
                   <div className="mt-0.5 text-sm font-semibold text-white">{completed}/{total} modul</div>
                   <div className="mt-0.5 text-[10px] text-white/60">Progress tersimpan</div>
                 </div>
               </div>
             </div>
-            <div className="mt-5 grid w-full max-w-xl gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
-              <Button asChild className="h-11 w-full bg-brand-orange px-4 text-white shadow-sm hover:bg-brand-orange/90 sm:w-auto">
+            <div className="mt-4 grid w-full gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
+              <Button asChild className="h-10 w-full bg-brand-orange px-4 text-white shadow-sm hover:bg-brand-orange/90 sm:w-auto">
                 <Link
                   to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/modules"}
                   className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap"
@@ -731,7 +714,7 @@ export function DashboardWelcome({
                   <AapmIcon name="course" className="shrink-0" /> {nextModule ? "Lanjutkan belajar" : "Buka jalur belajar"}
                 </Link>
               </Button>
-              <Button asChild variant="ghost" className="h-11 w-full border border-white/[0.35] bg-white/[0.05] px-4 text-white shadow-none hover:bg-white/[0.12] hover:text-white sm:w-auto">
+              <Button asChild variant="ghost" className="h-10 w-full border border-white/[0.35] bg-white/[0.05] px-4 text-white shadow-none hover:bg-white/[0.12] hover:text-white sm:w-auto">
                 <Link to="/ai-assistant" className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap">
                   <AapmIcon name="ai" className="shrink-0" /> Tanya APPI
                 </Link>
@@ -740,7 +723,7 @@ export function DashboardWelcome({
           </div>
         </div>
 
-        <aside className="flex min-h-full flex-col border-t border-border bg-surface-subtle p-5 sm:p-7 lg:border-l lg:border-t-0">
+        <aside className="aapm-dashboard-welcome__route flex min-h-full flex-col border-t border-border bg-surface-subtle p-5 sm:p-6 lg:border-l lg:border-t-0">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Rute sesi ini</div>
@@ -748,12 +731,12 @@ export function DashboardWelcome({
             </div>
             <IconTile icon="solar:route-bold-duotone" tone="orange" size="sm" />
           </div>
-          <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange p-3.5">
+          <div className="mt-4 rounded-[var(--radius-control)] border border-tint-orange-border bg-tint-orange p-3">
             <div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-tint-orange-foreground/75">Fokus berikutnya</div>
             <div className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{nextModule?.title || "Pilih modul pertama Anda"}</div>
             <div className="mt-1 text-xs leading-5 text-muted-foreground">{nextModule ? `Modul ${nextModule.moduleNumber} · ${nextModule.category || "Academy"}` : "Roadmap akan memandu urutannya."}</div>
           </div>
-          <ol className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
+          <ol className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5">
             {cycle.map((phase, index) => (
               <li key={phase} className="flex min-w-0 items-start gap-2">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-[10px] font-semibold tabular-nums text-brand-orange shadow-sm">{index + 1}</span>
@@ -761,7 +744,7 @@ export function DashboardWelcome({
               </li>
             ))}
           </ol>
-          <div className="mt-auto flex items-center justify-between border-t border-border pt-4 text-xs">
+          <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs">
             <span className="text-muted-foreground">6 fase utama</span>
             <Link to="/modules" className="inline-flex items-center gap-1 font-semibold text-brand-green hover:text-brand-green/80">Lihat roadmap <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link>
           </div>

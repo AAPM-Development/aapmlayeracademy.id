@@ -111,6 +111,49 @@ const text = (value, maximum = 24000) =>
 const select = (value, allowed, fallback) =>
   allowed.includes(value) ? value : fallback;
 
+const editorialPresentationDefaults = Object.freeze({
+  objectives: Object.freeze({
+    layout: "columns",
+    tone: "neutral",
+    density: "comfortable",
+  }),
+  practical: Object.freeze({
+    tone: "green",
+    density: "comfortable",
+    checklistStyle: "checkbox",
+  }),
+});
+
+/**
+ * Presentation controls for the structured fields below the editorial flow.
+ * These are intentionally semantic/token based. Unknown values fall back to
+ * the established learner presentation so older documents never drift.
+ */
+export function normaliseEditorialPresentation(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const objectives = source.objectives && typeof source.objectives === "object"
+    ? source.objectives
+    : {};
+  const practical = source.practical && typeof source.practical === "object"
+    ? source.practical
+    : {};
+
+  return {
+    objectives: {
+      layout: select(objectives.layout, ["columns", "stacked"], editorialPresentationDefaults.objectives.layout),
+      tone: select(objectives.tone, ["neutral", "green", "orange", "blue", "violet"], editorialPresentationDefaults.objectives.tone),
+      density: select(objectives.density, ["comfortable", "compact"], editorialPresentationDefaults.objectives.density),
+    },
+    practical: {
+      tone: select(practical.tone, ["green", "orange", "blue", "violet", "neutral"], editorialPresentationDefaults.practical.tone),
+      density: select(practical.density, ["comfortable", "compact"], editorialPresentationDefaults.practical.density),
+      checklistStyle: select(practical.checklistStyle, ["checkbox", "list"], editorialPresentationDefaults.practical.checklistStyle),
+    },
+  };
+}
+
+export const editorialPresentationDefaultsValue = () => normaliseEditorialPresentation();
+
 function makeBlockId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `block-${crypto.randomUUID()}`;
@@ -241,6 +284,11 @@ function normaliseBlock(block, index) {
         label: text(block.label, 160),
         url: text(block.url, 2048),
         description: text(block.description, 600),
+        variant: select(block.variant, ["card", "soft", "inline"], "card"),
+        tone: select(block.tone, ["neutral", "green", "orange", "blue", "violet"], "neutral"),
+        icon: select(block.icon, ["link", "arrowRight", "none"], "link"),
+        width: select(block.width, ["standard", "wide"], "standard"),
+        target: select(block.target, ["auto", "same", "new"], "auto"),
         align: select(block.align, ["left", "center", "right"], "left"),
       };
     case "cta":
@@ -250,6 +298,11 @@ function normaliseBlock(block, index) {
         label: text(block.label, 120),
         url: text(block.url, 2048),
         variant: select(block.variant, ["primary", "secondary", "outline"], "primary"),
+        tone: select(block.tone, ["green", "orange", "blue", "violet", "neutral"], "green"),
+        size: select(block.size, ["sm", "md", "lg"], "md"),
+        radius: select(block.radius, ["sm", "md", "lg", "pill"], "md"),
+        icon: select(block.icon, ["none", "arrowRight", "check", "play"], "arrowRight"),
+        target: select(block.target, ["auto", "same", "new"], "auto"),
         align: select(block.align, ["left", "center", "right"], "left"),
         width: select(block.width, ["auto", "full"], "auto"),
       };
@@ -259,7 +312,11 @@ function normaliseBlock(block, index) {
         type: "callout",
         title: text(block.title, 160),
         content: text(block.content, 2400),
-        tone: select(block.tone, ["info", "practice", "warning"], "info"),
+        tone: select(block.tone, ["info", "practice", "warning", "blue", "violet", "neutral"], "info"),
+        variant: select(block.variant, ["soft", "solid", "outline"], "soft"),
+        icon: select(block.icon, ["info", "target", "warning", "check", "none"], "info"),
+        density: select(block.density, ["comfortable", "compact"], "comfortable"),
+        width: select(block.width, ["standard", "wide"], "standard"),
         align: select(block.align, ["left", "center", "right"], "left"),
       };
     case "divider":
@@ -294,15 +351,17 @@ export function parseEditorialDocument(value) {
       .slice(0, 80)
       .map((block, index) => normaliseBlock(block, index))
       .filter(Boolean),
+    presentation: normaliseEditorialPresentation(document.presentation),
   };
 }
 
-export function createEditorialDocument(blocks = []) {
+export function createEditorialDocument(blocks = [], presentation = undefined) {
   return {
     version: EDITORIAL_DOCUMENT_VERSION,
     blocks: blocks
       .map((block, index) => normaliseBlock(block, index))
       .filter(Boolean),
+    presentation: normaliseEditorialPresentation(presentation),
   };
 }
 
@@ -622,11 +681,11 @@ export function createEditorialBlock(type) {
     case "video":
       return { id, type, url: "", caption: "", align: "left" };
     case "link":
-      return { id, type, label: "", url: "", description: "", align: "left" };
+      return { id, type, label: "", url: "", description: "", variant: "card", tone: "neutral", icon: "link", width: "standard", target: "auto", align: "left" };
     case "cta":
-      return { id, type, label: "", url: "", variant: "primary", align: "left", width: "auto" };
+      return { id, type, label: "", url: "", variant: "primary", tone: "green", size: "md", radius: "md", icon: "arrowRight", target: "auto", align: "left", width: "auto" };
     case "callout":
-      return { id, type, title: "", content: "", tone: "info", align: "left" };
+      return { id, type, title: "", content: "", tone: "info", variant: "soft", icon: "info", density: "comfortable", width: "standard", align: "left" };
     case "divider":
       return { id, type, style: "subtle", spacing: "comfortable" };
     default:

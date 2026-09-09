@@ -1,5 +1,5 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, IconButton } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import ProfileAvatar from "@/components/ProfileAvatar";
@@ -12,12 +12,16 @@ export default function AcademyHeader({
   onToggleTheme = () => {},
   onLogout = () => {},
   user = null,
+  pageOverride = null,
+  workspaceBadgeLabel = "Ruang Academy",
+  workspaceAction = null,
+  accountContextOverride = null,
 } = {}) {
   const location = useLocation();
-  const page = getNavigationMeta(location.pathname);
+  const page = pageOverride || getNavigationMeta(location.pathname);
   const displayName = user?.full_name || user?.email || "Peserta";
   const isAdmin = user?.role === "admin";
-  const accountContext = isAdmin ? "Admin Academy" : "Peserta Layer Farm";
+  const accountContext = accountContextOverride || (isAdmin ? "Admin Academy" : "Peserta Layer Farm");
 
   return (
     <div className="aapm-token-header flex h-[var(--aapm-shell-header-height)] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-8" data-t7-region="topbar">
@@ -38,10 +42,20 @@ export default function AcademyHeader({
       </div>
 
       <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
-        <Badge variant="soft" className="hidden gap-2 bg-surface-subtle text-xs font-medium text-muted-foreground lg:inline-flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-           Ruang Academy
-        </Badge>
+        {workspaceAction ? (
+          <Button asChild variant="ghost" className="hidden text-xs sm:inline-flex">
+            <Link to={workspaceAction.to}>
+              {workspaceAction.icon && <AapmIcon name={workspaceAction.icon} className="h-4 w-4" />}
+              {workspaceAction.label}
+            </Link>
+          </Button>
+        ) : null}
+        {workspaceBadgeLabel ? (
+          <Badge variant="soft" className="hidden gap-2 bg-surface-subtle text-xs font-medium text-muted-foreground lg:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
+            {workspaceBadgeLabel}
+          </Badge>
+        ) : null}
         <IconButton variant="ghost" onClick={onToggleTheme} label={themeMode === "dark" ? "Gunakan mode terang" : "Gunakan mode gelap"}>
           <AapmIcon name={themeMode === "dark" ? "themeLight" : "themeDark"} className="h-4 w-4" />
         </IconButton>

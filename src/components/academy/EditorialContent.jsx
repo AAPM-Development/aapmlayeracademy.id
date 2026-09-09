@@ -141,6 +141,57 @@ const calloutTone = {
   info: "border-brand-green/20 bg-brand-green/5 text-brand-green",
   practice: "border-brand-orange/20 bg-brand-orange/5 text-brand-orange",
   warning: "border-tint-orange-border bg-tint-orange text-tint-orange-foreground",
+  blue: "border-tint-blue-border bg-tint-blue text-tint-blue-foreground",
+  violet: "border-tint-violet-border bg-tint-violet text-tint-violet-foreground",
+  neutral: "border-border bg-surface-subtle text-muted-foreground",
+};
+
+const calloutVariant = {
+  soft: "",
+  solid: "border-transparent",
+  outline: "bg-background",
+};
+
+const calloutSolidTone = {
+  info: "border-brand-green bg-brand-green",
+  practice: "border-brand-orange bg-brand-orange",
+  warning: "border-tint-orange-foreground bg-tint-orange-foreground",
+  blue: "border-tint-blue-foreground bg-tint-blue-foreground",
+  violet: "border-tint-violet-foreground bg-tint-violet-foreground",
+  neutral: "border-foreground bg-foreground",
+};
+
+const calloutIcon = {
+  info: "info",
+  target: "target",
+  warning: "warning",
+  check: "checkRead",
+};
+
+const calloutWidth = {
+  standard: "max-w-3xl",
+  wide: "max-w-5xl",
+};
+
+const calloutDensity = {
+  comfortable: "p-4 sm:p-5",
+  compact: "p-3 sm:p-4",
+};
+
+const linkTone = {
+  neutral: "border-border bg-background",
+  green: "border-brand-green/20 bg-brand-green/5",
+  orange: "border-brand-orange/20 bg-brand-orange/5",
+  blue: "border-tint-blue-border bg-tint-blue",
+  violet: "border-tint-violet-border bg-tint-violet",
+};
+
+const linkTextTone = {
+  neutral: "text-foreground",
+  green: "text-brand-green",
+  orange: "text-brand-orange",
+  blue: "text-tint-blue-foreground",
+  violet: "text-tint-violet-foreground",
 };
 
 const imageRatio = {
@@ -167,6 +218,29 @@ const ctaAlignment = {
   center: "justify-center",
   right: "justify-end",
 };
+
+const ctaIcon = {
+  arrowRight: "arrowRight",
+  check: "checkRead",
+  play: "play",
+};
+
+const ctaRadius = {
+  sm: "sm",
+  md: "md",
+  lg: "lg",
+  pill: "pill",
+};
+
+function linkTargetProps(href, target = "auto") {
+  const external = href.startsWith("https://");
+  const opensNewTab = target === "new" || (target === "auto" && external);
+  if (!opensNewTab) return {};
+  return {
+    target: "_blank",
+    ...(external ? { rel: "noopener noreferrer" } : {}),
+  };
+}
 
 const textAlignment = {
   left: "text-left",
@@ -301,12 +375,20 @@ function CtaBlock({ block }) {
   const href = safeEditorialLink(block.url);
   if (!href || !block.label) return null;
   const variant = block.variant === "secondary" ? "secondary" : block.variant === "outline" ? "outline" : "default";
-  const external = href.startsWith("https://");
+  const icon = block.icon && block.icon !== "none" ? ctaIcon[block.icon] || "arrowRight" : "";
   return (
     <div className={cn("flex w-full", ctaAlignment[block.align] || ctaAlignment.left)}>
-      <Button asChild variant={variant} className={cn("max-w-full whitespace-normal text-left", block.width === "full" && "w-full")}>
-        <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-          {block.label} <AapmIcon name="arrowRight" className="shrink-0" />
+      <Button
+        asChild
+        variant={variant}
+        size={block.size || "md"}
+        data-editorial-cta-tone={block.tone || "green"}
+        data-editorial-cta-variant={block.variant || "primary"}
+        data-editorial-cta-radius={ctaRadius[block.radius] || ctaRadius.md}
+        className={cn("max-w-full whitespace-normal text-left", block.width === "full" && "w-full")}
+      >
+        <a href={href} {...linkTargetProps(href, block.target)}>
+          {block.label} {icon && <AapmIcon name={icon} className="shrink-0" />}
         </a>
       </Button>
     </div>
@@ -316,37 +398,48 @@ function CtaBlock({ block }) {
 function LinkBlock({ block }) {
   const href = safeEditorialLink(block.url);
   if (!href || !block.label) return null;
-  const external = href.startsWith("https://");
+  const icon = block.icon && block.icon !== "none" ? block.icon : "";
+  const variant = block.variant || "card";
+  const tone = block.tone || "neutral";
+  const content = (
+    <CardContent className={cn("flex min-w-0 items-start gap-3", variant === "inline" ? "px-0 py-1" : "p-4")}>
+      {icon && <AapmIcon name={icon} className={cn("mt-0.5 h-4 w-4 shrink-0", linkTextTone[tone] || linkTextTone.neutral)} />}
+      <div className={cn("min-w-0", textAlignment[block.align] || textAlignment.left)}>
+        <a
+          href={href}
+          className={cn("break-words text-sm font-semibold underline decoration-brand-orange/35 underline-offset-4 hover:text-brand-orange", linkTextTone[tone] || linkTextTone.neutral)}
+          {...linkTargetProps(href, block.target)}
+        >
+          {block.label}
+        </a>
+        {block.description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{block.description}</p>}
+      </div>
+    </CardContent>
+  );
   return (
-    <Card className={cn("max-w-3xl border-border shadow-none", blockAlignment[block.align] || blockAlignment.left)}>
-      <CardContent className="flex min-w-0 items-start gap-3 p-4">
-        <AapmIcon name="link" className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
-        <div className={cn("min-w-0", textAlignment[block.align] || textAlignment.left)}>
-          <a
-            href={href}
-            className="break-words text-sm font-semibold text-foreground underline decoration-brand-orange/35 underline-offset-4 hover:text-brand-orange"
-            {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-          >
-            {block.label}
-          </a>
-          {block.description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{block.description}</p>}
-        </div>
-      </CardContent>
+    <Card className={cn(calloutWidth[block.width] || calloutWidth.standard, "shadow-none", variant === "inline" ? "border-transparent bg-transparent" : variant === "soft" ? "bg-surface-subtle" : (linkTone[tone] || linkTone.neutral), blockAlignment[block.align] || blockAlignment.left)}>
+      {content}
     </Card>
   );
 }
 
 function CalloutBlock({ block }) {
   const tone = calloutTone[block.tone] || calloutTone.info;
+  const style = calloutVariant[block.variant] || calloutVariant.soft;
+  const solidTone = block.variant === "solid" ? calloutSolidTone[block.tone] || calloutSolidTone.info : "";
+  const icon = block.icon && block.icon !== "none" ? calloutIcon[block.icon] || "info" : "";
   const title = block.title?.trim();
   const content = block.content?.trim();
   if ((!title || title === "Catatan penting") && !content) return null;
   return (
-    <Card className={cn("max-w-3xl shadow-none", tone, blockAlignment[block.align] || blockAlignment.left)}>
-      <CardContent className="p-4 sm:p-5">
-        <div className={textAlignment[block.align] || textAlignment.left}>
-          {title && <div className="text-sm font-semibold text-foreground">{title}</div>}
-          {content && <p className="mt-1 text-sm leading-6 text-muted-foreground">{content}</p>}
+    <Card className={cn(calloutWidth[block.width] || calloutWidth.standard, "shadow-none", tone, style, solidTone, block.variant === "solid" && "text-white", blockAlignment[block.align] || blockAlignment.left)}>
+      <CardContent className={calloutDensity[block.density] || calloutDensity.comfortable}>
+        <div className={cn("flex items-start gap-3", textAlignment[block.align] || textAlignment.left)}>
+          {icon && <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background/70", block.variant === "solid" ? "text-current" : "text-brand-orange")}><AapmIcon name={icon} className="h-4 w-4" /></span>}
+          <div className="min-w-0 flex-1">
+            {title && <div className={cn("text-sm font-semibold", block.variant === "solid" ? "text-white" : "text-foreground")}>{title}</div>}
+            {content && <p className={cn("mt-1 text-sm leading-6", block.variant === "solid" ? "text-white/80" : "text-muted-foreground")}>{content}</p>}
+          </div>
         </div>
       </CardContent>
     </Card>

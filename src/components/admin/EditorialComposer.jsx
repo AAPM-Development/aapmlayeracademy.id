@@ -3,6 +3,7 @@ import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
+import { EditorialContent } from "@/components/academy/EditorialContent";
 import EditorialPresentation from "@/components/academy/EditorialPresentation";
 import { nativeApi } from "@/api/nativeClient";
 import {
@@ -46,6 +47,7 @@ import {
   editorialBlockLibrary,
   editorialComposerBlocks,
   getEditorialQualitySignals,
+  parseEditorialDocument,
 } from "@/lib/editorialDocument";
 
 const blockMeta = Object.fromEntries(editorialBlockLibrary.map((item) => [item.type, item]));
@@ -113,6 +115,15 @@ function imageFileIssue(file) {
     return `Ukuran gambar maksimal ${readableBytes(MAX_IMAGE_UPLOAD_BYTES)}.`;
   }
   return "";
+}
+
+async function uploadEditorialImage(file) {
+  const issue = imageFileIssue(file);
+  if (issue) throw new Error(issue);
+  const result = await nativeApi.admin.media.uploadImage(file);
+  const url = result?.media?.url;
+  if (!url) throw new Error("Respons unggahan gambar tidak lengkap.");
+  return url;
 }
 
 const imagePreviewRatio = {
@@ -200,9 +211,7 @@ function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar 
     }
     setUploadState({ status: "loading", message: "Mengunggah dan memeriksa gambar…" });
     try {
-      const result = await nativeApi.admin.media.uploadImage(file);
-      const url = result?.media?.url;
-      if (!url) throw new Error("Respons unggahan gambar tidak lengkap.");
+      const url = await uploadEditorialImage(file);
       onValueChange(url);
       setUploadState({ status: "success", message: "Gambar siap dipakai dalam materi." });
     } catch (error) {
@@ -418,7 +427,7 @@ function ContentBlockFields({ block, onChange }) {
   const fieldId = (field) => `${block.id}-${field}`;
   switch (block.type) {
     case "richText":
-      return <div className="space-y-3"><div className="flex flex-wrap items-end justify-between gap-3"><p className="max-w-2xl text-xs leading-5 text-muted-foreground">Gunakan paragraf untuk narasi. Tambahkan blok teks baru bila ingin menyisipkan media di antara dua bagian tulisan.</p><AlignmentField id={fieldId("rich-text-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata teks learner" /></div><RichTextEditor id={fieldId("rich-text")} value={block.content || ""} onChange={(content) => set("content", content)} /></div>;
+      return <div className="space-y-3"><div className="flex flex-wrap items-end justify-between gap-3"><p className="max-w-2xl text-xs leading-5 text-muted-foreground">Gunakan paragraf untuk narasi. Tambahkan blok teks baru bila ingin menyisipkan media di antara dua bagian tulisan.</p><AlignmentField id={fieldId("rich-text-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata teks learner" /></div><RichTextEditor id={fieldId("rich-text")} value={block.content || ""} onChange={(content) => set("content", content)} onUploadImage={uploadEditorialImage} /></div>;
     case "slides": return <SlidesBlockFields block={block} onChange={onChange} />;
     case "image": return (
       <div className="space-y-3">
@@ -439,25 +448,143 @@ function ContentBlockFields({ block, onChange }) {
     case "table": return <TableBlockFields block={block} onChange={onChange} />;
     case "heading": return <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]"><Field id={fieldId("heading-content")} label="Judul bagian"><Input id={fieldId("heading-content")} value={block.content || ""} maxLength={500} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("heading-level")} label="Hierarki"><Select value={String(block.level || 2)} onValueChange={(level) => set("level", Number(level))}><SelectTrigger id={fieldId("heading-level")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2">Bagian utama</SelectItem><SelectItem value="3">Subbagian</SelectItem><SelectItem value="4">Detail</SelectItem></SelectContent></Select></Field><AlignmentField id={fieldId("heading-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata judul" /></div>;
     case "video": return <VideoBlockFields block={block} onChange={onChange} />;
-    case "link": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field><div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div><AlignmentField id={fieldId("link-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata kartu tautan" /></div>;
+    case "link": return <div className="grid gap-3 sm:grid-cols-2">
+      <Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field>
+      <Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field>
+      <div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div>
+      <Field id={fieldId("link-variant")} label="Gaya tautan"><Select value={block.variant || "card"} onValueChange={(variant) => set("variant", variant)}><SelectTrigger id={fieldId("link-variant")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="card">Kartu</SelectItem><SelectItem value="soft">Kartu lembut</SelectItem><SelectItem value="inline">Inline · ringan</SelectItem></SelectContent></Select></Field>
+      <Field id={fieldId("link-tone")} label="Aksen warna tautan"><Select value={block.tone || "neutral"} onValueChange={(tone) => set("tone", tone)}><SelectTrigger id={fieldId("link-tone")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="neutral">Netral</SelectItem><SelectItem value="green">Hijau</SelectItem><SelectItem value="orange">Orange</SelectItem><SelectItem value="blue">Biru</SelectItem><SelectItem value="violet">Violet</SelectItem></SelectContent></Select></Field>
+      <Field id={fieldId("link-icon")} label="Ikon tautan"><Select value={block.icon || "link"} onValueChange={(icon) => set("icon", icon)}><SelectTrigger id={fieldId("link-icon")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="link">Tautan</SelectItem><SelectItem value="arrowRight">Panah kanan</SelectItem><SelectItem value="none">Tanpa ikon</SelectItem></SelectContent></Select></Field>
+      <Field id={fieldId("link-width")} label="Lebar di learner"><Select value={block.width || "standard"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("link-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standard">Standar · bacaan</SelectItem><SelectItem value="wide">Lebar · menonjol</SelectItem></SelectContent></Select></Field>
+      <Field id={fieldId("link-target")} label="Target tautan"><Select value={block.target || "auto"} onValueChange={(target) => set("target", target)}><SelectTrigger id={fieldId("link-target")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Otomatis · eksternal tab baru</SelectItem><SelectItem value="same">Tab saat ini</SelectItem><SelectItem value="new">Tab baru</SelectItem></SelectContent></Select></Field>
+      <AlignmentField id={fieldId("link-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata tautan" />
+    </div>;
     case "cta": {
       const buttonVariant = block.variant === "secondary" ? "secondary" : block.variant === "outline" ? "outline" : "default";
       return <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("cta-label")} label="Label tombol"><Input id={fieldId("cta-label")} value={block.label || ""} maxLength={120} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field></div>
-        <div className="grid gap-3 sm:grid-cols-3"><Field id={fieldId("cta-variant")} label="Warna / gaya"><Select value={block.variant || "primary"} onValueChange={(variant) => set("variant", variant)}><SelectTrigger id={fieldId("cta-variant")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="primary">Primary · hijau</SelectItem><SelectItem value="secondary">Secondary · netral</SelectItem><SelectItem value="outline">Outline · garis</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-align")} label="Rata tombol"><Select value={block.align || "left"} onValueChange={(align) => set("align", align)}><SelectTrigger id={fieldId("cta-align")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="left">Kiri</SelectItem><SelectItem value="center">Tengah</SelectItem><SelectItem value="right">Kanan</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-width")} label="Lebar tombol"><Select value={block.width || "auto"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("cta-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Sesuai label</SelectItem><SelectItem value="full">Penuh kontainer</SelectItem></SelectContent></Select></Field></div>
-        <div className={cn("flex rounded-xl border border-border bg-surface-subtle p-3", ctaAlignmentClass[block.align || "left"] || ctaAlignmentClass.left)} aria-label="Pratinjau tombol aksi"><Button type="button" variant={buttonVariant} className={cn("max-w-full whitespace-normal", block.width === "full" && "w-full")}>{block.label || "Contoh tombol aksi"}</Button></div>
+        <div className="grid gap-3 sm:grid-cols-3"><Field id={fieldId("cta-variant")} label="Gaya tombol"><Select value={block.variant || "primary"} onValueChange={(variant) => set("variant", variant)}><SelectTrigger id={fieldId("cta-variant")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="primary">Primary · isi</SelectItem><SelectItem value="secondary">Secondary · netral</SelectItem><SelectItem value="outline">Outline · garis</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-tone")} label="Aksen warna"><Select value={block.tone || "green"} onValueChange={(tone) => set("tone", tone)}><SelectTrigger id={fieldId("cta-tone")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="green">Hijau</SelectItem><SelectItem value="orange">Orange</SelectItem><SelectItem value="blue">Biru</SelectItem><SelectItem value="violet">Violet</SelectItem><SelectItem value="neutral">Netral</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-size")} label="Ukuran"><Select value={block.size || "md"} onValueChange={(size) => set("size", size)}><SelectTrigger id={fieldId("cta-size")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sm">Kompak</SelectItem><SelectItem value="md">Standar</SelectItem><SelectItem value="lg">Prominen</SelectItem></SelectContent></Select></Field></div>
+        <div className="grid gap-3 sm:grid-cols-3"><Field id={fieldId("cta-radius")} label="Roundness"><Select value={block.radius || "md"} onValueChange={(radius) => set("radius", radius)}><SelectTrigger id={fieldId("cta-radius")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sm">Rapat</SelectItem><SelectItem value="md">Standar</SelectItem><SelectItem value="lg">Lembut</SelectItem><SelectItem value="pill">Pill</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-icon")} label="Ikon CTA"><Select value={block.icon || "arrowRight"} onValueChange={(icon) => set("icon", icon)}><SelectTrigger id={fieldId("cta-icon")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="arrowRight">Panah kanan</SelectItem><SelectItem value="check">Centang</SelectItem><SelectItem value="play">Putar</SelectItem><SelectItem value="none">Tanpa ikon</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-target")} label="Target CTA"><Select value={block.target || "auto"} onValueChange={(target) => set("target", target)}><SelectTrigger id={fieldId("cta-target")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Otomatis · eksternal tab baru</SelectItem><SelectItem value="same">Tab saat ini</SelectItem><SelectItem value="new">Tab baru</SelectItem></SelectContent></Select></Field></div>
+        <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("cta-align")} label="Rata tombol"><Select value={block.align || "left"} onValueChange={(align) => set("align", align)}><SelectTrigger id={fieldId("cta-align")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="left">Kiri</SelectItem><SelectItem value="center">Tengah</SelectItem><SelectItem value="right">Kanan</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-width")} label="Lebar tombol"><Select value={block.width || "auto"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("cta-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Sesuai label</SelectItem><SelectItem value="full">Penuh kontainer</SelectItem></SelectContent></Select></Field></div>
+        <div className={cn("flex rounded-xl border border-border bg-surface-subtle p-3", ctaAlignmentClass[block.align || "left"] || ctaAlignmentClass.left)} aria-label="Pratinjau tombol aksi"><Button type="button" variant={buttonVariant} size={block.size || "md"} data-editorial-cta-tone={block.tone || "green"} data-editorial-cta-variant={block.variant || "primary"} data-editorial-cta-radius={block.radius || "md"} className={cn("max-w-full whitespace-normal", block.width === "full" && "w-full")}>{block.label || "Contoh tombol aksi"}{block.icon !== "none" && <AapmIcon name={block.icon || "arrowRight"} className="shrink-0" />}</Button></div>
       </div>;
     }
-    case "callout": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("callout-title")} label="Judul sorotan"><Input id={fieldId("callout-title")} value={block.title || ""} maxLength={160} onChange={(event) => set("title", event.target.value)} /></Field><Field id={fieldId("callout-content")} label="Isi sorotan"><Textarea id={fieldId("callout-content")} rows={2} maxLength={2400} value={block.content || ""} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("callout-tone")} label="Nada sorotan"><Select value={block.tone || "info"} onValueChange={(tone) => set("tone", tone)}><SelectTrigger id={fieldId("callout-tone")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="info">Info · hijau</SelectItem><SelectItem value="practice">Praktik · orange</SelectItem><SelectItem value="warning">Peringatan · hangat</SelectItem></SelectContent></Select></Field><AlignmentField id={fieldId("callout-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata sorotan" /></div>;
+    case "callout": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("callout-title")} label="Judul sorotan"><Input id={fieldId("callout-title")} value={block.title || ""} maxLength={160} onChange={(event) => set("title", event.target.value)} /></Field><Field id={fieldId("callout-content")} label="Isi sorotan"><Textarea id={fieldId("callout-content")} rows={2} maxLength={2400} value={block.content || ""} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("callout-tone")} label="Nada sorotan"><Select value={block.tone || "info"} onValueChange={(tone) => set("tone", tone)}><SelectTrigger id={fieldId("callout-tone")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="info">Info · hijau</SelectItem><SelectItem value="practice">Praktik · orange</SelectItem><SelectItem value="warning">Peringatan · hangat</SelectItem><SelectItem value="blue">Informasi · biru</SelectItem><SelectItem value="violet">Insight · violet</SelectItem><SelectItem value="neutral">Netral · abu</SelectItem></SelectContent></Select></Field><Field id={fieldId("callout-variant")} label="Gaya sorotan"><Select value={block.variant || "soft"} onValueChange={(variant) => set("variant", variant)}><SelectTrigger id={fieldId("callout-variant")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="soft">Lembut</SelectItem><SelectItem value="solid">Solid</SelectItem><SelectItem value="outline">Outline</SelectItem></SelectContent></Select></Field><Field id={fieldId("callout-icon")} label="Ikon sorotan"><Select value={block.icon || "info"} onValueChange={(icon) => set("icon", icon)}><SelectTrigger id={fieldId("callout-icon")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="info">Info</SelectItem><SelectItem value="target">Target</SelectItem><SelectItem value="warning">Peringatan</SelectItem><SelectItem value="check">Centang</SelectItem><SelectItem value="none">Tanpa ikon</SelectItem></SelectContent></Select></Field><Field id={fieldId("callout-density")} label="Kepadatan"><Select value={block.density || "comfortable"} onValueChange={(density) => set("density", density)}><SelectTrigger id={fieldId("callout-density")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></Field><Field id={fieldId("callout-width")} label="Lebar sorotan"><Select value={block.width || "standard"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("callout-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standard">Standar · bacaan</SelectItem><SelectItem value="wide">Lebar · menonjol</SelectItem></SelectContent></Select></Field><AlignmentField id={fieldId("callout-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata sorotan" /></div>;
     case "divider": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("divider-style")} label="Gaya pemisah"><Select value={block.style || "subtle"} onValueChange={(style) => set("style", style)}><SelectTrigger id={fieldId("divider-style")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="subtle">Halus</SelectItem><SelectItem value="strong">Tegas</SelectItem><SelectItem value="dashed">Putus-putus</SelectItem></SelectContent></Select></Field><Field id={fieldId("divider-spacing")} label="Jarak vertikal"><Select value={block.spacing || "comfortable"} onValueChange={(spacing) => set("spacing", spacing)}><SelectTrigger id={fieldId("divider-spacing")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="compact">Rapat</SelectItem><SelectItem value="comfortable">Lega</SelectItem></SelectContent></Select></Field></div>;
     default: return null;
   }
 }
 
+function editorialPreviewReady(block) {
+  if (!block || typeof block !== "object") return false;
+  switch (block.type) {
+    case "richText":
+    case "heading":
+      return Boolean(String(block.content || "").trim());
+    case "image":
+      return Boolean(safeEditorialImage(block.src));
+    case "video":
+      return Boolean(String(block.url || "").trim());
+    case "link":
+    case "cta":
+      return Boolean(String(block.label || "").trim() && String(block.url || "").trim());
+    case "callout":
+      return Boolean(String(block.title || "").trim() || String(block.content || "").trim());
+    case "table":
+      return Array.isArray(block.columns) && block.columns.some((column) => String(column || "").trim())
+        && Array.isArray(block.rows) && block.rows.some((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim()));
+    case "slides":
+      if (block.presentationUrl || block.pptxUrl) return true;
+      return Array.isArray(block.slides) && block.slides.some((slide) => Boolean(
+        String(slide?.title || "").trim()
+        || String(slide?.content || "").trim()
+        || safeEditorialImage(slide?.src),
+      ));
+    case "divider":
+      return true;
+    default:
+      return false;
+  }
+}
+
+const editorialPreviewHint = {
+  richText: "Isi teks akan tampil di learner.",
+  heading: "Judul akan tampil di learner.",
+  image: "Pilih gambar untuk melihat frame learner.",
+  video: "Tambahkan URL video untuk melihat pemutar learner.",
+  link: "Isi label dan URL untuk melihat tautan learner.",
+  cta: "Isi label dan URL untuk melihat CTA learner.",
+  callout: "Isi judul atau isi sorotan untuk melihat callout learner.",
+  table: "Isi kolom dan baris untuk melihat tabel learner.",
+  slides: "Tambahkan slide atau unggah presentasi untuk melihat galeri learner.",
+  divider: "Pemisah memakai token jarak learner.",
+};
+
+function EditorialElementPreview({ block }) {
+  const document = React.useMemo(() => createEditorialDocument([block]), [block]);
+  const ready = editorialPreviewReady(block);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const previewId = `${block.id}-learner-preview`;
+  return (
+    <section className="mt-4 overflow-hidden rounded-xl border border-brand-green/20 bg-background" aria-label="Pratinjau elemen learner" data-editorial-element-preview>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 bg-surface-subtle px-3 py-2 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40"
+        aria-expanded={previewOpen}
+        aria-controls={previewId}
+        data-editorial-element-preview-toggle
+        onClick={() => setPreviewOpen((open) => !open)}
+      >
+        <AapmIcon name="eye" className="h-3.5 w-3.5 text-brand-green" />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-green">Pratinjau learner</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{ready ? (previewOpen ? "Tutup" : "Buka") : "Belum lengkap"}</span>
+        <AapmIcon name={previewOpen ? "chevronUp" : "chevronDown"} className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      </button>
+      {previewOpen && <div id={previewId} className="min-h-12 border-t border-border p-3 sm:p-4">
+        {ready
+          ? <EditorialContent document={document} title="Pratinjau elemen" />
+          : <div className="flex min-h-12 items-center gap-2 rounded-lg border border-dashed border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><AapmIcon name="info" className="h-4 w-4 shrink-0 text-brand-orange" />{editorialPreviewHint[block.type] || "Lengkapi elemen untuk melihat pratinjau learner."}</div>}
+      </div>}
+    </section>
+  );
+}
+
 function ContentBlockCard({ block, index, total, onChange, onMove, onRemove }) {
   const meta = blockMeta[block.type];
   const mediaTone = ["image", "slides", "video"].includes(block.type);
-  return <article id={contentBlockAnchorId(block.id)} className={cn("aapm-editorial-block aapm-token-card scroll-mt-28 p-4 sm:p-5", mediaTone ? "border-brand-orange/25" : "border-border")} data-editorial-block={block.type} data-editorial-block-id={block.id}><div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border pb-3"><IconTile icon={editorIcon(block.type)} tone={mediaTone ? "orange" : "green"} size="md" /><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4><Badge variant="outline" className="text-[10px]">Urutan {index + 1}</Badge></div></div><div className="ml-auto flex items-center gap-1"><IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><ContentBlockFields block={block} onChange={onChange} /></article>;
+  return (
+    <article
+      id={contentBlockAnchorId(block.id)}
+      className={cn("aapm-editorial-block aapm-token-card scroll-mt-28 overflow-hidden", mediaTone ? "border-brand-orange/25" : "border-border")}
+      data-editorial-block={block.type}
+      data-editorial-block-id={block.id}
+    >
+      <div className="aapm-editorial-block__header flex flex-wrap items-start gap-3 border-b border-border/60 bg-surface-subtle/30 px-4 py-3 sm:px-5">
+        <IconTile icon={editorIcon(block.type)} tone={mediaTone ? "orange" : "green"} size="md" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-semibold">{meta?.label || "Elemen materi"}</h4>
+            <Badge variant="outline" className="text-[10px]">Blok {index + 1}/{total}</Badge>
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-1">
+          <IconButton size="sm" className="h-9 w-9 p-0" label={`Naikkan ${meta?.label || "elemen"}`} tooltip="Naikkan elemen" disabled={index === 0} onClick={() => onMove(index, index - 1)}>
+            <AapmIcon name="chevronUp" className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="sm" className="h-9 w-9 p-0" label={`Turunkan ${meta?.label || "elemen"}`} tooltip="Turunkan elemen" disabled={index === total - 1} onClick={() => onMove(index, index + 1)}>
+            <AapmIcon name="chevronDown" className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton size="sm" className="h-9 w-9 p-0 text-danger hover:bg-danger/5 hover:text-danger" label={`Hapus ${meta?.label || "elemen"}`} tooltip="Hapus elemen" onClick={() => onRemove(index)}>
+            <AapmIcon name="delete" className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
+      </div>
+      <div className="aapm-editorial-block__body px-4 py-4 sm:px-5 sm:py-5">
+        <ContentBlockFields block={block} onChange={onChange} />
+        <EditorialElementPreview block={block} />
+      </div>
+    </article>
+  );
 }
 
 const insertableTypes = editorialBlockLibrary.map((block) => block.type);
@@ -485,7 +612,7 @@ export const editorialInsertActions = Object.freeze([
 
 function EditorialOutlineList({ items, activeItemId, onNavigate }) {
   return (
-    <nav aria-label="Daftar isi materi" className="space-y-1">
+    <nav aria-label="Urutan blok materi" className="space-y-1">
       {items.map((item, index) => {
         const active = item.id === activeItemId;
         return (
@@ -496,7 +623,7 @@ function EditorialOutlineList({ items, activeItemId, onNavigate }) {
             onClick={() => onNavigate(item.id)}
             className={cn(
               "group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/50",
-              active ? "bg-tint-green text-foreground" : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
+              active ? "bg-surface-subtle text-foreground" : "text-muted-foreground hover:bg-surface-subtle/70 hover:text-foreground",
             )}
           >
             <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[9px] font-semibold", active ? "bg-brand-green text-white" : item.tone === "media" ? "bg-tint-orange text-brand-orange" : "bg-surface-subtle text-muted-foreground")}>
@@ -516,6 +643,8 @@ function EditorialOutlineList({ items, activeItemId, onNavigate }) {
 function EditorialOutline({ items, activeItemId, onNavigate }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const elementCount = items.length;
+  const activeItem = items.find((item) => item.id === activeItemId);
+  const activeLabel = activeItem?.label || "Belum dipilih";
   const navigate = (id) => {
     onNavigate(id);
     setMobileOpen(false);
@@ -523,18 +652,18 @@ function EditorialOutline({ items, activeItemId, onNavigate }) {
 
   return (
     <div className="aapm-editorial-outline min-w-0 xl:col-start-2 xl:row-start-1 xl:sticky xl:top-24 xl:self-start" data-editorial-outline>
-      <section className="aapm-token-panel rounded-xl border border-border bg-surface-subtle/70 p-2 xl:hidden">
+      <section className="aapm-token-panel rounded-xl border border-border/70 bg-surface-subtle/55 p-2 xl:hidden">
         <button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50" aria-expanded={mobileOpen} aria-controls="editorial-outline-mobile-list" onClick={() => setMobileOpen((open) => !open)}>
           <IconTile icon="table" tone="green" size="sm" />
-          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Daftar isi</span><span className="block text-[10px] leading-4 text-muted-foreground">{elementCount} elemen</span></span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold">Blok materi</span><span className="block truncate text-[10px] leading-4 text-muted-foreground">{elementCount} blok · Aktif: {activeLabel}</span></span>
           <AapmIcon name={mobileOpen ? "chevronUp" : "chevronDown"} className="h-4 w-4 text-muted-foreground" />
         </button>
         {mobileOpen && <div id="editorial-outline-mobile-list" className="mt-2 max-h-72 overflow-y-auto border-t border-border pt-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={navigate} /></div>}
       </section>
 
-      <aside className="aapm-token-panel hidden overflow-hidden rounded-xl border border-border bg-background/95 shadow-sm xl:block" aria-label="Daftar isi editor">
-        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2"><IconTile icon="table" tone="green" size="sm" /><div><h3 className="text-xs font-semibold">Daftar isi</h3><p className="text-[10px] text-muted-foreground">{elementCount} elemen</p></div></div>
+      <aside className="aapm-token-panel hidden overflow-hidden rounded-xl border border-border/70 bg-background/95 shadow-none xl:block" aria-label="Blok materi editor">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2"><IconTile icon="table" tone="green" size="sm" /><div><h3 className="text-xs font-semibold">Blok materi</h3><p className="max-w-[12rem] truncate text-[10px] text-muted-foreground">{elementCount} blok · Aktif: {activeLabel}</p></div></div>
         </div>
         <div className="aapm-scrollbar max-h-[calc(100vh-10rem)] overflow-y-auto p-2"><EditorialOutlineList items={items} activeItemId={activeItemId} onNavigate={onNavigate} /></div>
       </aside>
@@ -588,7 +717,8 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
   const outlineNavigationLockRef = React.useRef(0);
 
   const commit = (nextBlocks) => {
-    const nextDocument = createEditorialDocument(nextBlocks);
+    const currentDocument = parseEditorialDocument(value);
+    const nextDocument = createEditorialDocument(nextBlocks, currentDocument?.presentation);
     if (editorialTextLength(nextDocument.blocks) > EDITORIAL_TEXT_LIMIT) {
       setAnnouncement("Isi materi sudah mencapai batas maksimum.");
       return false;
@@ -707,10 +837,10 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
       <div className={cn("aapm-editorial-layout grid min-w-0 gap-5", hasOutline && "xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start")}>
         {hasOutline && <EditorialOutline items={outlineItems} activeItemId={activeOutlineId} onNavigate={navigateOutline} />}
         <div className={cn("min-w-0 space-y-5", hasOutline && "xl:col-start-1 xl:row-start-1")}>
-          {blocks.length ? <section className="space-y-3" aria-label="Alur blok materi"><div className="flex flex-wrap items-center justify-between gap-2 px-1"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Urutan learner</p><Badge variant="outline">{blocks.length} blok</Badge></div><div className="space-y-3">{blocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => updateBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div></section> : <section className="rounded-2xl border border-dashed border-brand-green/30 bg-brand-green/5 p-5 text-center"><AapmIcon name="solar:document-add-bold" className="mx-auto h-6 w-6 text-brand-green" /><h3 className="mt-3 text-sm font-semibold">Mulai dari blok pertama</h3><p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">Pilih teks kaya untuk menulis narasi, lalu tambahkan media atau struktur saat dibutuhkan.</p></section>}
+          {blocks.length ? <section className="space-y-3" aria-label="Alur blok materi"><div className="flex flex-wrap items-center justify-between gap-2 px-1"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Urutan learner</p><Badge variant="outline">{blocks.length} blok</Badge></div><div className="space-y-5">{blocks.map((block, index) => <ContentBlockCard key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => updateBlock(index, patch)} onMove={moveContentBlock} onRemove={requestRemoveContentBlock} />)}</div></section> : <section className="rounded-2xl border border-dashed border-brand-green/30 bg-brand-green/5 p-5 text-center"><AapmIcon name="solar:document-add-bold" className="mx-auto h-6 w-6 text-brand-green" /><h3 className="mt-3 text-sm font-semibold">Mulai dari blok pertama</h3><p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">Pilih teks kaya untuk menulis narasi, lalu tambahkan media atau struktur saat dibutuhkan.</p></section>}
 
           <section id="editorial-insert-rail" className="aapm-editorial-insert-rail rounded-2xl border border-dashed border-border bg-surface-subtle/60 p-4" aria-label="Tambah blok materi" data-editorial-insert-rail>
-            <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-semibold">Tambah ke alur</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Blok baru disisipkan setelah blok yang sedang aktif di daftar isi, atau di akhir alur.</p></div><Badge variant="outline" className="text-[10px]">Maks. 80 blok</Badge></div>
+            <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-semibold">Tambah ke alur</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Blok baru disisipkan setelah blok yang sedang aktif dalam urutan ini, atau di akhir alur.</p></div><Badge variant="outline" className="text-[10px]">Maks. 80 blok</Badge></div>
             <div className="mt-3 flex flex-wrap gap-2">{editorialInsertActions.map((action) => <Button key={action.type} type="button" size="sm" variant="outline" className="h-10" disabled={blocks.length >= 80} onClick={() => addContentBlock(action.type)}><AapmIcon name={action.icon} className="h-3.5 w-3.5" />{action.label}</Button>)}</div>
           </section>
         </div>

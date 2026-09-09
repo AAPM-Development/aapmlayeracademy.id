@@ -57,7 +57,10 @@ function Ten4SevenRuntime({ children }) {
   return (
     <Ten4SevenProvider
       theme="product"
-      preferences={{ appearance: mode, density: 'default' }}
+      // The Academy surface is data-dense by nature. Use the canonical
+      // Ten4Seven compact profile so controls, tables, KPI cards, and shell
+      // spacing share one rhythm instead of each route inventing its own.
+      preferences={{ appearance: mode, density: 'compact' }}
       overrides={{
         // Product recipe supplies composition; approved AAPM colors own the
         // action/accent roles instead of silently falling back to indigo/cyan.
@@ -74,6 +77,15 @@ function Ten4SevenRuntime({ children }) {
         // contract here so input borders, focus rings, and chart focus states
         // cannot fall back to the product recipe's unrelated blue default.
         variables: {
+          // AAPM needs a slightly tighter product geometry than the reference
+          // recipe's roomy default. These remain provider-owned variables, so
+          // every canonical primitive (and every semantic bridge) receives
+          // the same radius scale rather than a route-level override.
+          '--t7-radius-control': '8px',
+          '--t7-radius-panel': '12px',
+          '--t7-radius-data': '12px',
+          '--t7-radius-card': '14px',
+          '--t7-radius-shell': '16px',
           '--t7-focus-hsl': 'var(--t7-primary-hsl)',
           '--t7-input-focus-border-hsl': 'var(--t7-primary-hsl)',
           '--t7-chart-focus-hsl': 'var(--t7-primary-hsl)',

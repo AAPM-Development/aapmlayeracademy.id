@@ -1130,6 +1130,35 @@ function decode_editorial_content($value): ?array
     return $decoded;
 }
 
+function normalise_editorial_presentation($value): array
+{
+    $source = is_array($value) ? $value : [];
+    $objectives = isset($source['objectives']) && is_array($source['objectives'])
+        ? $source['objectives']
+        : [];
+    $practical = isset($source['practical']) && is_array($source['practical'])
+        ? $source['practical']
+        : [];
+
+    $pick = static function ($candidate, array $allowed, string $fallback): string {
+        $candidate = (string) $candidate;
+        return in_array($candidate, $allowed, true) ? $candidate : $fallback;
+    };
+
+    return [
+        'objectives' => [
+            'layout' => $pick($objectives['layout'] ?? '', ['columns', 'stacked'], 'columns'),
+            'tone' => $pick($objectives['tone'] ?? '', ['neutral', 'green', 'orange', 'blue', 'violet'], 'neutral'),
+            'density' => $pick($objectives['density'] ?? '', ['comfortable', 'compact'], 'comfortable'),
+        ],
+        'practical' => [
+            'tone' => $pick($practical['tone'] ?? '', ['green', 'orange', 'blue', 'violet', 'neutral'], 'green'),
+            'density' => $pick($practical['density'] ?? '', ['comfortable', 'compact'], 'comfortable'),
+            'checklistStyle' => $pick($practical['checklistStyle'] ?? '', ['checkbox', 'list'], 'checkbox'),
+        ],
+    ];
+}
+
 function present_module(array $row): array
 {
     return [
@@ -1961,10 +1990,22 @@ function normalise_editorial_content($value): string
     $allowedImagePositions = ['top', 'center', 'bottom'];
     $allowedVariants = ['primary', 'secondary', 'outline'];
     $allowedCtaWidths = ['auto', 'full'];
+    $allowedCtaTones = ['green', 'orange', 'blue', 'violet', 'neutral'];
+    $allowedCtaSizes = ['sm', 'md', 'lg'];
+    $allowedCtaRadii = ['sm', 'md', 'lg', 'pill'];
+    $allowedCtaIcons = ['none', 'arrowRight', 'check', 'play'];
+    $allowedTargets = ['auto', 'same', 'new'];
+    $allowedLinkVariants = ['card', 'soft', 'inline'];
+    $allowedLinkTones = ['neutral', 'green', 'orange', 'blue', 'violet'];
+    $allowedLinkIcons = ['link', 'arrowRight', 'none'];
     $allowedTableDensities = ['comfortable', 'compact'];
     $allowedDividerStyles = ['subtle', 'strong', 'dashed'];
     $allowedDividerSpacing = ['compact', 'comfortable'];
-    $allowedTones = ['info', 'practice', 'warning'];
+    $allowedTones = ['info', 'practice', 'warning', 'blue', 'violet', 'neutral'];
+    $allowedCalloutVariants = ['soft', 'solid', 'outline'];
+    $allowedCalloutIcons = ['info', 'target', 'warning', 'check', 'none'];
+    $allowedCalloutDensities = ['comfortable', 'compact'];
+    $presentation = normalise_editorial_presentation($document['presentation'] ?? []);
     $blocks = [];
     $ids = [];
     $totalLength = 0;
@@ -2154,24 +2195,57 @@ function normalise_editorial_content($value): string
             $normalised['label'] = profile_text($block['label'] ?? '', 160);
             $normalised['url'] = normalise_editorial_link_url($block['url'] ?? '');
             $normalised['description'] = profile_text($block['description'] ?? '', 600);
+            $variant = (string) ($block['variant'] ?? 'card');
+            $tone = (string) ($block['tone'] ?? 'neutral');
+            $icon = (string) ($block['icon'] ?? 'link');
+            $width = (string) ($block['width'] ?? 'standard');
+            $target = (string) ($block['target'] ?? 'auto');
             $alignment = (string) ($block['align'] ?? 'left');
-            if ($normalised['label'] === '' || !in_array($alignment, $allowedAlignments, true)) error_response('Tautan editorial harus memiliki label dan perataan yang valid.', 422, 'invalid_editorial_content');
+            if ($normalised['label'] === ''
+                || !in_array($variant, $allowedLinkVariants, true)
+                || !in_array($tone, $allowedLinkTones, true)
+                || !in_array($icon, $allowedLinkIcons, true)
+                || !in_array($width, $allowedWidths, true)
+                || !in_array($target, $allowedTargets, true)
+                || !in_array($alignment, $allowedAlignments, true)) {
+                error_response('Tautan editorial memiliki tampilan atau perilaku yang tidak valid.', 422, 'invalid_editorial_content');
+            }
             $normalised['align'] = $alignment;
+            $normalised['variant'] = $variant;
+            $normalised['tone'] = $tone;
+            $normalised['icon'] = $icon;
+            $normalised['width'] = $width;
+            $normalised['target'] = $target;
             $totalLength += strlen($normalised['label']) + strlen($normalised['description']);
             $hasContent = true;
         } elseif ($type === 'cta') {
             $normalised['label'] = profile_text($block['label'] ?? '', 120);
             $normalised['url'] = normalise_editorial_link_url($block['url'] ?? '');
             $variant = (string) ($block['variant'] ?? 'primary');
+            $tone = (string) ($block['tone'] ?? 'green');
+            $size = (string) ($block['size'] ?? 'md');
+            $radius = (string) ($block['radius'] ?? 'md');
+            $icon = (string) ($block['icon'] ?? 'arrowRight');
+            $target = (string) ($block['target'] ?? 'auto');
             $alignment = (string) ($block['align'] ?? 'left');
             $width = (string) ($block['width'] ?? 'auto');
             if ($normalised['label'] === ''
                 || !in_array($variant, $allowedVariants, true)
+                || !in_array($tone, $allowedCtaTones, true)
+                || !in_array($size, $allowedCtaSizes, true)
+                || !in_array($radius, $allowedCtaRadii, true)
+                || !in_array($icon, $allowedCtaIcons, true)
+                || !in_array($target, $allowedTargets, true)
                 || !in_array($alignment, $allowedAlignments, true)
                 || !in_array($width, $allowedCtaWidths, true)) {
                 error_response('Tombol editorial tidak valid.', 422, 'invalid_editorial_content');
             }
             $normalised['variant'] = $variant;
+            $normalised['tone'] = $tone;
+            $normalised['size'] = $size;
+            $normalised['radius'] = $radius;
+            $normalised['icon'] = $icon;
+            $normalised['target'] = $target;
             $normalised['align'] = $alignment;
             $normalised['width'] = $width;
             $totalLength += strlen($normalised['label']);
@@ -2180,10 +2254,25 @@ function normalise_editorial_content($value): string
             $normalised['title'] = profile_text($block['title'] ?? '', 160);
             $normalised['content'] = profile_text($block['content'] ?? '', 2400);
             $tone = (string) ($block['tone'] ?? 'info');
-            if (($normalised['title'] === '' && $normalised['content'] === '') || !in_array($tone, $allowedTones, true)) error_response('Sorotan editorial tidak valid.', 422, 'invalid_editorial_content');
+            $variant = (string) ($block['variant'] ?? 'soft');
+            $icon = (string) ($block['icon'] ?? 'info');
+            $density = (string) ($block['density'] ?? 'comfortable');
+            $calloutWidth = (string) ($block['width'] ?? 'standard');
+            if (($normalised['title'] === '' && $normalised['content'] === '')
+                || !in_array($tone, $allowedTones, true)
+                || !in_array($variant, $allowedCalloutVariants, true)
+                || !in_array($icon, $allowedCalloutIcons, true)
+                || !in_array($density, $allowedCalloutDensities, true)
+                || !in_array($calloutWidth, $allowedWidths, true)) {
+                error_response('Sorotan editorial tidak valid.', 422, 'invalid_editorial_content');
+            }
             $alignment = (string) ($block['align'] ?? 'left');
             if (!in_array($alignment, $allowedAlignments, true)) error_response('Perataan sorotan editorial tidak valid.', 422, 'invalid_editorial_content');
             $normalised['tone'] = $tone;
+            $normalised['variant'] = $variant;
+            $normalised['icon'] = $icon;
+            $normalised['density'] = $density;
+            $normalised['width'] = $calloutWidth;
             $normalised['align'] = $alignment;
             $totalLength += strlen($normalised['title']) + strlen($normalised['content']);
             $hasContent = true;
@@ -2203,9 +2292,16 @@ function normalise_editorial_content($value): string
         $blocks[] = $normalised;
     }
 
-    if (!$blocks) return '';
+    if (!$blocks) {
+        if (!array_key_exists('presentation', $document)) return '';
+        $encoded = json_encode(['version' => 1, 'blocks' => [], 'presentation' => $presentation], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (!is_string($encoded)) {
+            error_response('Dokumen editorial tidak dapat disimpan.', 422, 'invalid_editorial_content');
+        }
+        return $encoded;
+    }
     if (!$hasContent) error_response('Dokumen editorial harus memiliki materi.', 422, 'invalid_editorial_content');
-    $encoded = json_encode(['version' => 1, 'blocks' => $blocks], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $encoded = json_encode(['version' => 1, 'blocks' => $blocks, 'presentation' => $presentation], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if (!is_string($encoded)) {
         error_response('Dokumen editorial tidak dapat disimpan.', 422, 'invalid_editorial_content');
     }
@@ -2263,9 +2359,38 @@ function admin_module_input(array $input, ?array $existing = null): array
     ];
 }
 
+/**
+ * Chapters are persisted as the level_number/level_name pair on each module.
+ * Keep a single name for a number so the admin curriculum cannot silently
+ * split one chapter into multiple labels.
+ */
+function admin_existing_chapter_name(int $levelNumber, ?int $excludeModuleId = null): ?string
+{
+    $sql = 'SELECT level_name FROM course_modules WHERE level_number = ?';
+    $params = [$levelNumber];
+    if ($excludeModuleId !== null) {
+        $sql .= ' AND id != ?';
+        $params[] = $excludeModuleId;
+    }
+    $sql .= ' ORDER BY id ASC LIMIT 1';
+    $statement = db()->prepare($sql);
+    $statement->execute($params);
+    $name = $statement->fetchColumn();
+    return $name === false ? null : trim((string) $name);
+}
+
+function admin_validate_chapter_name(int $levelNumber, string $levelName, ?int $excludeModuleId = null): void
+{
+    $existingName = admin_existing_chapter_name($levelNumber, $excludeModuleId);
+    if ($existingName !== null && $existingName !== $levelName) {
+        error_response('Nama chapter harus sama dengan chapter yang sudah ada.', 422, 'chapter_name_mismatch');
+    }
+}
+
 function admin_create_module(array $input): array
 {
     $data = admin_module_input($input);
+    admin_validate_chapter_name($data['levelNumber'], $data['levelName']);
     $duplicate = db()->prepare('SELECT id FROM course_modules WHERE module_number = ? LIMIT 1');
     $duplicate->execute([$data['moduleNumber']]);
     if ($duplicate->fetch()) {
@@ -2286,6 +2411,9 @@ function admin_update_module(int $moduleId, array $input): array
         error_response('Modul tidak ditemukan.', 404, 'not_found');
     }
     $data = admin_module_input($input, $existing);
+    if ($data['levelNumber'] !== (int) $existing['level_number']) {
+        admin_validate_chapter_name($data['levelNumber'], $data['levelName'], $moduleId);
+    }
     if ($data['moduleNumber'] !== (int) $existing['module_number']) {
         $duplicate = db()->prepare('SELECT id FROM course_modules WHERE module_number = ? AND id != ? LIMIT 1');
         $duplicate->execute([$data['moduleNumber'], $moduleId]);
@@ -2298,8 +2426,21 @@ function admin_update_module(int $moduleId, array $input): array
             error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
         }
     }
-    $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, editorial_content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['editorialContent'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
+    db()->beginTransaction();
+    try {
+        $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, editorial_content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+        $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['editorialContent'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
+        // Editing the chapter name is intentionally a chapter-wide operation.
+        // This keeps every module in the same number/name bucket consistent.
+        $renameChapter = db()->prepare('UPDATE course_modules SET level_name = ?, updated_at = CURRENT_TIMESTAMP WHERE level_number = ?');
+        $renameChapter->execute([$data['levelName'], $data['levelNumber']]);
+        db()->commit();
+    } catch (Throwable $exception) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        throw $exception;
+    }
     return present_module(admin_module_from_id($moduleId) ?: []);
 }
 
@@ -2356,6 +2497,16 @@ function admin_reorder_modules(array $items): array
         if ((int) $existing->fetchColumn() !== 1) {
             error_response('Salah satu modul tidak ditemukan.', 404, 'not_found');
         }
+    }
+    // A reorder is a replacement for the complete roadmap, not a partial
+    // patch. Reject subsets so omitted modules cannot retain colliding or
+    // stale sort_order values and later jump between chapters unexpectedly.
+    $allIds = array_map('intval', db()->query('SELECT id FROM course_modules')->fetchAll(PDO::FETCH_COLUMN));
+    $submittedIds = array_map('intval', array_keys($moduleIds));
+    sort($allIds, SORT_NUMERIC);
+    sort($submittedIds, SORT_NUMERIC);
+    if ($allIds !== $submittedIds) {
+        error_response('Urutan modul harus memuat seluruh modul aktif.', 422, 'incomplete_reorder');
     }
     db()->beginTransaction();
     try {

@@ -149,6 +149,43 @@ test("editorial presentation controls normalize with backward-compatible default
   );
 });
 
+test("editorial action, link, and callout controls stay bounded and survive normalization", () => {
+  const document = parseEditorialDocument(JSON.stringify({
+    version: 1,
+    presentation: {
+      objectives: { layout: "stacked", tone: "violet", density: "compact" },
+      practical: { tone: "blue", density: "compact", checklistStyle: "list" },
+    },
+    blocks: [
+      { id: "cta", type: "cta", label: "Mulai", url: "/modules/2", tone: "violet", size: "lg", radius: "pill", icon: "check", target: "new", width: "full" },
+      { id: "link", type: "link", label: "Panduan", url: "https://example.com/guide", variant: "inline", tone: "violet", icon: "arrowRight", width: "wide", target: "same" },
+      { id: "highlight", type: "callout", title: "Target", content: "Amati perubahan.", tone: "blue", variant: "solid", icon: "target", density: "compact", width: "wide" },
+    ],
+  }));
+
+  assert.deepEqual(document.presentation, {
+    objectives: { layout: "stacked", tone: "violet", density: "compact" },
+    practical: { tone: "blue", density: "compact", checklistStyle: "list" },
+  });
+  assert.deepEqual(
+    { tone: document.blocks[0].tone, size: document.blocks[0].size, radius: document.blocks[0].radius, icon: document.blocks[0].icon, target: document.blocks[0].target, width: document.blocks[0].width },
+    { tone: "violet", size: "lg", radius: "pill", icon: "check", target: "new", width: "full" },
+  );
+  assert.deepEqual(
+    { variant: document.blocks[1].variant, tone: document.blocks[1].tone, icon: document.blocks[1].icon, width: document.blocks[1].width, target: document.blocks[1].target },
+    { variant: "inline", tone: "violet", icon: "arrowRight", width: "wide", target: "same" },
+  );
+  assert.deepEqual(
+    { tone: document.blocks[2].tone, variant: document.blocks[2].variant, icon: document.blocks[2].icon, density: document.blocks[2].density, width: document.blocks[2].width },
+    { tone: "blue", variant: "solid", icon: "target", density: "compact", width: "wide" },
+  );
+
+  const legacy = parseEditorialDocument(JSON.stringify({ version: 1, blocks: [{ id: "old", type: "cta", label: "Lanjut", url: "/modules/2" }] }));
+  assert.equal(legacy.blocks[0].target, "auto");
+  assert.equal(legacy.blocks[0].tone, "green");
+  assert.equal(legacy.blocks[0].icon, "arrowRight");
+});
+
 test("PPTX compatibility flattens PowerPoint SVG blip relationships without touching ordinary media", () => {
   const svgBlip = '<a:blip cstate="print"><a:extLst><a:ext><asvg:svgBlip r:embed="rId6"/></a:ext></a:extLst></a:blip>';
   assert.equal(normaliseSvgBlipMarkup(svgBlip), '<a:blip cstate="print" r:embed="rId6"/>');
@@ -204,6 +241,39 @@ test("rich-text JSON strips unsupported nodes, marks, and unsafe link attributes
   assert.deepEqual(clean.content[0].content[0].marks, [{ type: "bold" }]);
   assert.equal(clean.content[0].content[1].marks, undefined);
   assert.equal(richTextPlainText(clean), "safe badquote");
+});
+
+test("rich-text image nodes stay safe and preserve learner-ready markdown attributes", () => {
+  const clean = sanitizeRichTextDocument({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Sebelum" },
+        ],
+      },
+      {
+        type: "image",
+        attrs: {
+          src: "/uploads/diagram.webp",
+          alt: "Diagram alur",
+          title: "Aman",
+          onerror: "alert(1)",
+        },
+      },
+      {
+        type: "image",
+        attrs: { src: "javascript:alert(1)", alt: "Tidak aman" },
+      },
+    ],
+  });
+
+  assert.equal(clean.content.length, 2);
+  assert.deepEqual(clean.content[1], {
+    type: "image",
+    attrs: { src: "/uploads/diagram.webp", alt: "Diagram alur", title: "Aman" },
+  });
 });
 
 test("conversation pages deduplicate, upsert newest metadata, and remove safely", () => {

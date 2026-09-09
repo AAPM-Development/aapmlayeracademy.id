@@ -276,7 +276,7 @@ export function AiConversationRow({
         type="button"
         onClick={() => onSelect(conversation.id)}
         disabled={disabled}
-        className="min-w-0 flex-1 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+        className="min-w-0 flex-1 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
       >
         <span className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
@@ -388,7 +388,7 @@ export function AiConversationHistoryResults({
       )}
       {groups.map((group) => (
         <section key={group.label} className="min-w-0 max-w-full">
-          <p className="px-2 pb-1 pt-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground first:pt-1">
+          <p className="px-2 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground first:pt-1">
             {group.label}
           </p>
           <div className="aapm-ai-history-group">

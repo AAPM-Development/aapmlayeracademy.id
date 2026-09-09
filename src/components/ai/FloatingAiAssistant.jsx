@@ -363,15 +363,22 @@ export default function FloatingAiAssistant() {
           aria-label="APPI cepat"
           className={`aapm-ai-panel aapm-ai-floating-panel aapm-token-popover fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
-          <header className="aapm-ai-floating-panel__header aapm-token-toolbar flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <header className="aapm-ai-floating-panel__header flex min-w-0 shrink-0 items-center justify-between gap-3 px-3.5 py-2.5">
             <div className="flex min-w-0 items-center gap-2.5">
               <AiProfileAvatar
-                size="sm"
+                size="xs"
                 state={isStreaming ? streamPhase : "idle"}
               />
               <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">APPI</h2>
-                <p className="truncate text-[10px] text-muted-foreground">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <h2 className="truncate text-sm font-semibold tracking-[-0.01em]">APPI</h2>
+                  <span
+                    className="aapm-ai-floating-panel__status-dot"
+                    data-state={historySyncState}
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="aapm-ai-floating-panel__status-line truncate text-[10px] text-muted-foreground" aria-live="polite">
                   {historySyncLabel}
                 </p>
               </div>
@@ -379,7 +386,7 @@ export default function FloatingAiAssistant() {
             <div className="flex shrink-0 items-center gap-1">
               <IconButton
                 type="button"
-                size="md"
+                size="sm"
                 onClick={() => setHistoryOpen(true)}
                 disabled={isStreaming}
                 label="Buka riwayat percakapan"
@@ -390,7 +397,7 @@ export default function FloatingAiAssistant() {
               </IconButton>
               <IconButton
                 type="button"
-                size="md"
+                size="sm"
                 onClick={() => {
                   setHistoryOpen(false);
                   startNewConversation();
@@ -436,7 +443,7 @@ export default function FloatingAiAssistant() {
                     KPI aktif dapat ikut dibaca. Percakapan ini tersimpan khusus
                     di akun Anda.
                   </p>
-                  <div className="aapm-ai-card aapm-ai-quick-actions-card mt-5 divide-y divide-border">
+                  <div className="aapm-ai-card aapm-ai-quick-actions-card mt-5 divide-y divide-border/60">
                     <p className="px-3 py-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
                       AKSI CEPAT
                     </p>
@@ -613,7 +620,7 @@ export default function FloatingAiAssistant() {
               </aside>
             )}
           </div>
-          <footer className="aapm-ai-floating-composer aapm-token-toolbar shrink-0 border-t border-border p-3">
+          <footer className="aapm-ai-floating-composer shrink-0 p-2.5 sm:p-3">
             <AiComposer
               input={promptDraft}
               setInput={setPromptDraft}
@@ -632,7 +639,7 @@ export default function FloatingAiAssistant() {
               showFarmToggle={false}
               idPrefix="appi-quick-photo"
             />
-            <div className="mt-2 flex items-center justify-end gap-2">
+            <div className="aapm-ai-floating-composer__link-row mt-1.5 flex items-center justify-end gap-2 px-0.5">
               <Link
                 to="/ai-assistant"
                 state={{
@@ -641,7 +648,7 @@ export default function FloatingAiAssistant() {
                   pageContext: pageContextForPath(location.pathname),
                 }}
                 onClick={closePanel}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-orange hover:text-brand-orange/75"
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-brand-orange"
               >
                 Workspace APPI
                 <AapmIcon

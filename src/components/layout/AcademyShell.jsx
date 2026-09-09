@@ -35,6 +35,15 @@ export default function AcademyShell() {
     return () => mediaQuery.removeEventListener("change", syncViewport);
   }, []);
 
+  // AppShell keeps one scroll owner mounted while routes change. Reset that
+  // owner on navigation so a deep scroll in one learner surface never leaks
+  // into the next route (especially visible on the compact mobile shell).
+  useEffect(() => {
+    document
+      .querySelector("#academy-app-shell [data-t7-region=scrollport]")
+      ?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   const handleLogout = () => logout();
   const openCanonicalNavigation = () => {
     document
