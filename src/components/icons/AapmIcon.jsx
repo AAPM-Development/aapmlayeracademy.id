@@ -80,6 +80,7 @@ export const aapmIconSources = Object.freeze({
   clock: "solar:clock-circle-bold",
   reorder: "solar:sort-vertical-bold-duotone",
   fileCheck: "solar:file-check-bold-duotone",
+  communication: "communication",
   revenue: "revenue",
   medicine: "medicine",
   pills: "pills",
@@ -196,6 +197,7 @@ const semanticIconByAapmName = Object.freeze({
   clock: "clock",
   reorder: "sort",
   fileCheck: "fileCheck",
+  communication: "communication",
 });
 
 // A few authored Academy surfaces still pass their historical Solar name
