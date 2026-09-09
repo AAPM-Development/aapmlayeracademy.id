@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
@@ -10,6 +9,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
 import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
+import { exactColor, Ten4SevenProvider, ToastProvider } from '@ten4seven/ui';
+import { ThemeModeProvider, useThemeMode } from '@/lib/useThemeMode';
 
 const Layout = lazy(() => loadRouteModule('layout'));
 const AdminShell = lazy(() => loadRouteModule('adminShell'));
@@ -50,6 +51,44 @@ function RouteLoading() {
   );
 }
 
+function Ten4SevenRuntime({ children }) {
+  const { mode } = useThemeMode();
+
+  return (
+    <Ten4SevenProvider
+      theme="product"
+      preferences={{ appearance: mode, density: 'default' }}
+      overrides={{
+        // Product recipe supplies composition; approved AAPM colors own the
+        // action/accent roles instead of silently falling back to indigo/cyan.
+        // Emerald keeps any non-brand semantic fallback in the same green
+        // family; data series deliberately use the spectrum chart palette so
+        // operational categories do not collapse into one green signal.
+        config: {
+          palette: 'emerald',
+          chartPalette: 'spectrum',
+          primary: exactColor('#318139'),
+          accent: exactColor('#d4451a'),
+        },
+        // Provider-generated variables are emitted inline. Keep the focus
+        // contract here so input borders, focus rings, and chart focus states
+        // cannot fall back to the product recipe's unrelated blue default.
+        variables: {
+          '--t7-focus-hsl': 'var(--t7-primary-hsl)',
+          '--t7-input-focus-border-hsl': 'var(--t7-primary-hsl)',
+          '--t7-chart-focus-hsl': 'var(--t7-primary-hsl)',
+          '--t7-focus-halo': '0 0 0 var(--t7-focus-offset) hsl(var(--t7-surface-hsl))',
+          '--t7-focus-ring': 'var(--t7-focus-halo), 0 0 0 calc(var(--t7-focus-offset) + var(--t7-focus-width)) hsl(var(--t7-focus-hsl))',
+          '--t7-focus-ring-inset': 'inset 0 0 0 var(--t7-focus-width) hsl(var(--t7-focus-hsl))',
+        },
+      }}
+      className="aapm-t7-runtime"
+    >
+      {children}
+    </Ten4SevenProvider>
+  );
+}
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
 
@@ -68,8 +107,8 @@ const AuthenticatedApp = () => {
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand-green bg-background"></div>
       </div>
     );
   }
@@ -124,15 +163,20 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <ThemeModeProvider>
+      <Ten4SevenRuntime>
+        <ToastProvider>
+          <AuthProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <Router>
+                <ScrollToTop />
+                <AuthenticatedApp />
+              </Router>
+            </QueryClientProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </Ten4SevenRuntime>
+    </ThemeModeProvider>
   )
 }
 

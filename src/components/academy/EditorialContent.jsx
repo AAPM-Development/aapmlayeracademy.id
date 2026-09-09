@@ -2,10 +2,20 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Button, Card, CardContent } from "@/components/primitives";
+import {
+  Button,
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import { editorialBlockAnchorId, parseEditorialDocument } from "@/lib/editorialDocument";
 import {
   safeEditorialImage as getSafeEditorialImage,
@@ -80,11 +90,14 @@ function remarkUnderline() {
 }
 
 function MarkdownTable({ children, ...props }) {
-  const scrollRef = useScrollEdgeFade();
   return (
-    <div ref={scrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar my-3 max-w-full overflow-x-auto rounded-xl border border-border" tabIndex={0} aria-label="Tabel materi. Geser horizontal untuk melihat kolom lain.">
-      <table {...props}>{children}</table>
-    </div>
+    <Table
+      {...props}
+      className="aapm-editorial-table"
+      aria-label="Tabel materi. Geser horizontal untuk melihat kolom lain."
+    >
+      {children}
+    </Table>
   );
 }
 
@@ -124,7 +137,7 @@ const markdownComponents = {
 
 export function EditorialMarkdown({ children = "", className = "" }) {
   return (
-    <div className={cn("markdown-body min-w-0 max-w-[72ch] break-words text-base leading-7", className)}>
+    <div className={cn("markdown-body min-w-0 max-w-[var(--aapm-reading-measure)] break-words text-base leading-7", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm, remarkUnderline]} components={markdownComponents}>
         {children}
       </ReactMarkdown>
@@ -135,7 +148,7 @@ export function EditorialMarkdown({ children = "", className = "" }) {
 const calloutTone = {
   info: "border-brand-green/20 bg-brand-green/5 text-brand-green",
   practice: "border-brand-orange/20 bg-brand-orange/5 text-brand-orange",
-  warning: "border-amber-500/25 bg-amber-500/5 text-amber-700 dark:text-amber-300",
+  warning: "border-tint-orange-border bg-tint-orange text-tint-orange-foreground",
 };
 
 const imageRatio = {
@@ -145,18 +158,59 @@ const imageRatio = {
   square: "aspect-square",
 };
 
+const imageAlignment = {
+  left: "mr-auto",
+  center: "mx-auto",
+  right: "ml-auto",
+};
+
+const imagePosition = {
+  top: "object-top",
+  center: "object-center",
+  bottom: "object-bottom",
+};
+
+const ctaAlignment = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
+const textAlignment = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
+const blockAlignment = {
+  left: "mr-auto",
+  center: "mx-auto",
+  right: "ml-auto",
+};
+
+const dividerStyle = {
+  subtle: "border-border",
+  strong: "border-foreground/35 border-t-2",
+  dashed: "border-dashed border-border",
+};
+
+const dividerSpacing = {
+  compact: "my-3",
+  comfortable: "my-8",
+};
+
 function ImageBlock({ block }) {
   const src = safeEditorialImage(block.src);
   if (!src) return null;
   return (
-    <figure className={cn("max-w-full", block.width === "wide" ? "lg:-mx-4" : "max-w-4xl")}>
-      <div className={cn("overflow-hidden rounded-2xl border border-border bg-muted", imageRatio[block.ratio] || "")}>
+    <figure className={cn("max-w-full", block.width === "wide" ? "lg:-mx-4" : "max-w-4xl", imageAlignment[block.align] || imageAlignment.left)}>
+      <div className={cn("overflow-hidden rounded-[var(--radius-card)] border border-border bg-muted", imageRatio[block.ratio] || "")}>
         <img
           src={src}
           alt={block.decorative ? "" : block.alt || ""}
           loading="lazy"
           decoding="async"
-          className={cn("h-full w-full max-w-full", block.ratio === "natural" ? "h-auto object-contain" : "object-cover")}
+          className={cn("block max-w-full", block.ratio === "natural" ? "h-auto w-auto object-contain" : "h-full w-full object-cover", imageAlignment[block.align] || imageAlignment.left, imagePosition[block.position] || imagePosition.center)}
         />
       </div>
       {block.caption && <figcaption className="mt-2 text-xs leading-5 text-muted-foreground">{block.caption}</figcaption>}
@@ -167,7 +221,6 @@ function ImageBlock({ block }) {
 function TableBlock({ block }) {
   const columns = Array.isArray(block.columns) ? block.columns : [];
   const rows = Array.isArray(block.rows) ? block.rows : [];
-  const scrollRef = useScrollEdgeFade();
   const hasRowContent = rows.some((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim()));
   const hasColumnContent = columns.some((column) => String(column || "").trim());
   const isEmptyDefaultTable = !block.title?.trim()
@@ -178,23 +231,23 @@ function TableBlock({ block }) {
   if (!columns.length || !rows.length || (!hasColumnContent && !hasRowContent) || isEmptyDefaultTable) return null;
   return (
     <section className="max-w-none">
-      {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
-      <div ref={scrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar max-w-full overflow-x-auto rounded-xl border border-border bg-background" tabIndex={0} aria-label={block.title ? `Tabel ${block.title}. Geser horizontal untuk melihat kolom lain.` : "Tabel materi. Geser horizontal untuk melihat kolom lain."}>
-        <table className="min-w-full w-max border-collapse text-sm">
-          {block.title && <caption className="sr-only">{block.title}</caption>}
-          <thead className="bg-surface-subtle">
-            <tr>
-              {columns.map((column, index) => <th key={`heading-${index}`} scope="col" className="min-w-32 border border-border px-3 py-2 text-left font-semibold text-foreground">{column}</th>)}
-            </tr>
-          </thead>
-          <tbody>
+      {block.title && <h3 className={cn("mb-3 text-sm font-semibold text-foreground", textAlignment[block.align] || textAlignment.left)}>{block.title}</h3>}
+      <div className={cn("w-max max-w-full overflow-x-auto", blockAlignment[block.align] || blockAlignment.left)}>
+        <Table className={cn("aapm-editorial-table w-max", block.density === "compact" ? "text-xs" : "text-sm")} aria-label={block.title ? `Tabel ${block.title}. Geser horizontal untuk melihat kolom lain.` : "Tabel materi. Geser horizontal untuk melihat kolom lain."}>
+          {block.title && <TableCaption className="sr-only">{block.title}</TableCaption>}
+          <TableHeader>
+            <TableRow className={block.density === "compact" ? "[&>th]:py-2 [&>td]:py-2" : undefined}>
+              {columns.map((column, index) => <TableHead key={`heading-${index}`} scope="col" className="min-w-32 whitespace-nowrap">{column}</TableHead>)}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`} className="align-top even:bg-surface-subtle/55">
-                {columns.map((_, columnIndex) => <td key={`cell-${rowIndex}-${columnIndex}`} className="min-w-32 whitespace-pre-wrap break-words border border-border px-3 py-2 leading-6 text-foreground">{row?.[columnIndex] || ""}</td>)}
-              </tr>
+              <TableRow key={`row-${rowIndex}`} className={cn("align-top", block.density === "compact" && "[&>th]:py-2 [&>td]:py-2")}>
+                {columns.map((_, columnIndex) => <TableCell key={`cell-${rowIndex}-${columnIndex}`} className="min-w-32 whitespace-pre-wrap break-words leading-6">{row?.[columnIndex] || ""}</TableCell>)}
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </section>
   );
@@ -205,7 +258,7 @@ function SlidesBlock({ block }) {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const presentation = block.source === "pptx" ? safeEditorialPresentation(block.pptxUrl) : null;
   if (presentation) {
-    return <PptxCarousel src={presentation} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} />;
+    return <div className={cn("max-w-full", blockAlignment[block.align] || blockAlignment.left)}><PptxCarousel src={presentation} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} /></div>;
   }
   const visibleSlides = slides.filter((slide) => {
     const slideTitle = String(slide?.title || "").trim();
@@ -224,7 +277,7 @@ function SlidesBlock({ block }) {
   const canGoBack = safeIndex > 0;
   const canGoForward = safeIndex < visibleSlides.length - 1;
   return (
-    <section className="max-w-none">
+    <section className={cn("max-w-none", blockAlignment[block.align] || blockAlignment.left)}>
       {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
       <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle shadow-sm">
         <div className={cn("grid min-w-0", image && "lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]")}>
@@ -258,11 +311,13 @@ function CtaBlock({ block }) {
   const variant = block.variant === "secondary" ? "secondary" : block.variant === "outline" ? "outline" : "default";
   const external = href.startsWith("https://");
   return (
-    <Button asChild variant={variant} className="max-w-full whitespace-normal text-left">
-      <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-        {block.label} <AapmIcon name="arrowRight" className="shrink-0" />
-      </a>
-    </Button>
+    <div className={cn("flex w-full", ctaAlignment[block.align] || ctaAlignment.left)}>
+      <Button asChild variant={variant} className={cn("max-w-full whitespace-normal text-left", block.width === "full" && "w-full")}>
+        <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+          {block.label} <AapmIcon name="arrowRight" className="shrink-0" />
+        </a>
+      </Button>
+    </div>
   );
 }
 
@@ -271,10 +326,10 @@ function LinkBlock({ block }) {
   if (!href || !block.label) return null;
   const external = href.startsWith("https://");
   return (
-    <Card className="max-w-3xl border-border shadow-none">
+    <Card className={cn("max-w-3xl border-border shadow-none", blockAlignment[block.align] || blockAlignment.left)}>
       <CardContent className="flex min-w-0 items-start gap-3 p-4">
         <AapmIcon name="link" className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
-        <div className="min-w-0">
+        <div className={cn("min-w-0", textAlignment[block.align] || textAlignment.left)}>
           <a
             href={href}
             className="break-words text-sm font-semibold text-foreground underline decoration-brand-orange/35 underline-offset-4 hover:text-brand-orange"
@@ -295,10 +350,12 @@ function CalloutBlock({ block }) {
   const content = block.content?.trim();
   if ((!title || title === "Catatan penting") && !content) return null;
   return (
-    <Card className={cn("max-w-3xl shadow-none", tone)}>
+    <Card className={cn("max-w-3xl shadow-none", tone, blockAlignment[block.align] || blockAlignment.left)}>
       <CardContent className="p-4 sm:p-5">
-        {title && <div className="text-sm font-semibold text-foreground">{title}</div>}
-        {content && <p className="mt-1 text-sm leading-6 text-muted-foreground">{content}</p>}
+        <div className={textAlignment[block.align] || textAlignment.left}>
+          {title && <div className="text-sm font-semibold text-foreground">{title}</div>}
+          {content && <p className="mt-1 text-sm leading-6 text-muted-foreground">{content}</p>}
+        </div>
       </CardContent>
     </Card>
   );
@@ -307,11 +364,11 @@ function CalloutBlock({ block }) {
 function EditorialBlock({ block, title }) {
   switch (block.type) {
     case "richText":
-      return block.content ? <EditorialMarkdown>{block.content}</EditorialMarkdown> : null;
+      return block.content ? <EditorialMarkdown className={textAlignment[block.align] || textAlignment.left}>{block.content}</EditorialMarkdown> : null;
     case "heading": {
       const Heading = `h${block.level || 2}`;
       const content = block.content?.trim();
-      return content && content !== "Judul bagian" ? <Heading className="max-w-3xl break-words font-semibold tracking-[-0.015em] text-foreground first:mt-0 [&:not(:first-child)]:mt-8">{content}</Heading> : null;
+      return content && content !== "Judul bagian" ? <Heading className={cn("max-w-3xl break-words font-semibold tracking-[-0.015em] text-foreground first:mt-0 [&:not(:first-child)]:mt-8", textAlignment[block.align] || textAlignment.left)}>{content}</Heading> : null;
     }
     case "table":
       return <TableBlock block={block} />;
@@ -321,7 +378,7 @@ function EditorialBlock({ block, title }) {
       return <SlidesBlock block={block} />;
     case "video":
       return (
-        <div className="max-w-4xl">
+        <div className={cn("max-w-4xl", blockAlignment[block.align] || blockAlignment.left)}>
           <LessonMedia module={{ title, videoUrl: block.url }} />
           {block.caption && <p className="mt-2 text-xs leading-5 text-muted-foreground">{block.caption}</p>}
         </div>
@@ -333,7 +390,7 @@ function EditorialBlock({ block, title }) {
     case "callout":
       return <CalloutBlock block={block} />;
     case "divider":
-      return <hr className="max-w-3xl border-border" />;
+      return <hr className={cn("max-w-3xl border-t", dividerStyle[block.style] || dividerStyle.subtle, dividerSpacing[block.spacing] || dividerSpacing.comfortable)} />;
     default:
       return null;
   }

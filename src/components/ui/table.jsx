@@ -1,86 +1,67 @@
+// @ts-nocheck
 import * as React from "react"
 
+import {
+  Table as T7Table,
+  TableBody as T7TableBody,
+  TableCell as T7TableCell,
+  TableHead as T7TableHead,
+  TableHeader as T7TableHeader,
+  TableRow as T7TableRow,
+} from "@ten4seven/ui"
 import { cn } from "@/lib/utils"
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade"
 
-const Table = React.forwardRef(({ className, ...props }, ref) => {
-  const scrollRef = useScrollEdgeFade()
+/** @type {any} */
+const Table = ({ className, ...props } = {}) => (
+  <T7Table
+    className={cn("aapm-table", className)}
+    data-t7-bridge="academy-table"
+    {...props}
+  />
+)
 
-  return (
-    <div
-      ref={scrollRef}
-      className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar relative w-full overflow-auto">
-      <table
-        ref={ref}
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props} />
-    </div>
-  )
-})
-Table.displayName = "Table"
+/** @type {any} */
+const TableHeader = ({ className, ...props } = {}) => (
+  <T7TableHeader className={className} {...props} />
+)
 
-const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
-))
-TableHeader.displayName = "TableHeader"
+/** @type {any} */
+const TableBody = ({ className, ...props } = {}) => (
+  <T7TableBody className={className} {...props} />
+)
 
-const TableBody = React.forwardRef(({ className, ...props }, ref) => (
-  <tbody
-    ref={ref}
-    className={cn("[&_tr:last-child]:border-0", className)}
-    {...props} />
-))
-TableBody.displayName = "TableBody"
+/** @type {any} */
+const TableRow = ({ className, ...props } = {}) => (
+  <T7TableRow className={className} {...props} />
+)
 
-const TableFooter = React.forwardRef(({ className, ...props }, ref) => (
+/** @type {any} */
+const TableHead = ({ className, ...props } = {}) => (
+  <T7TableHead className={className} {...props} />
+)
+
+/** @type {any} */
+const TableCell = ({ className, ...props } = {}) => (
+  <T7TableCell className={className} {...props} />
+)
+
+// Ten4Seven intentionally keeps the table contract small; these two legacy
+// exports remain semantic native elements for compatibility with report views.
+const TableFooter = React.forwardRef(({ className, ...props } = {}, ref) => (
   <tfoot
     ref={ref}
-    className={cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)}
-    {...props} />
+    className={cn("aapm-table-footer", className)}
+    {...props}
+  />
 ))
-TableFooter.displayName = "TableFooter"
 
-const TableRow = React.forwardRef(({ className, ...props }, ref) => (
-  <tr
-    ref={ref}
-    className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      className
-    )}
-    {...props} />
-))
-TableRow.displayName = "TableRow"
-
-const TableHead = React.forwardRef(({ className, ...props }, ref) => (
-  <th
-    ref={ref}
-    className={cn(
-      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-      className
-    )}
-    {...props} />
-))
-TableHead.displayName = "TableHead"
-
-const TableCell = React.forwardRef(({ className, ...props }, ref) => (
-  <td
-    ref={ref}
-    className={cn(
-      "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-      className
-    )}
-    {...props} />
-))
-TableCell.displayName = "TableCell"
-
-const TableCaption = React.forwardRef(({ className, ...props }, ref) => (
+const TableCaption = React.forwardRef(({ className, ...props } = {}, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
-    {...props} />
+    className={cn("aapm-table-caption", className)}
+    {...props}
+  />
 ))
-TableCaption.displayName = "TableCaption"
-
 export {
   Table,
   TableHeader,

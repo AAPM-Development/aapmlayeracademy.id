@@ -159,11 +159,12 @@ export function AiHistoryToolbar({
     <div className={`min-w-0 max-w-full ${compact ? "space-y-2" : "space-y-2.5"}`}>
       <div className="flex min-w-0 items-center gap-2">
         <div className="min-w-0 flex-1">
-          <div className="grid grid-cols-2 rounded-lg bg-surface-subtle p-0.5">
+          <div className="aapm-ai-segmented">
             <button
               type="button"
               onClick={() => onViewChange("chats")}
-              className={`min-w-0 rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${view === "chats" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              data-active={view === "chats"}
               aria-pressed={view === "chats"}
             >
               Chat <span className="ml-0.5 tabular-nums opacity-65">{totalConversationCount}</span>
@@ -171,7 +172,8 @@ export function AiHistoryToolbar({
             <button
               type="button"
               onClick={() => onViewChange("activity")}
-              className={`min-w-0 rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${view === "activity" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              data-active={view === "activity"}
               aria-pressed={view === "activity"}
             >
               Aktivitas <span className="ml-0.5 tabular-nums opacity-65">{activityCount}</span>
@@ -182,7 +184,7 @@ export function AiHistoryToolbar({
 
       {view === "chats" ? (
         <div className="flex min-w-0 items-center gap-1.5">
-          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 transition-colors focus-within:border-brand-orange/55 focus-within:ring-1 focus-within:ring-brand-orange/15">
+          <label className="aapm-ai-search-control flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 transition-colors">
             <AapmIcon
               name="solar:magnifer-bold-duotone"
               className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -261,7 +263,8 @@ export function AiConversationRow({
 
   return (
     <div
-      className={`group relative flex min-w-0 max-w-full items-center overflow-hidden border-b border-border/60 transition-colors last:border-b-0 ${active ? "bg-tint-orange/75" : "hover:bg-surface-default"}`}
+      className="aapm-ai-history-row group relative flex min-w-0 max-w-full items-center overflow-hidden"
+      data-active={active}
     >
       {active && (
         <span
@@ -342,7 +345,7 @@ export function AiConversationHistoryResults({
 
   if (error && !conversations.length) {
     return (
-      <div className="mx-1 rounded-xl border border-tint-orange-border bg-tint-orange px-3 py-3 text-xs leading-5 text-tint-orange-foreground">
+      <div className="aapm-ai-alert mx-1 border border-tint-orange-border bg-tint-orange px-3 py-3 text-xs leading-5 text-tint-orange-foreground">
         <div className="flex items-start gap-2">
           <AapmIcon name="solar:info-circle-bold-duotone" className="mt-0.5 h-4 w-4 shrink-0 text-brand-orange" />
           <div className="min-w-0">
@@ -374,7 +377,7 @@ export function AiConversationHistoryResults({
   return (
     <div className="min-w-0 max-w-full">
       {error && (
-        <div className="mx-1 mb-2 flex min-w-0 items-center justify-between gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+        <div className="aapm-ai-alert mx-1 mb-2 flex min-w-0 items-center justify-between gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
           <span className="min-w-0">Riwayat terbaru belum tersinkron. Data yang sudah tampil tetap aman.</span>
           {onRetry && (
             <button type="button" onClick={onRetry} className="shrink-0 font-semibold text-brand-orange hover:text-brand-orange/75">
@@ -388,7 +391,7 @@ export function AiConversationHistoryResults({
           <p className="px-2 pb-1 pt-3 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground first:pt-1">
             {group.label}
           </p>
-          <div className="overflow-hidden rounded-xl border border-border/70 bg-background/55">
+          <div className="aapm-ai-history-group">
             {group.items.map((conversation) => (
               <AiConversationRow
                 key={conversation.id}

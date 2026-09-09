@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import CertificationPath from "@/components/academy/CertificationPath";
-import { Badge, Button, IconTile, Surface, useToast } from "@/components/primitives";
+import { Badge, Button, IconTile, KPICluster, Surface, useToast } from "@/components/primitives";
 import { useCertificates, useIssueCertificate, useModules, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
@@ -54,19 +54,45 @@ export default function Certification() {
         <Surface className="flex flex-col justify-between p-5 sm:p-7"><div className="flex items-start gap-3"><IconTile icon="graduation" tone={finalExamPassed ? "green" : "orange"} size="lg" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Evaluasi akhir</div><h2 className="mt-1 text-lg font-semibold">Tingkat 6 · Ahli</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{finalExamPassed ? "Ujian akhir sudah lulus. Sertifikat ahli tersedia." : `Pastikan ${totalModules} modul sudah Anda kuasai sebelum mengirim jawaban.`}</p></div></div><Button asChild className="mt-5 w-full" variant={finalExamPassed ? "outline" : "default"}><Link to={finalExamPassed ? "/profile" : "/final-exam"}>{finalExamPassed ? "Lihat profil & sertifikat" : "Buka ujian akhir"}<AapmIcon name="arrowRight" /></Link></Button></Surface>
       </section>
 
-      <div className="mb-7 grid gap-3 sm:grid-cols-3">
-        <Metric icon="course" label="Tingkat belajar" value="14" detail={`${completedModules} modul selesai`} tone="green" />
-        <Metric icon="modules" label="Modul inti" value={totalModules} detail="Roadmap Academy" tone="blue" />
-        <Metric icon="award" label="Tingkat profesional" value="6" detail={`${certificates.length} sertifikat dimiliki`} tone="orange" />
-      </div>
+      <KPICluster
+        className="mb-7 aapm-certification-kpi"
+        label="Ringkasan sertifikasi"
+        columns={3}
+        variant="cards"
+        items={[
+          {
+            icon: "book",
+            label: "Tingkat belajar",
+            value: "14",
+            note: `${completedModules} modul selesai`,
+            tone: "success",
+            colorway: 1,
+            emphasis: "solid",
+          },
+          {
+            icon: "fileCheck",
+            label: "Modul inti",
+            value: String(totalModules),
+            note: "Roadmap Academy",
+            tone: "info",
+            colorway: 2,
+            emphasis: "solid",
+          },
+          {
+            icon: "approve",
+            label: "Tingkat profesional",
+            value: "6",
+            note: `${certificates.length} sertifikat dimiliki`,
+            tone: "warning",
+            colorway: 3,
+            emphasis: "solid",
+          },
+        ]}
+      />
 
       <section><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Jalur sertifikasi</div><h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Pilih bukti kompetensi berikutnya</h2><p className="mt-1 text-sm text-muted-foreground">Status tingkat berubah berdasarkan progress yang tersimpan di akun Anda.</p></div><span className="text-xs text-muted-foreground">{certificates.length} sertifikat tersimpan</span></div><CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} /></section>
 
       {certificates.length > 0 && <section className="mt-8"><div className="mb-3 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Riwayat saya</div><h2 className="mt-1 text-lg font-semibold">Sertifikat saya</h2></div><Link to="/profile" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka profil <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div><div className="grid gap-3 md:grid-cols-2">{certificates.map((certificate) => <Surface key={certificate.id} variant="interactive" className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"><div className="flex items-center gap-3"><IconTile icon="award" tone="orange" size="md" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Tingkat {certificate.levelNumber}</div><div className="mt-1 text-sm font-semibold">{certificate.levelName}</div><div className="mt-1 text-xs text-muted-foreground">{certificate.holderName} · Nilai {certificate.score}%</div></div></div><Button type="button" variant="outline" size="sm" disabled><AapmIcon name="download" /> Unduh PDF</Button></Surface>)}</div></section>}
     </ContentContainer>
   );
-}
-
-function Metric({ icon, label, value, detail, tone }) {
-  return <Surface tone={tone} className="p-4"><div className="flex items-start justify-between gap-3"><IconTile icon={icon} tone={tone} size="sm" /><span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</span></div><div className="mt-5 text-2xl font-semibold tracking-[-0.04em]">{value}</div><div className="mt-1 text-xs text-muted-foreground">{detail}</div></Surface>;
 }

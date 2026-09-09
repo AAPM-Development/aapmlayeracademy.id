@@ -2,12 +2,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
-import { Badge, Button, IconTile, Surface, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@/components/primitives";
+import { Badge, Button, IconTile, KPICluster, Surface, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { useAdminCourse, useReorderAdminModules } from "@/lib/useAdminData";
 import { AdminError, AdminLoading, AdminPageFrame, AdminUnavailable } from "@/components/admin/AdminPage";
 
-const levelBadgeClasses = ["bg-tint-green", "bg-tint-lime", "bg-tint-orange", "bg-tint-slate"];
+const levelBadgeClasses = ["bg-tint-green", "bg-tint-lime", "bg-tint-orange", "bg-surface-inset"];
 
 export default function AdminCourseDetail() {
   const { courseId } = useParams();
@@ -69,7 +69,7 @@ export default function AdminCourseDetail() {
         <Surface tone="orange" className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><IconTile icon="course" tone="orange" size="md" /><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold">{course.title}</h2><Badge variant="soft" className="bg-background/75 text-tint-orange-foreground">{course.status === "published" ? "Aktif" : "Belum tersedia"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{course.moduleCount} modul · {course.learnerCount} learner dengan progres</p></div></div><span className="inline-flex items-center gap-2 text-xs font-medium text-tint-orange-foreground"><AapmIcon name="checkRead" className="h-4 w-4" /> Perubahan tersimpan langsung</span></Surface>
         <Tabs defaultValue="general">
           <TabsList className="aapm-scrollbar w-full justify-start overflow-x-auto"><TabsTrigger value="general">Ringkasan</TabsTrigger><TabsTrigger value="curriculum">Kurikulum</TabsTrigger><TabsTrigger value="learners">Learner</TabsTrigger></TabsList>
-          <TabsContent value="general" className="mt-4"><Surface className="p-5 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Ruang kerja course</div><h2 className="mt-1 text-xl font-semibold">Kurikulum aktif</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{course.availabilityNote}</p></div><Badge variant="soft" className="bg-tint-green text-tint-green-foreground"><AapmIcon name="checkRead" /> Sumber aktif</Badge></div><div className="mt-6 grid gap-3 sm:grid-cols-3"><Stat label="Struktur" value={`${course.moduleCount} modul`} icon="modules" tone="green" /><Stat label="Konten & bank soal" value="Dapat diedit" icon="edit" tone="orange" /><Stat label="Urutan tampil" value="Board + list" icon="reorder" tone="blue" /></div></Surface></TabsContent>
+          <TabsContent value="general" className="mt-4"><Surface className="p-5 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Ruang kerja course</div><h2 className="mt-1 text-xl font-semibold">Kurikulum aktif</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{course.availabilityNote}</p></div><Badge variant="soft" className="bg-tint-green text-tint-green-foreground"><AapmIcon name="checkRead" /> Sumber aktif</Badge></div><KPICluster className="mt-6 aapm-course-kpi" label="Ringkasan course" columns={3} variant="cards" items={[{ label: "Struktur", value: `${course.moduleCount} modul`, note: "Kurikulum aktif", icon: "book", tone: "success", colorway: 1, emphasis: "solid" }, { label: "Konten & bank soal", value: "Dapat diedit", note: "Workspace editorial", icon: "edit", tone: "warning", colorway: 3, emphasis: "solid" }, { label: "Urutan tampil", value: "Board + list", note: "Reorder terkontrol", icon: "sort", tone: "info", colorway: 2, emphasis: "solid" }]} /></Surface></TabsContent>
           <TabsContent value="curriculum" className="mt-4">
             <div className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -111,10 +111,6 @@ export default function AdminCourseDetail() {
       </div>}
     </AdminPageFrame>
   );
-}
-
-function Stat({ label, value, icon, tone }) {
-  return <Surface tone={tone} className="p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground">{label}</span><IconTile icon={icon} tone={tone} size="sm" /></div><div className="mt-3 text-base font-semibold">{value}</div></Surface>;
 }
 
 function CurriculumBoard({ levels = [], courseId, onDragEnd, saving }) {

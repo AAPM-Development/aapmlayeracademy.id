@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiQuickActions from "@/components/ai/AiQuickActions";
+import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList from "@/components/ai/AiActivityList";
@@ -15,7 +16,7 @@ import {
   filterAndSortConversations,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
-import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, ScrollArea, Table, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
@@ -37,6 +38,13 @@ const workspaceTools = [
   },
   { to: "/modules", label: "Materi", icon: "solar:notebook-bold-duotone" },
 ];
+
+function findLastAssistantMessageIndex(messages = []) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "assistant") return index;
+  }
+  return -1;
+}
 
 function personalizedSuggestions({ farm = [], progress = [], modules = [], user, pageContext = "" }) {
   const displayName = user?.fullName || user?.full_name || "Anda";
@@ -199,11 +207,7 @@ function MarkdownAnswer({ content }) {
             {children}
           </blockquote>
         ),
-        table: ({ children }) => (
-          <div className="aapm-ai-table-wrap">
-            <table>{children}</table>
-          </div>
-        ),
+        table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
         th: ({ children }) => <th>{children}</th>,
         td: ({ children }) => <td>{children}</td>,
         code: ({ className, children, ...props }) => {
@@ -251,18 +255,26 @@ function AssistantMessage({
   onQuickAction,
   pathname,
   disabled,
+  showAssistantLabel = false,
+  showQuickActions = true,
+  showMeta = true,
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
-    <article className="aapm-ai-message w-full min-w-0 max-w-2xl overflow-hidden">
-      <div className="mb-2 flex items-center gap-2">
-        <AapmIcon
-          name="ai"
-          className="h-4 w-4 text-brand-orange"
-        />
-        <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
-      </div>
+    <article
+      className="aapm-ai-message w-full min-w-0 max-w-2xl overflow-hidden"
+      aria-label="Jawaban APPI"
+    >
+      {showAssistantLabel && (
+        <div className="mb-2 flex items-center gap-2">
+          <AapmIcon
+            name="ai"
+            className="h-4 w-4 text-brand-orange"
+          />
+          <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
+        </div>
+      )}
       {message.streaming && (
         <AiStreamActivity
           label={message.streamStatus}
@@ -273,7 +285,7 @@ function AssistantMessage({
       {message.content && (
         <>
           <div
-            className={`aapm-ai-response ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
+            className={`aapm-ai-response aapm-ai-answer-card ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
           >
             <MarkdownAnswer content={message.content} />
             {canCollapse && collapsed && (
@@ -291,74 +303,16 @@ function AssistantMessage({
           )}
         </>
       )}
-      {message.fallback && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[11px] leading-4 text-tint-orange-foreground">
-          <AapmIcon
-            name="solar:info-circle-bold"
-            className="h-3.5 w-3.5 shrink-0"
-          />
-          <span>
-            {message.notice ||
-              "Provider belum tersedia pada permintaan ini; respons lokal tetap tersimpan."}
-          </span>
-          {retryPrompt && (
-            <button
-              type="button"
-              onClick={() => onRetry(retryPrompt)}
-              className="font-semibold text-brand-orange underline underline-offset-2"
-            >
-              Coba provider lagi
-            </button>
-          )}
-        </div>
-      )}
-      {!message.streaming && !message.error && !message.persisted && message.content && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[11px] leading-4 text-tint-orange-foreground">
-          <AapmIcon name="solar:refresh-circle-bold-duotone" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
-          <span>Belum tersimpan. Jawaban tetap tampil di layar.</span>
-          {onRetryPersistence && (
-            <button
-              type="button"
-              onClick={() => onRetryPersistence(message)}
-              disabled={persistenceRetrying || disabled}
-              className="font-semibold text-brand-orange underline underline-offset-2 disabled:opacity-60"
-            >
-              {persistenceRetrying ? "Menyimpan…" : "Coba simpan lagi"}
-            </button>
-          )}
-        </div>
-      )}
-      {message.error && (
-        <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-danger/20 bg-danger/10 px-2.5 py-2 text-[11px] leading-4 text-danger">
-          <AapmIcon name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Permintaan tidak dapat diproses. Coba kirim ulang beberapa saat lagi.
-        </div>
-      )}
-      {!message.streaming && (message.provider || message.persisted) && (
-        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
-          <AapmIcon
-            name={
-              message.fallback
-                ? "solar:info-circle-bold"
-                : message.persisted
-                  ? "solar:check-circle-bold-duotone"
-                  : "solar:refresh-circle-bold-duotone"
-            }
-            className={`h-3.5 w-3.5 shrink-0 ${message.fallback || !message.persisted ? "text-brand-orange" : "text-brand-green"}`}
-          />
-          <span className="shrink-0">
-            {message.persisted ? "Tersimpan di riwayat akun" : "Belum tersimpan"}
-          </span>
-          {message.provider && (
-            <span className="min-w-0 truncate text-muted-foreground/80">
-              {message.fallback
-                ? "· Respons lokal"
-                : `· ${message.provider === "openrouter" ? "OpenRouter" : message.provider}${message.model ? ` · ${message.model}` : ""}`}
-            </span>
-          )}
-        </div>
-      )}
-      {!message.streaming && !message.error && (
+      <AiMessageMeta
+        message={message}
+        retryPrompt={retryPrompt}
+        onRetry={onRetry}
+        onRetryPersistence={onRetryPersistence}
+        persistenceRetrying={persistenceRetrying}
+        disabled={disabled}
+        showMeta={showMeta}
+      />
+      {showQuickActions && !message.streaming && !message.error && (
         <AiQuickActions
           content={message.content}
           pathname={pathname}
@@ -402,7 +356,7 @@ function ConversationList({
   );
 
   return (
-    <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border bg-surface-subtle/25 lg:flex lg:flex-col">
+    <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
       <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-4">
         <div className="min-w-0">
           <p className="text-xs font-semibold">Percakapan</p>
@@ -477,7 +431,7 @@ function ConversationList({
             <Link
               key={tool.to}
               to={tool.to}
-              className="flex items-center gap-2 rounded-lg px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-surface-default hover:text-foreground"
+              className="aapm-ai-tool-link flex items-center gap-2 rounded-[var(--radius-control)] px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-surface-default hover:text-foreground"
             >
               <AapmIcon
                 name={tool.icon}
@@ -571,7 +525,7 @@ function MobileConversationSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Riwayat percakapan APPI"
-        className="fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[1.5rem] border-x border-t border-border bg-background shadow-[0_-18px_52px_hsl(var(--foreground)/0.2)] lg:hidden"
+        className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border lg:hidden"
       >
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
@@ -750,6 +704,7 @@ export default function AiAssistant() {
     saved: { label: "Tersimpan", icon: "solar:check-circle-bold-duotone", className: "bg-tint-green text-tint-green-foreground" },
     attention: { label: "Periksa riwayat", icon: "solar:info-circle-bold-duotone", className: "bg-tint-orange text-tint-orange-foreground" },
   }[historySyncState] || { label: "Riwayat akun", icon: "solar:history-2-bold-duotone", className: "bg-surface-subtle text-muted-foreground" };
+  const lastAssistantMessageIndex = findLastAssistantMessageIndex(messages);
 
   const handleDeleteConversation = async (id) => {
     try {
@@ -841,7 +796,7 @@ export default function AiAssistant() {
   };
 
   return (
-    <div className="aapm-ai-workspace flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden bg-background lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="aapm-ai-workspace aapm-ai-frame flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
         conversationTotal={conversationTotal}
@@ -862,7 +817,7 @@ export default function AiAssistant() {
         onLoadMore={loadMoreConversations}
       />
       <section className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-        <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2.5 sm:px-6 lg:px-8">
+        <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-default px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
             <AiProfileAvatar
               size="sm"
@@ -941,7 +896,7 @@ export default function AiAssistant() {
           >
             <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
               {historyError && !conversationsError && (
-                <div className="mb-5 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-tint-orange-border bg-tint-orange px-3 py-2.5 text-xs text-tint-orange-foreground">
+                <div className="aapm-ai-alert mb-5 flex min-w-0 items-center justify-between gap-3 border border-tint-orange-border bg-tint-orange px-3 py-2.5 text-xs text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron. Chat Anda tidak dihapus.</span>
                   <button type="button" onClick={refreshHistory} className="shrink-0 font-semibold text-brand-orange hover:text-brand-orange/75">
                     Coba lagi
@@ -968,7 +923,7 @@ export default function AiAssistant() {
                         key={suggestion.id}
                         type="button"
                         onClick={() => submit(suggestion.prompt)}
-                        className="group min-w-0 rounded-xl border border-border bg-surface-default px-3.5 py-3 text-left text-xs leading-5 text-muted-foreground transition-[border-color,background-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-orange/35 hover:bg-tint-orange hover:text-foreground hover:shadow-[0_8px_22px_hsl(var(--aapm-orange-700)/0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="aapm-ai-card aapm-ai-card--interactive aapm-ai-suggestion-card group min-w-0 text-left text-xs leading-5 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <span className="flex min-w-0 items-start gap-2.5">
                           <AapmIcon
@@ -989,16 +944,16 @@ export default function AiAssistant() {
                   </div>
                 </div>
               ) : (
-                <div className="flex min-w-0 max-w-full flex-col gap-7 sm:gap-9">
+                <div className="flex min-w-0 max-w-full flex-col gap-6 sm:gap-8">
                   {messages.map((message, index) =>
                     message.role === "user" ? (
                       <div key={message.id} className="flex min-w-0 max-w-full justify-end">
-                        <div className="min-w-0 max-w-[84%] break-words rounded-2xl rounded-br-md bg-brand-green px-3.5 py-2.5 text-sm leading-6 text-white shadow-sm [overflow-wrap:anywhere] sm:max-w-[88%]">
+                        <div className="aapm-ai-user-bubble min-w-0 max-w-[84%] break-words px-3.5 py-2.5 text-sm leading-6 [overflow-wrap:anywhere] sm:max-w-[88%]">
                           {message.image?.dataUrl && (
                             <img
                               src={message.image.dataUrl}
                               alt="Foto yang dikirim untuk dianalisis"
-                              className="mb-2.5 max-h-56 w-full rounded-xl object-cover"
+                              className="mb-2.5 max-h-56 w-full rounded-[var(--radius-control)] object-cover"
                             />
                           )}
                           {message.content}
@@ -1017,6 +972,9 @@ export default function AiAssistant() {
                         persistenceRetrying={retryingMessageId === message.id}
                         pathname={location.state?.pageContext || location.pathname}
                         disabled={isStreaming}
+                        showAssistantLabel={false}
+                        showQuickActions={index === lastAssistantMessageIndex}
+                        showMeta={index === lastAssistantMessageIndex || !message.persisted}
                       />
                     ),
                   )}
@@ -1036,7 +994,7 @@ export default function AiAssistant() {
             </button>
           )}
         </div>
-        <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-background px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
+        <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-surface-default px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           <div className="mx-auto min-w-0 max-w-3xl">
             <AiComposer
               input={promptDraft}

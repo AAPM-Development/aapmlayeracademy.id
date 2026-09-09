@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   ConfirmDialog,
+  DataTable,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,13 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Progress,
   Surface,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   useToast,
 } from "@/components/primitives";
 import {
@@ -349,77 +345,26 @@ export default function AdminUsers() {
           description="Ubah kata kunci pencarian atau buat akun baru."
         />
       ) : (
-        <Surface className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-5">Pengguna</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Aktivitas</TableHead>
-                  <TableHead className="pr-5 text-right">Kelola</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="min-w-[230px] pl-5">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-tint-green text-xs font-semibold text-brand-green">
-                          {(user.full_name || user.email).slice(0, 1).toUpperCase()}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate font-semibold">
-                            {user.full_name || user.email}
-                          </span>
-                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                            {user.email}
-                          </span>
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="soft"
-                        className={
-                          user.role === "admin"
-                            ? "bg-tint-orange text-tint-orange-foreground"
-                            : "bg-tint-green text-tint-green-foreground"
-                        }
-                      >
-                        {user.role === "admin" ? "Admin" : "Learner"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="min-w-[130px]">
-                      <div className="mb-1 flex justify-between gap-2 text-xs">
-                        <span>{user.completedModules} modul</span>
-                        <span>{user.progressPercent}%</span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-brand-green"
-                          style={{ width: `${user.progressPercent}%` }}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatAdminDate(user.lastActivity || user.created_at)}
-                    </TableCell>
-                    <TableCell className="pr-5 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDialogUser(user)}
-                      >
-                        <AapmIcon name="edit" className="h-3.5 w-3.5" /> Kelola
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+        <Surface className="p-0">
+          <DataTable
+            caption="Daftar pengguna dan progres pembelajaran"
+            responsive="stacked"
+            rows={users}
+            rowKey={(user) => String(user.id)}
+            columns={[
+              {
+                key: "user",
+                header: "Pengguna",
+                required: true,
+                overflow: "wrap",
+                render: (user) => <div className="flex min-w-56 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-green text-xs font-semibold text-brand-green">{(user.full_name || user.email).slice(0, 1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate font-semibold">{user.full_name || user.email}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{user.email}</span></span></div>,
+              },
+              { key: "role", header: "Role", overflow: "nowrap", render: (user) => <Badge variant={user.role === "admin" ? "warning" : "success"}>{user.role === "admin" ? "Admin" : "Learner"}</Badge> },
+              { key: "progress", header: "Progress", overflow: "wrap", render: (user) => <div className="min-w-32"><div className="mb-1 flex justify-between gap-2 text-xs"><span>{user.completedModules} modul</span><span className="tabular-nums">{user.progressPercent}%</span></div><Progress value={user.progressPercent} aria-label={`Progress ${user.progressPercent}%`} /></div> },
+              { key: "lastActivity", header: "Aktivitas", overflow: "nowrap", render: (user) => <span className="text-xs text-muted-foreground">{formatAdminDate(user.lastActivity || user.created_at)}</span> },
+              { key: "actions", header: "Kelola", align: "right", required: true, overflow: "nowrap", render: (user) => <Button size="sm" variant="outline" onClick={() => setDialogUser(user)}><AapmIcon name="edit" className="h-3.5 w-3.5" /> Kelola</Button> },
+            ]}
+          />
         </Surface>
       )}
       <UserDialog

@@ -51,13 +51,13 @@ export default function AiComposer({
         className="sr-only"
       />
 
-      <div className="min-w-0 overflow-hidden rounded-[1.15rem] border border-input bg-surface-elevated shadow-sm transition-[border-color,box-shadow] focus-within:border-brand-orange/70 focus-within:shadow-[0_8px_24px_hsl(var(--aapm-orange-700)/0.10)]">
+      <div className="aapm-token-panel aapm-ai-composer-frame min-w-0 overflow-hidden transition-[border-color,box-shadow]">
         {imageAttachment && (
           <div className="flex min-w-0 items-center gap-2 border-b border-border/70 bg-surface-subtle/75 px-3 py-2">
             <img
               src={imageAttachment.dataUrl}
               alt="Pratinjau foto lampiran"
-              className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-border"
+              className="h-9 w-9 shrink-0 rounded-[var(--radius-control)] object-cover ring-1 ring-border"
             />
             <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground">
               {imageAttachment.name}
@@ -91,7 +91,7 @@ export default function AiComposer({
           className={`block max-h-[10.5rem] min-h-[2.75rem] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 leading-5 outline-none placeholder:text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}
         />
 
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2 py-1.5">
+        <div className="aapm-ai-composer-frame__footer flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2 py-1.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <Button
               type="button"
@@ -138,7 +138,7 @@ export default function AiComposer({
             type="button"
             onClick={onSubmit}
             disabled={!hasContent || isStreaming}
-            className="h-9 min-w-[4.75rem] shrink-0 gap-1.5 rounded-xl bg-brand-orange px-3 text-white shadow-sm hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
+              className="h-9 min-w-[4.75rem] shrink-0 gap-1.5 bg-brand-orange px-3 text-white hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
             aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim pertanyaan"}
             title="Kirim pertanyaan"
           >

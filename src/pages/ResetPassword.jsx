@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";

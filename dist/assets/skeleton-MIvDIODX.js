@@ -1,0 +1,1 @@
+import{j as e,z as s,q as o}from"./index-CGv4DGA6.js";function n({className:a="",...t}={}){return e.jsx(s,{className:o("aapm-t7-skeleton-compat",a),"data-t7-bridge":"academy-skeleton",...t})}export{n as S};

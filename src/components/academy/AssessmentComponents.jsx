@@ -1,7 +1,5 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Button, Card, CardContent, Progress } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 

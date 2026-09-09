@@ -1,16 +1,14 @@
+// @ts-nocheck
 import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { cva } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { Label as T7Label } from "@ten4seven/ui"
 
-const labelVariants = cva(
-  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-)
-
+/** Label styling is owned by the Ten4Seven form contract. */
+/** @type {any} */
 const Label = React.forwardRef(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root ref={ref} className={cn(labelVariants(), className)} {...props} />
+  <T7Label ref={ref} className={className} {...props} />
 ))
-Label.displayName = LabelPrimitive.Root.displayName
+
+Label.displayName = "Label"
 
 export { Label }

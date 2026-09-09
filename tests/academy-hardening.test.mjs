@@ -28,6 +28,11 @@ import {
   getNextModule,
   getProgressSummary,
 } from "../src/lib/academyData.js";
+import {
+  EDITORIAL_PRESENTATION_MAX_BYTES,
+  EDITORIAL_PRESENTATION_MAX_SLIDES,
+} from "../src/lib/editorialLimits.js";
+import { normaliseSvgBlipMarkup } from "../src/lib/pptxCompatibility.js";
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -75,6 +80,50 @@ test("editorial composer preserves one ordered flow of text and media blocks", (
   const fallback = editorialComposerBlocks(null, "Narasi awal", "https://youtu.be/fallback");
   assert.deepEqual(fallback.map((block) => block.type), ["richText", "video"]);
   assert.deepEqual(editorialLearnerNavigationItems(legacy).map((item) => item.label), ["Pemeriksaan harian", "Target", "Kandang ayam", "Presentasi", "Panduan", "Video utama"]);
+});
+
+test("PPTX authoring and learner limits stay on the 50 MB contract", () => {
+  assert.equal(EDITORIAL_PRESENTATION_MAX_BYTES, 50 * 1024 * 1024);
+  assert.equal(EDITORIAL_PRESENTATION_MAX_SLIDES, 50);
+});
+
+test("editorial presentation controls normalize with backward-compatible defaults", () => {
+  const image = createEditorialBlock("image");
+  const table = createEditorialBlock("table");
+  const cta = createEditorialBlock("cta");
+  assert.deepEqual(
+    { align: image.align, position: image.position },
+    { align: "left", position: "center" },
+  );
+  assert.deepEqual(
+    { align: table.align, density: table.density },
+    { align: "left", density: "comfortable" },
+  );
+  assert.deepEqual(
+    { align: cta.align, width: cta.width },
+    { align: "left", width: "auto" },
+  );
+
+  const parsed = parseEditorialDocument(JSON.stringify({
+    version: 1,
+    blocks: [
+      { id: "copy", type: "richText", content: "Narasi", align: "center" },
+      { id: "rule", type: "divider", style: "dashed", spacing: "compact" },
+    ],
+  }));
+  assert.equal(parsed.blocks[0].align, "center");
+  assert.deepEqual(
+    { style: parsed.blocks[1].style, spacing: parsed.blocks[1].spacing },
+    { style: "dashed", spacing: "compact" },
+  );
+});
+
+test("PPTX compatibility flattens PowerPoint SVG blip relationships without touching ordinary media", () => {
+  const svgBlip = '<a:blip cstate="print"><a:extLst><a:ext><asvg:svgBlip r:embed="rId6"/></a:ext></a:extLst></a:blip>';
+  assert.equal(normaliseSvgBlipMarkup(svgBlip), '<a:blip cstate="print" r:embed="rId6"/>');
+
+  const pngBlip = '<a:blip r:embed="rId3"/>';
+  assert.equal(normaliseSvgBlipMarkup(pngBlip), pngBlip);
 });
 
 test("editorial quality guardrails distinguish incomplete blocks from authoring advice", () => {

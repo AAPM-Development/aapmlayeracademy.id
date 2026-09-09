@@ -1,25 +1,19 @@
 // @ts-nocheck
-"use client"
-
-import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
-
+import { Progress as T7Progress } from "@ten4seven/ui"
 import { cn } from "@/lib/utils"
 
+/** Progress keeps the existing value/max API and adopts the T7 state track. */
 /** @type {any} */
-const Progress = React.forwardRef(({ className, value, ...props } = {}, ref) => (
-  <ProgressPrimitive.Root
-    ref={ref}
-    className={cn(
-      "relative h-2 w-full overflow-hidden rounded-full bg-muted",
-      className
-    )}
-    {...props}>
-    <ProgressPrimitive.Indicator
-      className="h-full w-full flex-1 bg-primary transition-all"
-      style={{ transform: `translateX(-${100 - (value || 0)}%)` }} />
-  </ProgressPrimitive.Root>
-))
-Progress.displayName = ProgressPrimitive.Root.displayName
+const Progress = ({ className, value, max = 100, ...props } = {}) => (
+  <T7Progress
+    value={value}
+    max={max}
+    className={cn("aapm-t7-progress-compat", className)}
+    data-t7-bridge="academy-progress"
+    {...props}
+  />
+)
+
+Progress.displayName = "Progress"
 
 export { Progress }

@@ -859,11 +859,6 @@ export default function AdminModuleEditor() {
       description="Kelola isi modul, media, dan evaluasi."
       actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {isDirty && (
-            <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground">
-              Belum tersimpan
-            </Badge>
-          )}
           <Button type="button" variant="outline" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}>
             <AapmIcon name="arrowLeft" className="h-4 w-4" /> Kurikulum
           </Button>

@@ -1,9 +1,14 @@
 // @ts-nocheck
 import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
+import {
+  EDITORIAL_PRESENTATION_MAX_BYTES,
+  EDITORIAL_PRESENTATION_MAX_SLIDES,
+} from "@/lib/editorialLimits";
+import { normalisePptxForViewer } from "@/lib/pptxCompatibility";
 
-const MAX_PPTX_BYTES = 50 * 1024 * 1024;
-const MAX_PPTX_SLIDES = 50;
+const MAX_PPTX_BYTES = EDITORIAL_PRESENTATION_MAX_BYTES;
+const MAX_PPTX_SLIDES = EDITORIAL_PRESENTATION_MAX_SLIDES;
 
 function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
@@ -64,6 +69,7 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
   const [slideCount, setSlideCount] = React.useState(0);
   const [status, setStatus] = React.useState("loading");
   const [error, setError] = React.useState("");
+  const [slideErrors, setSlideErrors] = React.useState([]);
   const expectedSlides = normaliseDeclaredSlideCount(declaredSlideCount);
   const source = React.useMemo(() => getSameOriginPptxUrl(src), [src]);
 
@@ -106,6 +112,7 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
     setActiveSlide(0);
     setSlideCount(0);
     setError("");
+    setSlideErrors([]);
     setStatus("loading");
 
     if (!target || !source) {
@@ -142,10 +149,11 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
         if (!buffer.byteLength) throw new Error("PPTX file is empty.");
         if (buffer.byteLength > MAX_PPTX_BYTES) throw new Error("PPTX file is too large.");
 
+        const viewerBuffer = await normalisePptxForViewer(buffer);
         const { PptxViewer } = await import("@file-viewer/pptx");
         if (cancelled) return;
 
-        viewer = await PptxViewer.open(buffer, target, {
+        viewer = await PptxViewer.open(viewerBuffer, target, {
           fitMode: "contain",
           zoomPercent: 100,
           lazySlides: true,
@@ -153,7 +161,14 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
           listOptions: { windowed: true, initialSlides: 1, batchSize: 1, overscanViewport: 0.25 },
           zipLimits: { maxFileBytes: MAX_PPTX_BYTES },
           presentationFullscreen: true,
-          onSlideRendered: () => syncRenderedSlides(),
+          onSlideRendered: (_slideNumber, element) => {
+            syncRenderedSlides();
+            const message = element?.querySelector(".flyfish-pptx-slide-error-card span");
+            if (message) {
+              const slideNumber = element?.dataset?.slideIndex || "ini";
+              message.textContent = `Slide ${slideNumber} belum dapat ditampilkan oleh browser.`;
+            }
+          },
           onRenderComplete: () => {
             if (cancelled) return;
             renderCompleteRef.current = true;
@@ -175,6 +190,11 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
                 if (!cancelled) applyCarouselVisibility(viewer, nextIndex);
               });
             }
+          },
+          onSlideError: (slideNumber) => {
+            if (cancelled) return;
+            const number = Number(slideNumber) || 0;
+            setSlideErrors((current) => current.includes(number) ? current : [...current, number]);
           },
           onError: (viewerError) => {
             if (cancelled) return;
@@ -248,10 +268,15 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
         </button>
       </div>
 
-      <div className="relative min-w-0 bg-slate-950/5 p-2 sm:p-4" aria-busy={status === "loading"}>
+      <div className="relative min-w-0 bg-muted/40 p-2 sm:p-4" aria-busy={status === "loading"}>
         <div ref={targetRef} className="min-h-[13rem] w-full min-w-0 overflow-hidden rounded-xl bg-white" />
+        {slideErrors.length > 0 && (
+          <div className="mt-2 rounded-lg border border-brand-orange/25 bg-brand-orange/5 px-3 py-2 text-xs text-muted-foreground" role="status">
+            Slide {slideErrors.join(", ")} belum dapat ditampilkan oleh browser. Coba simpan ulang PPTX dari PowerPoint lalu unggah kembali.
+          </div>
+        )}
         {status === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/5 px-5 text-center text-sm text-muted-foreground">
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/40 px-5 text-center text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 shadow-sm">
               <AapmIcon name="loading" className="h-4 w-4 animate-spin text-brand-green" />
               Memuat presentasi…

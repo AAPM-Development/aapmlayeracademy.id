@@ -322,6 +322,55 @@ function editorial_presentation_name(string $name): string
     return $name !== '' ? substr($name, 0, 180) : 'presentasi.pptx';
 }
 
+/**
+ * PowerPoint stores pasted SVG artwork as an asvg:svgBlip nested below
+ * a:blip. The learner renderer resolves media from the normal direct
+ * r:embed attribute, so flatten only that relationship marker while keeping
+ * the SVG bytes and every PNG/JPG/GIF resource unchanged.
+ */
+function editorial_normalise_pptx_svg_blips(string $tmpName): void
+{
+    if (!class_exists('ZipArchive')) {
+        return;
+    }
+
+    $archive = new ZipArchive();
+    if ($archive->open($tmpName) !== true) {
+        return;
+    }
+
+    try {
+        $slideNames = [];
+        for ($index = 0; $index < $archive->numFiles; $index += 1) {
+            $stat = $archive->statIndex($index);
+            $name = is_array($stat) ? (string) ($stat['name'] ?? '') : '';
+            if (preg_match('#^ppt/slides/slide[0-9]+\.xml$#i', $name)) {
+                $slideNames[] = $name;
+            }
+        }
+
+        $pattern = '#<a:blip\b([^>]*)>\s*<a:extLst\b[\s\S]*?<(?:(?:[A-Za-z_][\w.-]*):)?svgBlip\b[^>]*?\br:embed\s*=\s*(["\'])([^"\']+)\2[^>]*/?\s*>[\s\S]*?</a:extLst>\s*</a:blip\s*>#i';
+        foreach ($slideNames as $name) {
+            $xml = $archive->getFromName($name);
+            if (!is_string($xml) || $xml === '') {
+                continue;
+            }
+            $normalised = preg_replace_callback($pattern, static function (array $matches): string {
+                $attributes = preg_replace('/\s+r:embed\s*=\s*(["\'])[^"\']+\1/i', '', (string) ($matches[1] ?? ''));
+                $relationId = htmlspecialchars((string) ($matches[3] ?? ''), ENT_XML1 | ENT_QUOTES, 'UTF-8');
+                return '<a:blip' . (string) $attributes . ' r:embed="' . $relationId . '"/>';
+            }, $xml);
+            if (!is_string($normalised) || $normalised === $xml) {
+                continue;
+            }
+            $archive->deleteName($name);
+            $archive->addFromString($name, $normalised);
+        }
+    } finally {
+        $archive->close();
+    }
+}
+
 function editorial_validate_pptx(string $tmpName, string $originalName): int
 {
     if (!preg_match('/\.pptx$/i', $originalName)) {
@@ -379,8 +428,13 @@ function editorial_validate_pptx(string $tmpName, string $originalName): int
             if (preg_match('#^ppt/slides/slide[0-9]+\.xml$#i', $entry)) {
                 $slides += 1;
             }
-            if (preg_match('#^ppt/(?:vbaProject\.bin|embeddings/.+)$|\.svg$#i', $entry)) {
-                error_response('Presentasi berisi konten aktif atau media yang tidak didukung.', 422, 'invalid_presentation');
+            // The learner renderer sanitises SVG markup before inserting it into
+            // the DOM, so SVG images are a supported part of an ordinary PPTX
+            // deck. Keep rejecting executable/embedded package parts instead:
+            // macros, ActiveX controls, and OLE/package embeddings cannot be
+            // rendered safely or predictably in the learner carousel.
+            if (preg_match('#^ppt/(?:vbaProject\.bin|embeddings/[^/]+|activeX/[^/]+|controls/[^/]+)$#i', $entry)) {
+                error_response('Presentasi berisi konten aktif atau media tertanam yang belum didukung (macro, ActiveX, atau OLE).', 422, 'invalid_presentation');
             }
             if (preg_match('/\.rels$/i', $entry)) {
                 if ($entryBytes > 1048576) {
@@ -411,6 +465,7 @@ function admin_upload_editorial_presentation(): array
     $upload = editorial_upload_file('file', EDITORIAL_PRESENTATION_MAX_BYTES);
     $name = editorial_presentation_name($upload['name']);
     $slideCount = editorial_validate_pptx($upload['tmp_name'], $name);
+    editorial_normalise_pptx_svg_blips($upload['tmp_name']);
     $url = editorial_store_upload($upload['tmp_name'], 'presentations', 'pptx');
     editorial_prune_orphaned_uploads();
 

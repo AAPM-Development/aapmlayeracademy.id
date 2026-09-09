@@ -121,17 +121,17 @@ function AcademyVideoPanel() {
 function DefaultAuthLayout(props) {
   const { title, subtitle, footer, children, iconName = null } = props;
   return (
-    <div className="auth-ambient flex min-h-[100svh] items-center justify-center bg-background px-4 py-8 sm:py-12">
+    <div className="auth-ambient aapm-token-shell flex min-h-[100svh] items-center justify-center bg-background px-4 py-8 sm:py-12" data-t7-region="auth-shell">
       <div className="w-full max-w-[440px]">
         <div className="mb-7 text-center">
           <div className="mb-6 flex justify-center">
             <AppBrand className="h-14 w-auto max-w-[240px]" />
           </div>
-          {iconName && <div className="mb-5 flex justify-center"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-tint-orange-border bg-tint-orange text-tint-orange-foreground"><AapmIcon name={iconName} className="h-5 w-5" /></div></div>}
+          {iconName && <div className="mb-5 flex justify-center"><div className="aapm-token-icon flex h-11 w-11 items-center justify-center rounded-xl border border-tint-orange-border bg-tint-orange text-tint-orange-foreground"><AapmIcon name={iconName} className="h-5 w-5" /></div></div>}
           <h1 className="text-2xl font-semibold tracking-[-0.04em] text-foreground sm:text-3xl">{title}</h1>
           {subtitle && <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">{subtitle}</p>}
         </div>
-        <div className="rounded-[var(--card-radius)] border border-border bg-card p-5 shadow-[var(--card-shadow)] sm:p-7">
+        <div className="aapm-token-card rounded-[var(--card-radius)] border border-border bg-card p-5 shadow-[var(--card-shadow)] sm:p-7" data-t7-region="auth-form">
           {children}
         </div>
         {footer && <p className="mt-6 text-center text-sm text-muted-foreground">{footer}</p>}
@@ -145,8 +145,8 @@ function LoginAuthLayout(props) {
   const { title, subtitle, footer, children } = props;
   const mainScrollRef = useScrollEdgeFade();
   return (
-    <div className="min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]">
-      <main ref={mainScrollRef} className="auth-pane aapm-scroll-fade aapm-scrollbar relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16">
+    <div className="aapm-token-shell min-h-[100svh] bg-background lg:grid lg:grid-cols-[44%_56%]" data-t7-region="auth-shell">
+      <main ref={mainScrollRef} className="auth-pane aapm-scroll-fade aapm-scrollbar relative flex min-h-[100svh] min-w-0 items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 lg:px-12 xl:px-16" data-t7-region="auth-form">
         <div className="w-full max-w-[420px]">
           <div className="mb-10 flex justify-center">
             <AppBrand

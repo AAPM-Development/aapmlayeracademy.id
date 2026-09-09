@@ -26,7 +26,7 @@ function SectionButton({ section, active, onNavigate, index = 0 }) {
       title={description}
       data-editor-section-link={section.id}
       className={cn(
-        "group flex min-w-max items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "aapm-editor-section-link group flex min-w-max items-center gap-2 rounded-[var(--radius-control)] px-2.5 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active
           ? "bg-tint-orange text-tint-orange-foreground"
           : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
@@ -34,7 +34,7 @@ function SectionButton({ section, active, onNavigate, index = 0 }) {
     >
       <span
         className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-md font-mono text-[9px] font-bold leading-none",
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-control)] font-mono text-[9px] font-bold leading-none",
           active
             ? "bg-brand-orange text-white"
             : "bg-surface-subtle text-muted-foreground group-hover:text-foreground",
@@ -56,7 +56,7 @@ function AddElementMenu({ items, onAddElement }) {
         <Button
           type="button"
           size="sm"
-          className="h-8 shrink-0 rounded-lg bg-brand-orange px-2.5 text-[11px] text-white hover:bg-brand-orange/90"
+          className="h-9 shrink-0 bg-brand-orange px-2.5 text-xs text-white hover:bg-brand-orange/90"
           aria-label="Tambah elemen materi"
           title="Tambah elemen materi"
           data-editor-add-menu
@@ -76,7 +76,7 @@ function AddElementMenu({ items, onAddElement }) {
             className="items-center py-1.5"
             data-editor-add-item={item.type}
           >
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange">
+            <span className="aapm-token-icon mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-tint-orange text-brand-orange">
               <AapmIcon name={item.icon || "add"} className="h-3.5 w-3.5" />
             </span>
             <span className="min-w-0 text-xs font-semibold">{item.label}</span>
@@ -104,11 +104,11 @@ export default function EditorQuickNav({
 
   return (
     <div
-      className="sticky top-2 z-40 flex min-w-0 flex-wrap items-center gap-2 border-y border-border bg-background/95 py-2 backdrop-blur"
+      className="aapm-editor-command-bar md:sticky md:top-2 z-40 flex min-w-0 flex-wrap items-center gap-2"
       aria-label="Navigasi dan aksi editor"
       data-editor-command-bar
     >
-      <nav className="aapm-scrollbar flex min-w-0 flex-[1_1_15rem] items-center gap-0.5 overflow-x-auto" aria-label={`Bagian editor: ${activeSectionMeta?.label || "Navigasi"}`}>
+      <nav className="aapm-scrollbar flex min-w-0 flex-[1_1_18rem] items-center gap-1 overflow-x-auto" aria-label={`Bagian editor: ${activeSectionMeta?.label || "Navigasi"}`}>
         {sections.map((section, index) => (
           <SectionButton
             key={section.id}
@@ -120,9 +120,9 @@ export default function EditorQuickNav({
         ))}
       </nav>
 
-      <div className="flex shrink-0 items-center gap-1 sm:border-l sm:border-border sm:pl-2">
+      <div className="aapm-editor-command-actions flex shrink-0 items-center gap-1.5 sm:border-l sm:border-border sm:pl-3">
         <div className="hidden items-center gap-1.5 lg:flex" aria-label={`Progres bagian ${activeIndex + 1} dari ${sections.length}`}>
-          <div className="h-1.5 w-12 overflow-hidden rounded-full bg-surface-subtle" aria-hidden="true">
+          <div className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-subtle" aria-hidden="true">
             <div className="h-full rounded-full bg-brand-orange transition-[width] duration-300" style={{ width: `${progress}%` }} />
           </div>
           <span className="text-[10px] font-semibold text-muted-foreground">{sections.length ? `${activeIndex + 1}/${sections.length}` : "0/0"}</span>
@@ -132,12 +132,12 @@ export default function EditorQuickNav({
         </Badge>
         <AddElementMenu items={elementItems} onAddElement={onAddElement} />
         {onPreview && (
-          <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-lg px-2 text-[11px]" onClick={onPreview} aria-label="Pratinjau learner" title="Pratinjau learner">
+          <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 px-2.5 text-xs" onClick={onPreview} aria-label="Pratinjau learner" title="Pratinjau learner">
             <AapmIcon name="eye" className="h-3.5 w-3.5" />
             <span className="inline">Lihat</span>
           </Button>
         )}
-        <Button type="button" size="sm" className="h-8 shrink-0 rounded-lg px-2 text-[11px]" onClick={onSave} disabled={isSaving} aria-label="Simpan modul" title="Simpan modul">
+        <Button type="button" size="sm" className="h-9 shrink-0 px-2.5 text-xs" onClick={onSave} disabled={isSaving} aria-label="Simpan modul" title="Simpan modul">
           <AapmIcon name={isSaving ? "refresh" : "checkRead"} className={cn("h-3.5 w-3.5", isSaving && "animate-spin")} />
           <span className="inline">{isSaving ? "Menyimpan…" : "Simpan"}</span>
         </Button>

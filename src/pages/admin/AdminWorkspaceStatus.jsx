@@ -57,7 +57,7 @@ export default function AdminWorkspaceStatus() {
                 to={area.to}
                 className="group flex items-center gap-3 px-4 py-4 transition-colors hover:bg-surface-subtle"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
+                <span className="aapm-token-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tint-orange text-brand-orange">
                   <AapmIcon name={area.icon} className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">

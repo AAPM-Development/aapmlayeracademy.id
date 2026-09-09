@@ -39,9 +39,38 @@
     --space-5: 1.25rem;
     --space-6: 1.5rem;
     --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    /* Product shell geometry. Ten4Seven owns the runtime header token; the
+     * fallback keeps pre-provider auth/error surfaces aligned as well. */
+    --aapm-shell-header-height: var(--t7-header-height, 4rem);
+    --aapm-shell-sidebar-width: 16.5rem;
+    --aapm-shell-sidebar-collapsed-width: 4.75rem;
+    --aapm-shell-content-max: var(--t7-content-max, 82.5rem);
+    --aapm-admin-content-max: 93.75rem;
+    --aapm-admin-wide-max: 112.5rem;
+    /* The editor is a workspace, not a reading card. Keep enough horizontal
+     * room for the command bar, outline, and field labels without leaving a
+     * large unused desktop gutter around the canvas. */
+    --aapm-editor-content-max: 100rem;
+    --aapm-reading-measure: 72ch;
     --radius-sm: 0.625rem;
     --radius-md: 0.875rem;
     --radius-lg: 1.25rem;
+    /* Geometry is role-based. Feature code may still use legacy Tailwind
+     * utilities, but the runtime maps those utilities to these shared roles
+     * instead of allowing every route to keep a private radius scale. */
+    --radius-control: var(--radius-md);
+    --radius-panel: 1rem;
+    --radius-data: var(--radius-panel);
+    --radius-card: var(--radius-lg);
+    --radius-overlay: var(--radius-panel);
+    /* Shared rhythm aliases keep shell and feature layout spacing on the same
+     * Ten4Seven reference grid as cards and controls. */
+    --aapm-shell-page-gutter: var(--space-4);
+    --aapm-shell-composition-gap: var(--space-6);
+    --aapm-shell-grid-gap: var(--space-5);
+    --aapm-shell-control-gap: var(--space-3);
     --duration-fast: 150ms;
     --duration-normal: 200ms;
 
@@ -86,6 +115,22 @@
     --surface-border: 0 0% 86%;
     --surface-accent: var(--aapm-green-100);
     --surface-accent-border: 141 42% 77%;
+    /* Shared canvas roles keep forms, overlays, and data surfaces distinct
+     * without introducing page-specific colour literals. */
+    --form-canvas: var(--surface-default);
+    --popup-canvas: var(--surface-elevated);
+    --control-canvas: var(--surface-default);
+    --menu-canvas: var(--popup-canvas);
+    --table-header-canvas: var(--surface-subtle);
+    --table-row-hover: var(--surface-hover);
+    --table-row-selected: var(--surface-accent);
+    --table-divider: var(--surface-border);
+    --icon-size-status: 0.875rem;
+    --icon-size-control: 1rem;
+    --icon-size-navigation: 1.125rem;
+    --icon-tile-size-sm: 2rem;
+    --icon-tile-size-md: 2.5rem;
+    --icon-tile-size-lg: 3rem;
     --tint-green: 141 43% 93%;
     --tint-green-foreground: var(--aapm-green-700);
     --tint-green-border: 141 38% 78%;
@@ -137,7 +182,7 @@
     --sidebar-border: 140 16% 88%;
     --sidebar-ring: var(--aapm-green-700);
     /* Component tokens. */
-    --card-radius: var(--radius-lg);
+    --card-radius: var(--radius-card);
     --card-padding: var(--space-6);
     --card-shadow:
       0 1px 2px rgba(19, 64, 35, 0.06), 0 12px 26px -24px rgba(19, 64, 35, 0.34);
@@ -156,30 +201,353 @@
     --ai-stream-success: var(--aapm-green-700);
     --ai-stream-radius: var(--radius-md);
     --ai-stream-shadow: 0 10px 24px -22px rgba(19, 64, 35, 0.42);
-    /* Toast component tokens — status is communicated by icon, label, and accent. */
-    --toast-bg: var(--surface-elevated);
-    --toast-foreground: var(--foreground);
-    --toast-border: var(--surface-border);
-    --toast-radius: 1.125rem;
-    --toast-shadow: 0 18px 42px -28px rgba(19, 64, 35, 0.44), 0 5px 16px rgba(19, 64, 35, 0.08);
-    --toast-success-bg: var(--tint-green);
-    --toast-success-fg: var(--tint-green-foreground);
-    --toast-success-border: var(--tint-green-border);
-    --toast-error-bg: 0 100% 97%;
-    --toast-error-fg: 0 72% 42%;
-    --toast-error-border: 0 72% 82%;
-    --toast-warning-bg: var(--tint-orange);
-    --toast-warning-fg: var(--tint-orange-foreground);
-    --toast-warning-border: var(--tint-orange-border);
-    --toast-info-bg: var(--tint-blue);
-    --toast-info-fg: var(--tint-blue-foreground);
-    --toast-info-border: var(--tint-blue-border);
-    --toast-ai-bg: var(--tint-orange);
-    --toast-ai-fg: var(--brand-aapm-orange);
-    --toast-ai-border: var(--tint-orange-border);
-    --toast-loading-bg: var(--tint-violet);
-    --toast-loading-fg: var(--tint-violet-foreground);
-    --toast-loading-border: var(--tint-violet-border);
+    /* APPI surface roles. These resolve through the same Ten4Seven canvas,
+     * border, radius, and elevation tokens as the rest of Academy. */
+    --ai-frame-canvas: var(--surface-default);
+    --ai-frame-border: var(--surface-border);
+    --ai-frame-shadow: var(--surface-shadow);
+    --ai-card-canvas: var(--surface-default);
+    --ai-card-muted-canvas: var(--surface-subtle);
+    --ai-card-border: var(--surface-border);
+    --ai-card-hover: var(--tint-orange);
+    --ai-user-canvas: var(--aapm-green-700);
+    --ai-user-foreground: 0 0% 100%;
+    --ai-assistant-canvas: var(--surface-subtle);
+    --ai-assistant-border: var(--surface-border);
+    --ai-composer-canvas: var(--control-canvas);
+  }
+
+  /*
+   * Ten4Seven is the runtime token owner. The legacy Academy utilities remain
+   * source-compatible, but resolve through the active T7 semantic variables so
+   * one provider controls canvas, type, density, radii, state colour, and
+   * elevation across learner, admin, and auth routes.
+   */
+  .aapm-t7-runtime {
+    /* Keep the application rail in the same geometry contract as the
+     * provider-owned AppShell. Feature shells may collapse the rail, but they
+     * never get to invent a second desktop width. */
+    --t7-sidebar-width: var(--aapm-shell-sidebar-width);
+    --aapm-green-950: var(--t7-primary-active-hsl);
+    --aapm-green-900: var(--t7-primary-active-hsl);
+    --aapm-green-800: var(--t7-primary-hover-hsl);
+    --aapm-green-700: var(--t7-primary-hsl);
+    --aapm-green-100: 141 43% 92%;
+    /* Lime is a bounded learning accent, not a second name for the authored
+     * AAPM orange accent. Keeping the roles separate prevents learning cues
+     * from turning every highlight into an orange action cue. */
+    --aapm-lime-500: 77.09 84.36% 64.9%;
+    --aapm-lime-100: 77 100% 91%;
+    --aapm-orange-700: var(--t7-accent-hsl);
+    --aapm-orange-100: 25 100% 93%;
+    --aapm-ink: var(--t7-foreground-hsl);
+    --aapm-paper: var(--t7-background-hsl);
+
+    --background: var(--t7-background-hsl);
+    --foreground: var(--t7-foreground-hsl);
+    --card: var(--t7-surface-hsl);
+    --card-foreground: var(--t7-foreground-hsl);
+    --popover: var(--t7-surface-raised-hsl);
+    --popover-foreground: var(--t7-foreground-hsl);
+    --primary: var(--t7-action-primary-hsl);
+    --primary-foreground: var(--t7-action-primary-foreground-hsl);
+    --secondary: var(--t7-action-secondary-background-hsl);
+    --secondary-foreground: var(--t7-action-secondary-foreground-hsl);
+    --muted: var(--t7-muted-hsl);
+    --muted-foreground: var(--t7-muted-foreground-hsl);
+    --accent: var(--t7-surface-emphasis-soft-hsl);
+    --accent-foreground: var(--t7-foreground-hsl);
+    --destructive: var(--t7-action-danger-hsl);
+    --destructive-foreground: var(--t7-action-danger-foreground-hsl);
+    --border: var(--t7-border-hsl);
+    --input: var(--t7-field-border-hsl);
+    --ring: var(--t7-focus-hsl);
+    --chart-1: var(--t7-primary-hsl);
+    --chart-2: var(--t7-chart-2-hsl, var(--t7-info-hsl));
+    --chart-3: var(--t7-chart-3-hsl, var(--t7-warning-hsl));
+    --chart-4: var(--t7-chart-4-hsl, var(--t7-accent-hsl));
+    --chart-5: var(--t7-chart-5-hsl, var(--t7-surface-emphasis-accent-hsl));
+    --radius: var(--t7-radius-control);
+
+    --brand-aapm-green: var(--t7-primary-hsl);
+    --brand-aapm-lime: var(--aapm-lime-500);
+    --brand-aapm-orange: var(--t7-accent-hsl);
+    --brand-foreground: var(--t7-foreground-hsl);
+    --brand-foreground-muted: var(--t7-muted-foreground-hsl);
+
+    --surface: var(--t7-surface-hsl);
+    --surface-default: var(--t7-surface-hsl);
+    --surface-subtle: var(--t7-surface-subtle-hsl);
+    --surface-muted: var(--t7-surface-muted-hsl);
+    --surface-elevated: var(--t7-surface-raised-hsl);
+    --surface-hover: var(--t7-surface-subtle-hsl);
+    --surface-inset: var(--t7-surface-muted-hsl);
+    --surface-border: var(--t7-border-hsl);
+    --surface-accent: var(--t7-surface-emphasis-soft-hsl);
+    --surface-accent-border: var(--t7-primary-hsl);
+
+    /* Low-chroma surfaces remain quiet; status tokens below still carry the
+     * saturated success/warning meaning for indicators and validation. */
+    --tint-green: 141 43% 93%;
+    --tint-green-foreground: var(--t7-primary-hsl);
+    --tint-green-border: 141 38% 78%;
+    --tint-lime: var(--aapm-lime-100);
+    --tint-lime-foreground: 91 62% 23%;
+    --tint-lime-border: 78 79% 65%;
+    --tint-orange: 25 100% 93%;
+    --tint-orange-foreground: var(--t7-accent-hsl);
+    --tint-orange-border: 24 78% 78%;
+    --tint-blue: 201 100% 95%;
+    --tint-blue-foreground: 198 100% 40%;
+    --tint-blue-border: 201 82% 84%;
+    --tint-violet: 252 100% 96%;
+    --tint-violet-foreground: 258 72% 56%;
+    --tint-violet-border: 254 100% 89%;
+    --tint-slate: var(--t7-muted-hsl);
+    --tint-slate-foreground: var(--t7-muted-foreground-strong-hsl);
+    --tint-slate-border: var(--t7-border-hsl);
+
+    --success: var(--t7-success-hsl);
+    --warning: var(--t7-warning-hsl);
+    --danger: var(--t7-danger-hsl);
+    --info: var(--t7-info-hsl);
+    --ai: var(--t7-accent-hsl);
+    --ai-foreground: var(--t7-primary-foreground-hsl);
+    --learning-active: var(--aapm-lime-500);
+    --learning-complete: var(--t7-success-hsl);
+    --learning-locked: var(--t7-muted-foreground-hsl);
+    --metric-positive: var(--t7-success-hsl);
+    --metric-negative: var(--t7-danger-hsl);
+    --metric-neutral: var(--t7-muted-foreground-hsl);
+
+    --font-heading: var(--t7-type-heading-lg-family, var(--t7-font-ui));
+    --font-body: var(--t7-font-ui);
+    --font-display: var(--t7-type-display-lg-family, var(--t7-font-ui));
+    --font-mono: var(--t7-font-mono);
+    --sidebar-background: var(--t7-surface-subtle-hsl);
+    --sidebar-foreground: var(--t7-foreground-hsl);
+    --sidebar-primary: var(--t7-primary-hsl);
+    --sidebar-primary-foreground: var(--t7-primary-foreground-hsl);
+    --sidebar-accent: var(--t7-surface-emphasis-soft-hsl);
+    --sidebar-accent-foreground: var(--t7-primary-hsl);
+    --sidebar-border: var(--t7-border-hsl);
+    --sidebar-ring: var(--t7-focus-hsl);
+
+    --card-radius: var(--t7-radius-card);
+    --card-padding: var(--t7-card-padding);
+    --card-shadow: var(--t7-shadow-card);
+    --card-shadow-hover: var(--t7-shadow-raised);
+    --surface-shadow: var(--t7-shadow-card);
+    --surface-shadow-hover: var(--t7-shadow-raised);
+    --duration-fast: var(--t7-duration-instant, 120ms);
+    --duration-normal: var(--t7-duration-standard, 180ms);
+    --radius-control: var(--t7-radius-control, var(--radius-md));
+    --radius-panel: var(--t7-radius-panel, var(--radius-control));
+    --radius-data: var(--t7-radius-data, var(--radius-panel));
+    --radius-card: var(--t7-radius-card, var(--radius-lg));
+    --radius-overlay: var(--t7-radius-panel, var(--radius-card));
+    --space-1: var(--t7-ref-space-1, 0.25rem);
+    --space-2: var(--t7-ref-space-2, 0.5rem);
+    --space-3: var(--t7-ref-space-3, 0.75rem);
+    --space-4: var(--t7-ref-space-4, 1rem);
+    --space-5: var(--t7-ref-space-5, 1.25rem);
+    --space-6: var(--t7-ref-space-6, 1.5rem);
+    --space-8: var(--t7-ref-space-8, 2rem);
+    --space-10: var(--t7-ref-space-10, 2.5rem);
+    --space-12: var(--t7-ref-space-12, 3rem);
+    --aapm-shell-page-gutter: var(--t7-page-gutter, var(--space-4));
+    --aapm-shell-composition-gap: var(--t7-composition-gap, var(--space-6));
+    --aapm-shell-grid-gap: var(--t7-grid-gap, var(--space-5));
+    --aapm-shell-control-gap: var(--t7-control-gap, var(--space-3));
+    --form-canvas: var(--t7-surface-hsl);
+    --popup-canvas: var(--t7-surface-raised-hsl);
+    --control-canvas: var(--t7-surface-hsl);
+    --menu-canvas: var(--t7-surface-raised-hsl);
+    --table-header-canvas: var(--t7-surface-subtle-hsl);
+    --table-row-hover: var(--t7-surface-muted-hsl);
+    --table-row-selected: var(--t7-surface-emphasis-soft-hsl);
+    --table-divider: var(--t7-border-hsl);
+    --icon-size-status: var(--t7-icon-status);
+    --icon-size-control: var(--t7-icon-control);
+    --icon-size-navigation: var(--t7-icon-navigation);
+    --icon-tile-size-sm: var(--t7-control-height-sm);
+    --icon-tile-size-md: var(--t7-control-height);
+    --icon-tile-size-lg: var(--t7-control-height-lg);
+  }
+
+  /* Dark mode keeps the same learning hue but lowers its luminance and uses
+   * a darker tint so the accent remains legible without a neon canvas. */
+  .aapm-t7-runtime[data-t7-mode="dark"] {
+    --aapm-lime-500: 77 79% 64%;
+    --aapm-lime-100: 77 43% 20%;
+    --brand-aapm-lime: var(--aapm-lime-500);
+    --tint-lime: var(--aapm-lime-100);
+    --tint-lime-foreground: 78 100% 71%;
+    --tint-lime-border: 77 47% 34%;
+    --tint-green: 145 35% 18%;
+    --tint-green-foreground: 145 70% 72%;
+    --tint-green-border: 145 35% 28%;
+    --tint-orange: 29 45% 20%;
+    --tint-orange-foreground: 34 100% 72%;
+    --tint-orange-border: 29 45% 32%;
+    --tint-blue: 201 45% 19%;
+    --tint-blue-foreground: 198 100% 72%;
+    --tint-blue-border: 201 42% 30%;
+    --tint-violet: 252 35% 20%;
+    --tint-violet-foreground: 258 100% 80%;
+    --tint-violet-border: 254 35% 32%;
+    --tint-slate: 214 24% 19%;
+    --tint-slate-foreground: 214 44% 76%;
+    --tint-slate-border: 214 24% 30%;
+    --learning-active: var(--aapm-lime-500);
+  }
+
+  /* Slot-based compatibility controls inherit the same canonical button
+   * contract when a Radix primitive owns the actual element. */
+  .aapm-t7-button-primary {
+    background: hsl(var(--t7-action-primary-hsl));
+    color: hsl(var(--t7-action-primary-foreground-hsl));
+    box-shadow: var(--t7-shadow-button);
+  }
+  .aapm-t7-button-primary:hover {
+    background: hsl(var(--t7-action-primary-hover-hsl));
+  }
+  .aapm-t7-button-secondary {
+    border-color: hsl(var(--t7-border-strong-hsl));
+    background: hsl(var(--t7-action-secondary-background-hsl));
+    color: hsl(var(--t7-action-secondary-foreground-hsl));
+  }
+  .aapm-t7-button-secondary:hover {
+    border-color: hsl(var(--t7-action-secondary-hover-hsl) / 0.52);
+    color: hsl(var(--t7-action-secondary-hover-hsl));
+    background: hsl(var(--t7-action-secondary-hover-hsl) / 0.06);
+  }
+  .aapm-t7-button-quiet {
+    background: transparent;
+    color: hsl(var(--t7-action-quiet-foreground-hsl));
+  }
+  .aapm-t7-button-quiet:hover {
+    background: hsl(var(--t7-action-quiet-hover-hsl));
+    color: hsl(var(--t7-action-secondary-foreground-hsl));
+  }
+  .aapm-t7-button-danger {
+    background: hsl(var(--t7-action-danger-hsl));
+    color: hsl(var(--t7-action-danger-foreground-hsl));
+  }
+  .aapm-t7-button-danger:hover {
+    filter: brightness(0.92);
+  }
+  .aapm-t7-button-link {
+    background: transparent;
+    color: hsl(var(--t7-primary-hsl));
+  }
+  .aapm-t7-button-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  /*
+   * A few existing inverse/brand calls intentionally opt a canonical button
+   * into a different bounded color (for example the orange CTA inside the
+   * green dashboard hero). Attribute selectors keep those explicit consumer
+   * choices stronger than the canonical `[data-intent]` rule without changing
+   * the default intent mapping for every other button.
+   */
+  .t7-button[class~="bg-brand-orange"] {
+    background: hsl(var(--t7-accent-hsl));
+  }
+  .t7-button[class~="bg-brand-orange"]:hover {
+    background: hsl(var(--t7-accent-hover-hsl));
+  }
+  .t7-button[class~="text-brand-orange"] {
+    color: hsl(var(--t7-accent-hsl));
+  }
+  .t7-button[class~="text-white"] {
+    color: hsl(0 0% 100%);
+  }
+  .t7-button[class*="bg-white/"] {
+    background: hsl(0 0% 100% / 0.05);
+  }
+  .t7-button[class*="bg-white/"]:hover {
+    background: hsl(0 0% 100% / 0.12);
+  }
+  .aapm-t7-button-sm {
+    min-height: var(--t7-control-height-sm);
+    padding-inline: var(--t7-control-padding-inline-small);
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+  .aapm-t7-button-md {
+    min-height: var(--t7-control-height);
+  }
+  .aapm-t7-button-lg {
+    min-height: var(--t7-control-height-lg);
+    padding-inline: var(--t7-control-padding-inline-large);
+    font-size: var(--t7-type-body-lg-size);
+    line-height: var(--t7-type-body-lg-line-height);
+  }
+  .aapm-t7-button-icon {
+    width: var(--t7-control-height);
+    min-width: var(--t7-control-height);
+    padding-inline: 0;
+  }
+
+  /* Badge variants retained by legacy feature call sites, expressed with
+   * Ten4Seven semantic state tokens rather than product-specific hex values. */
+  .aapm-t7-badge-primary {
+    border-color: hsl(var(--t7-primary-hsl) / 0.28);
+    background: hsl(var(--t7-primary-hsl) / 0.1);
+    color: hsl(var(--t7-primary-badge-foreground-hsl, var(--t7-primary-active-hsl)));
+  }
+  .aapm-t7-badge-success {
+    border-color: hsl(var(--t7-success-hsl) / 0.28);
+    background: hsl(var(--t7-success-hsl) / 0.1);
+    color: hsl(var(--t7-success-foreground-hsl, var(--t7-success-hsl)));
+  }
+  .aapm-t7-badge-warning {
+    border-color: hsl(var(--t7-warning-hsl) / 0.32);
+    background: hsl(var(--t7-warning-hsl) / 0.12);
+    color: hsl(var(--t7-warning-foreground-hsl, var(--t7-warning-hsl)));
+  }
+  .aapm-t7-badge-danger {
+    border-color: hsl(var(--t7-danger-hsl) / 0.28);
+    background: hsl(var(--t7-danger-hsl) / 0.1);
+    color: hsl(var(--t7-danger-badge-foreground-hsl, var(--t7-muted-foreground-strong-hsl)));
+  }
+  .aapm-t7-badge-info {
+    border-color: hsl(var(--t7-info-hsl) / 0.28);
+    background: hsl(var(--t7-info-hsl) / 0.1);
+    color: hsl(var(--t7-info-hsl));
+  }
+  .aapm-t7-badge-accent {
+    border-color: hsl(var(--t7-accent-hsl) / 0.28);
+    background: hsl(var(--t7-accent-hsl) / 0.1);
+    color: hsl(var(--t7-accent-hsl));
+  }
+  .aapm-t7-badge-neutral {
+    border-color: hsl(var(--t7-border-hsl));
+    background: hsl(var(--t7-muted-hsl));
+    color: hsl(var(--t7-muted-foreground-strong-hsl, var(--t7-foreground-hsl)));
+  }
+
+  .aapm-t7-surface-interactive {
+    transition:
+      border-color var(--t7-transition-fast),
+      box-shadow var(--t7-transition-fast),
+      transform var(--t7-transition-fast);
+  }
+  .aapm-t7-surface-interactive:hover,
+  .aapm-t7-surface-interactive:focus-within {
+    border-color: hsl(var(--t7-primary-hsl) / 0.42);
+    box-shadow: var(--t7-shadow-raised);
+  }
+  .aapm-t7-surface-interactive:focus-within {
+    outline: none;
+    box-shadow: var(--t7-focus-ring);
+  }
+  .aapm-t7-surface-selected {
+    border-color: hsl(var(--t7-primary-hsl) / 0.52);
+    background: hsl(var(--t7-primary-hsl) / 0.06);
+    box-shadow: var(--t7-focus-ring-inset);
   }
 
   .dark {
@@ -270,13 +638,6 @@
     --ai-stream-accent: 24 90% 60%;
     --ai-stream-success: 142 55% 45%;
     --ai-stream-shadow: 0 10px 24px -20px rgba(0, 0, 0, 0.55);
-    --toast-bg: var(--surface-elevated);
-    --toast-foreground: var(--foreground);
-    --toast-border: var(--surface-border);
-    --toast-shadow: 0 18px 42px -28px rgba(0, 0, 0, 0.82), 0 5px 16px rgba(0, 0, 0, 0.3);
-    --toast-error-bg: 0 35% 18%;
-    --toast-error-fg: 0 85% 78%;
-    --toast-error-border: 0 45% 32%;
   }
 }
 
@@ -310,183 +671,6 @@
 }
 
 @layer components {
-  @keyframes aapm-toast-enter {
-    from {
-      opacity: 0;
-      transform: translate3d(0, -10px, 0) scale(0.97);
-    }
-    to {
-      opacity: 1;
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-  }
-
-  @keyframes aapm-toast-exit {
-    from {
-      opacity: 1;
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: translate3d(0, -6px, 0) scale(0.98);
-    }
-  }
-
-  @keyframes aapm-toast-progress {
-    from { transform: scaleX(1); }
-    to { transform: scaleX(0); }
-  }
-
-  .aapm-toast {
-    --toast-accent: hsl(var(--toast-success-fg));
-    --toast-tone-bg: hsl(var(--toast-success-bg));
-    --toast-tone-fg: hsl(var(--toast-success-fg));
-    --toast-tone-border: hsl(var(--toast-success-border));
-    min-height: 4.5rem;
-    border-radius: var(--toast-radius);
-    border-color: hsl(var(--toast-border));
-    background: hsl(var(--toast-bg) / 0.98);
-    color: hsl(var(--toast-foreground));
-    box-shadow: var(--toast-shadow);
-    backdrop-filter: blur(16px);
-  }
-
-  .aapm-toast[data-variant="default"],
-  .aapm-toast[data-variant="success"] {
-    --toast-accent: hsl(var(--toast-success-fg));
-    --toast-tone-bg: hsl(var(--toast-success-bg));
-    --toast-tone-fg: hsl(var(--toast-success-fg));
-    --toast-tone-border: hsl(var(--toast-success-border));
-  }
-
-  .aapm-toast[data-variant="destructive"] {
-    --toast-accent: hsl(var(--toast-error-fg));
-    --toast-tone-bg: hsl(var(--toast-error-bg));
-    --toast-tone-fg: hsl(var(--toast-error-fg));
-    --toast-tone-border: hsl(var(--toast-error-border));
-  }
-
-  .aapm-toast[data-variant="warning"] {
-    --toast-accent: hsl(var(--toast-warning-fg));
-    --toast-tone-bg: hsl(var(--toast-warning-bg));
-    --toast-tone-fg: hsl(var(--toast-warning-fg));
-    --toast-tone-border: hsl(var(--toast-warning-border));
-  }
-
-  .aapm-toast[data-variant="info"] {
-    --toast-accent: hsl(var(--toast-info-fg));
-    --toast-tone-bg: hsl(var(--toast-info-bg));
-    --toast-tone-fg: hsl(var(--toast-info-fg));
-    --toast-tone-border: hsl(var(--toast-info-border));
-  }
-
-  .aapm-toast[data-variant="ai"] {
-    --toast-accent: hsl(var(--toast-ai-fg));
-    --toast-tone-bg: hsl(var(--toast-ai-bg));
-    --toast-tone-fg: hsl(var(--toast-ai-fg));
-    --toast-tone-border: hsl(var(--toast-ai-border));
-  }
-
-  .aapm-toast[data-variant="loading"] {
-    --toast-accent: hsl(var(--toast-loading-fg));
-    --toast-tone-bg: hsl(var(--toast-loading-bg));
-    --toast-tone-fg: hsl(var(--toast-loading-fg));
-    --toast-tone-border: hsl(var(--toast-loading-border));
-  }
-
-  .aapm-toast[data-state="open"] {
-    animation: aapm-toast-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .aapm-toast[data-state="closed"] {
-    animation: aapm-toast-exit 180ms ease-in both;
-  }
-
-  .aapm-toast__accent {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 0.25rem;
-    background: var(--toast-accent);
-    border-radius: var(--toast-radius) 0 0 var(--toast-radius);
-  }
-
-  .aapm-toast__icon {
-    display: inline-flex;
-    width: 2.25rem;
-    height: 2.25rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0.1rem;
-    border: 1px solid var(--toast-tone-border);
-    border-radius: 0.8rem;
-    background: var(--toast-tone-bg);
-    color: var(--toast-tone-fg);
-  }
-
-  .aapm-toast__body {
-    padding: 0.05rem 0 0.15rem;
-  }
-
-  .aapm-toast__eyebrow {
-    margin-bottom: 0.2rem;
-    color: var(--toast-tone-fg);
-    font-size: 0.625rem;
-    font-weight: 750;
-    letter-spacing: 0.12em;
-    line-height: 1.2;
-    text-transform: uppercase;
-  }
-
-  .aapm-toast__title {
-    overflow-wrap: anywhere;
-  }
-
-  .aapm-toast__description {
-    color: hsl(var(--muted-foreground));
-    overflow-wrap: anywhere;
-  }
-
-  .aapm-toast-action {
-    border-color: var(--toast-tone-border);
-    background: var(--toast-tone-bg);
-    color: var(--toast-tone-fg);
-  }
-
-  .aapm-toast-action:hover {
-    border-color: var(--toast-accent);
-    background: var(--toast-tone-bg);
-    filter: brightness(0.97);
-  }
-
-  .aapm-toast__progress {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 0.125rem;
-    transform-origin: left center;
-    background: var(--toast-accent);
-    animation: aapm-toast-progress var(--toast-duration, 5200ms) linear both;
-    opacity: 0.72;
-  }
-
-  .aapm-toast:hover .aapm-toast__progress {
-    animation-play-state: paused;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .aapm-toast[data-state="open"],
-    .aapm-toast[data-state="closed"],
-    .aapm-toast__progress {
-      animation: none;
-    }
-
-    .aapm-toast__progress {
-      opacity: 0.45;
-    }
-  }
-
   @keyframes academy-rise {
     from {
       opacity: 0;
@@ -502,6 +686,879 @@
   .auth-ambient,
   .auth-pane {
     background: hsl(var(--background));
+  }
+
+  /* Structural roles are intentionally small: they provide one place for
+   * shell canvas, rails, dividers, and inset surfaces to inherit the active
+   * T7 mode without forcing every route to repeat colour and geometry. */
+  .aapm-token-shell {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  /* The canonical AppShell owns the responsive grid, mobile navigation
+   * drawer, and topbar landmark. Academy only composes its known scrollport
+   * inside that shell, keeping one viewport owner and preventing overlays
+   * such as APPI from contributing to document width or height. */
+  .aapm-t7-app-shell {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .aapm-t7-app-shell > .t7-app-sidebar {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .aapm-t7-app-shell > .t7-app-main {
+    min-height: 0;
+    height: 100dvh;
+  }
+
+  .aapm-t7-app-shell > .t7-app-main > .t7-app-content {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .aapm-t7-app-shell > .t7-app-main > .t7-app-topbar {
+    padding: 0;
+  }
+
+  .aapm-t7-app-shell--collapsed[data-sidebar] {
+    grid-template-columns: var(--aapm-shell-sidebar-collapsed-width) minmax(0, 1fr);
+  }
+
+  .aapm-token-header {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-default) / 0.94);
+  }
+
+  /* Keep the account trigger a single flex row. Ten4Seven wraps Button
+   * children in .t7-button-label; without an explicit row contract the
+   * avatar, name, and chevron can collapse into the label box at narrow
+   * widths and appear clipped. */
+  .academy-header__account-trigger {
+    max-width: min(100%, 15rem);
+    overflow: visible;
+  }
+
+  .academy-header__account-trigger > .t7-button-label {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: var(--t7-control-gap);
+    overflow: visible;
+    white-space: nowrap;
+  }
+
+  .academy-header__account-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aapm-token-sidebar {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-subtle));
+  }
+
+  /* Academy has a product-specific progress summary and a compact desktop
+   * rail, while navigation itself stays fully owned by the canonical Sidebar
+   * and NavItem anatomy. These rules only compose the documented slots; they
+   * do not restyle T7 navigation colors, type, radius, focus, or motion. */
+  .aapm-academy-sidebar {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--t7-ref-space-4) var(--t7-ref-space-3) var(--t7-ref-space-3);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-brand {
+    padding: 0 var(--t7-ref-space-2) var(--t7-ref-space-4);
+  }
+
+  .aapm-academy-sidebar__brand-stack,
+  .aapm-academy-sidebar__progress,
+  .aapm-academy-sidebar__footer-content {
+    display: grid;
+    min-width: 0;
+    gap: var(--t7-ref-space-2);
+  }
+
+  /* The brand needs a distinct breath before status information begins.
+   * Keep that spacing at the composition layer; the logo and Progress
+   * anatomy remain native Ten4Seven components. */
+  .aapm-academy-sidebar__brand-stack {
+    gap: var(--t7-ref-space-4);
+  }
+
+  .aapm-academy-sidebar__brand-row,
+  .aapm-academy-sidebar__progress-meta {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar__brand-link {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+    border-radius: var(--t7-radius-control);
+    padding: 2px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .aapm-academy-sidebar__brand-link:focus-visible {
+    outline: 2px solid hsl(var(--t7-focus-hsl));
+    outline-offset: 2px;
+  }
+
+  .aapm-academy-sidebar__progress {
+    padding: 0 var(--t7-ref-space-2) var(--t7-ref-space-3);
+    border-bottom: 1px solid hsl(var(--t7-border-hsl));
+  }
+
+  .aapm-academy-sidebar__progress-meta {
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+
+  .aapm-academy-sidebar__progress-meta strong {
+    color: hsl(var(--t7-primary-hsl));
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aapm-academy-sidebar__progress p {
+    margin: 0;
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    line-height: var(--t7-type-caption-line-height);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-nav {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* The nav is the scrollable flex child, but its grid rows must keep
+     * intrinsic NavItem anatomy. Without this, CSS Grid stretches each
+     * group/item to consume the viewport and the collapsed rail develops
+     * large, screen-dependent gaps between icons. */
+    align-content: start;
+    padding: var(--t7-ref-space-1) var(--t7-ref-space-2);
+  }
+
+  /* Preserve the canonical 40px NavItem target while tightening only the
+   * whitespace between related Academy navigation groups. */
+  .aapm-academy-sidebar .t7-sidebar-group {
+    gap: var(--t7-ref-space-1);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-group + .t7-sidebar-group {
+    margin-top: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar .t7-sidebar-footer {
+    flex: 0 0 auto;
+    padding: var(--t7-ref-space-3) var(--t7-ref-space-2) 0;
+  }
+
+  .aapm-academy-sidebar__account,
+  .aapm-academy-sidebar__logout {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .aapm-academy-sidebar__theme-mobile {
+    display: none;
+  }
+
+  /* Cross-workspace actions live with the account controls instead of being
+   * duplicated in the topbar. Keep them recognisable, but subordinate to the
+   * primary navigation through the same low-chroma token surfaces. */
+  .aapm-academy-sidebar__admin-link,
+  .aapm-academy-sidebar__academy-link {
+    border: 1px solid hsl(var(--surface-border));
+    background: hsl(var(--surface-default) / 0.72);
+  }
+
+  .aapm-academy-sidebar__admin-link {
+    border-color: hsl(var(--tint-orange-border));
+    background: hsl(var(--tint-orange) / 0.58);
+    color: hsl(var(--tint-orange-foreground));
+  }
+
+  .aapm-academy-sidebar__admin-link:hover {
+    border-color: hsl(var(--tint-orange-border));
+    background: hsl(var(--tint-orange));
+    color: hsl(var(--foreground));
+  }
+
+  .aapm-academy-sidebar__academy-link:hover {
+    border-color: hsl(var(--tint-green-border));
+    background: hsl(var(--tint-green));
+  }
+
+  /* Admin uses the same canonical sidebar anatomy as learner. The only
+   * product-specific composition is the small context label beneath the
+   * shared Academy mark; navigation color, density, radius, focus, and motion
+   * stay owned by Ten4Seven tokens. */
+  .aapm-admin-sidebar__context {
+    display: block;
+    padding: 0 var(--t7-ref-space-2);
+    color: hsl(var(--t7-muted-foreground-hsl));
+    font-size: var(--t7-type-caption-size);
+    font-weight: var(--t7-type-button-weight);
+    letter-spacing: 0.14em;
+    line-height: var(--t7-type-caption-line-height);
+    text-transform: uppercase;
+  }
+
+  .aapm-academy-sidebar--collapsed {
+    padding-inline: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-brand {
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__brand-row {
+    flex-direction: column;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__brand-link {
+    justify-items: center;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__progress {
+    display: none;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__progress-meta span,
+  .aapm-academy-sidebar--collapsed .t7-sidebar-group-label,
+  .aapm-academy-sidebar--collapsed .t7-nav-label {
+    display: none;
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-group {
+    gap: var(--t7-ref-space-1);
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-group + .t7-sidebar-group {
+    margin-top: var(--t7-ref-space-2);
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-nav {
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-item .t7-nav-item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .t7-sidebar-footer {
+    justify-items: center;
+    padding-inline: 0;
+  }
+
+  .aapm-academy-sidebar--collapsed .aapm-academy-sidebar__account {
+    width: auto;
+    padding-inline: var(--t7-ref-space-2);
+  }
+
+  .t7-mobile-sidebar .aapm-academy-sidebar {
+    height: auto;
+    overflow: visible;
+    padding: var(--t7-ref-space-4);
+  }
+
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-brand,
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-footer {
+    padding-inline: 0;
+  }
+
+  .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-nav {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-inline: 0;
+  }
+
+  /* On small screens the Academy content owns the vertical scrollport. This
+   * deliberately lets the canonical AppShell topbar scroll away with content
+   * rather than acting as a sticky, permanently reserved header. */
+  @media (max-width: 860px) {
+    /* Match the AppShell mobile rule's direct-child anatomy so this product
+     * decision wins without an !important override. */
+    .aapm-t7-app-shell.t7-app-shell[data-sidebar="true"] > .t7-app-main > .t7-app-topbar {
+      display: none;
+    }
+
+    .aapm-t7-app-shell .t7-app-main {
+      display: block;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+    }
+
+    .aapm-t7-app-shell .t7-app-content,
+    .aapm-t7-app-shell [data-t7-region="scrollport"] {
+      display: block;
+      min-height: auto;
+    }
+
+    .aapm-t7-app-shell [data-t7-region="scrollport"] {
+      overflow: visible;
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar__theme-mobile {
+      display: inline-flex;
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .aapm-token-rail {
+    min-width: 0;
+    width: 100%;
+    max-width: var(--aapm-shell-content-max);
+    margin-inline: auto;
+    padding-inline: var(--aapm-shell-page-gutter);
+  }
+
+  .aapm-token-divider {
+    border-color: hsl(var(--surface-border));
+  }
+
+  .aapm-token-inset {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-data);
+    background: hsl(var(--surface-inset));
+  }
+
+  /* Product-level layout roles. Feature pages can use these classes instead
+   * of recreating their own radius, border, and surface recipes. */
+  .aapm-token-card {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--surface-default));
+    box-shadow: var(--surface-shadow);
+  }
+
+  .aapm-token-panel {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-default));
+    box-shadow: var(--surface-shadow);
+  }
+
+  .aapm-token-form {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--form-canvas));
+  }
+
+  .aapm-token-control {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+  }
+
+  .aapm-token-menu {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--menu-canvas));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  .aapm-token-menu-item {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-token-tooltip {
+    border-radius: var(--radius-control);
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  .aapm-token-tabs {
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-token-toolbar {
+    background: hsl(var(--surface-subtle) / 0.96);
+    box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
+  }
+
+  .aapm-admin-editor-frame {
+    max-width: min(100%, var(--aapm-editor-content-max));
+  }
+
+  /* Editorial workspace anatomy. These roles keep the editor's hierarchy
+   * stable while feature JSX can continue using the shared primitives. */
+  .aapm-editor-command-bar {
+    min-height: 3.25rem;
+    padding: var(--space-2);
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-elevated) / 0.96);
+    box-shadow: var(--surface-shadow);
+    backdrop-filter: blur(12px);
+  }
+
+  .aapm-editor-command-bar .aapm-editor-section-link {
+    min-height: 2.25rem;
+  }
+
+  .aapm-editor-command-actions {
+    min-height: 2.25rem;
+  }
+
+  .aapm-editorial-summary {
+    background: hsl(var(--surface-subtle) / 0.72);
+  }
+
+  .aapm-editorial-layout {
+    align-items: start;
+  }
+
+  .aapm-editorial-block {
+    scroll-margin-top: 6.5rem;
+  }
+
+  .aapm-editorial-block > :last-child {
+    min-width: 0;
+  }
+
+  .aapm-editorial-outline {
+    min-width: 0;
+  }
+
+  .aapm-editorial-outline > aside {
+    background: hsl(var(--surface-elevated) / 0.96);
+  }
+
+  .aapm-editorial-insert-rail {
+    background: hsl(var(--surface-subtle) / 0.56);
+  }
+
+  @media (max-width: 860px) {
+    .aapm-editor-command-bar {
+      position: static;
+      backdrop-filter: none;
+    }
+
+    .aapm-editor-command-actions {
+      width: 100%;
+      border-top: 1px solid hsl(var(--surface-border));
+      padding-top: var(--space-2);
+    }
+
+    .aapm-editor-command-actions > :last-child {
+      margin-left: auto;
+    }
+  }
+
+  .aapm-token-tab {
+    border-radius: calc(var(--radius-control) - 0.2rem);
+  }
+
+  .aapm-token-alert {
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-token-icon {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-token-popover {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-overlay);
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+  }
+
+  /* Toasts are global feedback, so keep one canonical group anchored at the
+   * top centre of the viewport. The compact geometry leaves the page visible
+   * underneath while each item keeps its own provider-managed deadline. */
+  .aapm-t7-runtime .t7-toaster {
+    top: max(12px, env(safe-area-inset-top));
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(332px, calc(100vw - 24px));
+    gap: 6px;
+    transform: translateX(-50%);
+  }
+
+  .aapm-t7-runtime .t7-toast {
+    grid-template-columns: 26px minmax(0, 1fr) auto auto;
+    min-height: 44px;
+    gap: 7px;
+    border-radius: var(--radius-panel);
+    padding: 6px 7px;
+  }
+
+  .aapm-t7-runtime .t7-toast-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime .t7-toast-icon > svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .aapm-t7-runtime .t7-toast > div {
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .aapm-t7-runtime .t7-toast strong {
+    overflow: hidden;
+    font-size: var(--t7-type-caption-size);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aapm-t7-runtime .t7-toast p {
+    overflow: hidden;
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .aapm-t7-runtime .t7-toast .t7-icon-button {
+    width: 26px;
+    height: 26px;
+    min-height: 26px;
+    padding: 4px;
+  }
+
+  .aapm-t7-runtime .t7-toast .t7-button {
+    min-height: 28px;
+    padding-inline: 7px;
+    font-size: 0.6875rem;
+  }
+
+  .aapm-token-scrim {
+    background: hsl(var(--t7-scrim-hsl, var(--foreground)) / 0.42);
+  }
+
+  .aapm-token-sheet {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+    transition-duration: var(--t7-duration-overlay);
+    transition-timing-function: var(--t7-ease-enter, ease);
+  }
+
+  .aapm-token-sheet[data-state="closed"] {
+    transition-duration: var(--t7-duration-exit);
+    transition-timing-function: var(--t7-ease-exit, ease);
+  }
+
+  .aapm-token-drawer {
+    border-radius: var(--radius-overlay) var(--radius-overlay) 0 0;
+  }
+
+  .aapm-token-command-dialog {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .aapm-token-otp-slot {
+  border-color: hsl(var(--surface-border));
+  background: hsl(var(--control-canvas));
+}
+
+/* A four-up KPI card can be narrower than the metric plus a trend label on
+ * medium desktop widths. Give the trend its own row before text can collide;
+ * the component's container query keeps the rule local to a KPI card. */
+@container (max-width: 250px) {
+  .aapm-t7-runtime .aapm-kpi-cluster[data-variant="cards"][data-has-trend="true"] .t7-kpi-item-primary {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--t7-control-gap-sm);
+  }
+
+  .aapm-kpi-cluster .t7-kpi-item-trend {
+    padding-bottom: 0;
+  }
+}
+
+  .aapm-token-table {
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-data);
+    background: hsl(var(--surface-default));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .aapm-token-table thead {
+    background: hsl(var(--table-header-canvas));
+  }
+
+  .aapm-token-table tbody tr:hover {
+    background: hsl(var(--table-row-hover));
+  }
+
+  .aapm-token-table :is(th, td) {
+    border-color: hsl(var(--table-divider));
+  }
+
+  /* One table contract for operational data, editorial blocks, and the KPI
+   * dashboard. The component still owns its geometry; these aliases only
+   * connect the canonical T7 roles to Academy's product tokens. */
+  .aapm-data-table,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) {
+    --t7-border-hsl: var(--table-divider);
+    --t7-surface-hsl: var(--surface-default);
+    --t7-surface-subtle-hsl: var(--table-header-canvas);
+    --t7-table-cell-padding-inline: var(--space-4);
+    --t7-table-cell-padding-block: var(--space-3);
+  }
+
+  .aapm-data-table .t7-table,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) > .t7-table {
+    min-width: max(100%, 500px);
+  }
+
+  .aapm-data-table .t7-table :is(th, td),
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table :is(th, td) {
+    vertical-align: middle;
+  }
+
+  .aapm-data-table .t7-table th,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table th {
+    background: hsl(var(--table-header-canvas));
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-data-table .t7-table tbody tr,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table tbody tr {
+    border-bottom-color: hsl(var(--table-divider) / 0.72);
+  }
+
+  .aapm-data-table .t7-table tbody tr:hover,
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) .t7-table tbody tr:hover {
+    background: hsl(var(--table-row-hover));
+  }
+
+  .aapm-data-table .t7-table-stacked-row {
+    background: hsl(var(--surface-default));
+    border-bottom-color: hsl(var(--table-divider) / 0.72);
+  }
+
+  .aapm-data-table .t7-table-stacked-label {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-table-caption {
+    display: block;
+    margin-block: var(--space-3);
+    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+    line-height: 1.35rem;
+    text-align: left;
+  }
+
+  .aapm-table-footer {
+    border-top: 1px solid hsl(var(--table-divider));
+    background: hsl(var(--surface-subtle));
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .aapm-kpi-cluster {
+    --t7-kpi-gap: var(--space-4);
+    --t7-kpi-padding: var(--space-5);
+  }
+
+  .aapm-sparkline {
+    display: block;
+    max-width: 100%;
+  }
+
+  .aapm-dashboard-progress .t7-progress-track {
+    height: 6px;
+    background: hsl(var(--t7-muted-hsl));
+  }
+
+  .aapm-dashboard-progress--green .t7-progress-track > span {
+    background: hsl(var(--t7-primary-hsl));
+  }
+
+  .aapm-dashboard-progress--orange .t7-progress-track > span {
+    background: hsl(var(--t7-accent-hsl));
+  }
+
+  .aapm-dashboard-progress--info .t7-progress-track > span {
+    background: hsl(var(--t7-info-hsl));
+  }
+
+  /* Dashboard's one circular cue is reserved for course completion. Keep the
+   * T7 geometry while changing only the local semantic colours on the dark
+   * hero surface, so the ring remains legible without inventing a new widget. */
+  .aapm-dashboard-ring--hero {
+    --t7-primary-hsl: var(--aapm-lime-500);
+    --t7-muted-hsl: 0 0% 100% / 0.22;
+    --t7-foreground-hsl: 0 0% 100%;
+  }
+
+  .aapm-dashboard-ring--hero .t7-circular-progress-track {
+    stroke: hsl(0 0% 100% / 0.22);
+  }
+
+  .aapm-dashboard-ring--hero .t7-circular-progress-value {
+    stroke: hsl(var(--aapm-lime-500));
+  }
+
+  .aapm-dashboard-ring--hero > span {
+    color: hsl(0 0% 100%);
+  }
+
+  /* T7's semantic Table returns a scroll wrapper around its native table.
+   * The compatibility bridge tags the inner table, so style the actual
+   * wrapper instead of creating a second border/scroll container in feature
+   * code. */
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) {
+    border-color: hsl(var(--table-divider));
+    border-radius: var(--radius-data);
+    background: hsl(var(--surface-default));
+  }
+
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) :is(th, td) {
+    border-color: hsl(var(--table-divider));
+  }
+
+  .t7-table-wrap:has(> [data-t7-bridge="academy-table"]) tbody tr:hover {
+    background: hsl(var(--table-row-hover));
+  }
+
+  /* A table placed inside a canonical Surface borrows that Surface's border
+   * and radius. Removing the nested frame keeps dashboard/admin cards from
+   * looking like two unrelated cards stacked on top of one another. */
+  .t7-surface > .t7-table-wrap {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table) {
+    margin-block: var(--t7-ref-space-3);
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table) > .t7-table {
+    min-width: max-content;
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table--editor) {
+    margin-block: 0;
+    --t7-surface-hsl: var(--form-canvas);
+    --t7-surface-subtle-hsl: var(--table-header-canvas);
+    --t7-border-hsl: var(--table-divider);
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table--editor) :is(input, textarea) {
+    border-color: hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+  }
+
+  .t7-table-wrap:has(> .aapm-editorial-table--editor) :is(input, textarea):focus-visible {
+    border-color: hsl(var(--t7-primary-hsl));
+    box-shadow: 0 0 0 3px hsl(var(--t7-focus-hsl) / 0.16);
+  }
+
+  /* Legacy utility geometry is deliberately bridged by semantic role rather
+   * than by module. This covers existing card, panel, form, icon, and state
+   * surfaces while source call sites are progressively moved to primitives.
+   * Full pills stay intentional and are therefore excluded. */
+  .aapm-t7-runtime .rounded-sm,
+  .aapm-t7-runtime .rounded-md,
+  .aapm-t7-runtime .rounded-lg {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime .rounded-xl {
+    border-radius: var(--radius-panel);
+  }
+
+  .aapm-t7-runtime .rounded-2xl {
+    border-radius: var(--radius-card);
+  }
+
+  /* Once a feature declares its semantic role, that role owns geometry even
+   * when a legacy utility remains on the same element. This is the final
+   * precedence layer that makes migrated and unmigrated components visually
+   * indistinguishable. */
+  .aapm-t7-runtime :where(.aapm-token-control, .aapm-token-menu-item, .aapm-token-tab, .aapm-token-icon)[class*="rounded-"] {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime :where(.aapm-token-card, .aapm-token-form)[class*="rounded-"] {
+    border-radius: var(--radius-card);
+  }
+
+  .aapm-t7-runtime :where(.aapm-token-panel, .aapm-token-menu, .aapm-token-alert, .aapm-token-popover)[class*="rounded-"] {
+    border-radius: var(--radius-panel);
+  }
+
+  .aapm-t7-runtime .shadow-sm {
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-t7-runtime .shadow-md {
+    box-shadow: var(--t7-shadow-raised, var(--surface-shadow-hover));
+  }
+
+  .aapm-t7-runtime .shadow-lg {
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  /* Radix-owned compatibility overlays share the same canvas, elevation,
+   * and menu anatomy as canonical T7 overlays. */
+  .aapm-t7-runtime :where([role="dialog"], [role="menu"], [role="listbox"]) {
+    border-color: hsl(var(--surface-border));
+    background-color: hsl(var(--popup-canvas));
+  }
+
+  .aapm-t7-runtime :where([role="menu"], [role="listbox"]) {
+    border-radius: var(--radius-panel);
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+  }
+
+  .aapm-t7-runtime :where([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"]) {
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-t7-runtime [role="tooltip"] {
+    border-radius: var(--radius-control);
+    background: hsl(var(--popup-canvas));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
   }
 
   /*
@@ -588,12 +1645,19 @@
     }
   }
 
+  .aapm-icon {
+    display: inline-block;
+    flex: none;
+    color: currentColor;
+    vertical-align: middle;
+  }
+
   .aapm-icon-tile {
     box-shadow: inset 0 1px 0 hsl(var(--background) / 0.58),
       0 4px 10px hsl(var(--foreground) / 0.04);
     transition-property: background-color, border-color, box-shadow, transform;
-    transition-duration: var(--duration-fast);
-    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-duration: var(--t7-transition-fast, var(--duration-fast));
+    transition-timing-function: var(--t7-easing-standard, ease);
   }
 
   .aapm-icon-tile::before {
@@ -615,7 +1679,7 @@
   }
 
   .aapm-icon-tile:hover {
-    box-shadow: var(--card-shadow-hover);
+    box-shadow: var(--t7-shadow-raised, var(--card-shadow-hover));
     transform: translateY(-1px);
   }
 
@@ -632,13 +1696,14 @@
   }
 
   .aapm-field {
+    border-radius: var(--radius-control);
     transition-property: background-color, border-color, box-shadow;
     transition-duration: var(--duration-fast);
   }
 
   .aapm-field:focus-within {
-    border-color: hsl(var(--aapm-green-700) / 0.68);
-    box-shadow: 0 0 0 3px hsl(var(--aapm-lime-500) / 0.2);
+    border-color: hsl(var(--ring) / 0.68);
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
   }
 
   input:-webkit-autofill,
@@ -1478,6 +2543,247 @@
     }
   }
 
+  /* APPI composition grammar. The workspace is one frame; cards and
+   * message surfaces sit inside it on the shared Academy reference grid. */
+  .aapm-ai-frame {
+    border: 1px solid hsl(var(--ai-frame-border));
+    border-radius: var(--radius-panel);
+    background: hsl(var(--ai-frame-canvas));
+    box-shadow: var(--ai-frame-shadow);
+  }
+
+  .aapm-ai-card {
+    border: 1px solid hsl(var(--ai-card-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--ai-card-canvas));
+  }
+
+  .aapm-ai-card--interactive {
+    transition:
+      border-color var(--duration-normal),
+      background-color var(--duration-normal),
+      box-shadow var(--duration-normal),
+      transform var(--duration-normal);
+  }
+
+  .aapm-ai-card--interactive:hover {
+    border-color: hsl(var(--aapm-orange-700) / 0.42);
+    background: hsl(var(--ai-card-hover) / 0.34);
+    box-shadow: var(--surface-shadow-hover);
+    transform: translateY(-1px);
+  }
+
+  .aapm-ai-card--interactive:focus-visible {
+    outline: none;
+    border-color: hsl(var(--aapm-orange-700) / 0.62);
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-suggestion-card {
+    min-height: 5.25rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .aapm-ai-answer-card {
+    padding: 1rem 1.125rem;
+    border: 1px solid hsl(var(--surface-border) / 0.78);
+    border-radius: var(--radius-card);
+    background: hsl(var(--ai-assistant-canvas) / 0.72);
+  }
+
+  .aapm-ai-answer-card--compact {
+    padding: 0.7rem 0.8rem;
+  }
+
+  .aapm-ai-user-bubble {
+    border-radius: var(--radius-card) var(--radius-card) var(--radius-control)
+      var(--radius-card);
+    background: hsl(var(--ai-user-canvas));
+    color: hsl(var(--ai-user-foreground));
+    box-shadow: var(--t7-shadow-raised, var(--surface-shadow));
+  }
+
+  .aapm-ai-composer-frame {
+    background: hsl(var(--ai-composer-canvas));
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-ai-composer-frame:focus-within {
+    border-color: hsl(var(--aapm-orange-700) / 0.68);
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-composer-frame__footer {
+    background: hsl(var(--surface-subtle) / 0.68);
+  }
+
+  .aapm-ai-segmented {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-ai-segmented__item {
+    min-width: 0;
+    border-radius: calc(var(--radius-control) - 0.2rem);
+    color: hsl(var(--muted-foreground));
+    transition:
+      background-color var(--duration-fast),
+      color var(--duration-fast),
+      box-shadow var(--duration-fast);
+  }
+
+  .aapm-ai-segmented__item[data-active="true"] {
+    background: hsl(var(--surface-default));
+    color: hsl(var(--foreground));
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-ai-search-control {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+  }
+
+  .aapm-ai-search-control:focus-within {
+    border-color: hsl(var(--aapm-orange-700) / 0.58);
+    box-shadow: 0 0 0 3px hsl(var(--aapm-orange-700) / 0.12);
+  }
+
+  .aapm-ai-history-group {
+    overflow: hidden;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-card);
+    background: hsl(var(--surface-default) / 0.72);
+  }
+
+  .aapm-ai-history-row {
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.72);
+    transition: background-color var(--duration-fast);
+  }
+
+  .aapm-ai-history-row:last-child {
+    border-bottom: 0;
+  }
+
+  .aapm-ai-history-row[data-active="true"] {
+    background: hsl(var(--tint-orange) / 0.76);
+  }
+
+  .aapm-ai-history-row:not([data-active="true"]):hover {
+    background: hsl(var(--surface-subtle));
+  }
+
+  .aapm-ai-quick-action-chip {
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle) / 0.72);
+    transition:
+      border-color var(--duration-fast),
+      background-color var(--duration-fast),
+      color var(--duration-fast);
+  }
+
+  .aapm-ai-quick-action-chip:hover {
+    border-color: hsl(var(--aapm-orange-700) / 0.42);
+    background: hsl(var(--tint-orange));
+    color: hsl(var(--foreground));
+  }
+
+  .aapm-ai-alert {
+    border-radius: var(--radius-control);
+  }
+
+  /* Delivery metadata stays useful without becoming a second card below every
+   * answer. Action links retain the recovery paths for provider and history
+   * failures while the normal saved state remains visually quiet. */
+  .aapm-ai-status-line {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.7rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.6875rem;
+    line-height: 1.35;
+  }
+
+  .aapm-ai-status-line--compact {
+    margin-top: 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .aapm-ai-status-line--warning {
+    color: hsl(var(--tint-orange-foreground));
+  }
+
+  .aapm-ai-status-line--success {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .aapm-ai-status-line--error {
+    color: hsl(var(--danger));
+  }
+
+  .aapm-ai-status-line__action {
+    color: hsl(var(--aapm-orange-700));
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 0.0625rem;
+    text-underline-offset: 0.15em;
+    transition: color var(--duration-fast);
+  }
+
+  .aapm-ai-status-line__action:hover {
+    color: hsl(var(--aapm-orange-700) / 0.75);
+  }
+
+  .aapm-ai-status-line__action:focus-visible {
+    border-radius: var(--radius-control);
+    outline: none;
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-floating-panel {
+    border-color: hsl(var(--ai-frame-border));
+    box-shadow: var(--t7-shadow-overlay, var(--ai-frame-shadow));
+  }
+
+  /* The collapsed APPI entry is one compact control, not a second brand
+   * surface. It inherits the same neutral canvas, border, radius, and
+   * elevation contract as the expanded panel. */
+  .aapm-ai-launcher {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-default) / 0.96);
+    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+    transition:
+      transform var(--duration-fast),
+      border-color var(--duration-fast),
+      box-shadow var(--duration-fast);
+  }
+
+  .aapm-ai-launcher:hover {
+    border-color: hsl(var(--surface-border));
+    background: hsl(var(--surface-subtle));
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+    transform: translateY(-1px);
+  }
+
+  .aapm-ai-launcher:focus-visible {
+    outline: none;
+    border-color: hsl(var(--aapm-orange-700) / 0.58);
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-launcher > .aapm-ai-profile-avatar {
+    box-shadow: none;
+  }
+
   .aapm-ai-companion-dock {
     pointer-events: none;
     position: absolute;
@@ -1582,9 +2888,19 @@
     isolation: isolate;
   }
 
+  /* APPI is a fixed overlay. It must not mutate the shell content box when it
+   * opens: changing padding here caused the entire page/scrollbar to jump.
+   * The panel owns its own canvas and remains visually above the route. */
+  @media (min-width: 75rem) {
+    .aapm-ai-floating-backdrop {
+      display: none;
+    }
+  }
+
   .aapm-ai-floating-panel__header,
   .aapm-ai-floating-composer {
-    background: hsl(var(--background) / 0.98);
+    background: hsl(var(--surface-subtle) / 0.82);
+    box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
   }
 
   .aapm-ai-floating-transcript {
@@ -1592,12 +2908,17 @@
   }
 
   .aapm-ai-launcher .aapm-ai-profile-avatar {
-    box-shadow:
-      0 0 0 2px hsl(var(--background)),
-      0 4px 12px hsl(var(--aapm-orange-700) / 0.18);
+    box-shadow: none;
   }
 
   @media (max-width: 639px) {
+    .aapm-ai-workspace.aapm-ai-frame {
+      border-right: 0;
+      border-left: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
     .aapm-ai-workspace__header {
       min-height: 3.5rem;
     }
@@ -1613,7 +2934,7 @@
     }
 
     .aapm-ai-floating-panel {
-      border-radius: 1.1rem;
+      border-radius: var(--radius-overlay);
     }
 
     .aapm-ai-floating-panel__header {
@@ -1708,7 +3029,8 @@
     animation: aapm-ai-answer-caret 0.9s steps(1, end) infinite;
   }
 
-  .aapm-ai-table-wrap {
+  .aapm-ai-table-wrap,
+  .t7-table-wrap:has(> .aapm-ai-markdown-table) {
     display: block;
     min-width: 0;
     max-width: 100%;
@@ -1717,12 +3039,13 @@
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-data);
     background: hsl(var(--surface-default));
   }
 
-  .aapm-ai-table-wrap table {
+  .aapm-ai-table-wrap table,
+  .aapm-ai-markdown-table {
     width: 100%;
     min-width: 32rem;
     border-collapse: collapse;
@@ -1731,26 +3054,30 @@
   }
 
   .aapm-ai-table-wrap th,
-  .aapm-ai-table-wrap td {
-    padding: 0.7rem 0.8rem;
+  .aapm-ai-table-wrap td,
+  .aapm-ai-markdown-table th,
+  .aapm-ai-markdown-table td {
+    padding: var(--t7-table-cell-padding-block, 0.7rem) var(--t7-table-cell-padding-inline, 0.8rem);
     text-align: left;
     vertical-align: top;
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--surface-border));
   }
 
-  .aapm-ai-table-wrap th {
+  .aapm-ai-table-wrap th,
+  .aapm-ai-markdown-table th {
     color: hsl(var(--foreground));
     font-weight: 650;
-    background: hsl(var(--surface-subtle));
+    background: hsl(var(--table-header-canvas));
   }
 
-  .aapm-ai-table-wrap tr:last-child td {
+  .aapm-ai-table-wrap tr:last-child td,
+  .aapm-ai-markdown-table tr:last-child td {
     border-bottom: 0;
   }
 
   .aapm-ai-inline-code {
     padding: 0.08rem 0.32rem;
-    border-radius: 0.28rem;
+    border-radius: var(--radius-sm);
     background: hsl(var(--muted));
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -1763,7 +3090,7 @@
     margin-top: 1rem;
     overflow-x: auto;
     padding: 0.85rem 0.95rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-card);
     background: hsl(var(--foreground));
     color: hsl(var(--background));
     font-size: 0.78rem;
@@ -1779,8 +3106,8 @@
     justify-content: center;
     overflow-x: auto;
     padding: 1rem;
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.75rem;
+    border: 1px solid hsl(var(--surface-border));
+    border-radius: var(--radius-card);
     background: hsl(var(--surface-default));
   }
 
@@ -1822,6 +3149,17 @@
     .aapm-ai-profile-avatar > .aapm-ai-presence,
     .aapm-ai-profile-avatar::after {
       transition: none;
+    }
+
+    .aapm-ai-card--interactive,
+    .aapm-ai-segmented__item,
+    .aapm-ai-quick-action-chip,
+    .aapm-ai-launcher {
+      transition: none;
+    }
+
+    .aapm-ai-launcher:hover {
+      transform: none;
     }
 
     .aapm-interactive-card {
@@ -1870,7 +3208,8 @@
     @apply bg-transparent p-0;
   }
   .markdown-body blockquote {
-    @apply border-l-4 border-amber-300 pl-3 italic text-muted-foreground my-3;
+    @apply border-l-4 pl-3 italic text-muted-foreground my-3;
+    border-left-color: hsl(var(--tint-orange-border));
   }
   .markdown-body table {
     @apply min-w-full w-max border-collapse text-sm;
@@ -1887,6 +3226,18 @@
 
   .aapm-rich-editor__content {
     @apply min-h-[22rem] max-h-[42rem] overflow-y-auto bg-background px-5 py-5 text-[15px] leading-7 text-foreground outline-none selection:bg-brand-orange/15;
+  }
+
+  /* Keep authored prose at a learner-readable measure even when the editor
+   * workspace expands on desktop. Wide media/table blocks remain free to use
+   * their own layout; only prose primitives are constrained. */
+  .aapm-rich-editor__content > :is(p, h1, h2, h3, ul, ol, blockquote) {
+    max-width: var(--aapm-reading-measure);
+    margin-inline: auto;
+  }
+
+  .aapm-rich-editor__content > :is(ul, ol) {
+    padding-inline-start: 2rem;
   }
   .aapm-rich-editor__content p {
     @apply my-2 first:mt-0 last:mb-0;

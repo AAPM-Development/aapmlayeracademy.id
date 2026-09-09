@@ -13,12 +13,12 @@ export default function LearningFocusShell({ header = null, sidebar = null, chil
   const mapScrollRef = useScrollEdgeFade();
 
   return (
-    <div className={cn("mx-auto flex w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8", className)}>
+    <div className={cn("aapm-token-rail mx-auto flex w-full max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8 lg:py-8", className)} data-t7-region="learning-rail">
       {header}
       {sidebar && <div className="mt-6 lg:hidden">
-        <Button type="button" variant="soft" className="w-full justify-between" aria-expanded={mapOpen} aria-controls="mobile-lesson-map" onClick={() => setMapOpen(true)}>
-          <span className="inline-flex items-center gap-2"><AapmIcon name="solar:sidebar-minimalistic-bold-duotone" className="h-4 w-4" /> Buka peta materi</span>
-          <span className="text-xs text-muted-foreground">Navigasi materi</span>
+        <Button type="button" variant="soft" className="w-full justify-between gap-3 text-left [&>.t7-button-label]:flex [&>.t7-button-label]:w-full [&>.t7-button-label]:items-center [&>.t7-button-label]:justify-between" aria-expanded={mapOpen} aria-controls="mobile-lesson-map" onClick={() => setMapOpen(true)}>
+          <span className="inline-flex min-w-0 items-center gap-2"><AapmIcon name="solar:sidebar-minimalistic-bold-duotone" className="h-4 w-4 shrink-0" /><span className="truncate">Buka peta materi</span></span>
+          <span className="ml-3 shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">Navigasi materi</span>
         </Button>
         <Sheet open={mapOpen} onOpenChange={setMapOpen}>
           <LearningSheetContent id="mobile-lesson-map" side="right" className="w-[min(90vw,360px)] p-0">
@@ -28,8 +28,8 @@ export default function LearningFocusShell({ header = null, sidebar = null, chil
         </Sheet>
       </div>}
       <div className="mt-6 grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
-        <section className="min-w-0">{children}</section>
-        {sidebar && <aside className="hidden lg:block">{sidebar}</aside>}
+        <section className="min-w-0" data-t7-region="learning-content">{children}</section>
+        {sidebar && <aside className="hidden lg:block" data-t7-region="learning-sidebar">{sidebar}</aside>}
       </div>
       {footer}
     </div>
