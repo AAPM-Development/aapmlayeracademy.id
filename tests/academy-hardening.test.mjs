@@ -87,6 +87,37 @@ test("PPTX authoring and learner limits stay on the 50 MB contract", () => {
   assert.equal(EDITORIAL_PRESENTATION_MAX_SLIDES, 50);
 });
 
+test("editorial presentation controls normalize with backward-compatible defaults", () => {
+  const image = createEditorialBlock("image");
+  const table = createEditorialBlock("table");
+  const cta = createEditorialBlock("cta");
+  assert.deepEqual(
+    { align: image.align, position: image.position },
+    { align: "left", position: "center" },
+  );
+  assert.deepEqual(
+    { align: table.align, density: table.density },
+    { align: "left", density: "comfortable" },
+  );
+  assert.deepEqual(
+    { align: cta.align, width: cta.width },
+    { align: "left", width: "auto" },
+  );
+
+  const parsed = parseEditorialDocument(JSON.stringify({
+    version: 1,
+    blocks: [
+      { id: "copy", type: "richText", content: "Narasi", align: "center" },
+      { id: "rule", type: "divider", style: "dashed", spacing: "compact" },
+    ],
+  }));
+  assert.equal(parsed.blocks[0].align, "center");
+  assert.deepEqual(
+    { style: parsed.blocks[1].style, spacing: parsed.blocks[1].spacing },
+    { style: "dashed", spacing: "compact" },
+  );
+});
+
 test("PPTX compatibility flattens PowerPoint SVG blip relationships without touching ordinary media", () => {
   const svgBlip = '<a:blip cstate="print"><a:extLst><a:ext><asvg:svgBlip r:embed="rId6"/></a:ext></a:extLst></a:blip>';
   assert.equal(normaliseSvgBlipMarkup(svgBlip), '<a:blip cstate="print" r:embed="rId6"/>');

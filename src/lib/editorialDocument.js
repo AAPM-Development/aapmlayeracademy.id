@@ -188,16 +188,17 @@ function normaliseBlock(block, index) {
 
   switch (block.type) {
     case "richText":
-      return { id, type: "richText", content: text(block.content, EDITORIAL_TEXT_LIMIT) };
+      return { id, type: "richText", content: text(block.content, EDITORIAL_TEXT_LIMIT), align: select(block.align, ["left", "center", "right"], "left") };
     case "heading":
       return {
         id,
         type: "heading",
         content: text(block.content, 500),
         level: select(Number(block.level), [2, 3, 4], 2),
+        align: select(block.align, ["left", "center", "right"], "left"),
       };
     case "table":
-      return { id, type: "table", ...normaliseTable(block) };
+      return { id, type: "table", ...normaliseTable(block), align: select(block.align, ["left", "center", "right"], "left"), density: select(block.density, ["comfortable", "compact"], "comfortable") };
     case "image":
       {
         const alt = text(block.alt, 280);
@@ -210,16 +211,19 @@ function normaliseBlock(block, index) {
           caption: text(block.caption, 600),
           ratio: select(block.ratio, ["natural", "wide", "standard", "square"], "natural"),
           width: select(block.width, ["standard", "wide"], "standard"),
+          align: select(block.align, ["left", "center", "right"], "left"),
+          position: select(block.position, ["top", "center", "bottom"], "center"),
         };
       }
     case "slides":
-      return { id, type: "slides", ...normaliseSlides(block) };
+      return { id, type: "slides", ...normaliseSlides(block), align: select(block.align, ["left", "center", "right"], "left") };
     case "video":
       return {
         id,
         type: "video",
         url: text(block.url, 2048),
         caption: text(block.caption, 600),
+        align: select(block.align, ["left", "center", "right"], "left"),
       };
     case "link":
       return {
@@ -228,6 +232,7 @@ function normaliseBlock(block, index) {
         label: text(block.label, 160),
         url: text(block.url, 2048),
         description: text(block.description, 600),
+        align: select(block.align, ["left", "center", "right"], "left"),
       };
     case "cta":
       return {
@@ -236,6 +241,8 @@ function normaliseBlock(block, index) {
         label: text(block.label, 120),
         url: text(block.url, 2048),
         variant: select(block.variant, ["primary", "secondary", "outline"], "primary"),
+        align: select(block.align, ["left", "center", "right"], "left"),
+        width: select(block.width, ["auto", "full"], "auto"),
       };
     case "callout":
       return {
@@ -244,9 +251,15 @@ function normaliseBlock(block, index) {
         title: text(block.title, 160),
         content: text(block.content, 2400),
         tone: select(block.tone, ["info", "practice", "warning"], "info"),
+        align: select(block.align, ["left", "center", "right"], "left"),
       };
     case "divider":
-      return { id, type: "divider" };
+      return {
+        id,
+        type: "divider",
+        style: select(block.style, ["subtle", "strong", "dashed"], "subtle"),
+        spacing: select(block.spacing, ["compact", "comfortable"], "comfortable"),
+      };
     default:
       return null;
   }
@@ -580,9 +593,9 @@ export function createEditorialBlock(type) {
   const id = makeBlockId();
   switch (type) {
     case "richText":
-      return { id, type, content: "" };
+      return { id, type, content: "", align: "left" };
     case "heading":
-      return { id, type, content: "", level: 2 };
+      return { id, type, content: "", level: 2, align: "left" };
     case "table":
       return {
         id,
@@ -590,21 +603,23 @@ export function createEditorialBlock(type) {
         title: "",
         columns: ["", ""],
         rows: [["", ""], ["", ""]],
+        align: "left",
+        density: "comfortable",
       };
     case "image":
-      return { id, type, src: "", alt: "", decorative: true, caption: "", ratio: "natural", width: "standard" };
+      return { id, type, src: "", alt: "", decorative: true, caption: "", ratio: "natural", width: "standard", align: "left", position: "center" };
     case "slides":
-      return { id, type, title: "", source: "manual", slides: [createEditorialSlide(1)] };
+      return { id, type, title: "", source: "manual", slides: [createEditorialSlide(1)], align: "left" };
     case "video":
-      return { id, type, url: "", caption: "" };
+      return { id, type, url: "", caption: "", align: "left" };
     case "link":
-      return { id, type, label: "", url: "", description: "" };
+      return { id, type, label: "", url: "", description: "", align: "left" };
     case "cta":
-      return { id, type, label: "", url: "", variant: "primary" };
+      return { id, type, label: "", url: "", variant: "primary", align: "left", width: "auto" };
     case "callout":
-      return { id, type, title: "", content: "", tone: "info" };
+      return { id, type, title: "", content: "", tone: "info", align: "left" };
     case "divider":
-      return { id, type };
+      return { id, type, style: "subtle", spacing: "comfortable" };
     default:
       return null;
   }

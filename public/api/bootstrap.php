@@ -1951,9 +1951,15 @@ function normalise_editorial_content($value): string
     }
 
     $allowedTypes = ['richText', 'heading', 'table', 'image', 'slides', 'video', 'link', 'cta', 'callout', 'divider'];
+    $allowedAlignments = ['left', 'center', 'right'];
     $allowedRatios = ['natural', 'wide', 'standard', 'square'];
     $allowedWidths = ['standard', 'wide'];
+    $allowedImagePositions = ['top', 'center', 'bottom'];
     $allowedVariants = ['primary', 'secondary', 'outline'];
+    $allowedCtaWidths = ['auto', 'full'];
+    $allowedTableDensities = ['comfortable', 'compact'];
+    $allowedDividerStyles = ['subtle', 'strong', 'dashed'];
+    $allowedDividerSpacing = ['compact', 'comfortable'];
     $allowedTones = ['info', 'practice', 'warning'];
     $blocks = [];
     $ids = [];
@@ -1978,19 +1984,29 @@ function normalise_editorial_content($value): string
         if ($type === 'richText') {
             $content = profile_text($block['content'] ?? '', 120000);
             if ($content === '') error_response('Blok teks editorial tidak boleh kosong.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            if (!in_array($alignment, $allowedAlignments, true)) error_response('Perataan teks editorial tidak valid.', 422, 'invalid_editorial_content');
             $normalised['content'] = $content;
+            $normalised['align'] = $alignment;
             $totalLength += strlen($content);
             $hasContent = true;
         } elseif ($type === 'heading') {
             $content = profile_text($block['content'] ?? '', 500);
             $level = (int) ($block['level'] ?? 2);
-            if ($content === '' || !in_array($level, [2, 3, 4], true)) error_response('Judul editorial tidak valid.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            if ($content === '' || !in_array($level, [2, 3, 4], true) || !in_array($alignment, $allowedAlignments, true)) error_response('Judul editorial tidak valid.', 422, 'invalid_editorial_content');
             $normalised['content'] = $content;
             $normalised['level'] = $level;
+            $normalised['align'] = $alignment;
             $totalLength += strlen($content);
             $hasContent = true;
         } elseif ($type === 'table') {
             $normalised['title'] = profile_text($block['title'] ?? '', 160);
+            $alignment = (string) ($block['align'] ?? 'left');
+            $density = (string) ($block['density'] ?? 'comfortable');
+            if (!in_array($alignment, $allowedAlignments, true) || !in_array($density, $allowedTableDensities, true)) {
+                error_response('Tampilan tabel editorial tidak valid.', 422, 'invalid_editorial_content');
+            }
             $columns = $block['columns'] ?? null;
             $rows = $block['rows'] ?? null;
             if (!is_array($columns) || count($columns) < 1 || count($columns) > 8 || !is_array($rows) || count($rows) < 1 || count($rows) > 20) {
@@ -2017,6 +2033,8 @@ function normalise_editorial_content($value): string
                 $normalised['rows'][] = $normalisedRow;
             }
             $totalLength += strlen($normalised['title']);
+            $normalised['align'] = $alignment;
+            $normalised['density'] = $density;
             $hasContent = true;
         } elseif ($type === 'image') {
             $normalised['src'] = normalise_editorial_image_url($block['src'] ?? '');
@@ -2030,14 +2048,26 @@ function normalise_editorial_content($value): string
             }
             $ratio = (string) ($block['ratio'] ?? 'natural');
             $width = (string) ($block['width'] ?? 'standard');
-            if (!in_array($ratio, $allowedRatios, true) || !in_array($width, $allowedWidths, true)) error_response('Tampilan gambar editorial tidak valid.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            $position = (string) ($block['position'] ?? 'center');
+            if (!in_array($ratio, $allowedRatios, true)
+                || !in_array($width, $allowedWidths, true)
+                || !in_array($alignment, $allowedAlignments, true)
+                || !in_array($position, $allowedImagePositions, true)) {
+                error_response('Tampilan gambar editorial tidak valid.', 422, 'invalid_editorial_content');
+            }
             $normalised['decorative'] = $decorative;
             $normalised['ratio'] = $ratio;
             $normalised['width'] = $width;
+            $normalised['align'] = $alignment;
+            $normalised['position'] = $position;
             $totalLength += strlen($normalised['alt']) + strlen($normalised['caption']);
             $hasContent = true;
         } elseif ($type === 'slides') {
             $normalised['title'] = profile_text($block['title'] ?? '', 160);
+            $alignment = (string) ($block['align'] ?? 'left');
+            if (!in_array($alignment, $allowedAlignments, true)) error_response('Perataan rangkaian slide tidak valid.', 422, 'invalid_editorial_content');
+            $normalised['align'] = $alignment;
             $source = (string) ($block['source'] ?? 'manual');
             if ($source === 'pptx') {
                 $normalised['source'] = 'pptx';
@@ -2100,22 +2130,35 @@ function normalise_editorial_content($value): string
         } elseif ($type === 'video') {
             $normalised['url'] = normalise_lesson_video_url($block['url'] ?? '');
             $normalised['caption'] = profile_text($block['caption'] ?? '', 600);
-            if ($normalised['url'] === '') error_response('Blok video editorial harus memiliki tautan.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            if ($normalised['url'] === '' || !in_array($alignment, $allowedAlignments, true)) error_response('Blok video editorial harus memiliki tautan dan perataan yang valid.', 422, 'invalid_editorial_content');
+            $normalised['align'] = $alignment;
             $totalLength += strlen($normalised['caption']);
             $hasContent = true;
         } elseif ($type === 'link') {
             $normalised['label'] = profile_text($block['label'] ?? '', 160);
             $normalised['url'] = normalise_editorial_link_url($block['url'] ?? '');
             $normalised['description'] = profile_text($block['description'] ?? '', 600);
-            if ($normalised['label'] === '') error_response('Tautan editorial harus memiliki label.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            if ($normalised['label'] === '' || !in_array($alignment, $allowedAlignments, true)) error_response('Tautan editorial harus memiliki label dan perataan yang valid.', 422, 'invalid_editorial_content');
+            $normalised['align'] = $alignment;
             $totalLength += strlen($normalised['label']) + strlen($normalised['description']);
             $hasContent = true;
         } elseif ($type === 'cta') {
             $normalised['label'] = profile_text($block['label'] ?? '', 120);
             $normalised['url'] = normalise_editorial_link_url($block['url'] ?? '');
             $variant = (string) ($block['variant'] ?? 'primary');
-            if ($normalised['label'] === '' || !in_array($variant, $allowedVariants, true)) error_response('Tombol editorial tidak valid.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            $width = (string) ($block['width'] ?? 'auto');
+            if ($normalised['label'] === ''
+                || !in_array($variant, $allowedVariants, true)
+                || !in_array($alignment, $allowedAlignments, true)
+                || !in_array($width, $allowedCtaWidths, true)) {
+                error_response('Tombol editorial tidak valid.', 422, 'invalid_editorial_content');
+            }
             $normalised['variant'] = $variant;
+            $normalised['align'] = $alignment;
+            $normalised['width'] = $width;
             $totalLength += strlen($normalised['label']);
             $hasContent = true;
         } elseif ($type === 'callout') {
@@ -2123,9 +2166,20 @@ function normalise_editorial_content($value): string
             $normalised['content'] = profile_text($block['content'] ?? '', 2400);
             $tone = (string) ($block['tone'] ?? 'info');
             if (($normalised['title'] === '' && $normalised['content'] === '') || !in_array($tone, $allowedTones, true)) error_response('Sorotan editorial tidak valid.', 422, 'invalid_editorial_content');
+            $alignment = (string) ($block['align'] ?? 'left');
+            if (!in_array($alignment, $allowedAlignments, true)) error_response('Perataan sorotan editorial tidak valid.', 422, 'invalid_editorial_content');
             $normalised['tone'] = $tone;
+            $normalised['align'] = $alignment;
             $totalLength += strlen($normalised['title']) + strlen($normalised['content']);
             $hasContent = true;
+        } elseif ($type === 'divider') {
+            $style = (string) ($block['style'] ?? 'subtle');
+            $spacing = (string) ($block['spacing'] ?? 'comfortable');
+            if (!in_array($style, $allowedDividerStyles, true) || !in_array($spacing, $allowedDividerSpacing, true)) {
+                error_response('Gaya pemisah editorial tidak valid.', 422, 'invalid_editorial_content');
+            }
+            $normalised['style'] = $style;
+            $normalised['spacing'] = $spacing;
         }
 
         if ($totalLength > 120000) {

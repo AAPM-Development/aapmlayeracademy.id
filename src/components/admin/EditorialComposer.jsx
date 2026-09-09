@@ -116,6 +116,24 @@ const imagePreviewRatio = {
   square: "aspect-square",
 };
 
+const imageAlignmentClass = {
+  left: "mr-auto",
+  center: "mx-auto",
+  right: "ml-auto",
+};
+
+const imagePositionClass = {
+  top: "object-top",
+  center: "object-center",
+  bottom: "object-bottom",
+};
+
+const ctaAlignmentClass = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 function useImageDimensions(src) {
   const [dimensions, setDimensions] = React.useState(null);
 
@@ -139,7 +157,11 @@ function useImageDimensions(src) {
   return dimensions;
 }
 
-function SourceImagePreview({ src, alt, ratio = "wide", width = "standard" }) {
+function AlignmentField({ id, value = "left", onChange, label = "Rata horizontal" }) {
+  return <Field id={id} label={label}><Select value={value || "left"} onValueChange={onChange}><SelectTrigger id={id}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="left">Kiri</SelectItem><SelectItem value="center">Tengah</SelectItem><SelectItem value="right">Kanan</SelectItem></SelectContent></Select></Field>;
+}
+
+function SourceImagePreview({ src, alt, ratio = "wide", width = "standard", align = "left", position = "center" }) {
   const [failed, setFailed] = React.useState(false);
   const issue = imageUrlIssue(src);
 
@@ -152,14 +174,14 @@ function SourceImagePreview({ src, alt, ratio = "wide", width = "standard" }) {
         {failed ? (
           <p className="p-3 text-xs leading-5 text-danger" role="alert">Pratinjau tidak dapat dimuat. Periksa URL atau unggah gambar.</p>
         ) : (
-          <img src={src} alt={alt || ""} className={cn("w-full", ratio === "natural" ? "h-auto object-contain" : "h-full object-cover")} onError={() => setFailed(true)} />
+          <img src={src} alt={alt || ""} className={cn("block max-w-full", imageAlignmentClass[align] || imageAlignmentClass.left, ratio === "natural" ? "h-auto w-auto object-contain" : "h-full w-full object-cover", imagePositionClass[position] || imagePositionClass.center)} onError={() => setFailed(true)} />
         )}
       </div>
     </div>
   );
 }
 
-function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar / GIF", hint, previewRatio = "wide", previewWidth = "standard" }) {
+function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar / GIF", hint, previewRatio = "wide", previewWidth = "standard", previewAlign = "left", previewPosition = "center" }) {
   const [uploadState, setUploadState] = React.useState({ status: "idle", message: "" });
   const sourceIssue = imageUrlIssue(value);
   const uploadId = `${id}-upload`;
@@ -217,7 +239,7 @@ function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar 
         <span className="text-[11px] leading-5 text-muted-foreground">Maks. 20 MB · JPG, PNG, GIF, WebP, AVIF</span>
       </div>
       {uploadState.status !== "idle" && <p className={cn("text-[11px] leading-5", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
-      <SourceImagePreview src={value} alt={alt} ratio={previewRatio} width={previewWidth} />
+      <SourceImagePreview src={value} alt={alt} ratio={previewRatio} width={previewWidth} align={previewAlign} position={previewPosition} />
     </div>
   );
 }
@@ -263,6 +285,7 @@ function TableBlockFields({ block, onChange }) {
       <Field id={`${block.id}-table-title`} label="Judul tabel (opsional)">
         <Input id={`${block.id}-table-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Judul tabel" />
       </Field>
+      <div className="grid gap-3 sm:grid-cols-2"><AlignmentField id={`${block.id}-table-align`} value={block.align || "left"} onChange={(align) => onChange({ align })} label="Rata tabel" /><Field id={`${block.id}-table-density`} label="Kepadatan"><Select value={block.density || "comfortable"} onValueChange={(density) => onChange({ density })}><SelectTrigger id={`${block.id}-table-density`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman · ruang lega</SelectItem><SelectItem value="compact">Padat · data banyak</SelectItem></SelectContent></Select></Field></div>
       <div className="flex flex-wrap items-center justify-between gap-2">
          <div className="text-xs font-semibold">Isi tabel</div>
         <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={columns.length >= 8} onClick={addColumn}><AapmIcon name="add" className="h-3.5 w-3.5" />Kolom</Button><Button type="button" size="sm" variant="outline" disabled={rows.length >= 20} onClick={addRow}><AapmIcon name="add" className="h-3.5 w-3.5" />Baris</Button></div>
@@ -338,6 +361,7 @@ function SlidesBlockFields({ block, onChange }) {
   return (
     <div className="space-y-3">
       <Field id={`${block.id}-slides-title`} label="Judul rangkaian slide (opsional)"><Input id={`${block.id}-slides-title`} value={block.title || ""} maxLength={160} onChange={(event) => onChange({ title: event.target.value })} placeholder="Judul rangkaian slide" /></Field>
+      <AlignmentField id={`${block.id}-slides-align`} value={block.align || "left"} onChange={(align) => onChange({ align })} label="Rata rangkaian" />
       <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div className="text-xs font-semibold">Sumber slide</div><div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source === "pptx" ? "default" : "outline"} disabled={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{source === "pptx" ? "Ganti PPTX" : "Unggah PPTX"}</label></Button><span className="text-[11px] leading-5 text-muted-foreground">Maks. 50 MB · .pptx</span></div></div></div>
       {pendingPresentation && <div className="flex flex-col gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/5 p-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5">PPTX baru akan menggantikan {slides.length} slide manual di elemen ini.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void uploadPresentationFile(pendingPresentation)}>Gunakan PPTX</Button><Button type="button" size="sm" variant="outline" onClick={() => setPendingPresentation(null)}>Batal</Button></div></div>}
       {uploadState.status !== "idle" && <p className={cn("text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"}>{uploadState.message}</p>}
@@ -363,6 +387,7 @@ function VideoBlockFields({ block, onChange }) {
       <Field id={captionId} label="Keterangan untuk learner (disarankan)" hint="Sebutkan apa yang perlu diperhatikan atau dilakukan setelah menonton.">
         <Textarea id={captionId} rows={2} maxLength={600} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Contoh: Perhatikan tiga tanda awal perubahan kualitas air." />
       </Field>
+      <AlignmentField id={`${urlId}-align`} value={block.align || "left"} onChange={(align) => onChange({ align })} label="Rata video" />
       {hasUrl && <Button type="button" size="sm" variant="outline" onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup pratinjau" : "Pratinjau video"}</Button>}
       {previewOpen && hasUrl && <div className="border-t border-border pt-3"><LessonMedia module={{ title: block.caption || "Video materi", videoUrl: block.url }} /></div>}
     </div>
@@ -374,15 +399,17 @@ function ContentBlockFields({ block, onChange }) {
   const fieldId = (field) => `${block.id}-${field}`;
   switch (block.type) {
     case "richText":
-      return <div className="space-y-2"><p className="text-xs leading-5 text-muted-foreground">Gunakan paragraf untuk narasi. Tambahkan blok teks baru bila ingin menyisipkan media di antara dua bagian tulisan.</p><RichTextEditor id={fieldId("rich-text")} value={block.content || ""} onChange={(content) => set("content", content)} /></div>;
+      return <div className="space-y-3"><div className="flex flex-wrap items-end justify-between gap-3"><p className="max-w-2xl text-xs leading-5 text-muted-foreground">Gunakan paragraf untuk narasi. Tambahkan blok teks baru bila ingin menyisipkan media di antara dua bagian tulisan.</p><AlignmentField id={fieldId("rich-text-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata teks learner" /></div><RichTextEditor id={fieldId("rich-text")} value={block.content || ""} onChange={(content) => set("content", content)} /></div>;
     case "slides": return <SlidesBlockFields block={block} onChange={onChange} />;
     case "image": return (
       <div className="space-y-3">
-        <ImageSourceField id={fieldId("image-source")} value={block.src || ""} alt={block.alt || ""} onValueChange={(src) => set("src", src)} previewRatio={block.ratio || "natural"} previewWidth={block.width || "standard"} />
+        <ImageSourceField id={fieldId("image-source")} value={block.src || ""} alt={block.alt || ""} onValueChange={(src) => set("src", src)} previewRatio={block.ratio || "natural"} previewWidth={block.width || "standard"} previewAlign={block.align || "left"} previewPosition={block.position || "center"} />
         {block.src && <>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id={fieldId("image-ratio")} label="Rasio tampilan"><Select value={block.ratio || "natural"} onValueChange={(ratio) => set("ratio", ratio)}><SelectTrigger id={fieldId("image-ratio")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="natural">Rasio asli</SelectItem><SelectItem value="wide">16:9 · lebar</SelectItem><SelectItem value="standard">4:3 · standar</SelectItem><SelectItem value="square">1:1 · persegi</SelectItem></SelectContent></Select></Field>
             <Field id={fieldId("image-width")} label="Lebar di learner"><Select value={block.width || "standard"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("image-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="standard">Standar · sejajar narasi</SelectItem><SelectItem value="wide">Lebar · menonjol</SelectItem></SelectContent></Select></Field>
+            <Field id={fieldId("image-align")} label="Rata horizontal"><Select value={block.align || "left"} onValueChange={(align) => set("align", align)}><SelectTrigger id={fieldId("image-align")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="left">Kiri</SelectItem><SelectItem value="center">Tengah</SelectItem><SelectItem value="right">Kanan</SelectItem></SelectContent></Select></Field>
+            <Field id={fieldId("image-position")} label="Posisi fokus saat crop"><Select value={block.position || "center"} onValueChange={(position) => set("position", position)}><SelectTrigger id={fieldId("image-position")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="top">Atas</SelectItem><SelectItem value="center">Tengah</SelectItem><SelectItem value="bottom">Bawah</SelectItem></SelectContent></Select></Field>
           </div>
           <ImageProportionHint src={block.src} ratio={block.ratio || "natural"} />
           <DecorativeImageControl id={fieldId("image-decorative")} decorative={block.decorative !== false} onChange={(decorative) => set("decorative", decorative)} />
@@ -391,12 +418,19 @@ function ContentBlockFields({ block, onChange }) {
       </div>
     );
     case "table": return <TableBlockFields block={block} onChange={onChange} />;
-    case "heading": return <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]"><Field id={fieldId("heading-content")} label="Judul bagian"><Input id={fieldId("heading-content")} value={block.content || ""} maxLength={500} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("heading-level")} label="Hierarki"><Select value={String(block.level || 2)} onValueChange={(level) => set("level", Number(level))}><SelectTrigger id={fieldId("heading-level")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2">Bagian utama</SelectItem><SelectItem value="3">Subbagian</SelectItem><SelectItem value="4">Detail</SelectItem></SelectContent></Select></Field></div>;
+    case "heading": return <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]"><Field id={fieldId("heading-content")} label="Judul bagian"><Input id={fieldId("heading-content")} value={block.content || ""} maxLength={500} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("heading-level")} label="Hierarki"><Select value={String(block.level || 2)} onValueChange={(level) => set("level", Number(level))}><SelectTrigger id={fieldId("heading-level")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="2">Bagian utama</SelectItem><SelectItem value="3">Subbagian</SelectItem><SelectItem value="4">Detail</SelectItem></SelectContent></Select></Field><AlignmentField id={fieldId("heading-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata judul" /></div>;
     case "video": return <VideoBlockFields block={block} onChange={onChange} />;
-    case "link": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field><div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div></div>;
-    case "cta": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("cta-label")} label="Label tombol"><Input id={fieldId("cta-label")} value={block.label || ""} maxLength={120} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field></div>;
-    case "callout": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("callout-title")} label="Judul sorotan"><Input id={fieldId("callout-title")} value={block.title || ""} maxLength={160} onChange={(event) => set("title", event.target.value)} /></Field><Field id={fieldId("callout-content")} label="Isi sorotan"><Textarea id={fieldId("callout-content")} rows={2} maxLength={2400} value={block.content || ""} onChange={(event) => set("content", event.target.value)} /></Field></div>;
-    case "divider": return <p className="text-xs leading-5 text-muted-foreground">Pemisah visual ini tidak membutuhkan pengaturan tambahan.</p>;
+    case "link": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field><div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div><AlignmentField id={fieldId("link-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata kartu tautan" /></div>;
+    case "cta": {
+      const buttonVariant = block.variant === "secondary" ? "secondary" : block.variant === "outline" ? "outline" : "default";
+      return <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("cta-label")} label="Label tombol"><Input id={fieldId("cta-label")} value={block.label || ""} maxLength={120} onChange={(event) => set("label", event.target.value)} /></Field><Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field></div>
+        <div className="grid gap-3 sm:grid-cols-3"><Field id={fieldId("cta-variant")} label="Warna / gaya"><Select value={block.variant || "primary"} onValueChange={(variant) => set("variant", variant)}><SelectTrigger id={fieldId("cta-variant")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="primary">Primary · hijau</SelectItem><SelectItem value="secondary">Secondary · netral</SelectItem><SelectItem value="outline">Outline · garis</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-align")} label="Rata tombol"><Select value={block.align || "left"} onValueChange={(align) => set("align", align)}><SelectTrigger id={fieldId("cta-align")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="left">Kiri</SelectItem><SelectItem value="center">Tengah</SelectItem><SelectItem value="right">Kanan</SelectItem></SelectContent></Select></Field><Field id={fieldId("cta-width")} label="Lebar tombol"><Select value={block.width || "auto"} onValueChange={(width) => set("width", width)}><SelectTrigger id={fieldId("cta-width")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Sesuai label</SelectItem><SelectItem value="full">Penuh kontainer</SelectItem></SelectContent></Select></Field></div>
+        <div className={cn("flex rounded-xl border border-border bg-surface-subtle p-3", ctaAlignmentClass[block.align || "left"] || ctaAlignmentClass.left)} aria-label="Pratinjau tombol aksi"><Button type="button" variant={buttonVariant} className={cn("max-w-full whitespace-normal", block.width === "full" && "w-full")}>{block.label || "Contoh tombol aksi"}</Button></div>
+      </div>;
+    }
+    case "callout": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("callout-title")} label="Judul sorotan"><Input id={fieldId("callout-title")} value={block.title || ""} maxLength={160} onChange={(event) => set("title", event.target.value)} /></Field><Field id={fieldId("callout-content")} label="Isi sorotan"><Textarea id={fieldId("callout-content")} rows={2} maxLength={2400} value={block.content || ""} onChange={(event) => set("content", event.target.value)} /></Field><Field id={fieldId("callout-tone")} label="Nada sorotan"><Select value={block.tone || "info"} onValueChange={(tone) => set("tone", tone)}><SelectTrigger id={fieldId("callout-tone")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="info">Info · hijau</SelectItem><SelectItem value="practice">Praktik · orange</SelectItem><SelectItem value="warning">Peringatan · hangat</SelectItem></SelectContent></Select></Field><AlignmentField id={fieldId("callout-align")} value={block.align || "left"} onChange={(align) => set("align", align)} label="Rata sorotan" /></div>;
+    case "divider": return <div className="grid gap-3 sm:grid-cols-2"><Field id={fieldId("divider-style")} label="Gaya pemisah"><Select value={block.style || "subtle"} onValueChange={(style) => set("style", style)}><SelectTrigger id={fieldId("divider-style")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="subtle">Halus</SelectItem><SelectItem value="strong">Tegas</SelectItem><SelectItem value="dashed">Putus-putus</SelectItem></SelectContent></Select></Field><Field id={fieldId("divider-spacing")} label="Jarak vertikal"><Select value={block.spacing || "comfortable"} onValueChange={(spacing) => set("spacing", spacing)}><SelectTrigger id={fieldId("divider-spacing")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="compact">Rapat</SelectItem><SelectItem value="comfortable">Lega</SelectItem></SelectContent></Select></Field></div>;
     default: return null;
   }
 }

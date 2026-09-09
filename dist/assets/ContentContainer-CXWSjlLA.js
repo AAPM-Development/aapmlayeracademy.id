@@ -1,1 +1,0 @@
-import{j as l,n as o}from"./index-D-2YIw3A.js";function i({children:a=null,className:t="",...n}={}){return l.jsx("div",{className:o("aapm-token-rail mx-auto min-w-0 w-full max-w-[var(--aapm-shell-content-max)] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10",t),"data-t7-rail":"application","data-t7-region":"content-rail",...n,children:a})}export{i as C};
