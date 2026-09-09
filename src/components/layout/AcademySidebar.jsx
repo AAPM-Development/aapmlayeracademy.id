@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Badge, Button, IconButton, NavItem, Progress, Sidebar } from "@ten4seven/ui";
+import { Button, IconButton, NavItem, Progress, Sidebar } from "@ten4seven/ui";
 import AppBrand from "@/components/AppBrand";
 import { academyNavigation, getNavigationMeta } from "./academyNavigation";
 import { cn } from "@/lib/utils";
@@ -20,11 +20,10 @@ const canonicalIconByRoute = Object.freeze({
   "/profile": "user",
   "/certification": "approve",
   "/final-exam": "file",
-  "/admin": "dashboard",
 });
 
-function buildSidebarGroups(isAdmin) {
-  const groups = academyNavigation.map((group) => ({
+function buildSidebarGroups() {
+  return academyNavigation.map((group) => ({
     key: group.label.toLowerCase().replaceAll(" ", "-"),
     label: group.label,
     items: group.items.map((item) => ({
@@ -33,24 +32,6 @@ function buildSidebarGroups(isAdmin) {
       icon: canonicalIconByRoute[item.to] || "book",
     })),
   }));
-
-  if (isAdmin) {
-    groups.push({
-      key: "admin",
-      label: "Ruang kerja",
-      items: [{
-        key: "/admin",
-        label: "Panel admin",
-        icon: "admin",
-        // Keep the admin entry visible without turning the learner shell into
-        // a second navigation system. Sidebar renders this through its
-        // canonical badge slot, so the emphasis follows the active T7 theme.
-        badge: <Badge tone="warning">Admin</Badge>,
-      }],
-    });
-  }
-
-  return groups;
 }
 
 export default function AcademySidebar({
@@ -70,7 +51,7 @@ export default function AcademySidebar({
   const { completed, total, percent } = getProgressSummary(modules, progress, TOTAL_MODULES);
   const displayName = user?.full_name || user?.email || "Peserta";
   const isAdmin = user?.role === "admin";
-  const groups = buildSidebarGroups(isAdmin);
+  const groups = buildSidebarGroups();
   const routeItems = groups.flatMap((group) => group.items);
   const activeKey = isAdmin && location.pathname.startsWith("/admin")
     ? "/admin"
@@ -143,6 +124,15 @@ export default function AcademySidebar({
         label={collapsed ? "Profil" : displayName}
         onClick={() => navigateTo("/profile")}
       />
+      {isAdmin && (
+        <NavItem
+          active={location.pathname.startsWith("/admin")}
+          className="aapm-academy-sidebar__admin-link"
+          icon="admin"
+          label="Panel admin"
+          onClick={() => navigateTo("/admin")}
+        />
+      )}
       {onToggleTheme && (
         <Button
           type="button"

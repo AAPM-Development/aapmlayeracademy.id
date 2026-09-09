@@ -86,20 +86,29 @@ function AdminSidebar({
 
   const brand = (
     <div className="aapm-academy-sidebar__brand-stack">
-      <Link
-        to="/admin"
-        onClick={onNavigate}
-        className="aapm-academy-sidebar__brand-link"
-        aria-label="Kembali ke ringkasan admin"
-      >
-        <AppBrand variant="logo" className="h-auto w-[152px] max-w-full" />
-      </Link>
+      <div className="aapm-academy-sidebar__brand-row">
+        <Link
+          to="/admin"
+          onClick={onNavigate}
+          className="aapm-academy-sidebar__brand-link"
+          aria-label="Kembali ke ringkasan admin"
+        >
+          <AppBrand variant="logo" className="h-auto w-[152px] max-w-full" />
+        </Link>
+      </div>
       <span className="aapm-admin-sidebar__context">Ruang admin</span>
     </div>
   );
 
   const footer = (
     <div className="aapm-academy-sidebar__footer-content">
+      <NavItem
+        active={false}
+        className="aapm-academy-sidebar__academy-link"
+        icon="dashboard"
+        label="Buka Academy"
+        onClick={() => navigateTo("/")}
+      />
       <NavItem
         active={false}
         className="aapm-academy-sidebar__account"

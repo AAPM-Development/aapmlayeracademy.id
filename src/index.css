@@ -862,6 +862,32 @@
     display: none;
   }
 
+  /* Cross-workspace actions live with the account controls instead of being
+   * duplicated in the topbar. Keep them recognisable, but subordinate to the
+   * primary navigation through the same low-chroma token surfaces. */
+  .aapm-academy-sidebar__admin-link,
+  .aapm-academy-sidebar__academy-link {
+    border: 1px solid hsl(var(--surface-border));
+    background: hsl(var(--surface-default) / 0.72);
+  }
+
+  .aapm-academy-sidebar__admin-link {
+    border-color: hsl(var(--tint-orange-border));
+    background: hsl(var(--tint-orange) / 0.58);
+    color: hsl(var(--tint-orange-foreground));
+  }
+
+  .aapm-academy-sidebar__admin-link:hover {
+    border-color: hsl(var(--tint-orange-border));
+    background: hsl(var(--tint-orange));
+    color: hsl(var(--foreground));
+  }
+
+  .aapm-academy-sidebar__academy-link:hover {
+    border-color: hsl(var(--tint-green-border));
+    background: hsl(var(--tint-green));
+  }
+
   /* Admin uses the same canonical sidebar anatomy as learner. The only
    * product-specific composition is the small context label beneath the
    * shared Academy mark; navigation color, density, radius, focus, and motion
