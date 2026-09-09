@@ -17,7 +17,7 @@ import {
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import AiQuickActions from "@/components/ai/AiQuickActions";
-import { Button, ConfirmDialog, Table, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, IconButton, Table, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
@@ -377,47 +377,40 @@ export default function FloatingAiAssistant() {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <Button
+              <IconButton
                 type="button"
-                variant="ghost"
-                size="icon"
+                size="md"
                 onClick={() => setHistoryOpen(true)}
                 disabled={isStreaming}
-                className="h-8 w-8"
-                aria-label="Buka riwayat percakapan"
+                label="Buka riwayat percakapan"
+                tooltip="Buka riwayat percakapan"
+                className="aapm-ai-floating-panel__icon-button"
               >
-                <AapmIcon
-                  name="solar:chat-round-dots-bold-duotone"
-                  className="h-3.5 w-3.5"
-                />
-              </Button>
-              <Button
+                <AapmIcon name="communication" />
+              </IconButton>
+              <IconButton
                 type="button"
-                variant="ghost"
-                size="icon"
+                size="md"
                 onClick={() => {
                   setHistoryOpen(false);
                   startNewConversation();
                 }}
                 disabled={isStreaming}
-                className="h-8 w-8"
-                aria-label="Percakapan baru"
+                label="Percakapan baru"
+                tooltip="Percakapan baru"
+                className="aapm-ai-floating-panel__icon-button"
               >
-                <AapmIcon
-                  name="solar:pen-new-square-bold"
-                  className="h-3.5 w-3.5"
-                />
-              </Button>
-              <Button
+                <AapmIcon name="edit" />
+              </IconButton>
+              <IconButton
                 type="button"
-                variant="ghost"
-                size="icon"
                 onClick={closePanel}
-                className="h-8 w-8"
-                aria-label="Tutup AI Assistant"
+                label="Tutup AI Assistant"
+                tooltip="Tutup APPI"
+                className="aapm-ai-floating-panel__icon-button"
               >
-                <AapmIcon name="solar:close-circle-bold" className="h-4 w-4" />
-              </Button>
+                <AapmIcon name="close" />
+              </IconButton>
             </div>
           </header>
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">

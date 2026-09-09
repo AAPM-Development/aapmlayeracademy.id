@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppShell, Button as T7Button, NavItem, Sidebar } from "@ten4seven/ui";
 import AppBrand from "@/components/AppBrand";
 import ProfileAvatar from "@/components/ProfileAvatar";
+import SidebarUserCard from "./SidebarUserCard";
 import AapmIcon from "@/components/icons/AapmIcon";
 import {
   Button,
@@ -109,11 +110,11 @@ function AdminSidebar({
         label="Buka Academy"
         onClick={() => navigateTo("/")}
       />
-      <NavItem
-        active={false}
-        className="aapm-academy-sidebar__account"
-        icon="user"
-        label={displayName}
+      <SidebarUserCard
+        user={user}
+        name={displayName}
+        context="Admin Academy"
+        active={location.pathname === "/profile"}
         onClick={() => navigateTo("/profile")}
       />
       {onToggleTheme && (
@@ -175,7 +176,7 @@ export default function AdminShell() {
     <AppShell
       id="admin-app-shell"
       contentAs="div"
-      className="academy-shell aapm-token-shell aapm-t7-app-shell"
+      className="academy-shell aapm-token-shell aapm-t7-app-shell aapm-admin-shell"
       data-t7-region="admin-shell"
       sidebar={<AdminSidebar user={user} onLogout={logout} onToggleTheme={toggleTheme} themeMode={mode} />}
       topbar={(

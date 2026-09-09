@@ -84,10 +84,13 @@ The `develop` branch deploys the Vite artifact in `dist/` to
    the runtime label from the request host, so this shared file does not need
    separate `app_env` values for production and staging.
 3. Set the staging domain to PHP 8.4 and enable `pdo_mysql`.
-4. Before enabling editorial image or PPTX uploads, set the staging domain's
+4. Before enabling editorial image or presentation uploads, set the staging domain's
    values in cPanel **MultiPHP INI Editor** (do not edit the repository
    `php.ini`): `upload_max_filesize = 50M` and `post_max_size = 64M` or higher.
    The application validates images up to 20 MB and presentations up to 50 MB.
+   The editor accepts PPTX (carousel), PDF (native preview), and PPT, Keynote
+   (`.key`), or ODP files (safe open/download fallback when the browser has no
+   native renderer). Legacy formats are not silently converted on the server.
    The main and staging sites intentionally share MySQL, but each document root
    has its own `/uploads` directory. Therefore, do not save editorial uploads
    from staging until `/uploads` is mapped to shared media storage on both

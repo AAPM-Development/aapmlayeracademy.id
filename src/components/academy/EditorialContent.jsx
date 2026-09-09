@@ -20,20 +20,12 @@ import { editorialBlockAnchorId, parseEditorialDocument } from "@/lib/editorialD
 import {
   safeEditorialImage as getSafeEditorialImage,
   safeEditorialLink as getSafeEditorialLink,
-  safeInternalPath,
 } from "@/lib/editorialUrls";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
-import PptxCarousel from "@/components/academy/PptxCarousel";
+import EditorialPresentation from "@/components/academy/EditorialPresentation";
 
 export const safeEditorialLink = getSafeEditorialLink;
 export const safeEditorialImage = getSafeEditorialImage;
-
-function safeEditorialPresentation(value) {
-  const safe = safeInternalPath(value);
-  if (!safe) return null;
-  const pathname = safe.split(/[?#]/, 1)[0];
-  return /^\/uploads\/editorial\/presentations\/[0-9]{4}\/[0-9]{2}\/[a-f0-9]{40}\.pptx$/i.test(pathname) ? safe : null;
-}
 
 function SafeLink({ href, children, className, ...props }) {
   const safeHref = safeEditorialLink(href);
@@ -256,9 +248,9 @@ function TableBlock({ block }) {
 function SlidesBlock({ block }) {
   const slides = Array.isArray(block.slides) ? block.slides : [];
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const presentation = block.source === "pptx" ? safeEditorialPresentation(block.pptxUrl) : null;
-  if (presentation) {
-    return <div className={cn("max-w-full", blockAlignment[block.align] || blockAlignment.left)}><PptxCarousel src={presentation} title={block.title || block.pptxName || "Presentasi"} declaredSlideCount={block.slideCount} /></div>;
+  const presentationUrl = block.presentationUrl || block.pptxUrl;
+  if (presentationUrl && block.source && block.source !== "manual") {
+    return <div className={cn("max-w-full", blockAlignment[block.align] || blockAlignment.left)}><EditorialPresentation src={presentationUrl} format={block.presentationFormat || block.source} title={block.title || block.presentationName || block.pptxName || "Presentasi"} name={block.presentationName || block.pptxName} declaredSlideCount={block.slideCount} /></div>;
   }
   const visibleSlides = slides.filter((slide) => {
     const slideTitle = String(slide?.title || "").trim();

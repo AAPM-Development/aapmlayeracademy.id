@@ -23,6 +23,7 @@ const EDITORIAL_PPTX_MAX_UNCOMPRESSED_BYTES = 209715200;
 // accommodate a complete training chapter without turning the learner UI into
 // an unbounded document viewer.
 const EDITORIAL_PPTX_MAX_SLIDES = 50;
+const EDITORIAL_PRESENTATION_FORMATS = ['pptx', 'ppt', 'key', 'odp', 'pdf'];
 const EDITORIAL_ORPHAN_GRACE_SECONDS = 2592000;
 const EDITORIAL_PRUNE_MAX_FILES = 5;
 
@@ -183,7 +184,7 @@ function editorial_store_upload(string $tmpName, string $kind, string $extension
 function editorial_managed_upload_relative_path(string $value): ?string
 {
     $path = ltrim(str_replace('\\', '/', trim($value)), '/');
-    if (!preg_match('#^uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.pptx)$#i', $path)) {
+    if (!preg_match('#^uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf))$#i', $path)) {
         return null;
     }
     return substr($path, strlen('uploads/'));
@@ -206,7 +207,7 @@ function editorial_referenced_uploads(): ?array
                 (string) ($row['video_url'] ?? ''),
                 (string) ($row['video_script'] ?? ''),
             ]));
-            if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.pptx)#i', $source, $matches)) {
+            if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf))#i', $source, $matches)) {
                 continue;
             }
             foreach ($matches[0] as $url) {
@@ -314,12 +315,21 @@ function admin_upload_editorial_image(): array
     ];
 }
 
-function editorial_presentation_name(string $name): string
+function editorial_presentation_format(string $name): string
+{
+    $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+    if (!in_array($extension, EDITORIAL_PRESENTATION_FORMATS, true)) {
+        error_response('Gunakan PPTX, PPT, Keynote (.key), ODP, atau PDF.', 422, 'invalid_presentation_type');
+    }
+    return $extension;
+}
+
+function editorial_presentation_name(string $name, string $format = 'pptx'): string
 {
     $name = trim(str_replace('\\', '/', $name));
     $name = basename($name);
     $name = preg_replace('/[\x00-\x1F\x7F]/', '', $name) ?: '';
-    return $name !== '' ? substr($name, 0, 180) : 'presentasi.pptx';
+    return $name !== '' ? substr($name, 0, 180) : 'presentasi.' . $format;
 }
 
 /**
@@ -460,19 +470,139 @@ function editorial_validate_pptx(string $tmpName, string $originalName): int
     }
 }
 
+function editorial_validate_pdf(string $tmpName): string
+{
+    $mime = editorial_detect_mime($tmpName);
+    $acceptedMimes = ['application/pdf', 'application/octet-stream'];
+    $header = (string) file_get_contents($tmpName, false, null, 0, 5);
+    if (!in_array($mime, $acceptedMimes, true) || $header !== '%PDF-') {
+        error_response('Berkas tidak dapat dibaca sebagai PDF yang valid.', 422, 'invalid_presentation_type');
+    }
+    return 'application/pdf';
+}
+
+function editorial_validate_legacy_ppt(string $tmpName): string
+{
+    $mime = editorial_detect_mime($tmpName);
+    $acceptedMimes = [
+        'application/vnd.ms-powerpoint',
+        'application/vnd.ms-office',
+        'application/x-ole-storage',
+        'application/octet-stream',
+    ];
+    $header = (string) file_get_contents($tmpName, false, null, 0, 8);
+    if (!in_array($mime, $acceptedMimes, true) || $header !== "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1") {
+        error_response('Berkas tidak dapat dibaca sebagai PowerPoint .ppt yang valid.', 422, 'invalid_presentation_type');
+    }
+    return 'application/vnd.ms-powerpoint';
+}
+
+function editorial_validate_zip_presentation(string $tmpName, string $format): string
+{
+    if (!class_exists('ZipArchive')) {
+        error_response('Server belum mendukung pemeriksaan paket presentasi.', 503, 'presentation_validation_unavailable');
+    }
+
+    $archive = new ZipArchive();
+    if ($archive->open($tmpName) !== true) {
+        error_response('Paket presentasi tidak valid atau rusak.', 422, 'invalid_presentation');
+    }
+
+    $hasKeyIndex = false;
+    $hasOdpMime = false;
+    $uncompressedBytes = 0;
+    try {
+        if ($archive->numFiles < 1 || $archive->numFiles > EDITORIAL_PPTX_MAX_ENTRIES) {
+            error_response('Struktur paket presentasi terlalu besar atau tidak valid.', 422, 'invalid_presentation');
+        }
+        for ($index = 0; $index < $archive->numFiles; $index += 1) {
+            $stat = $archive->statIndex($index);
+            $entry = is_array($stat) ? (string) ($stat['name'] ?? '') : '';
+            $entryBytes = is_array($stat) ? (int) ($stat['size'] ?? 0) : 0;
+            if ($entry === '' || strpos($entry, "\0") !== false || strpos($entry, '\\') !== false
+                || preg_match('#(?:^|/)\.\.?(?:/|$)#', $entry)) {
+                error_response('Struktur paket presentasi tidak aman.', 422, 'invalid_presentation');
+            }
+            if ($entryBytes < 0 || $entryBytes > EDITORIAL_PPTX_MAX_ENTRY_BYTES) {
+                error_response('Salah satu bagian paket presentasi terlalu besar.', 422, 'presentation_too_large');
+            }
+            $uncompressedBytes += $entryBytes;
+            if ($uncompressedBytes > EDITORIAL_PPTX_MAX_UNCOMPRESSED_BYTES) {
+                error_response('Paket presentasi terlalu besar untuk diproses dengan aman.', 422, 'presentation_too_large');
+            }
+            if (preg_match('#(?:^|/)(?:index\.apxl|index\.xml)$#i', $entry)) {
+                $hasKeyIndex = true;
+            }
+            if ($entry === 'mimetype') {
+                $hasOdpMime = trim((string) $archive->getFromIndex($index)) === 'application/vnd.oasis.opendocument.presentation';
+            }
+        }
+        if ($format === 'key' && !$hasKeyIndex) {
+            error_response('Paket Keynote tidak memiliki struktur index yang lengkap.', 422, 'invalid_presentation');
+        }
+        if ($format === 'odp') {
+            $mime = editorial_detect_mime($tmpName);
+            $acceptedMimes = ['application/vnd.oasis.opendocument.presentation', 'application/zip', 'application/octet-stream', 'application/x-zip-compressed'];
+            if (!in_array($mime, $acceptedMimes, true) || !$hasOdpMime) {
+                error_response('Berkas tidak dapat dibaca sebagai OpenDocument Presentation yang valid.', 422, 'invalid_presentation_type');
+            }
+            return 'application/vnd.oasis.opendocument.presentation';
+        }
+        $mime = editorial_detect_mime($tmpName);
+        $acceptedMimes = ['application/x-iwork-keynote-sffkey', 'application/zip', 'application/octet-stream', 'application/x-zip-compressed'];
+        if (!in_array($mime, $acceptedMimes, true)) {
+            error_response('Berkas tidak dapat dibaca sebagai paket Keynote yang valid.', 422, 'invalid_presentation_type');
+        }
+        return 'application/x-iwork-keynote-sffkey';
+    } finally {
+        $archive->close();
+    }
+}
+
+function editorial_validate_presentation(string $tmpName, string $originalName): array
+{
+    $format = editorial_presentation_format($originalName);
+    if ($format === 'pptx') {
+        return [
+            'format' => $format,
+            'mime' => editorial_detect_mime($tmpName),
+            'viewer' => 'slides',
+            'slideCount' => editorial_validate_pptx($tmpName, $originalName),
+        ];
+    }
+    if ($format === 'pdf') {
+        return ['format' => $format, 'mime' => editorial_validate_pdf($tmpName), 'viewer' => 'pdf', 'slideCount' => 0];
+    }
+    if ($format === 'ppt') {
+        return ['format' => $format, 'mime' => editorial_validate_legacy_ppt($tmpName), 'viewer' => 'download', 'slideCount' => 0];
+    }
+    return [
+        'format' => $format,
+        'mime' => editorial_validate_zip_presentation($tmpName, $format),
+        'viewer' => 'download',
+        'slideCount' => 0,
+    ];
+}
+
 function admin_upload_editorial_presentation(): array
 {
     $upload = editorial_upload_file('file', EDITORIAL_PRESENTATION_MAX_BYTES);
-    $name = editorial_presentation_name($upload['name']);
-    $slideCount = editorial_validate_pptx($upload['tmp_name'], $name);
-    editorial_normalise_pptx_svg_blips($upload['tmp_name']);
-    $url = editorial_store_upload($upload['tmp_name'], 'presentations', 'pptx');
+    $format = editorial_presentation_format($upload['name']);
+    $name = editorial_presentation_name($upload['name'], $format);
+    $details = editorial_validate_presentation($upload['tmp_name'], $name);
+    if ($format === 'pptx') {
+        editorial_normalise_pptx_svg_blips($upload['tmp_name']);
+    }
+    $url = editorial_store_upload($upload['tmp_name'], 'presentations', $format);
     editorial_prune_orphaned_uploads();
 
     return [
         'url' => $url,
         'name' => $name,
         'size' => $upload['size'],
-        'slideCount' => $slideCount,
+        'format' => $details['format'],
+        'mime' => $details['mime'],
+        'viewer' => $details['viewer'],
+        'slideCount' => $details['slideCount'],
     ];
 }
