@@ -32,6 +32,7 @@ import {
   EDITORIAL_PRESENTATION_MAX_BYTES,
   EDITORIAL_PRESENTATION_MAX_SLIDES,
 } from "../src/lib/editorialLimits.js";
+import { normaliseSvgBlipMarkup } from "../src/lib/pptxCompatibility.js";
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -84,6 +85,14 @@ test("editorial composer preserves one ordered flow of text and media blocks", (
 test("PPTX authoring and learner limits stay on the 50 MB contract", () => {
   assert.equal(EDITORIAL_PRESENTATION_MAX_BYTES, 50 * 1024 * 1024);
   assert.equal(EDITORIAL_PRESENTATION_MAX_SLIDES, 50);
+});
+
+test("PPTX compatibility flattens PowerPoint SVG blip relationships without touching ordinary media", () => {
+  const svgBlip = '<a:blip cstate="print"><a:extLst><a:ext><asvg:svgBlip r:embed="rId6"/></a:ext></a:extLst></a:blip>';
+  assert.equal(normaliseSvgBlipMarkup(svgBlip), '<a:blip cstate="print" r:embed="rId6"/>');
+
+  const pngBlip = '<a:blip r:embed="rId3"/>';
+  assert.equal(normaliseSvgBlipMarkup(pngBlip), pngBlip);
 });
 
 test("editorial quality guardrails distinguish incomplete blocks from authoring advice", () => {
