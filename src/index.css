@@ -2574,6 +2574,46 @@
     box-shadow: var(--t7-shadow-overlay, var(--ai-frame-shadow));
   }
 
+  /* The collapsed APPI entry is a compact overlay, not a second brand
+   * surface. It inherits the same popup canvas, border, radius, and elevation
+   * contract as the expanded panel while retaining the orange action cue. */
+  .aapm-ai-launcher {
+    border-color: hsl(var(--tint-orange-border));
+    background: hsl(var(--popup-canvas) / 0.96);
+    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+    transition:
+      transform var(--duration-fast),
+      border-color var(--duration-fast),
+      box-shadow var(--duration-fast);
+  }
+
+  .aapm-ai-launcher:hover {
+    border-color: hsl(var(--aapm-orange-700) / 0.64);
+    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+    transform: translateY(-2px);
+  }
+
+  .aapm-ai-launcher:focus-visible {
+    outline: none;
+    border-color: hsl(var(--aapm-orange-700) / 0.72);
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-launcher > .aapm-ai-profile-avatar {
+    box-shadow:
+      0 0 0 2px hsl(var(--popup-canvas)),
+      0 4px 12px hsl(var(--aapm-orange-700) / 0.18);
+  }
+
+  .aapm-ai-launcher__submit {
+    background: hsl(var(--aapm-orange-700));
+    color: hsl(var(--aapm-paper));
+  }
+
+  .aapm-ai-launcher__submit:hover {
+    background: hsl(var(--aapm-orange-700) / 0.88);
+  }
+
   .aapm-ai-companion-dock {
     pointer-events: none;
     position: absolute;
@@ -2689,7 +2729,8 @@
 
   .aapm-ai-floating-panel__header,
   .aapm-ai-floating-composer {
-    background: hsl(var(--popup-canvas) / 0.98);
+    background: hsl(var(--surface-subtle) / 0.82);
+    box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
   }
 
   .aapm-ai-floating-transcript {
@@ -2944,8 +2985,13 @@
 
     .aapm-ai-card--interactive,
     .aapm-ai-segmented__item,
-    .aapm-ai-quick-action-chip {
+    .aapm-ai-quick-action-chip,
+    .aapm-ai-launcher {
       transition: none;
+    }
+
+    .aapm-ai-launcher:hover {
+      transform: none;
     }
 
     .aapm-interactive-card {
