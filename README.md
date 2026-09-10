@@ -56,6 +56,7 @@ The API exposes:
 - `/api/certificates` — per-user certificates
 - `/api/farm-data` — per-user KPI rows
 - `/api/ai-assistant` — local assistant response
+- `/api/admin/ai/rewrite-editorial` — admin-only APPI rewrite for structured module copy and text blocks (preview-first)
 - `/api/health` — deployment health check
 
 All mutating authenticated requests use the session's CSRF token. PHP creates

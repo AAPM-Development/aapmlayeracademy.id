@@ -45,6 +45,12 @@ import {
   getEditorialPresentationFormatFromName,
   getEditorialPresentationFormatFromUrl,
 } from "../src/lib/editorialPresentation.js";
+import {
+  aiEditorialMaterialPrompt,
+  aiEditorialMaterialSource,
+  applyAiEditorialMaterial,
+  normaliseAiEditorialMaterial,
+} from "../src/lib/aiEditorialRewrite.js";
 
 const readWorkspaceFile = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -431,9 +437,65 @@ test("PWA metadata uses the canonical app icon and leaves API responses uncached
 test("admin APPI rewrite remains preview-first and requires explicit confirmation", () => {
   const editor = readWorkspaceFile("../src/pages/admin/AdminModuleEditor.jsx");
   assert.match(editor, /Rewrite isi/);
+  assert.match(editor, /Rewrite isi \+ materi/);
+  assert.match(editor, /materialBlocks/);
+  assert.match(editor, /fieldPresence/);
   assert.match(editor, /Pratinjau rewrite copywriting/);
   assert.match(editor, /Ganti isi modul dengan rewrite APPI/);
   assert.match(editor, /onConfirm=\{applyRewrite\}/);
+  assert.match(editor, /Format dipertahankan/);
+  const client = readWorkspaceFile("../src/api/nativeClient.js");
+  const api = readWorkspaceFile("../public/api/index.php");
+  const provider = readWorkspaceFile("../public/api/openrouter.php");
+  assert.match(client, /rewriteEditorial/);
+  assert.match(api, /admin\/ai\/rewrite-editorial/);
+  assert.match(api, /require_admin\(\)/);
+  assert.match(api, /ai_assistant_reply\(\$message, \[\], false, \[\], 6000, 24000\)/);
+  assert.match(provider, /messageLimit = 3000/);
+});
+
+test("APPI editorial rewrite preserves Markdown media and non-text blocks", () => {
+  const document = createEditorialDocument([
+    { id: "heading", type: "heading", content: "Mengapa penting?", level: 2 },
+    {
+      id: "copy",
+      type: "richText",
+      content: "**Naskah lama**\n\n![Kandang](/uploads/kandang.webp \"aapm-image:v1;w=480;a=center\")\n\n[Dokumentasi](https://example.com/sop)",
+    },
+    { id: "image", type: "image", src: "/uploads/diagram.webp", alt: "Diagram", decorative: false },
+  ]);
+  const source = aiEditorialMaterialSource(document);
+  const sourceRichText = source.find((block) => block.id === "copy");
+  const prompt = aiEditorialMaterialPrompt(source);
+  assert.match(prompt, /APPI_MEDIA_1/);
+  assert.doesNotMatch(prompt, /kandang\.webp/);
+
+  const rewritten = normaliseAiEditorialMaterial([
+    {
+      id: "copy",
+      type: "richText",
+      content: `**Naskah baru**\n\n${sourceRichText.content}`,
+    },
+  ], source);
+  assert.equal(rewritten.length, 1);
+  assert.match(rewritten[0].content, /\*\*Naskah baru\*\*/);
+  assert.match(rewritten[0].content, /!\[Kandang\]\(\/uploads\/kandang\.webp/);
+  assert.match(rewritten[0].content, /aapm-image:v1;w=480;a=center/);
+  assert.match(rewritten[0].content, /\[Dokumentasi\]\(https:\/\/example\.com\/sop\)/);
+
+  const unsafeRewrite = normaliseAiEditorialMaterial([
+    {
+      id: "copy",
+      type: "richText",
+      content: `${sourceRichText.content}\n\n![AI asset](https://example.com/new.webp)`,
+    },
+  ], source);
+  assert.equal(unsafeRewrite[0].content, sourceRichText.sourceContent);
+
+  const applied = applyAiEditorialMaterial(document, "", rewritten);
+  assert.equal(applied.editorialContent.blocks[0].content, "Mengapa penting?");
+  assert.equal(applied.editorialContent.blocks[1].content, rewritten[0].content);
+  assert.equal(applied.editorialContent.blocks[2].type, "image");
 });
 
 test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bounded", () => {
@@ -451,6 +513,7 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   const lessonWorkspace = readWorkspaceFile("../src/components/academy/LessonWorkspace.jsx");
   const learnerContent = readWorkspaceFile("../src/components/academy/EditorialContent.jsx");
   const richEditor = readWorkspaceFile("../src/components/admin/RichTextEditor.jsx");
+  const uploadProgress = readWorkspaceFile("../src/components/admin/UploadProgress.jsx");
   const iconBridge = readWorkspaceFile("../src/components/icons/AapmIcon.jsx");
   const styles = readWorkspaceFile("../src/index.css");
 
@@ -508,7 +571,19 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.doesNotMatch(editorial, /File presentasi baru akan menggantikan/);
   assert.match(editorial, /Siap mengganti sumber slide/);
   assert.match(editorial, /aria-busy=\{uploadState\.status === "loading"\}/);
+  assert.match(editorial, /UploadProgress/);
+  assert.match(editorial, /uploadControllerRef/);
+  assert.match(editorial, /onProgress: \(\{ percent \}\)/);
   assert.match(client, /aapm:session-expired/);
+  assert.match(client, /XMLHttpRequest/);
+  assert.match(client, /xhr\.upload/);
+  assert.match(client, /createAbortError/);
+  assert.match(richEditor, /UploadProgress/);
+  assert.match(richEditor, /imageUploadControllerRef/);
+  assert.match(richEditor, /imageUploadControllerRef\.current\?\.abort/);
+  assert.match(uploadProgress, /role="progressbar"/);
+  assert.match(uploadProgress, /aria-valuenow/);
+  assert.match(uploadProgress, /Batalkan/);
   assert.match(auth, /Sesi Anda berakhir/);
 });
 
@@ -519,6 +594,9 @@ test("editorial document players keep a shared reading-stage contract", () => {
 
   assert.match(pptx, /aapm-presentation-shell/);
   assert.match(pptx, /onProgress:/);
+  assert.match(pptx, /normaliseRoundedRectPath/);
+  assert.match(pptx, /data-aapm-rounded-rect-normalized/);
+  assert.match(pptx, /--pptx-slide-ratio/);
   assert.match(pptx, /setReloadToken/);
   assert.match(pptx, /Buka slide \$\{index \+ 1\}/);
   assert.match(presentation, /function PdfViewer/);
@@ -526,5 +604,6 @@ test("editorial document players keep a shared reading-stage contract", () => {
   assert.match(presentation, /Buka tab baru/);
   assert.match(styles, /\.aapm-presentation-shell/);
   assert.match(styles, /\.aapm-pptx-viewport/);
+  assert.match(styles, /svg\.drawing[\s\S]*max-width: none/);
   assert.match(styles, /\.aapm-pdf-frame/);
 });

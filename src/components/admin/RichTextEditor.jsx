@@ -7,6 +7,7 @@ import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import { Markdown } from "@tiptap/markdown";
 import AapmIcon from "@/components/icons/AapmIcon";
+import UploadProgress from "@/components/admin/UploadProgress";
 import {
   Button,
   Input,
@@ -215,13 +216,16 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
   const [imageValue, setImageValue] = useState("");
   const [imageAlt, setImageAlt] = useState("");
   const [imageError, setImageError] = useState("");
-  const [imageUploadState, setImageUploadState] = useState({ status: "idle", message: "" });
+  const [imageUploadState, setImageUploadState] = useState({ status: "idle", message: "", progress: null });
   const imageInputRef = useRef(null);
+  const imageUploadControllerRef = useRef(null);
   const sourceValue = typeof value === "string" ? value : "";
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => () => imageUploadControllerRef.current?.abort(), []);
 
   const editor = useEditor({
     extensions,
@@ -310,7 +314,8 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
     setImageValue("");
     setImageAlt("");
     setImageError("");
-    setImageUploadState({ status: "idle", message: "" });
+    imageUploadControllerRef.current?.abort();
+    setImageUploadState({ status: "idle", message: "", progress: null });
     setImageOpen(true);
   };
 
@@ -527,18 +532,30 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
       setImageUploadState({ status: "error", message: "Unggah gambar belum tersedia pada ruang ini. Gunakan URL aman." });
       return;
     }
-    setImageUploadState({ status: "loading", message: "Mengunggah dan memeriksa gambar…" });
+    imageUploadControllerRef.current?.abort();
+    const controller = new AbortController();
+    imageUploadControllerRef.current = controller;
+    setImageUploadState({ status: "loading", message: "Mengunggah dan memeriksa gambar…", progress: 0 });
     setImageError("");
     try {
-      const result = await onUploadImage(file);
+      const result = await onUploadImage(file, {
+        signal: controller.signal,
+        onProgress: ({ percent }) => setImageUploadState((current) => current.status === "loading" ? { ...current, progress: percent } : current),
+      });
       const uploadedUrl = result?.media?.url || result?.url || result;
       if (!insertImage(uploadedUrl, file.name.replace(/\.[^.]+$/, ""))) {
-        setImageUploadState({ status: "error", message: "Respons unggahan bukan gambar yang aman." });
+        setImageUploadState({ status: "error", message: "Respons unggahan bukan gambar yang aman.", progress: null });
         return;
       }
-      setImageUploadState({ status: "success", message: "Gambar disisipkan pada posisi kursor." });
+      setImageUploadState({ status: "success", message: "Gambar disisipkan pada posisi kursor.", progress: 100 });
     } catch (error) {
-      setImageUploadState({ status: "error", message: error?.message || "Gambar tidak dapat diunggah." });
+      setImageUploadState({
+        status: error?.name === "AbortError" ? "cancelled" : "error",
+        message: error?.name === "AbortError" ? "Unggahan dibatalkan." : error?.message || "Gambar tidak dapat diunggah.",
+        progress: null,
+      });
+    } finally {
+      if (imageUploadControllerRef.current === controller) imageUploadControllerRef.current = null;
     }
   };
 
@@ -771,10 +788,11 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
             <Button type="button" size="sm" variant="outline" className="h-9 px-3 text-xs" disabled={!onUploadImage || imageUploadState.status === "loading"} aria-busy={imageUploadState.status === "loading"} onClick={() => imageInputRef.current?.click()}>
               <AapmIcon name={imageUploadState.status === "loading" ? "loading" : "fileCheck"} className={cn("h-3.5 w-3.5", imageUploadState.status === "loading" && "animate-spin")} />{imageUploadState.status === "loading" ? "Mengunggah…" : "Unggah gambar"}
             </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-9 px-3 text-xs" onClick={() => setImageOpen(false)}>Batal</Button>
+            <Button type="button" size="sm" variant="ghost" className="h-9 px-3 text-xs" onClick={() => { imageUploadControllerRef.current?.abort(); setImageOpen(false); }}>Batal</Button>
             <span className="text-[10px] leading-4 text-muted-foreground">JPG, PNG, GIF, WebP, AVIF · maks. 20 MB</span>
           </div>
-          {(imageError || imageUploadState.status !== "idle") && <p className={cn("inline-flex items-center gap-1.5 text-[10px] leading-4", imageError || imageUploadState.status === "error" ? "text-danger" : imageUploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={imageError || imageUploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={imageError || imageUploadState.status === "error" ? "danger" : imageUploadState.status === "success" ? "approve" : "loading"} className={cn("h-3.5 w-3.5 shrink-0", imageUploadState.status === "loading" && "animate-spin")} />{imageError || imageUploadState.message}</p>}
+          {imageUploadState.status === "loading" && <UploadProgress progress={imageUploadState.progress} label={imageUploadState.message} onCancel={() => imageUploadControllerRef.current?.abort()} />}
+          {(imageError || (imageUploadState.status !== "idle" && imageUploadState.status !== "loading")) && <p className={cn("inline-flex items-center gap-1.5 text-[10px] leading-4", imageError || imageUploadState.status === "error" ? "text-danger" : imageUploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={imageError || imageUploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={imageError || imageUploadState.status === "error" ? "danger" : imageUploadState.status === "success" ? "approve" : "info"} className="h-3.5 w-3.5 shrink-0" />{imageError || imageUploadState.message}</p>}
         </div>
       )}
       {selectedImageNode && !imageOpen && (

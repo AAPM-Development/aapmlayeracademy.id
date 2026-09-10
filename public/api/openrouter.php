@@ -357,10 +357,11 @@ function ai_page_context_text(string $pageContext): string
     return $contexts[$pageContext] ?? '';
 }
 
-function ai_user_prompt(string $message, array $farmContext, string $pageContext = '', string $accountMemory = '', array $accountContext = []): string
+function ai_user_prompt(string $message, array $farmContext, string $pageContext = '', string $accountMemory = '', array $accountContext = [], int $messageLimit = 3000): string
 {
     $pageText = ai_page_context_text($pageContext);
-    return "Pertanyaan pengguna:\n" . substr($message, 0, 3000)
+    $messageLimit = max(1, min(24000, $messageLimit));
+    return "Pertanyaan pengguna:\n" . substr($message, 0, $messageLimit)
         . ($pageText !== '' ? "\n\nKonteks halaman aktif:\n" . $pageText : '')
         . "\n\n[KONTEKS AKUN TERVALIDASI OLEH SERVER]\n" . ai_account_context_text($accountContext)
         . "\n[AKHIR KONTEKS AKUN]\n"
@@ -680,9 +681,12 @@ function ai_provider_test_error(RuntimeException $exception): string
     return substr(trim((string) $message), 0, 260);
 }
 
-function ai_assistant_reply(string $message, array $farmContext, bool $allowWebSearch = false, array $accountContext = []): array
+function ai_assistant_reply(string $message, array $farmContext, bool $allowWebSearch = false, array $accountContext = [], ?int $maxTokensOverride = null, int $messageLimit = 3000): array
 {
     $settings = ai_settings_status();
+    if ($maxTokensOverride !== null) {
+        $settings['maxTokens'] = max(64, min(8192, $maxTokensOverride));
+    }
     $apiKey = ai_api_key($settings);
     if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
         return [
@@ -695,7 +699,7 @@ function ai_assistant_reply(string $message, array $farmContext, bool $allowWebS
         ];
     }
     try {
-        $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, '', '', $accountContext), $allowWebSearch && $settings['provider'] === 'openrouter');
+        $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, '', '', $accountContext, $messageLimit), $allowWebSearch && $settings['provider'] === 'openrouter');
         return [
             'reply' => $reply,
             'provider' => $settings['provider'],

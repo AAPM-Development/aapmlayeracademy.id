@@ -163,11 +163,96 @@ async function stream(path, body, onEvent) {
   if (buffer.trim()) dispatch(buffer);
 }
 
-async function upload(path, formData) {
-  return request(path, {
-    method: "POST",
-    body: formData,
-    multipart: true,
+function createAbortError() {
+  try {
+    return new DOMException("Unggahan dibatalkan.", "AbortError");
+  } catch {
+    const error = new Error("Unggahan dibatalkan.");
+    error.name = "AbortError";
+    return error;
+  }
+}
+
+/**
+ * Upload a multipart payload while exposing the browser's native progress
+ * events. `fetch()` still has no upload-progress API, so media uploads use a
+ * small XHR transport; callers keep the same Promise/data contract as
+ * `request()` and may pass `{ onProgress, signal }` for visible progress and
+ * cancellation.
+ */
+async function upload(path, formData, options = {}) {
+  const { onProgress, signal, headers: extraHeaders = {} } = options || {};
+  if (signal?.aborted) throw createAbortError();
+  if (!csrfToken) await request("/auth/csrf");
+  if (signal?.aborted) throw createAbortError();
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let settled = false;
+    const cleanup = () => {
+      signal?.removeEventListener?.("abort", abort);
+      xhr.upload?.removeEventListener?.("progress", handleProgress);
+    };
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback(value);
+    };
+    const abort = () => {
+      xhr.abort();
+      finish(reject, createAbortError());
+    };
+    const handleProgress = (event) => {
+      if (settled) return;
+      const loaded = Number(event.loaded) || 0;
+      const total = event.lengthComputable ? Number(event.total) || 0 : 0;
+      const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+      onProgress?.({ loaded, total, percent });
+    };
+
+    xhr.open("POST", `${API_ROOT}${path}`, true);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Accept", "application/json");
+    if (csrfToken) xhr.setRequestHeader("X-CSRF-Token", csrfToken);
+    Object.entries(extraHeaders || {}).forEach(([name, value]) => {
+      if (value !== undefined && value !== null) xhr.setRequestHeader(name, String(value));
+    });
+    xhr.upload?.addEventListener?.("progress", handleProgress);
+    signal?.addEventListener?.("abort", abort, { once: true });
+    onProgress?.({ loaded: 0, total: 0, percent: 0 });
+
+    xhr.onload = () => {
+      let payload = null;
+      try {
+        payload = xhr.response && typeof xhr.response === "object"
+          ? xhr.response
+          : JSON.parse(xhr.responseText || "null");
+      } catch {
+        payload = null;
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const error = payload?.error || {};
+        notifySessionExpired(path, xhr.status);
+        finish(reject, new ApiError(error.message || "Unggahan gagal.", xhr.status, error.code));
+        return;
+      }
+
+      const data = payload?.data ?? payload;
+      if (data?.csrfToken) csrfToken = data.csrfToken;
+      onProgress?.({ loaded: Number(xhr.getResponseHeader("Content-Length")) || 0, total: 0, percent: 100 });
+      finish(resolve, data);
+    };
+    xhr.onerror = () => finish(reject, new ApiError("Unggahan gagal karena koneksi.", 0, "network_error"));
+    xhr.ontimeout = () => finish(reject, new ApiError("Unggahan terlalu lama dan dihentikan.", 0, "timeout"));
+    xhr.onabort = () => finish(reject, createAbortError());
+
+    try {
+      xhr.send(formData);
+    } catch (error) {
+      finish(reject, error);
+    }
   });
 }
 
@@ -243,6 +328,8 @@ export const nativeApi = {
   ai: {
     assistant: ({ message, farmContext, includeFarmContext = true }) =>
       request("/ai-assistant", json({ message, farmContext, includeFarmContext })),
+    rewriteEditorial: ({ message }) =>
+      request("/admin/ai/rewrite-editorial", json({ message })),
     stream: ({ message, farmContext, includeFarmContext = true, onEvent }) =>
       stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent),
     conversations: {
@@ -364,15 +451,15 @@ export const nativeApi = {
         ),
     },
     media: {
-      uploadImage: (file) => {
+      uploadImage: (file, options) => {
         const formData = new FormData();
         formData.append("file", file, file.name);
-        return upload("/admin/media/images", formData);
+        return upload("/admin/media/images", formData, options);
       },
-      uploadPresentation: (file) => {
+      uploadPresentation: (file, options) => {
         const formData = new FormData();
         formData.append("file", file, file.name);
-        return upload("/admin/media/presentations", formData);
+        return upload("/admin/media/presentations", formData, options);
       },
     },
     aiSettings: {

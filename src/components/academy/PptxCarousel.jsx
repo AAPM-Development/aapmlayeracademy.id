@@ -49,6 +49,76 @@ function getSlideContainers(viewer) {
   return Array.from(viewer.content.children).filter((element) => element.classList.contains("slide"));
 }
 
+/**
+ * The PPTX worker emits a quadratic path for `roundRect` shapes. Its default
+ * guide calculation applies the adjustment to width and height independently,
+ * which makes a wide rounded rectangle use a much larger horizontal radius
+ * than its vertical radius (the oval/pill effect reported by authors).
+ * PowerPoint resolves this guide against the shortest side. Rebuild only the
+ * generated rounded-rectangle path with one absolute radius so authored
+ * geometry is preserved at every responsive scale.
+ */
+function normaliseRoundedRectPath(path) {
+  const value = String(path?.getAttribute?.("d") || "").trim();
+  if (!/^M\s*0\s*,/i.test(value) || !/Q/i.test(value) || !/L/i.test(value) || !/z\s*$/i.test(value)) return false;
+
+  // `roundRect` paths are made solely from M/Q/L commands. Custom geometry,
+  // arcs, and freeform paths are intentionally left untouched.
+  if (/[ACSTVHX]/i.test(value)) return false;
+  const numbers = value.match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi)?.map(Number) || [];
+  if (numbers.length < 16 || numbers.some((number) => !Number.isFinite(number))) return false;
+  // Rounded-rectangle output is expressed in the local slide box. Negative
+  // coordinates indicate a custom/freeform path (or a rotated geometry), so
+  // leave those shapes to the worker rather than changing their authored form.
+  if (numbers.some((number) => number < -0.01)) return false;
+
+  const xValues = numbers.filter((_number, index) => index % 2 === 0);
+  const yValues = numbers.filter((_number, index) => index % 2 === 1);
+  const width = Math.max(...xValues);
+  const height = Math.max(...yValues);
+  const horizontalRadius = Math.min(...xValues.filter((number) => number > 0));
+  const verticalRadius = Math.min(...yValues.filter((number) => number > 0));
+  if (!(width > 0 && height > 0 && horizontalRadius > 0 && verticalRadius > 0)) return false;
+
+  const radius = Math.min(horizontalRadius, verticalRadius, width / 2, height / 2);
+  if (!(radius > 0) || Math.abs(horizontalRadius - verticalRadius) < 0.01) return false;
+
+  const next = [
+    `M0,${height - radius}`,
+    `Q0,0 ${radius},0`,
+    `L${width - radius},0`,
+    `Q${width},0 ${width},${radius}`,
+    `L${width},${height - radius}`,
+    `Q${width},${height} ${width - radius},${height}`,
+    `L${radius},${height}`,
+    `Q0,${height} 0,${height - radius}`,
+    "z",
+  ].join(" ");
+  path.setAttribute("d", next);
+  path.setAttribute("data-aapm-rounded-rect-normalized", "true");
+  return true;
+}
+
+function normaliseRenderedPptxShapes(viewer) {
+  const root = viewer?.content;
+  if (!root) return 0;
+  let changed = 0;
+  root.querySelectorAll("svg.drawing > path:not([data-aapm-rounded-rect-normalized])").forEach((path) => {
+    if (normaliseRoundedRectPath(path)) changed += 1;
+  });
+  return changed;
+}
+
+function syncPptxSlideRatio(viewer, target) {
+  const width = Number(viewer?.slideDimensions?.width);
+  const height = Number(viewer?.slideDimensions?.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
+  const viewport = target?.parentElement;
+  if (!viewport) return;
+  viewport.style.setProperty("--pptx-slide-ratio", `${width} / ${height}`);
+  viewport.dataset.pptxRatio = `${width}:${height}`;
+}
+
 function restorePresentationVisibility(viewer) {
   getSlideContainers(viewer).forEach((slide) => {
     slide.style.removeProperty("display");
@@ -126,6 +196,8 @@ export default function PptxCarousel({ src, title = "Presentasi", name = "", dec
 
     const syncRenderedSlides = () => {
       if (cancelled || !viewer || !renderCompleteRef.current) return;
+      normaliseRenderedPptxShapes(viewer);
+      syncPptxSlideRatio(viewer, target);
       const count = applyCarouselVisibility(viewer);
       if (count > 0) setStatus("ready");
     };
@@ -170,6 +242,8 @@ export default function PptxCarousel({ src, title = "Presentasi", name = "", dec
             if (Number.isFinite(nextProgress)) setLoadProgress(clamp(nextProgress, 0, 100));
           },
           onSlideRendered: (_slideNumber, element) => {
+            normaliseRenderedPptxShapes(viewer);
+            syncPptxSlideRatio(viewer, target);
             syncRenderedSlides();
             const message = element?.querySelector(".flyfish-pptx-slide-error-card span");
             if (message) {
@@ -180,6 +254,8 @@ export default function PptxCarousel({ src, title = "Presentasi", name = "", dec
           onRenderComplete: () => {
             if (cancelled) return;
             renderCompleteRef.current = true;
+            normaliseRenderedPptxShapes(viewer);
+            syncPptxSlideRatio(viewer, target);
             const count = applyCarouselVisibility(viewer);
             if (!count) {
               setStatus("error");
@@ -216,6 +292,8 @@ export default function PptxCarousel({ src, title = "Presentasi", name = "", dec
         }
 
         viewerRef.current = viewer;
+        normaliseRenderedPptxShapes(viewer);
+        syncPptxSlideRatio(viewer, target);
       } catch (loadError) {
         if (cancelled || loadError?.name === "AbortError") return;
         setStatus("error");

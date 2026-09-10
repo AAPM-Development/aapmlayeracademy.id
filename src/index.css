@@ -917,7 +917,11 @@
   }
 
   .aapm-pptx-viewport {
-    aspect-ratio: 16 / 9;
+    /* The viewer reads the actual slide dimensions after opening the deck.
+     * Keep the 16:9 token as a safe pre-load fallback, then switch to the
+     * authored ratio so a 4:3 or custom deck never gets squeezed into an
+     * incorrect frame. */
+    aspect-ratio: var(--pptx-slide-ratio, 16 / 9);
     min-height: 14rem;
   }
 
@@ -927,6 +931,17 @@
 
   .aapm-pptx-target .flyfish-pptx-content .slide {
     box-shadow: 0 8px 22px -18px hsl(var(--foreground) / 0.32) !important;
+  }
+
+  /* The PPTX viewer positions drawing SVGs in a fixed slide coordinate space.
+   * Global responsive SVG rules must not clamp those coordinates, otherwise a
+   * rounded rectangle can be raster-scaled into an oval while the slide is
+   * resized. Keep the viewer's inline width/height authoritative. */
+  .aapm-pptx-target .flyfish-pptx-content svg.drawing {
+    display: block;
+    max-width: none !important;
+    max-height: none !important;
+    flex: none;
   }
 
   .aapm-pdf-viewport {

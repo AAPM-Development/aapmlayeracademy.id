@@ -455,6 +455,28 @@ try {
         json_response(ai_registry_discover_models(request_json()));
     }
 
+    if ($path === 'admin/ai/rewrite-editorial' && $method === 'POST') {
+        $user = require_admin();
+        require_csrf();
+        $input = request_json();
+        $message = trim((string) ($input['message'] ?? ''));
+        if ($message === '') {
+            error_response('Materi yang akan ditulis ulang wajib diisi.', 422, 'validation_error');
+        }
+        // Editorial rewrites carry a bounded, structured Markdown payload. The
+        // public chat endpoint remains capped at 3,000 characters, while this
+        // admin-only route has enough room for several authored blocks. The
+        // response cap is raised separately so a valid JSON payload is not
+        // cut off halfway through a long material rewrite.
+        if (strlen($message) > 24000) {
+            error_response('Materi terlalu panjang untuk satu rewrite. Pilih blok materi yang lebih sedikit.', 422, 'validation_error');
+        }
+        rate_limit_guard('ai-admin-rewrite', (string) $user['id'], 20, 300, 300);
+        $response = ai_assistant_reply($message, [], false, [], 6000, 24000);
+        rate_limit_failure('ai-admin-rewrite', (string) $user['id'], 20, 300, 300);
+        json_response($response);
+    }
+
     if ($path === 'modules' && $method === 'GET') {
         require_user();
         $rows = db()->query('SELECT * FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();

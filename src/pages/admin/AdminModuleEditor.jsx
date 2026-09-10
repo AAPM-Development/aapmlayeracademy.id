@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { EditorialContent } from "@/components/academy/EditorialContent";
+import { EditorialContent, EditorialMarkdown } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
@@ -43,6 +43,13 @@ import {
   useUpdateAdminModule,
 } from "@/lib/useAdminData";
 import { hasEditorialVideo, normaliseEditorialPresentation, parseEditorialDocument } from "@/lib/editorialDocument";
+import {
+  aiEditorialMaterialLabel,
+  aiEditorialMaterialPrompt,
+  aiEditorialMaterialSource,
+  applyAiEditorialMaterial,
+  normaliseAiEditorialMaterial,
+} from "@/lib/aiEditorialRewrite";
 import { useAuth } from "@/lib/AuthContext";
 
 const emptyModule = {
@@ -92,8 +99,9 @@ const aiList = (value, limit = 4) => {
     .slice(0, limit);
 };
 
-function normaliseAiModuleDraft(value) {
+function normaliseAiModuleDraft(value, materialSource = []) {
   if (!value || typeof value !== "object") return null;
+  const hasField = (field) => Object.prototype.hasOwnProperty.call(value, field);
   const draft = {
     title: typeof value.title === "string" ? value.title.trim().slice(0, 180) : "",
     summary: typeof value.summary === "string" ? value.summary.trim().slice(0, 600) : "",
@@ -103,13 +111,26 @@ function normaliseAiModuleDraft(value) {
     practicalAssignment: typeof value.practicalAssignment === "string"
       ? value.practicalAssignment.trim().slice(0, 1200)
       : "",
+    materialBlocks: normaliseAiEditorialMaterial(value.materialBlocks, materialSource),
+    // Keep presence separate from the normalised value. A partial APPI
+    // response must not clear an existing field merely because its key was
+    // omitted; explicitly returned empty list/assignment values remain
+    // available when the editor intentionally wants to clear those fields.
+    fieldPresence: {
+      title: hasField("title"),
+      summary: hasField("summary"),
+      learningObjectives: hasField("learningObjectives"),
+      keyTakeaways: hasField("keyTakeaways"),
+      checklist: hasField("checklist"),
+      practicalAssignment: hasField("practicalAssignment"),
+    },
   };
-  return draft.title || draft.summary || draft.learningObjectives.length || draft.keyTakeaways.length || draft.checklist.length || draft.practicalAssignment
+  return draft.title || draft.summary || draft.learningObjectives.length || draft.keyTakeaways.length || draft.checklist.length || draft.practicalAssignment || draft.materialBlocks.length
     ? draft
     : null;
 }
 
-function parseAiModuleDraft(reply) {
+function parseAiModuleDraft(reply, materialSource = []) {
   const raw = String(reply || "").trim();
   if (!raw) return null;
   const candidates = [
@@ -122,7 +143,7 @@ function parseAiModuleDraft(reply) {
   }
   for (const candidate of candidates) {
     try {
-      const parsed = normaliseAiModuleDraft(JSON.parse(candidate));
+      const parsed = normaliseAiModuleDraft(JSON.parse(candidate), materialSource);
       if (parsed) return parsed;
     } catch {
       // APPI may wrap JSON in a short explanation; try the next candidate.
@@ -131,14 +152,14 @@ function parseAiModuleDraft(reply) {
   return null;
 }
 
-function editorialContextForAi(form) {
+function editorialContextForAi(form, { includeBlocks = true } = {}) {
   const document = parseEditorialDocument(form?.editorialContent);
   const blocks = Array.isArray(document?.blocks) ? document.blocks : [];
-  const blockText = blocks
+  const blockText = includeBlocks ? blocks
     .flatMap((block) => [block?.title, block?.content, block?.caption, block?.description, block?.label])
     .filter(Boolean)
     .join("\n")
-    .slice(0, 2600);
+    .slice(0, 2600) : "";
   return [
     `Judul modul: ${String(form?.title || "").trim()}`,
     `Kategori: ${String(form?.category || "").trim()}`,
@@ -249,9 +270,19 @@ function AiModuleDraft({ form, onApply, toast }) {
   const [instruction, setInstruction] = useState("");
   const [draft, setDraft] = useState(null);
   const [rewriteDraft, setRewriteDraft] = useState(null);
+  const [includeMaterial, setIncludeMaterial] = useState(true);
   const [pendingRewrite, setPendingRewrite] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
+  const materialSource = useMemo(
+    () => aiEditorialMaterialSource(form?.editorialContent, form?.content),
+    [form?.content, form?.editorialContent],
+  );
+  const rewriteMaterialSource = includeMaterial ? materialSource : [];
+  const canRewrite = Boolean(
+    String(form?.title || form?.summary || form?.learningObjectives || form?.keyTakeaways || form?.checklist || form?.practicalAssignment || "").trim()
+    || rewriteMaterialSource.length,
+  );
   const { data: aiSettings, error: aiSettingsError, isLoading: isLoadingAiSettings } = useAdminAiSettings();
   const providerReady = aiSettings
     ? Boolean(aiSettings.enabled && aiSettings.apiKeyConfigured)
@@ -302,28 +333,37 @@ function AiModuleDraft({ form, onApply, toast }) {
   const rewrite = async () => {
     setIsRewriting(true);
     try {
-      const context = editorialContextForAi(form);
-      const response = await nativeApi.ai.assistant({
-        includeFarmContext: false,
-        farmContext: [],
+      const context = editorialContextForAi(form, { includeBlocks: false });
+      const materialPrompt = aiEditorialMaterialPrompt(rewriteMaterialSource);
+      const hasMaterialRewrite = rewriteMaterialSource.length > 0;
+      const response = await nativeApi.ai.rewriteEditorial({
         message: [
           "Anda adalah copywriter kurikulum AAPM. Tulis ulang isi modul yang sudah ada dalam bahasa Indonesia agar lebih jelas, ringkas, konsisten, dan mudah dipindai learner.",
           "Pertahankan maksud, fakta, urutan, dan batasan keselamatan dari naskah asli. Jangan menambah angka, klaim medis, atau informasi baru.",
-          "Kembalikan SATU objek JSON valid tanpa markdown, code fence, atau penjelasan tambahan dengan bentuk persis:",
-          '{"learningObjectives":["maksimal 3 tujuan"],"keyTakeaways":["maksimal 3 poin penting"],"checklist":["maksimal 3 cek observasi"],"practicalAssignment":"satu tugas praktik singkat"}',
+          "Kembalikan SATU objek JSON valid tanpa code fence atau penjelasan tambahan dengan bentuk persis:",
+          '{"title":"opsional","summary":"opsional","learningObjectives":["maksimal 3 tujuan"],"keyTakeaways":["maksimal 3 poin penting"],"checklist":["maksimal 3 cek observasi"],"practicalAssignment":"satu tugas praktik singkat","materialBlocks":[{"id":"id sumber","type":"richText|heading|callout","content":"Markdown atau teks hasil rewrite"}]}',
           "Setiap item harus satu kalimat aktif. Jika suatu bagian kosong, kembalikan array kosong atau string kosong.",
+          hasMaterialRewrite ? [
+            "Tulis ulang juga blok teks materi di bawah ini. Hanya gunakan id dan type yang sudah ada; jangan membuat, menghapus, atau menukar urutan blok.",
+            "Untuk richText, content adalah Markdown. Pertahankan sintaks heading, bold, italic, underline (++, jika ada), strike, daftar, kutipan, dan line break. Token ⟦APPI_MEDIA_n⟧ adalah gambar/tautan yang wajib disalin persis pada posisi yang sama; jangan diubah atau dihapus. Jangan menambahkan HTML, URL, gambar, atau tautan baru.",
+            "Untuk heading, ubah hanya teksnya dan jangan menambahkan awalan #. Untuk callout, pertahankan struktur title/content dan jangan mengubah nadanya.",
+            `Blok materi sumber (JSON):\n${materialPrompt}`,
+          ].join("\n") : "",
           context,
-          `Isi saat ini:\nJudul:\n${String(form?.title || "")}\nRingkasan:\n${String(form?.summary || "")}\nTujuan:\n${String(form?.learningObjectives || "")}\nPoin penting:\n${String(form?.keyTakeaways || "")}\nChecklist:\n${String(form?.checklist || "")}\nTugas praktik:\n${String(form?.practicalAssignment || "")}`,
+          `Isi terstruktur saat ini:\nJudul:\n${String(form?.title || "")}\nRingkasan:\n${String(form?.summary || "")}\nTujuan:\n${String(form?.learningObjectives || "")}\nPoin penting:\n${String(form?.keyTakeaways || "")}\nChecklist:\n${String(form?.checklist || "")}\nTugas praktik:\n${String(form?.practicalAssignment || "")}`,
           instruction.trim() ? `Gaya copywriting yang diminta editor: ${instruction.trim().slice(0, 400)}` : "Gaya: editorial, lugas, dan profesional.",
         ].filter(Boolean).join("\n\n"),
       });
       if (response?.fallback || (response?.providerStatus && response.providerStatus !== "ready")) {
         throw new Error(response?.notice ? `${response.notice} Buka Pengaturan AI untuk mengaktifkan provider sebelum rewrite.` : "Provider AI belum siap. Buka Pengaturan AI untuk menjalankan rewrite.");
       }
-      const parsed = parseAiModuleDraft(response?.reply);
+      const parsed = parseAiModuleDraft(response?.reply, rewriteMaterialSource);
       if (!parsed) throw new Error("APPI belum mengembalikan rewrite terstruktur. Coba lagi dengan instruksi yang lebih spesifik.");
+      if (hasMaterialRewrite && !parsed.materialBlocks.length) {
+        throw new Error("APPI belum mengembalikan blok materi yang aman untuk diterapkan. Coba lagi dengan blok materi yang lebih pendek.");
+      }
       setRewriteDraft(parsed);
-      toast({ title: "Rewrite APPI siap ditinjau", description: "Tidak ada isi yang diganti sebelum Anda mengonfirmasi hasilnya." });
+      toast({ title: "Rewrite APPI siap ditinjau", description: hasMaterialRewrite ? "Format Markdown, gambar, dan tautan ditahan sampai Anda mengonfirmasi hasilnya." : "Tidak ada isi yang diganti sebelum Anda mengonfirmasi hasilnya." });
     } catch (error) {
       toast({ variant: "destructive", title: "Rewrite APPI belum siap", description: error?.message || "APPI tidak dapat menulis ulang modul saat ini." });
     } finally {
@@ -355,7 +395,7 @@ function AiModuleDraft({ form, onApply, toast }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold">Bantu isi dengan APPI</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Buat draf tujuan, insight, tugas, dan checklist tanpa menimpa isi sebelum Anda menyetujuinya.</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">Buat draf tujuan, insight, tugas, checklist, atau rewrite teks materi tanpa menimpa isi sebelum Anda menyetujuinya.</p>
         </div>
         <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
           <Badge variant="soft" className={`max-w-full truncate text-[10px] ${providerStatus.className}`}>
@@ -386,13 +426,24 @@ function AiModuleDraft({ form, onApply, toast }) {
               className="h-9 min-w-0 flex-1 text-xs"
               disabled={isGenerating || isRewriting}
             />
+            <label className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-background/70 px-2.5 text-[10px] leading-4 text-muted-foreground sm:max-w-[15rem]">
+              <input
+                type="checkbox"
+                checked={includeMaterial}
+                onChange={(event) => setIncludeMaterial(event.target.checked)}
+                disabled={isGenerating || isRewriting || materialSource.length === 0}
+                className="h-4 w-4 shrink-0 accent-[hsl(var(--brand-green))]"
+                aria-label="Sertakan teks materi dalam rewrite APPI"
+              />
+              <span>Termasuk teks materi <span className="text-muted-foreground/70">(format & media tetap)</span></span>
+            </label>
             <Button type="button" size="sm" className="h-9 shrink-0" onClick={generate} disabled={isGenerating || isRewriting || !String(form?.title || form?.summary || "").trim()}>
               <AapmIcon name={isGenerating ? "refresh" : "ai"} className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
               {isGenerating ? "Menyusun…" : "Generate"}
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-9 shrink-0" onClick={rewrite} disabled={isGenerating || isRewriting || !String(form?.title || form?.summary || form?.learningObjectives || form?.keyTakeaways || form?.checklist || form?.practicalAssignment || "").trim()}>
+            <Button type="button" size="sm" variant="outline" className="h-9 shrink-0" onClick={rewrite} disabled={isGenerating || isRewriting || !canRewrite}>
               <AapmIcon name={isRewriting ? "refresh" : "edit"} className={`h-3.5 w-3.5 ${isRewriting ? "animate-spin" : ""}`} />
-              {isRewriting ? "Rewrite…" : "Rewrite isi"}
+              {isRewriting ? "Rewrite…" : includeMaterial && materialSource.length ? "Rewrite isi + materi" : "Rewrite isi"}
             </Button>
           </div>
           {draft && (
@@ -434,6 +485,31 @@ function AiModuleDraft({ form, onApply, toast }) {
                 {[["Tujuan", rewriteDraft.learningObjectives], ["Poin penting", rewriteDraft.keyTakeaways], ["Checklist", rewriteDraft.checklist]].map(([label, items]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><ul className="mt-1 space-y-0.5 text-muted-foreground">{items.map((item) => <li key={item}>• {item}</li>)}</ul></div>)}
                 <div className="rounded-lg bg-surface-subtle p-2 sm:col-span-2"><p className="font-semibold text-foreground">Tugas praktik</p><p className="mt-1 text-muted-foreground">{rewriteDraft.practicalAssignment || "—"}</p></div>
               </div>
+              {rewriteDraft.materialBlocks?.length > 0 && (
+                <div className="mt-3 rounded-lg border border-border bg-surface-subtle/60 p-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[11px] font-semibold text-foreground">Materi teks</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">{rewriteDraft.materialBlocks.length} blok dipratinjau · Markdown, gambar, dan tautan tetap dikunci.</p>
+                    </div>
+                    <Badge variant="soft" className="text-[10px]">Format dipertahankan</Badge>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {rewriteDraft.materialBlocks.map((block, index) => (
+                      <article key={block.id || index} className="overflow-hidden rounded-lg border border-border bg-background p-2.5">
+                        <div className="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="font-semibold text-foreground">{aiEditorialMaterialLabel(block.type)}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>Blok {index + 1}</span>
+                        </div>
+                        {block.type === "heading" && <p className="text-xs font-semibold text-foreground">{block.content}</p>}
+                        {block.type === "callout" && <div className="text-xs"><p className="font-semibold text-foreground">{block.title || "Sorotan"}</p><p className="mt-1 whitespace-pre-wrap text-muted-foreground">{block.content}</p></div>}
+                        {block.type === "richText" && <EditorialMarkdown className="max-w-none text-xs leading-5 [&_img]:my-2 [&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_h1]:my-2 [&_h2]:my-2 [&_h3]:my-2">{block.content}</EditorialMarkdown>}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap justify-end gap-2">
                 <Button type="button" size="sm" variant="ghost" className="h-8 text-[11px]" onClick={() => setRewriteDraft(null)}>Buang rewrite</Button>
                 <Button type="button" size="sm" className="h-8 text-[11px]" onClick={() => setPendingRewrite(true)}><AapmIcon name="checkRead" className="h-3.5 w-3.5" /> Tinjau & terapkan</Button>
@@ -447,7 +523,7 @@ function AiModuleDraft({ form, onApply, toast }) {
       open={pendingRewrite}
       onOpenChange={setPendingRewrite}
       title="Ganti isi modul dengan rewrite APPI?"
-      description="APPI hanya memberi usulan copywriting. Setelah dikonfirmasi, judul, ringkasan, tujuan, poin penting, checklist, dan tugas praktik akan diganti sebagai perubahan lokal. Anda tetap harus meninjau lalu memilih Simpan modul."
+      description="APPI hanya memberi usulan copywriting. Setelah dikonfirmasi, field modul dan blok teks materi yang dipratinjau akan diganti sebagai perubahan lokal. Markdown, gambar, tautan, urutan blok, dan media lain tetap dipertahankan. Anda tetap harus meninjau lalu memilih Simpan modul."
       confirmLabel="Terapkan rewrite"
       cancelLabel="Kembali ke pratinjau"
       icon="solar:stars-minimalistic-bold-duotone"
@@ -1501,12 +1577,29 @@ export default function AdminModuleEditor() {
                   form={form}
                   toast={toast}
                   onApply={(draft) => {
-                    if (draft.title) set("title", draft.title);
-                    if (draft.summary) set("summary", draft.summary);
-                    set("learningObjectives", draft.learningObjectives.join("\n"));
-                    set("keyTakeaways", draft.keyTakeaways.join("\n"));
-                    set("checklist", draft.checklist.join("\n"));
-                    set("practicalAssignment", draft.practicalAssignment);
+                    setForm((current) => {
+                      const hasField = (field) => draft.fieldPresence?.[field] ?? true;
+                      const next = {
+                        ...current,
+                        ...(hasField("title") && draft.title ? { title: draft.title } : {}),
+                        ...(hasField("summary") && draft.summary ? { summary: draft.summary } : {}),
+                        ...(hasField("learningObjectives") ? { learningObjectives: draft.learningObjectives.join("\n") } : {}),
+                        ...(hasField("keyTakeaways") ? { keyTakeaways: draft.keyTakeaways.join("\n") } : {}),
+                        ...(hasField("checklist") ? { checklist: draft.checklist.join("\n") } : {}),
+                        ...(hasField("practicalAssignment") ? { practicalAssignment: draft.practicalAssignment } : {}),
+                      };
+                      const material = applyAiEditorialMaterial(
+                        current.editorialContent,
+                        current.content,
+                        draft.materialBlocks,
+                      );
+                      if (material?.editorialContent) {
+                        next.editorialContent = material.editorialContent;
+                        if (material.content !== undefined) next.content = material.content;
+                      }
+                      formRef.current = next;
+                      return next;
+                    });
                   }}
                 />
                 <details className="rounded-[var(--radius-control)] border border-border bg-surface-subtle/45">

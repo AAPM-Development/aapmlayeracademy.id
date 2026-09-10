@@ -2,6 +2,7 @@
 import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import UploadProgress from "@/components/admin/UploadProgress";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import EditorialPresentation from "@/components/academy/EditorialPresentation";
@@ -117,10 +118,10 @@ function imageFileIssue(file) {
   return "";
 }
 
-async function uploadEditorialImage(file) {
+async function uploadEditorialImage(file, options) {
   const issue = imageFileIssue(file);
   if (issue) throw new Error(issue);
-  const result = await nativeApi.admin.media.uploadImage(file);
+  const result = await nativeApi.admin.media.uploadImage(file, options);
   const url = result?.media?.url;
   if (!url) throw new Error("Respons unggahan gambar tidak lengkap.");
   return url;
@@ -199,23 +200,38 @@ function SourceImagePreview({ src, alt, ratio = "wide", width = "standard", alig
 }
 
 function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar / GIF", hint, previewRatio = "wide", previewWidth = "standard", previewAlign = "left", previewPosition = "center" }) {
-  const [uploadState, setUploadState] = React.useState({ status: "idle", message: "" });
+  const [uploadState, setUploadState] = React.useState({ status: "idle", message: "", progress: null });
+  const uploadControllerRef = React.useRef(null);
   const sourceIssue = imageUrlIssue(value);
   const uploadId = `${id}-upload`;
+
+  React.useEffect(() => () => uploadControllerRef.current?.abort(), []);
 
   const uploadImage = async (file) => {
     const issue = imageFileIssue(file);
     if (issue) {
-      setUploadState({ status: "error", message: issue });
+      setUploadState({ status: "error", message: issue, progress: null });
       return;
     }
-    setUploadState({ status: "loading", message: "Mengunggah dan memeriksa gambar…" });
+    uploadControllerRef.current?.abort();
+    const controller = new AbortController();
+    uploadControllerRef.current = controller;
+    setUploadState({ status: "loading", message: "Mengunggah dan memeriksa gambar…", progress: 0 });
     try {
-      const url = await uploadEditorialImage(file);
+      const url = await uploadEditorialImage(file, {
+        signal: controller.signal,
+        onProgress: ({ percent }) => setUploadState((current) => current.status === "loading" ? { ...current, progress: percent } : current),
+      });
       onValueChange(url);
-      setUploadState({ status: "success", message: "Gambar siap dipakai dalam materi." });
+      setUploadState({ status: "success", message: "Gambar siap dipakai dalam materi.", progress: 100 });
     } catch (error) {
-      setUploadState({ status: "error", message: error?.message || "Gambar tidak dapat diunggah." });
+      setUploadState({
+        status: error?.name === "AbortError" ? "cancelled" : "error",
+        message: error?.name === "AbortError" ? "Unggahan dibatalkan." : error?.message || "Gambar tidak dapat diunggah.",
+        progress: null,
+      });
+    } finally {
+      if (uploadControllerRef.current === controller) uploadControllerRef.current = null;
     }
   };
 
@@ -253,7 +269,8 @@ function ImageSourceField({ id, value, onValueChange, alt = "", label = "Gambar 
         </Button>
         <span className="text-[11px] leading-5 text-muted-foreground">Maks. 20 MB · JPG, PNG, GIF, WebP, AVIF</span>
       </div>
-      {uploadState.status !== "idle" && <p className={cn("inline-flex items-center gap-1.5 text-[11px] leading-5", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={uploadState.status === "loading" ? "loading" : uploadState.status === "success" ? "approve" : "danger"} className={cn("h-3.5 w-3.5 shrink-0", uploadState.status === "loading" && "animate-spin")} />{uploadState.message}</p>}
+      {uploadState.status === "loading" && <UploadProgress progress={uploadState.progress} label={uploadState.message} onCancel={() => uploadControllerRef.current?.abort()} />}
+      {uploadState.status !== "idle" && uploadState.status !== "loading" && <p className={cn("inline-flex items-center gap-1.5 text-[11px] leading-5", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={uploadState.status === "success" ? "approve" : "info"} className="h-3.5 w-3.5 shrink-0" />{uploadState.message}</p>}
       <SourceImagePreview src={value} alt={alt} ratio={previewRatio} width={previewWidth} align={previewAlign} position={previewPosition} />
     </div>
   );
@@ -316,28 +333,37 @@ function TableBlockFields({ block, onChange }) {
 function SlidesBlockFields({ block, onChange }) {
   const source = getEditorialPresentationFormat(block.presentationFormat || block.source) || "manual";
   const slides = Array.isArray(block.slides) ? block.slides : [];
-  const [uploadState, setUploadState] = React.useState({ status: "idle", message: "" });
+  const [uploadState, setUploadState] = React.useState({ status: "idle", message: "", progress: null });
+  const uploadControllerRef = React.useRef(null);
   const [pendingPresentation, setPendingPresentation] = React.useState(null);
   const [pendingAction, setPendingAction] = React.useState(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const presentationInputId = `${block.id}-presentation-upload`;
   const updateSlide = (index, patch) => onChange({ slides: slides.map((slide, currentIndex) => currentIndex === index ? { ...slide, ...patch } : slide) });
 
+  React.useEffect(() => () => uploadControllerRef.current?.abort(), []);
+
   const uploadPresentationFile = async (file) => {
     if (!file) return;
     const format = getEditorialPresentationFormatFromName(file.name);
     if (!format) {
-      setUploadState({ status: "error", message: "Gunakan .pptx, .ppt, .key (Keynote), .odp, atau .pdf." });
+      setUploadState({ status: "error", message: "Gunakan .pptx, .ppt, .key (Keynote), .odp, atau .pdf.", progress: null });
       return;
     }
     if (file.size < 1 || file.size > MAX_PRESENTATION_UPLOAD_BYTES) {
-      setUploadState({ status: "error", message: `Ukuran file maksimal ${readableBytes(MAX_PRESENTATION_UPLOAD_BYTES)}.` });
+      setUploadState({ status: "error", message: `Ukuran file maksimal ${readableBytes(MAX_PRESENTATION_UPLOAD_BYTES)}.`, progress: null });
       return;
     }
     const meta = editorialPresentationMeta(format);
-    setUploadState({ status: "loading", message: `Memeriksa dan mengunggah ${meta.shortLabel}…` });
+    uploadControllerRef.current?.abort();
+    const controller = new AbortController();
+    uploadControllerRef.current = controller;
+    setUploadState({ status: "loading", message: `Memeriksa dan mengunggah ${meta.shortLabel}…`, progress: 0 });
     try {
-      const result = await nativeApi.admin.media.uploadPresentation(file);
+      const result = await nativeApi.admin.media.uploadPresentation(file, {
+        signal: controller.signal,
+        onProgress: ({ percent }) => setUploadState((current) => current.status === "loading" ? { ...current, progress: percent } : current),
+      });
       const presentation = result?.presentation;
       if (!presentation?.url || !presentation?.format) throw new Error("Respons unggahan presentasi tidak lengkap.");
       const uploadedFormat = getEditorialPresentationFormat(presentation.format) || format;
@@ -353,9 +379,15 @@ function SlidesBlockFields({ block, onChange }) {
         slides: [],
       });
       setPendingPresentation(null);
-      setUploadState({ status: "success", message: `${meta.shortLabel} siap.` });
+      setUploadState({ status: "success", message: `${meta.shortLabel} siap.`, progress: 100 });
     } catch (error) {
-      setUploadState({ status: "error", message: error?.message || `${meta.shortLabel} tidak dapat diunggah.` });
+      setUploadState({
+        status: error?.name === "AbortError" ? "cancelled" : "error",
+        message: error?.name === "AbortError" ? "Unggahan dibatalkan." : error?.message || `${meta.shortLabel} tidak dapat diunggah.`,
+        progress: null,
+      });
+    } finally {
+      if (uploadControllerRef.current === controller) uploadControllerRef.current = null;
     }
   };
 
@@ -363,7 +395,7 @@ function SlidesBlockFields({ block, onChange }) {
     const hasManualContent = source === "manual" && slides.some((slide) => slide.title?.trim() || slide.content?.trim() || slide.src?.trim());
     if (hasManualContent) {
       setPendingPresentation(file);
-      setUploadState({ status: "idle", message: "" });
+      setUploadState({ status: "idle", message: "", progress: null });
       return;
     }
     void uploadPresentationFile(file);
@@ -392,7 +424,8 @@ function SlidesBlockFields({ block, onChange }) {
       <AlignmentField id={`${block.id}-slides-align`} value={block.align || "left"} onChange={(align) => onChange({ align })} label="Rata rangkaian" />
       <div className="rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-semibold">Sumber slide</div><div className="mt-1 text-[11px] leading-5 text-muted-foreground">PPTX/PPT, Keynote, ODP, atau PDF · maksimal 50 MB</div></div><div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={source === "manual" ? "default" : "outline"} onClick={switchToManual}><AapmIcon name="edit" className="h-3.5 w-3.5" />Manual</Button><input id={presentationInputId} type="file" accept={EDITORIAL_PRESENTATION_ACCEPT} className="sr-only" disabled={uploadState.status === "loading"} onChange={(event) => { const [file] = event.target.files || []; event.target.value = ""; if (file) choosePresentation(file); }} /><Button asChild type="button" size="sm" variant={source !== "manual" ? "default" : "outline"} disabled={uploadState.status === "loading"} aria-busy={uploadState.status === "loading"}><label htmlFor={presentationInputId} className="cursor-pointer"><AapmIcon name={uploadState.status === "loading" ? "loading" : "fileCheck"} className={cn("h-3.5 w-3.5", uploadState.status === "loading" && "animate-spin")} />{uploadState.status === "loading" ? "Mengunggah…" : source !== "manual" ? `Ganti ${editorialPresentationMeta(source).shortLabel}` : "Unggah file"}</label></Button></div></div></div>
       {pendingPresentation && <div className="flex flex-col gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/5 p-3 sm:flex-row sm:items-center sm:justify-between" role="status" aria-live="polite"><div className="min-w-0"><p className="text-xs font-semibold">Siap mengganti sumber slide</p><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{pendingPresentation.name}</p></div><div className="flex flex-wrap gap-2"><Button type="button" size="sm" disabled={uploadState.status === "loading"} onClick={() => void uploadPresentationFile(pendingPresentation)}><AapmIcon name={uploadState.status === "loading" ? "loading" : "fileCheck"} className={cn("h-3.5 w-3.5", uploadState.status === "loading" && "animate-spin")} />{uploadState.status === "loading" ? "Mengunggah…" : "Gunakan file"}</Button><Button type="button" size="sm" variant="outline" disabled={uploadState.status === "loading"} onClick={() => setPendingPresentation(null)}>Batal</Button></div></div>}
-      {uploadState.status !== "idle" && <p className={cn("inline-flex items-center gap-1.5 text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={uploadState.status === "loading" ? "loading" : uploadState.status === "success" ? "approve" : "danger"} className={cn("h-3.5 w-3.5 shrink-0", uploadState.status === "loading" && "animate-spin")} />{uploadState.message}</p>}
+      {uploadState.status === "loading" && <UploadProgress progress={uploadState.progress} label={uploadState.message} onCancel={() => uploadControllerRef.current?.abort()} />}
+      {uploadState.status !== "idle" && uploadState.status !== "loading" && <p className={cn("inline-flex items-center gap-1.5 text-[10px] leading-4", uploadState.status === "error" ? "text-danger" : uploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={uploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={uploadState.status === "success" ? "approve" : "info"} className="h-3.5 w-3.5 shrink-0" />{uploadState.message}</p>}
       {source !== "manual" ? <div className="rounded-xl border border-border bg-background p-4 shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2"><AapmIcon name="fileCheck" className="h-4 w-4 shrink-0 text-brand-orange" /><div className="min-w-0"><div className="truncate text-sm font-semibold">{block.presentationName || block.pptxName || "File presentasi"}</div><div className="text-[10px] text-muted-foreground">{source === "pptx" && block.slideCount ? `${block.slideCount} slide · ` : ""}{editorialPresentationMeta(source).label}</div></div></div><div className="flex flex-wrap items-center justify-end gap-2"><Badge variant="soft" className="bg-tint-green text-brand-green">{editorialPresentationMeta(source).shortLabel}</Badge><Button type="button" size="sm" variant="outline" disabled={!block.presentationUrl && !block.pptxUrl} onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup" : source === "ppt" || source === "key" || source === "odp" ? "Lihat file" : "Pratinjau"}</Button></div></div>{previewOpen && (block.presentationUrl || block.pptxUrl) && <div className="mt-3 border-t border-border pt-3"><EditorialPresentation src={block.presentationUrl || block.pptxUrl} format={source} title={block.title || block.presentationName || block.pptxName || "Presentasi"} name={block.presentationName || block.pptxName} declaredSlideCount={block.slideCount} compact /></div>}</div> : <>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-subtle p-3"><div className="text-xs font-semibold">Rangkaian slide manual</div><Button type="button" size="sm" variant="outline" disabled={slides.length >= 12} onClick={() => onChange({ slides: [...slides, createEditorialSlide(slides.length + 1)] })}><AapmIcon name="add" className="h-3.5 w-3.5" />Tambah slide</Button></div>
         <div className="space-y-3">{slides.map((slide, index) => <article key={slide.id} className="rounded-xl border border-border bg-background p-3 shadow-sm sm:p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3"><span className="text-xs font-semibold">Slide {index + 1} dari {slides.length}</span><div className="flex flex-wrap gap-1.5"><IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Naikkan slide ${index + 1}`} tooltip="Naikkan slide satu posisi" disabled={index === 0} onClick={() => onChange({ slides: moveInList(slides, index, index - 1) })}><AapmIcon name="chevronUp" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" label={`Turunkan slide ${index + 1}`} tooltip="Turunkan slide satu posisi" disabled={index === slides.length - 1} onClick={() => onChange({ slides: moveInList(slides, index, index + 1) })}><AapmIcon name="chevronDown" className="h-3.5 w-3.5" /></IconButton><IconButton size="sm" className="h-10 w-10 p-0 text-danger hover:bg-danger/5 sm:h-8 sm:w-8" label={`Hapus slide ${index + 1}`} tooltip="Hapus slide" disabled={slides.length <= 1} onClick={() => setPendingAction({ type: "delete-slide", index })}><AapmIcon name="delete" className="h-3.5 w-3.5" /></IconButton></div></div><div className="grid gap-3 lg:grid-cols-2"><Field id={`${block.id}-slide-${index}-title`} label="Judul slide"><Input id={`${block.id}-slide-${index}-title`} value={slide.title || ""} maxLength={180} onChange={(event) => updateSlide(index, { title: event.target.value })} /></Field><div className="lg:col-span-2"><ImageSourceField id={`${block.id}-slide-${index}-image`} label="Gambar slide (opsional)" value={slide.src || ""} alt={slide.alt || ""} onValueChange={(src) => updateSlide(index, { src })} hint="Pilih gambar dari komputer atau masukkan URL HTTPS." /></div><div className="lg:col-span-2"><Field id={`${block.id}-slide-${index}-content`} label="Isi slide (opsional)"><Textarea id={`${block.id}-slide-${index}-content`} rows={3} maxLength={3000} value={slide.content || ""} onChange={(event) => updateSlide(index, { content: event.target.value })} placeholder="Ringkas poin utama slide ini." /></Field></div>{slide.src && <div className="space-y-3 lg:col-span-2"><DecorativeImageControl id={`${block.id}-slide-${index}-decorative`} decorative={slide.decorative !== false} onChange={(decorative) => updateSlide(index, { decorative })} />{slide.decorative === false && <Field id={`${block.id}-slide-${index}-alt`} label="Alt text gambar" hint="Wajib untuk gambar yang membawa informasi."><Input id={`${block.id}-slide-${index}-alt`} value={slide.alt || ""} maxLength={280} onChange={(event) => updateSlide(index, { alt: event.target.value })} /></Field>}</div>}</div></article>)}</div>
