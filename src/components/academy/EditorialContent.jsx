@@ -21,6 +21,7 @@ import {
   safeEditorialImage as getSafeEditorialImage,
   safeEditorialLink as getSafeEditorialLink,
 } from "@/lib/editorialUrls";
+import { parseRichTextImageTitle } from "@/lib/richTextImageLayout";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialPresentation from "@/components/academy/EditorialPresentation";
 
@@ -109,16 +110,25 @@ const markdownComponents = {
       {children}
     </SafeLink>
   ),
-  img: ({ src, alt }) => {
+  img: ({ src, alt, title }) => {
     const safeSrc = safeEditorialImage(src);
     if (!safeSrc) return null;
+    const layout = parseRichTextImageTitle(title);
+    const style = layout.width ? { width: `${layout.width}px`, maxWidth: "100%" } : undefined;
+    const alignment = {
+      left: "mr-auto",
+      center: "mx-auto",
+      right: "ml-auto",
+    }[layout.align] || "mr-auto";
     return (
       <img
         src={safeSrc}
         alt={alt || ""}
+        title={layout.title || undefined}
         loading="lazy"
         decoding="async"
-        className="my-5 h-auto max-w-full rounded-xl border border-border object-contain"
+        style={style}
+        className={cn("my-5 block h-auto max-w-full rounded-xl object-contain", alignment)}
       />
     );
   },

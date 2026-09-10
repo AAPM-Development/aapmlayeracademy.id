@@ -107,7 +107,7 @@ export default function ModuleDetail() {
     <LearningFocusShell
       header={<LessonHeader module={module} completed={moduleProgress?.completed} />}
       sidebar={<LessonSidebar module={module} activeSection={activeSection} onSectionChange={jumpToSection} sections={learnerSections} />}
-      footer={<div className="mt-8 lg:pr-[292px]">{saveProgress.isError && <div className="mb-4 rounded-xl border border-danger/25 bg-danger/5 p-4 text-sm text-danger" role="alert">Progress belum tersimpan. Silakan coba tombol selesai lagi.</div>}<LessonNavigation previous={previous} next={next} onComplete={markComplete} completed={Boolean(moduleProgress?.completed)} saving={saveProgress.isPending} /></div>}
+      footer={<div className="mt-8">{saveProgress.isError && <div className="mb-4 rounded-xl border border-danger/25 bg-danger/5 p-4 text-sm text-danger" role="alert">Progress belum tersimpan. Silakan coba tombol selesai lagi.</div>}<LessonNavigation previous={previous} next={next} onComplete={markComplete} completed={Boolean(moduleProgress?.completed)} saving={saveProgress.isPending} /></div>}
     >
       <div className="space-y-10">
         <LessonSection id="content" title="Materi" icon="solar:file-text-bold">

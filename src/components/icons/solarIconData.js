@@ -37,6 +37,13 @@ import solar28 from '@iconify-icons/solar/letter-bold.js';
 import solarLetterBoldDuotone from '@iconify-icons/solar/letter-bold-duotone.js';
 import solar29 from '@iconify-icons/solar/lightbulb-bolt-bold-duotone.js';
 import solarLeaf from '@iconify-icons/solar/leaf-bold-duotone.js';
+import solarLinkMinimalistic from '@iconify-icons/solar/link-minimalistic-linear.js';
+import solarLinkBrokenMinimalistic from '@iconify-icons/solar/link-broken-minimalistic-linear.js';
+import solarAlignLeft from '@iconify-icons/solar/align-left-linear.js';
+import solarAlignHorizontalCenter from '@iconify-icons/solar/align-horizontal-center-linear.js';
+import solarAlignRight from '@iconify-icons/solar/align-right-linear.js';
+import solarMaximizeSquareMinimalistic from '@iconify-icons/solar/maximize-square-minimalistic-linear.js';
+import solarScale from '@iconify-icons/solar/scale-linear.js';
 import solar30 from '@iconify-icons/solar/list-bold.js';
 import solarAltArrowDown from '@iconify-icons/solar/alt-arrow-down-linear.js';
 import solarAltArrowUp from '@iconify-icons/solar/alt-arrow-up-linear.js';
@@ -130,6 +137,13 @@ export const solarIconData = Object.freeze({
   'solar:letter-bold-duotone': solarLetterBoldDuotone,
   'solar:lightbulb-bolt-bold-duotone': solar29,
   'solar:leaf-bold-duotone': solarLeaf,
+  'solar:link-minimalistic-linear': solarLinkMinimalistic,
+  'solar:link-broken-minimalistic-linear': solarLinkBrokenMinimalistic,
+  'solar:align-left-linear': solarAlignLeft,
+  'solar:align-horizontal-center-linear': solarAlignHorizontalCenter,
+  'solar:align-right-linear': solarAlignRight,
+  'solar:maximize-square-minimalistic-linear': solarMaximizeSquareMinimalistic,
+  'solar:scale-linear': solarScale,
   'solar:list-bold': solar30,
   'solar:lock-keyhole-minimalistic-unlocked-bold': solar31,
   'solar:lock-keyhole-minimalistic-bold-duotone': solarLockedKeyhole,

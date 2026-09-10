@@ -278,6 +278,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 message_count INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                archived_at TEXT NULL,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )',
             'CREATE TABLE IF NOT EXISTS ai_chat_messages (
@@ -457,8 +458,10 @@ function ensure_schema(PDO $pdo, string $driver): void
                 message_count INT UNSIGNED NOT NULL DEFAULT 0,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                archived_at DATETIME NULL,
                 PRIMARY KEY (id),
                 KEY ai_conversations_user_updated_idx (user_id, updated_at),
+                KEY ai_conversations_user_archive_idx (user_id, archived_at, updated_at, id),
                 CONSTRAINT ai_conversations_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             'CREATE TABLE IF NOT EXISTS ai_chat_messages (
@@ -505,8 +508,27 @@ function ensure_schema(PDO $pdo, string $driver): void
     ensure_course_module_video_url($pdo, $driver);
     ensure_user_profile_avatar($pdo, $driver);
     ensure_user_ai_supports_vision($pdo, $driver);
+    ensure_ai_conversation_archive($pdo, $driver);
     ensure_default_course_module_videos($pdo);
     ensure_editorial_course_module_videos($pdo);
+}
+
+function ensure_ai_conversation_archive(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $columns = $pdo->query('PRAGMA table_info(ai_conversations)')->fetchAll();
+        foreach ($columns as $column) {
+            if (($column['name'] ?? '') === 'archived_at') return;
+        }
+        $pdo->exec('ALTER TABLE ai_conversations ADD COLUMN archived_at TEXT NULL');
+        return;
+    }
+
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['ai_conversations', 'archived_at']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE ai_conversations ADD COLUMN archived_at DATETIME NULL AFTER updated_at');
+    }
 }
 
 function ensure_user_profile_avatar(PDO $pdo, string $driver): void
@@ -2651,6 +2673,7 @@ function present_ai_conversation(array $row): array
         'messageCount' => (int) ($row['message_count'] ?? 0),
         'createdAt' => $row['created_at'] ?? null,
         'updatedAt' => $row['updated_at'] ?? null,
+        'archivedAt' => $row['archived_at'] ?? null,
     ];
 }
 

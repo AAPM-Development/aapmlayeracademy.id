@@ -4,12 +4,10 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 /**
- * Compact account surface for the sidebar footer.
+ * Compact account row for the sidebar footer.
  *
- * The account is an action, but it is intentionally composed as a user card
- * instead of a third navigation row. This keeps identity, context, and the
- * destination affordance together while preserving the sidebar's canonical
- * Ten4Seven spacing and focus contract.
+ * Identity is navigation context, not another panel. Keep it as one quiet
+ * row so the sidebar does not introduce a card inside the shell's surface.
  */
 export default function SidebarUserCard({
   user = null,
@@ -27,11 +25,9 @@ export default function SidebarUserCard({
     <button
       type="button"
       className={cn(
-        // MobileSidebar closes canonical nav actions by this marker. Keeping
-        // the marker preserves drawer behavior without changing the card
-        // into a visually generic navigation row.
-        "t7-nav-item aapm-sidebar-user-card",
-        collapsed && "aapm-sidebar-user-card--collapsed",
+        // MobileSidebar closes canonical nav actions by this marker.
+        "t7-nav-item aapm-sidebar-profile-row",
+        collapsed && "aapm-sidebar-profile-row--collapsed",
         className,
       )}
       data-t7-region="sidebar-account"
@@ -43,16 +39,16 @@ export default function SidebarUserCard({
       <ProfileAvatar
         user={user}
         name={displayName}
-        className="aapm-sidebar-user-card__avatar"
+        className="aapm-sidebar-profile-row__avatar"
         fallbackClassName="bg-tint-green text-brand-green"
       />
       {!collapsed && (
-        <span className="aapm-sidebar-user-card__copy">
-          <span className="aapm-sidebar-user-card__name">{displayName}</span>
-          <span className="aapm-sidebar-user-card__meta">{secondary}</span>
+        <span className="aapm-sidebar-profile-row__copy">
+          <span className="aapm-sidebar-profile-row__name">{displayName}</span>
+          <span className="aapm-sidebar-profile-row__meta">{secondary}</span>
         </span>
       )}
-      {!collapsed && <AapmIcon name="chevronRight" className="aapm-sidebar-user-card__chevron" aria-hidden="true" />}
+      {!collapsed && <AapmIcon name="chevronRight" className="aapm-sidebar-profile-row__chevron" aria-hidden="true" />}
     </button>
   );
 }

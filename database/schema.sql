@@ -171,8 +171,10 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
   message_count INT UNSIGNED NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  archived_at DATETIME NULL,
   PRIMARY KEY (id),
   KEY ai_conversations_user_updated_idx (user_id, updated_at),
+  KEY ai_conversations_user_archive_idx (user_id, archived_at, updated_at, id),
   CONSTRAINT ai_conversations_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

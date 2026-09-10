@@ -780,6 +780,287 @@
     min-height: 100dvh;
     height: 100dvh;
     overflow: hidden;
+    /* Shells share one quiet structural language. Keep borders as a
+     * navigation aid, not as a visible outline around every surface. Accent
+     * states and keyboard focus retain their own stronger tokens below. */
+    --aapm-shell-border-alpha: 0.46;
+    --aapm-shell-divider-alpha: 0.28;
+    --aapm-shell-shadow: 0 8px 24px -24px hsl(var(--foreground) / 0.2);
+  }
+
+  .aapm-t7-app-shell .border-border {
+    border-color: hsl(var(--surface-border) / var(--aapm-shell-border-alpha));
+  }
+
+  .aapm-t7-app-shell .border-input {
+    border-color: hsl(var(--input) / 0.72);
+  }
+
+  .aapm-t7-app-shell .aapm-token-divider {
+    border-color: hsl(var(--surface-border) / var(--aapm-shell-divider-alpha));
+  }
+
+  .aapm-t7-app-shell .aapm-token-inset,
+  .aapm-t7-app-shell .aapm-token-card,
+  .aapm-t7-app-shell .aapm-token-panel,
+  .aapm-t7-app-shell .aapm-token-form {
+    border-color: hsl(var(--surface-border) / var(--aapm-shell-border-alpha));
+    box-shadow: var(--aapm-shell-shadow);
+  }
+
+  /* Editorial media uses one reading-stage contract for PPTX and PDF. The
+   * stage is deliberately quieter than a form card: the file is the focus,
+   * while the header and controls only provide orientation and recovery. */
+  .aapm-presentation-shell {
+    min-width: 0;
+    border: 1px solid hsl(var(--surface-border) / 0.62);
+    border-radius: var(--radius-panel);
+    background: hsl(var(--surface-default));
+    box-shadow: 0 10px 28px -28px hsl(var(--foreground) / 0.3);
+  }
+
+  .aapm-presentation-shell:focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.72);
+    outline-offset: 3px;
+  }
+
+  .aapm-presentation-header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.5);
+    background: hsl(var(--surface-default));
+  }
+
+  .aapm-presentation-eyebrow {
+    margin: 0;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .aapm-presentation-file-icon {
+    display: inline-flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-presentation-action,
+  .aapm-presentation-icon-action {
+    display: inline-flex;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    border: 1px solid hsl(var(--surface-border) / 0.72);
+    border-radius: var(--radius-control);
+    background: hsl(var(--control-canvas));
+    color: hsl(var(--foreground));
+    padding: 0 var(--space-3);
+    font-size: 0.75rem;
+    font-weight: 650;
+    line-height: 1;
+    transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease;
+  }
+
+  .aapm-presentation-icon-action {
+    width: 2.25rem;
+    padding: 0;
+  }
+
+  .aapm-presentation-action:hover,
+  .aapm-presentation-icon-action:hover {
+    border-color: hsl(var(--primary) / 0.42);
+    background: hsl(var(--surface-accent) / 0.52);
+    color: hsl(var(--primary));
+  }
+
+  .aapm-presentation-action:focus-visible,
+  .aapm-presentation-icon-action:focus-visible,
+  .aapm-presentation-dot-button:focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.72);
+    outline-offset: 2px;
+  }
+
+  .aapm-presentation-action:disabled,
+  .aapm-presentation-icon-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+  }
+
+  .aapm-presentation-stage {
+    position: relative;
+    min-width: 0;
+    padding: clamp(0.5rem, 2vw, 1rem);
+    background: hsl(var(--surface-muted) / 0.7);
+  }
+
+  .aapm-pptx-viewport,
+  .aapm-pdf-viewport {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-default));
+    box-shadow: 0 12px 28px -24px hsl(var(--foreground) / 0.28);
+  }
+
+  .aapm-pptx-viewport {
+    aspect-ratio: 16 / 9;
+    min-height: 14rem;
+  }
+
+  .aapm-pptx-target {
+    position: relative;
+  }
+
+  .aapm-pptx-target .flyfish-pptx-content .slide {
+    box-shadow: 0 8px 22px -18px hsl(var(--foreground) / 0.32) !important;
+  }
+
+  .aapm-pdf-viewport {
+    min-height: 20rem;
+    background: hsl(var(--surface-inset));
+  }
+
+  .aapm-pdf-frame {
+    display: block;
+    width: 100%;
+    min-height: 22rem;
+    height: min(72vh, 54rem);
+    border: 0;
+    background: hsl(var(--surface-default));
+  }
+
+  .aapm-presentation-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-5);
+    background: hsl(var(--surface-muted) / 0.84);
+    backdrop-filter: blur(2px);
+  }
+
+  .aapm-presentation-state-card {
+    display: flex;
+    min-width: min(100%, 22rem);
+    align-items: flex-start;
+    gap: var(--space-3);
+    border: 1px solid hsl(var(--surface-border) / 0.64);
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-default) / 0.96);
+    padding: var(--space-4);
+    box-shadow: 0 12px 24px -22px hsl(var(--foreground) / 0.35);
+  }
+
+  .aapm-presentation-error-icon {
+    display: inline-flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: hsl(var(--brand-aapm-orange) / 0.1);
+  }
+
+  .aapm-presentation-progress {
+    height: 0.25rem;
+    width: min(15rem, 100%);
+    margin-top: var(--space-3);
+    overflow: hidden;
+    border-radius: 999px;
+    background: hsl(var(--surface-border) / 0.52);
+  }
+
+  .aapm-presentation-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: hsl(var(--primary));
+    transition: width 180ms ease;
+  }
+
+  .aapm-presentation-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    border-radius: var(--radius-control);
+    background: hsl(var(--brand-aapm-orange) / 0.07);
+    padding: var(--space-2) var(--space-3);
+    color: hsl(var(--muted-foreground));
+    font-size: 0.6875rem;
+    line-height: 1.45;
+  }
+
+  .aapm-presentation-controls {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid hsl(var(--surface-border) / 0.5);
+    background: hsl(var(--surface-default));
+  }
+
+  .aapm-presentation-dot-button {
+    display: inline-flex;
+    height: 2rem;
+    width: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+  }
+
+  .aapm-presentation-dot {
+    display: block;
+    height: 0.375rem;
+    width: 0.375rem;
+    border-radius: 999px;
+    background: hsl(var(--surface-border));
+    transition: width var(--duration-fast) ease, background-color var(--duration-fast) ease;
+  }
+
+  .aapm-presentation-dot.is-active {
+    width: 1rem;
+    background: hsl(var(--primary));
+  }
+
+  @media (max-width: 640px) {
+    .aapm-presentation-header,
+    .aapm-presentation-controls {
+      padding-inline: var(--space-3);
+    }
+
+    .aapm-presentation-controls > :last-child:not(.sr-only) {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .aapm-pptx-viewport {
+      min-height: 12rem;
+    }
+
+    .aapm-pdf-frame {
+      min-height: 20rem;
+      height: min(72vh, 42rem);
+    }
   }
 
   .aapm-t7-app-shell > .t7-app-sidebar {
@@ -959,18 +1240,18 @@
     justify-content: flex-start;
   }
 
-  /* Identity is a compact card, not another navigation row. Keep the card
-   * inside the canonical footer rhythm and let the avatar carry recognition
-   * when the rail is collapsed. */
-  .aapm-sidebar-user-card {
+  /* Identity is a quiet navigation row, not another surface inside the
+   * sidebar. The shell already owns the canvas; only the row's hover/active
+   * state should receive a tint. */
+  .aapm-sidebar-profile-row {
     display: flex;
     min-width: 0;
     width: 100%;
     align-items: center;
     gap: var(--t7-ref-space-2);
-    border: 1px solid hsl(var(--surface-border));
+    border: 1px solid transparent;
     border-radius: var(--t7-radius-control);
-    background: hsl(var(--surface-default) / 0.72);
+    background: transparent;
     padding: var(--t7-ref-space-2);
     color: hsl(var(--t7-foreground-hsl));
     cursor: pointer;
@@ -981,57 +1262,57 @@
       color var(--t7-transition-fast);
   }
 
-  .aapm-sidebar-user-card:hover {
-    border-color: hsl(var(--tint-green-border));
-    background: hsl(var(--tint-green) / 0.62);
+  .aapm-sidebar-profile-row:hover {
+    border-color: transparent;
+    background: hsl(var(--surface-default) / 0.58);
   }
 
-  .aapm-sidebar-user-card:focus-visible {
+  .aapm-sidebar-profile-row:focus-visible {
     outline: 2px solid hsl(var(--t7-focus-hsl));
     outline-offset: 2px;
   }
 
-  .aapm-sidebar-user-card[data-active="true"] {
-    border-color: hsl(var(--tint-green-border));
-    background: hsl(var(--tint-green));
+  .aapm-sidebar-profile-row[data-active="true"] {
+    border-color: transparent;
+    background: hsl(var(--tint-green) / 0.72);
     color: hsl(var(--t7-primary-hsl));
   }
 
-  .aapm-sidebar-user-card__avatar {
+  .aapm-sidebar-profile-row__avatar {
     width: 2rem;
     height: 2rem;
-    border: 1px solid hsl(var(--tint-green-border));
+    border: 0;
   }
 
-  .aapm-sidebar-user-card__copy {
+  .aapm-sidebar-profile-row__copy {
     display: grid;
     min-width: 0;
     flex: 1;
     gap: 2px;
   }
 
-  .aapm-sidebar-user-card__name,
-  .aapm-sidebar-user-card__meta {
+  .aapm-sidebar-profile-row__name,
+  .aapm-sidebar-profile-row__meta {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .aapm-sidebar-user-card__name {
+  .aapm-sidebar-profile-row__name {
     color: inherit;
     font-size: var(--t7-type-nav-size);
     font-weight: var(--t7-type-nav-active-weight);
     line-height: var(--t7-type-nav-line-height);
   }
 
-  .aapm-sidebar-user-card__meta {
+  .aapm-sidebar-profile-row__meta {
     color: hsl(var(--t7-muted-foreground-hsl));
     font-size: var(--t7-type-caption-size);
     line-height: var(--t7-type-caption-line-height);
   }
 
-  .aapm-sidebar-user-card__chevron {
+  .aapm-sidebar-profile-row__chevron {
     flex: none;
     width: var(--t7-icon-navigation);
     height: var(--t7-icon-navigation);
@@ -1150,12 +1431,12 @@
     padding-inline: 0;
   }
 
-  .aapm-academy-sidebar--collapsed .aapm-sidebar-user-card {
+  .aapm-academy-sidebar--collapsed .aapm-sidebar-profile-row {
     width: auto;
     padding-inline: var(--t7-ref-space-2);
   }
 
-  .aapm-academy-sidebar--collapsed .aapm-sidebar-user-card__avatar {
+  .aapm-academy-sidebar--collapsed .aapm-sidebar-profile-row__avatar {
     width: 2.125rem;
     height: 2.125rem;
   }
@@ -1234,6 +1515,41 @@
 
     .t7-mobile-sidebar .aapm-academy-sidebar .t7-sidebar-group + .t7-sidebar-group {
       margin-top: 0;
+    }
+
+    /* The drawer already provides the mobile surface. Treat identity and
+     * cross-workspace actions as rows inside that surface, not cards nested in
+     * another card; this removes the stacked-border look visible in the PWA. */
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-sidebar-profile-row,
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__admin-link,
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__academy-link {
+      border-color: transparent;
+      border-radius: var(--t7-radius-control);
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-sidebar-profile-row:hover,
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-sidebar-profile-row[data-active="true"],
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__academy-link:hover {
+      border-color: transparent;
+      background: hsl(var(--tint-green));
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__admin-link {
+      color: hsl(var(--tint-orange-foreground));
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__admin-link:hover,
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__admin-link[data-active="true"] {
+      background: hsl(var(--tint-orange));
+    }
+
+    .t7-mobile-sidebar .aapm-academy-sidebar .aapm-academy-sidebar__logout {
+      margin-top: var(--t7-ref-space-1);
+      border-top: 1px solid hsl(var(--surface-border));
+      border-radius: 0;
+      padding-top: var(--t7-ref-space-2);
     }
 
     /* Stacked DataTable rows are the right mobile grammar, but the canonical
@@ -1365,6 +1681,79 @@
   .aapm-token-toolbar {
     background: hsl(var(--surface-subtle) / 0.96);
     box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
+  }
+
+  /* Rich-text controls follow the visual grammar people already know from
+   * Office-style editors: one compact group per task, familiar glyphs, and
+   * quiet separators instead of a row of high-contrast bordered buttons. */
+  .aapm-rich-editor__toolbar {
+    scrollbar-width: thin;
+  }
+
+  .aapm-rich-editor__toolbar-group {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-elevated) / 0.48);
+  }
+
+  .aapm-rich-editor__toolbar-group--style {
+    padding: 0;
+    background: transparent;
+  }
+
+  .aapm-rich-editor__toolbar-separator {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 1.25rem;
+    margin-inline: 3px;
+    background: hsl(var(--surface-border) / 0.64);
+  }
+
+  .aapm-rich-editor__toolbar-style-select {
+    border-color: hsl(var(--surface-border) / 0.78);
+    background: hsl(var(--control-canvas) / 0.82);
+  }
+
+  .aapm-rich-editor__toolbar-button {
+    color: hsl(var(--muted-foreground));
+    transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .aapm-rich-editor__toolbar-button:hover:not(:disabled) {
+    background: hsl(var(--surface-subtle) / 0.92);
+    color: hsl(var(--foreground));
+  }
+
+  .aapm-rich-editor__toolbar-button[aria-pressed="true"] {
+    background: hsl(var(--tint-orange) / 0.9);
+    color: hsl(var(--tint-orange-foreground));
+    box-shadow: inset 0 0 0 1px hsl(var(--tint-orange-border) / 0.42);
+  }
+
+  .aapm-rich-editor__toolbar-button:disabled {
+    opacity: 0.42;
+  }
+
+  @media (max-width: 640px) {
+    .aapm-rich-editor__toolbar {
+      padding-inline: 0.5rem;
+      padding-block: 0.375rem;
+    }
+
+    .aapm-rich-editor__toolbar-button {
+      width: 2.5rem;
+      min-width: 2.5rem;
+      height: 2.5rem;
+    }
+
+    .aapm-rich-editor__toolbar-separator {
+      height: 1.5rem;
+      margin-inline: 4px;
+    }
   }
 
   .aapm-admin-editor-frame {
@@ -1734,6 +2123,19 @@
     gap: var(--t7-cluster-default, var(--t7-control-gap));
   }
 
+  .aapm-dashboard-kpi,
+  .aapm-dashboard-kpi .t7-kpi-item,
+  .aapm-dashboard-kpi .t7-kpi-item-definition,
+  .aapm-dashboard-kpi .t7-kpi-item-definition-group {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .aapm-dashboard-kpi .t7-kpi-item-value [data-t7-type],
+  .aapm-dashboard-kpi .t7-kpi-item-note {
+    overflow-wrap: anywhere;
+  }
+
   .aapm-sparkline {
     display: block;
     max-width: 100%;
@@ -1775,6 +2177,46 @@
 
   .aapm-dashboard-ring--hero > span {
     color: hsl(0 0% 100%);
+  }
+
+  @media (max-width: 639px) {
+    /* A phone is a single-column reading surface. Stacking the summary cards
+     * prevents long values and chart rails from creating horizontal overflow. */
+    .aapm-dashboard-kpi {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-3);
+    }
+
+    .aapm-dashboard-welcome__hero {
+      padding-inline: var(--space-4);
+    }
+
+    .aapm-dashboard-welcome__stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .aapm-dashboard-welcome__stats > div {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      padding-inline: 0.55rem;
+    }
+
+    .aapm-dashboard-welcome__journey {
+      width: 100%;
+    }
+
+    .aapm-dashboard-welcome__route {
+      padding-inline: var(--space-4);
+    }
+
+    .aapm-dashboard-welcome__route ol {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aapm-dashboard-welcome__route ol span:last-child {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
   }
 
   /* T7's semantic Table returns a scroll wrapper around its native table.
@@ -2857,16 +3299,16 @@
   /* APPI composition grammar. The workspace is one frame; cards and
    * message surfaces sit inside it on the shared Academy reference grid. */
   .aapm-ai-frame {
-    border: 1px solid hsl(var(--ai-frame-border));
+    border: 1px solid hsl(var(--ai-frame-border) / var(--aapm-shell-border-alpha, 0.46));
     border-radius: var(--radius-panel);
     background: hsl(var(--ai-frame-canvas));
-    box-shadow: var(--ai-frame-shadow);
+    box-shadow: var(--aapm-shell-shadow, none);
   }
 
   .aapm-ai-card {
-    border: 1px solid hsl(var(--ai-card-border));
+    border: 1px solid hsl(var(--ai-card-border) / var(--aapm-shell-border-alpha, 0.38));
     border-radius: var(--radius-card);
-    background: hsl(var(--ai-card-canvas));
+    background: hsl(var(--ai-card-canvas) / 0.72);
   }
 
   .aapm-ai-card--interactive {
@@ -2878,10 +3320,9 @@
   }
 
   .aapm-ai-card--interactive:hover {
-    border-color: hsl(var(--aapm-orange-700) / 0.42);
-    background: hsl(var(--ai-card-hover) / 0.34);
-    box-shadow: var(--surface-shadow-hover);
-    transform: translateY(-1px);
+    border-color: hsl(var(--aapm-orange-700) / 0.34);
+    background: hsl(var(--ai-card-hover) / 0.24);
+    box-shadow: none;
   }
 
   .aapm-ai-card--interactive:focus-visible {
@@ -2897,9 +3338,27 @@
 
   .aapm-ai-answer-card {
     padding: 1rem 1.125rem;
-    border: 1px solid hsl(var(--surface-border) / 0.78);
+    border: 1px solid hsl(var(--surface-border) / 0.42);
     border-radius: var(--radius-card);
-    background: hsl(var(--ai-assistant-canvas) / 0.72);
+    background: hsl(var(--ai-assistant-canvas) / 0.58);
+  }
+
+  /* The route frame is already bounded by AppShell. Removing its second
+   * outline lets the transcript read as one calm canvas; cards below carry
+   * only the lightest separation where interaction needs it. */
+  .aapm-ai-workspace.aapm-ai-frame {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .aapm-ai-suggestion-card {
+    border-color: transparent;
+    background: hsl(var(--ai-card-muted-canvas) / 0.58);
+  }
+
+  .aapm-ai-suggestion-card:hover {
+    border-color: transparent;
+    background: hsl(var(--ai-card-hover) / 0.2);
   }
 
   .aapm-ai-answer-card--compact {
@@ -2911,12 +3370,13 @@
       var(--radius-card);
     background: hsl(var(--ai-user-canvas));
     color: hsl(var(--ai-user-foreground));
-    box-shadow: var(--t7-shadow-raised, var(--surface-shadow));
+    box-shadow: none;
   }
 
   .aapm-ai-composer-frame {
     background: hsl(var(--ai-composer-canvas));
-    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+    border-color: hsl(var(--surface-border) / 0.46);
+    box-shadow: none;
   }
 
   .aapm-ai-composer-frame:focus-within {
@@ -3003,7 +3463,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.125rem;
     padding: 0.125rem;
-    border: 1px solid hsl(var(--surface-border));
+    border: 1px solid hsl(var(--surface-border) / 0.46);
     border-radius: var(--radius-control);
     background: hsl(var(--surface-subtle));
   }
@@ -3025,7 +3485,7 @@
   }
 
   .aapm-ai-search-control {
-    border: 1px solid hsl(var(--surface-border));
+    border: 1px solid hsl(var(--surface-border) / 0.46);
     border-radius: var(--radius-control);
     background: hsl(var(--control-canvas));
   }
@@ -3035,15 +3495,62 @@
     box-shadow: 0 0 0 3px hsl(var(--aapm-orange-700) / 0.12);
   }
 
+  .aapm-ai-history-scope {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border: 1px solid hsl(var(--surface-border) / 0.36);
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-subtle) / 0.72);
+  }
+
+  .aapm-ai-history-scope__item {
+    min-width: 0;
+    border-radius: calc(var(--radius-control) - 0.2rem);
+    padding: 0.35rem 0.5rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1.2;
+    transition:
+      background-color var(--duration-fast),
+      color var(--duration-fast),
+      box-shadow var(--duration-fast);
+  }
+
+  .aapm-ai-history-scope__item span {
+    margin-left: 0.2rem;
+    color: hsl(var(--muted-foreground) / 0.72);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aapm-ai-history-scope__item[data-active="true"] {
+    background: hsl(var(--surface-default));
+    color: hsl(var(--foreground));
+    box-shadow: var(--t7-shadow-card, var(--surface-shadow));
+  }
+
+  .aapm-ai-history-scope__item:focus-visible {
+    outline: none;
+    box-shadow: var(--t7-focus-ring);
+  }
+
+  .aapm-ai-history-bulkbar {
+    border-top: 1px solid hsl(var(--surface-border) / 0.3);
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.3);
+    background: hsl(var(--surface-subtle) / 0.68);
+  }
+
   .aapm-ai-history-group {
     overflow: hidden;
-    border: 1px solid hsl(var(--surface-border) / 0.82);
+    border: 0;
     border-radius: var(--radius-data);
-    background: hsl(var(--surface-default) / 0.72);
+    background: transparent;
   }
 
   .aapm-ai-history-row {
-    border-bottom: 1px solid hsl(var(--surface-border) / 0.52);
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.3);
     transition: background-color var(--duration-fast);
   }
 
@@ -3055,12 +3562,20 @@
     background: hsl(var(--tint-orange) / 0.76);
   }
 
+  .aapm-ai-history-row[data-selected="true"] {
+    background: hsl(var(--tint-green) / 0.6);
+  }
+
+  .aapm-ai-history-row[data-selected="true"][data-active="true"] {
+    background: hsl(var(--tint-orange) / 0.62);
+  }
+
   .aapm-ai-history-row:not([data-active="true"]):hover {
     background: hsl(var(--surface-subtle));
   }
 
   .aapm-ai-quick-action-chip {
-    border: 1px solid hsl(var(--surface-border));
+    border: 1px solid hsl(var(--surface-border) / 0.42);
     border-radius: var(--radius-control);
     background: hsl(var(--surface-subtle) / 0.72);
     transition:
@@ -3131,17 +3646,17 @@
   }
 
   .aapm-ai-floating-panel {
-    border-color: hsl(var(--ai-frame-border));
-    box-shadow: var(--t7-shadow-overlay, var(--ai-frame-shadow));
+    border-color: hsl(var(--ai-frame-border) / var(--aapm-shell-border-alpha, 0.54));
+    box-shadow: var(--aapm-shell-shadow, none);
   }
 
   /* The collapsed APPI entry is one compact control, not a second brand
    * surface. It inherits the same neutral canvas, border, radius, and
    * elevation contract as the expanded panel. */
   .aapm-ai-launcher {
-    border-color: hsl(var(--surface-border));
+    border-color: hsl(var(--surface-border) / var(--aapm-shell-border-alpha, 0.54));
     background: hsl(var(--surface-default) / 0.96);
-    box-shadow: var(--t7-shadow-overlay, var(--surface-shadow));
+    box-shadow: var(--aapm-shell-shadow, none);
     transition:
       transform var(--duration-fast),
       border-color var(--duration-fast),
@@ -3149,9 +3664,9 @@
   }
 
   .aapm-ai-launcher:hover {
-    border-color: hsl(var(--surface-border));
+    border-color: hsl(var(--surface-border) / 0.68);
     background: hsl(var(--surface-subtle));
-    box-shadow: var(--t7-shadow-popover, var(--surface-shadow));
+    box-shadow: var(--aapm-shell-shadow, none);
     transform: translateY(-1px);
   }
 
@@ -3229,21 +3744,83 @@
   }
 
   .aapm-ai-workspace {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    flex-direction: row;
     isolation: isolate;
   }
 
+  /* APPI has three independent regions (history, transcript, composer). Give
+   * each region an explicit flex boundary so a long title, streamed answer,
+   * or empty state cannot resize its siblings or create a second page scroll.
+   */
+  .aapm-ai-workspace__main,
+  .aapm-ai-conversation-sidebar,
+  .aapm-ai-context-sidebar,
+  .aapm-ai-floating-panel,
+  .aapm-ai-floating-panel__body,
+  .aapm-ai-history-sheet {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .aapm-ai-workspace__main,
+  .aapm-ai-conversation-sidebar,
+  .aapm-ai-floating-panel,
+  .aapm-ai-floating-panel__body,
+  .aapm-ai-history-sheet {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .aapm-ai-conversation-sidebar {
+    flex: 0 0 var(--aapm-ai-history-width, 18rem);
+  }
+
+  .aapm-ai-history-scroll,
+  .aapm-ai-transcript,
+  .aapm-ai-floating-transcript {
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .aapm-ai-history-scroll {
+    overscroll-behavior: contain;
+  }
+
+  .aapm-ai-transcript,
+  .aapm-ai-floating-transcript {
+    flex: 1 1 auto;
+  }
+
+  .aapm-ai-composer-dock,
+  .aapm-ai-floating-composer {
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* The full APPI route sits above the fixed mobile bottom navigation. Keep
+   * its canvas tied to the viewport instead of subtracting a desktop-sized
+   * header plus nav; the old 8.6rem subtraction left a visible blank band in
+   * installed PWAs. */
+  .aapm-ai-workspace--full-mobile {
+    height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom));
+    min-height: 0;
+  }
+
   .aapm-ai-workspace__header {
-    box-shadow: 0 1px 0 hsl(var(--border) / 0.28);
+    box-shadow: inset 0 -1px 0 hsl(var(--border) / var(--aapm-shell-divider-alpha, 0.34));
   }
 
   .aapm-ai-conversation-sidebar,
   .aapm-ai-context-sidebar {
-    background-image: linear-gradient(
-      180deg,
-      hsl(var(--surface-subtle) / 0.74),
-      hsl(var(--surface-subtle) / 0.34) 38%,
-      hsl(var(--surface-subtle) / 0.2)
-    );
+    border-color: hsl(var(--surface-border) / var(--aapm-shell-divider-alpha, 0.34));
+    background: hsl(var(--surface-subtle) / 0.38);
+    background-image: none;
   }
 
   .aapm-ai-transcript,
@@ -3258,7 +3835,7 @@
   }
 
   .aapm-ai-composer-dock {
-    box-shadow: 0 -8px 24px hsl(var(--foreground) / 0.035);
+    box-shadow: inset 0 1px 0 hsl(var(--border) / var(--aapm-shell-divider-alpha, 0.34));
   }
 
   .aapm-ai-message {
@@ -3280,13 +3857,13 @@
 
   .aapm-ai-floating-panel__header,
   .aapm-ai-floating-composer {
-    background: hsl(var(--surface-subtle) / 0.82);
-    box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.72);
+    background: hsl(var(--surface-subtle) / 0.58);
+    box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.34);
   }
 
   .aapm-ai-floating-panel__header {
-    border-bottom: 1px solid hsl(var(--surface-border) / 0.72);
-    background: hsl(var(--surface-default) / 0.96);
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.34);
+    background: hsl(var(--surface-default) / 0.88);
     box-shadow: none;
   }
 
@@ -3328,7 +3905,7 @@
    * on its top edge; the toolbar's default bottom inset would otherwise draw
    * a second line in the wrong place. */
   .aapm-ai-floating-composer {
-    box-shadow: inset 0 1px 0 hsl(var(--surface-border) / 0.72);
+    box-shadow: inset 0 1px 0 hsl(var(--surface-border) / 0.34);
   }
 
   .aapm-ai-floating-composer__link-row {
@@ -3349,6 +3926,27 @@
       border-left: 0;
       border-radius: 0;
       box-shadow: none;
+    }
+
+    .aapm-ai-workspace--full-mobile {
+      height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom));
+      max-height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom));
+      min-height: 0;
+    }
+
+    .aapm-ai-workspace__main {
+      min-height: 0;
+      max-height: 100%;
+    }
+
+    .aapm-ai-composer-dock {
+      max-height: min(13rem, 42dvh);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .aapm-ai-history-sheet {
+      max-height: 100%;
     }
 
     .aapm-ai-workspace__header {
@@ -3698,11 +4296,64 @@
     @apply my-3 border-l-2 border-brand-orange pl-3 italic text-muted-foreground;
   }
   .aapm-rich-editor__content img {
-    @apply my-4 block h-auto max-w-full rounded-[var(--t7-radius-data)] border border-border bg-surface-subtle object-contain;
-    margin-inline: auto;
+    @apply my-4 block h-auto max-w-full rounded-[var(--t7-radius-data)] object-contain;
+    margin-inline: 0;
+  }
+  .aapm-rich-editor__content img[data-image-align="left"] {
+    margin-left: 0;
+    margin-right: auto;
+  }
+  .aapm-rich-editor__content img[data-image-align="right"] {
+    margin-left: auto;
+    margin-right: 0;
   }
   .aapm-rich-editor__content img.ProseMirror-selectednode {
-    @apply border-brand-green ring-2 ring-brand-green/20;
+    @apply ring-2 ring-brand-green/25;
+    outline: 2px solid hsl(var(--brand-aapm-green) / 0.28);
+    outline-offset: 2px;
+  }
+  .aapm-rich-editor__content [data-resize-container] {
+    display: flex;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+  .aapm-rich-editor__content [data-resize-container]:has(img[data-image-align="center"]) {
+    justify-content: center;
+  }
+  .aapm-rich-editor__content [data-resize-container]:has(img[data-image-align="right"]) {
+    justify-content: flex-end;
+  }
+  .aapm-rich-editor__content [data-resize-wrapper] {
+    max-width: 100%;
+  }
+  .aapm-rich-editor__content [data-resize-handle] {
+    z-index: 2;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+    background: hsl(var(--brand-aapm-green));
+    box-shadow: 0 1px 4px hsl(var(--foreground) / 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .aapm-rich-editor__content [data-resize-container]:has(.ProseMirror-selectednode) [data-resize-handle] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .aapm-rich-editor__content [data-resize-container]:hover [data-resize-handle],
+  .aapm-rich-editor__content [data-resize-container]:focus-within [data-resize-handle] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .aapm-rich-editor__content [data-resize-handle="top-left"],
+  .aapm-rich-editor__content [data-resize-handle="bottom-right"] {
+    cursor: nwse-resize;
+  }
+  .aapm-rich-editor__content [data-resize-handle="top-right"],
+  .aapm-rich-editor__content [data-resize-handle="bottom-left"] {
+    cursor: nesw-resize;
   }
   .aapm-rich-editor__content a {
     @apply text-brand-orange underline decoration-brand-orange/40 underline-offset-2;

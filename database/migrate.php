@@ -12,7 +12,7 @@ declare(strict_types=1);
  *   php database/migrate.php                 # read-only plan
  *   php database/migrate.php --plan
  *   php database/migrate.php --verify        # plan + data integrity checks
- *   php database/migrate.php --apply         # apply additive indexes only
+ *   php database/migrate.php --apply         # apply additive columns and indexes
  *   php database/migrate.php --apply --verify
  *
  * No command in this file deletes or rewrites learner, course, quiz, or AI
@@ -28,7 +28,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../public/api/bootstrap.php';
 
-const AAPM_SCHEMA_MIGRATION_KEY = '20260909_read_model_indexes_v1';
+const AAPM_SCHEMA_MIGRATION_KEY = '20260909_ai_conversation_archiving_v1';
 
 $arguments = array_slice($argv, 1);
 $allowedArguments = ['--apply', '--plan', '--verify', '--json'];
@@ -54,6 +54,7 @@ try {
     $pdo = migration_connection($config, $driver);
     $databaseName = migration_database_name($pdo, $driver);
     $expectedIndexes = migration_expected_indexes();
+    $expectedColumns = migration_expected_columns();
     $checksum = hash(
         'sha256',
         (string) json_encode($expectedIndexes, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
@@ -87,6 +88,7 @@ try {
     }
 
     $indexPlan = migration_index_plan($pdo, $driver, $expectedIndexes);
+    $columnPlan = migration_column_plan($pdo, $driver, $expectedColumns);
     $result = [
         'mode' => $apply ? 'apply' : ($verify ? 'verify' : 'plan'),
         'driver' => $driver,
@@ -94,6 +96,7 @@ try {
         'migration' => AAPM_SCHEMA_MIGRATION_KEY,
         'checksum' => $checksum,
         'missingTables' => $missingTables,
+        'columns' => $columnPlan,
         'indexes' => $indexPlan,
         'applied' => false,
         'health' => [],
@@ -101,6 +104,21 @@ try {
 
     if ($apply) {
         migration_create_tracking_table($pdo, $driver);
+        foreach ($columnPlan as $column) {
+            if ($column['status'] === 'missing_table') {
+                continue;
+            }
+            if ($column['status'] !== 'missing') {
+                continue;
+            }
+            $table = migration_quote_identifier($column['table'], $driver);
+            $name = migration_quote_identifier($column['name'], $driver);
+            $definition = $driver === 'sqlite' ? $column['sqliteType'] : $column['mysqlType'];
+            $pdo->exec("ALTER TABLE {$table} ADD COLUMN {$name} {$definition}");
+        }
+        // Re-read indexes after the additive column exists; this keeps the
+        // archive index plan truthful on an older cPanel schema.
+        $indexPlan = migration_index_plan($pdo, $driver, $expectedIndexes);
         foreach ($indexPlan as $index) {
             if ($index['status'] === 'mismatch') {
                 throw new RuntimeException(
@@ -121,6 +139,7 @@ try {
         }
         migration_record($pdo, $driver, AAPM_SCHEMA_MIGRATION_KEY, $checksum);
         $result['applied'] = true;
+        $result['columns'] = migration_column_plan($pdo, $driver, $expectedColumns);
         $result['indexes'] = migration_index_plan($pdo, $driver, $expectedIndexes);
     }
 
@@ -204,6 +223,24 @@ function migration_expected_indexes(): array
             'name' => 'certificates_user_issued_idx',
             'columns' => ['user_id', 'issued_at', 'id'],
         ],
+        [
+            'table' => 'ai_conversations',
+            'name' => 'ai_conversations_user_archive_idx',
+            'columns' => ['user_id', 'archived_at', 'updated_at', 'id'],
+        ],
+    ];
+}
+
+/** @return list<array{table:string,name:string,sqliteType:string,mysqlType:string}> */
+function migration_expected_columns(): array
+{
+    return [
+        [
+            'table' => 'ai_conversations',
+            'name' => 'archived_at',
+            'sqliteType' => 'TEXT NULL',
+            'mysqlType' => 'DATETIME NULL',
+        ],
     ];
 }
 
@@ -227,6 +264,36 @@ function migration_table_exists(PDO $pdo, string $driver, string $table): bool
     );
     $statement->execute([$table]);
     return (bool) $statement->fetchColumn();
+}
+
+function migration_column_exists(PDO $pdo, string $driver, string $table, string $column): bool
+{
+    if ($driver === 'sqlite') {
+        $tableName = migration_quote_identifier($table, $driver);
+        $columns = $pdo->query("PRAGMA table_info({$tableName})")->fetchAll();
+        foreach ($columns as $item) {
+            if ((string) ($item['name'] ?? '') === $column) return true;
+        }
+        return false;
+    }
+    $statement = $pdo->prepare(
+        'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1'
+    );
+    $statement->execute([$table, $column]);
+    return (bool) $statement->fetchColumn();
+}
+
+/** @param list<array{table:string,name:string,sqliteType:string,mysqlType:string}> $expectedColumns */
+function migration_column_plan(PDO $pdo, string $driver, array $expectedColumns): array
+{
+    $plan = [];
+    foreach ($expectedColumns as $expected) {
+        $status = !migration_table_exists($pdo, $driver, $expected['table'])
+            ? 'missing_table'
+            : (migration_column_exists($pdo, $driver, $expected['table'], $expected['name']) ? 'present' : 'missing');
+        $plan[] = $expected + ['status' => $status];
+    }
+    return $plan;
 }
 
 /** @return array<string,list<string>> */
@@ -473,6 +540,15 @@ function migration_output(array $result, bool $jsonOutput): void
     if ($result['missingTables']) {
         echo 'Missing tables: ' . implode(', ', $result['missingTables']) . "\n";
     }
+    echo "Columns:\n";
+    foreach ($result['columns'] as $column) {
+        echo sprintf(
+            "- %s.%s [%s]\n",
+            $column['table'],
+            $column['name'],
+            $column['status']
+        );
+    }
     echo "Indexes:\n";
     foreach ($result['indexes'] as $index) {
         echo sprintf(
@@ -484,7 +560,7 @@ function migration_output(array $result, bool $jsonOutput): void
         );
     }
     if ($result['applied']) {
-        echo "Applied: additive indexes recorded; no rows were deleted or rewritten.\n";
+        echo "Applied: additive AI archive column/index changes recorded; no rows were deleted or rewritten.\n";
     }
     if ($result['health']) {
         echo "Health checks:\n";
@@ -504,6 +580,9 @@ function migration_output(array $result, bool $jsonOutput): void
 function migration_exit_code(array $result): int
 {
     if (!empty($result['missingTables'])) return 1;
+    foreach ($result['columns'] as $column) {
+        if (in_array($column['status'], ['missing', 'missing_table'], true)) return 1;
+    }
     foreach ($result['indexes'] as $index) {
         if (in_array($index['status'], ['mismatch', 'missing_table'], true)) return 1;
     }

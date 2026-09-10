@@ -686,12 +686,12 @@ export function DashboardWelcome({
               Baca sinyal farm, kuasai konsep inti, lalu bawa keputusan yang lebih presisi kembali ke lapangan.
             </p>
             <div className="mt-4 flex max-w-none flex-col gap-3 sm:flex-row sm:items-stretch">
-              <div className="grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/15 rounded-[var(--radius-control)] border border-white/15 bg-white/5">
+              <div className="aapm-dashboard-welcome__stats grid min-w-0 flex-1 grid-cols-3 divide-x divide-white/15 rounded-[var(--radius-control)] border border-white/15 bg-white/5">
                 <div className="px-3 py-2.5 sm:px-3.5"><div className="text-lg font-semibold">{total}</div><div className="mt-0.5 text-[10px] text-white/65">modul inti</div></div>
                 <div className="px-3 py-2.5 sm:px-3.5"><div className="text-lg font-semibold">{learningLevels.length}</div><div className="mt-0.5 text-[10px] text-white/65">tingkat belajar</div></div>
                 <div className="px-3 py-2.5 sm:px-3.5"><div className="text-lg font-semibold text-brand-lime">{focusLabel}</div><div className="mt-0.5 text-[10px] text-white/65">fokus berikutnya</div></div>
               </div>
-              <div className="flex shrink-0 items-center gap-2.5 rounded-[var(--radius-control)] border border-white/15 bg-black/10 px-3 py-2">
+              <div className="aapm-dashboard-welcome__journey flex min-w-0 shrink-0 items-center gap-2.5 rounded-[var(--radius-control)] border border-white/15 bg-black/10 px-3 py-2">
                 <DashboardRing
                   value={coursePercent}
                   label={`Progress kursus ${coursePercent}%`}

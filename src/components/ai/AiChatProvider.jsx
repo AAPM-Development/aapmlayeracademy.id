@@ -102,8 +102,17 @@ export function AiChatProvider({ children }) {
     () => flattenConversationPages(conversationsQuery.data),
     [conversationsQuery.data],
   );
+  const firstConversationPage = conversationsQuery.data?.pages?.[0];
   const conversationTotal = Number(
-    conversationsQuery.data?.pages?.[0]?.total ?? conversations.length,
+    firstConversationPage?.total ?? conversations.length,
+  );
+  const conversationActiveTotal = Number(
+    firstConversationPage?.activeTotal ??
+      conversations.filter((conversation) => !conversation?.archivedAt && !conversation?.archived).length,
+  );
+  const conversationArchivedTotal = Number(
+    firstConversationPage?.archivedTotal ??
+      conversations.filter((conversation) => Boolean(conversation?.archivedAt || conversation?.archived)).length,
   );
   const activity = activityQuery.data ?? [];
   const [activeConversationId, setActiveConversationId] = useState(null);
@@ -636,6 +645,81 @@ export function AiChatProvider({ children }) {
     [conversationQueryKey, isStreaming, queryClient, upsertConversation],
   );
 
+  const archiveConversation = useCallback(
+    async (id, archived = true) => {
+      if (!id || isStreaming) return null;
+      const conversation = await nativeApi.ai.conversations.update(id, { archived: Boolean(archived) });
+      upsertConversation(conversation);
+      queryClient.invalidateQueries({ queryKey: conversationQueryKey });
+      queryClient.invalidateQueries({ queryKey: activityQueryKey });
+      return conversation;
+    },
+    [activityQueryKey, conversationQueryKey, isStreaming, queryClient, upsertConversation],
+  );
+
+  const bulkArchiveConversations = useCallback(
+    async (ids = [], archived = true) => {
+      if (isStreaming) return { ok: false, updated: [], failed: ids };
+      const uniqueIds = [...new Set(ids.filter(Boolean).map((id) => String(id)))];
+      if (!uniqueIds.length) return { ok: true, updated: [], failed: [] };
+      const results = await Promise.allSettled(
+        uniqueIds.map((id) => nativeApi.ai.conversations.update(id, { archived: Boolean(archived) })),
+      );
+      const updated = [];
+      const failed = [];
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled" && result.value?.id) {
+          updated.push(result.value);
+          upsertConversation(result.value);
+        } else {
+          failed.push({ id: uniqueIds[index], error: result.reason || new Error("Gagal memperbarui arsip.") });
+        }
+      });
+      queryClient.invalidateQueries({ queryKey: conversationQueryKey });
+      queryClient.invalidateQueries({ queryKey: activityQueryKey });
+      return { ok: failed.length === 0, updated, failed };
+    },
+    [activityQueryKey, conversationQueryKey, isStreaming, queryClient, upsertConversation],
+  );
+
+  const bulkDeleteConversations = useCallback(
+    async (ids = []) => {
+      if (isStreaming) return { ok: false, deleted: [], failed: ids };
+      const uniqueIds = [...new Set(ids.filter(Boolean).map((id) => String(id)))];
+      if (!uniqueIds.length) return { ok: true, deleted: [], failed: [] };
+      const results = await Promise.allSettled(
+        uniqueIds.map((id) => nativeApi.ai.conversations.delete(id)),
+      );
+      const deleted = [];
+      const failed = [];
+      results.forEach((result, index) => {
+        const id = uniqueIds[index];
+        if (result.status === "fulfilled") {
+          deleted.push(id);
+          queryClient.setQueryData(conversationQueryKey, (current) =>
+            removeConversationFromPages(current, id),
+          );
+          if (activeRef.current === id || String(activeRef.current || "") === id) {
+            activeRef.current = null;
+            persistActiveConversation(null);
+            setActiveConversationId(null);
+            setMessages([]);
+            setIsDraft(true);
+            clearPromptDraft(id);
+            setPromptDraftState(readStorage(composerDraftStorageKey("new")));
+            setHistorySyncState("idle");
+          }
+        } else {
+          failed.push({ id, error: result.reason || new Error("Gagal menghapus percakapan.") });
+        }
+      });
+      queryClient.invalidateQueries({ queryKey: conversationQueryKey });
+      queryClient.invalidateQueries({ queryKey: activityQueryKey });
+      return { ok: failed.length === 0, deleted, failed };
+    },
+    [activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
+  );
+
   const refreshHistory = useCallback(async () => {
     setHistoryError(null);
     const [conversationResult, activityResult] = await Promise.all([
@@ -657,6 +741,8 @@ export function AiChatProvider({ children }) {
     () => ({
       conversations,
       conversationTotal,
+      conversationActiveTotal,
+      conversationArchivedTotal,
       conversationsLoading: conversationsQuery.isLoading,
       conversationsRefreshing:
         conversationsQuery.isFetching && !conversationsQuery.isFetchingNextPage,
@@ -686,6 +772,9 @@ export function AiChatProvider({ children }) {
       startNewConversation,
       deleteConversation,
       renameConversation,
+      archiveConversation,
+      bulkArchiveConversations,
+      bulkDeleteConversations,
       send,
     }),
     [
@@ -693,6 +782,8 @@ export function AiChatProvider({ children }) {
       activity,
       activityQuery.isLoading,
       conversationTotal,
+      conversationActiveTotal,
+      conversationArchivedTotal,
       conversations,
       conversationsQuery.error,
       conversationsQuery.hasNextPage,
@@ -712,6 +803,9 @@ export function AiChatProvider({ children }) {
       setPromptDraft,
       refreshHistory,
       renameConversation,
+      archiveConversation,
+      bulkArchiveConversations,
+      bulkDeleteConversations,
       retryPersistAssistant,
       retryingMessageId,
       selectConversation,

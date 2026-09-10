@@ -122,8 +122,9 @@ git push origin develop
    php database/migrate.php --apply --verify
    ```
 
-   The migration creates `schema_migrations`, adds only the missing
-   read-model indexes, and never deletes or rewrites learner rows. Take the
+   The migration creates `schema_migrations`, adds the nullable AI conversation
+   archive status plus the missing read-model indexes, and never deletes or
+   rewrites learner rows. Take the
    normal cPanel/phpMyAdmin database backup first; run it on staging before a
    shared production database and schedule a quiet window for the metadata
    lock. The verifier keeps the intentional global final-exam `module_number`

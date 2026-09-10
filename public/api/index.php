@@ -622,7 +622,7 @@ try {
             $params[] = $cursor['id'];
         }
 
-        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations ' . $where . ' ORDER BY updated_at DESC, id DESC LIMIT ' . ($limit + 1));
+        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at, archived_at FROM ai_conversations ' . $where . ' ORDER BY updated_at DESC, id DESC LIMIT ' . ($limit + 1));
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
         $hasMore = count($rows) > $limit;
@@ -640,10 +640,16 @@ try {
 
         $totalStmt = db()->prepare('SELECT COUNT(*) FROM ai_conversations WHERE user_id = ?');
         $totalStmt->execute([(int) $user['id']]);
+        $activeTotalStmt = db()->prepare('SELECT COUNT(*) FROM ai_conversations WHERE user_id = ? AND archived_at IS NULL');
+        $activeTotalStmt->execute([(int) $user['id']]);
+        $archivedTotalStmt = db()->prepare('SELECT COUNT(*) FROM ai_conversations WHERE user_id = ? AND archived_at IS NOT NULL');
+        $archivedTotalStmt->execute([(int) $user['id']]);
         $lastRow = $rows ? $rows[count($rows) - 1] : null;
         json_response([
             'items' => $items,
             'total' => (int) $totalStmt->fetchColumn(),
+            'activeTotal' => (int) $activeTotalStmt->fetchColumn(),
+            'archivedTotal' => (int) $archivedTotalStmt->fetchColumn(),
             'nextCursor' => $hasMore && is_array($lastRow) ? ai_conversation_cursor_encode($lastRow) : null,
         ]);
     }
@@ -663,7 +669,7 @@ try {
         $insert = db()->prepare('INSERT INTO ai_conversations (user_id, title) VALUES (?, ?)');
         $insert->execute([(int) $user['id'], $title]);
         $id = (int) db()->lastInsertId();
-        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
+        $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at, archived_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
         $stmt->execute([$id, (int) $user['id']]);
         json_response(present_ai_conversation($stmt->fetch()), 201);
     }
@@ -676,13 +682,36 @@ try {
             error_response('Percakapan tidak ditemukan.', 404, 'not_found');
         }
         $input = request_json();
-        if (!array_key_exists('title', $input)) {
-            error_response('Judul percakapan wajib diisi.', 422, 'validation_error');
+        $hasTitle = array_key_exists('title', $input);
+        $hasArchived = array_key_exists('archived', $input);
+        if (!$hasTitle && !$hasArchived) {
+            error_response('Judul atau status arsip percakapan wajib diisi.', 422, 'validation_error');
         }
-        $title = ai_conversation_title((string) $input['title']);
-        $update = db()->prepare('UPDATE ai_conversations SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?');
-        $update->execute([$title, (int) $conversation['id'], (int) $user['id']]);
+        $sets = [];
+        $params = [];
+        if ($hasTitle) {
+            $sets[] = 'title = ?';
+            $params[] = ai_conversation_title((string) $input['title']);
+        }
+        if ($hasArchived) {
+            $sets[] = 'archived_at = ' . (bool_value($input['archived']) === 1 ? 'CURRENT_TIMESTAMP' : 'NULL');
+        }
+        $sets[] = 'updated_at = CURRENT_TIMESTAMP';
+        $params[] = (int) $conversation['id'];
+        $params[] = (int) $user['id'];
+        $update = db()->prepare('UPDATE ai_conversations SET ' . implode(', ', $sets) . ' WHERE id = ? AND user_id = ?');
+        $update->execute($params);
         $updated = ai_conversation_for_user((int) $conversation['id'], (int) $user['id']);
+        if ($hasArchived && $updated) {
+            $archived = bool_value($input['archived']) === 1;
+            ai_record_activity(
+                (int) $user['id'],
+                (int) $conversation['id'],
+                $archived ? 'archive' : 'unarchive',
+                $archived ? 'Percakapan diarsipkan' : 'Percakapan dipulihkan',
+                ai_conversation_preview((string) ($updated['title'] ?? $conversation['title']))
+            );
+        }
         json_response(present_ai_conversation($updated ?: $conversation));
     }
 
@@ -994,7 +1023,7 @@ function ai_conversation_cursor_decode(string $cursor): ?array
 
 function ai_conversation_for_user(int $conversationId, int $userId): ?array
 {
-    $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
+    $stmt = db()->prepare('SELECT id, title, last_message_preview, message_count, created_at, updated_at, archived_at FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
     $stmt->execute([$conversationId, $userId]);
     $conversation = $stmt->fetch();
     return $conversation ?: null;

@@ -16,6 +16,7 @@ export default function AiComposer({
   isStreaming = false,
   imageInputRef,
   onImageSelection = () => {},
+  imageLoading = false,
   imageAttachment = null,
   onRemoveImage = () => {},
   attachmentError = "",
@@ -79,6 +80,12 @@ export default function AiComposer({
             </Button>
           </div>
         )}
+        {imageLoading && !imageAttachment && (
+          <div className="flex items-center gap-2 border-b border-border/70 bg-tint-orange/45 px-3 py-2 text-[11px] text-tint-orange-foreground" role="status" aria-live="polite">
+            <AapmIcon name="loading" className="h-3.5 w-3.5 animate-spin" />
+            <span>Menyiapkan foto…</span>
+          </div>
+        )}
 
         <textarea
           ref={textareaRef}
@@ -103,11 +110,12 @@ export default function AiComposer({
               variant="ghost"
               size={compact ? "sm" : "icon"}
               onClick={() => imageInputRef?.current?.click()}
-              disabled={isStreaming}
+              disabled={isStreaming || imageLoading}
               className={compact
                 ? "aapm-ai-attachment-control h-8 shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"
                 : "h-8 w-8 shrink-0 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"}
               aria-label="Lampirkan foto farm"
+              aria-busy={imageLoading}
               title="Lampirkan foto farm"
             >
               <AapmIcon name="solar:gallery-add-bold-duotone" className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-4 w-4"} />

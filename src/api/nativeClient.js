@@ -10,6 +10,34 @@ class ApiError extends Error {
   }
 }
 
+// A 401 from an authenticated endpoint means the browser still has an app
+// shell, but the server no longer has a usable session. Broadcast that state
+// once at the transport boundary so every surface (including APPI streaming)
+// can show the same recovery question instead of leaving a dead screen open.
+const sessionExpiryExcludedPaths = new Set([
+  "/auth/csrf",
+  "/auth/login",
+  "/auth/register",
+  "/auth/providers",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/logout",
+]);
+
+function notifySessionExpired(path, status) {
+  if (
+    status !== 401 ||
+    sessionExpiryExcludedPaths.has(path) ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("aapm:session-expired", { detail: { path } }),
+  );
+}
+
 async function request(path, options = /** @type {any} */ ({})) {
   const { multipart = false, ...fetchOptions } = options;
   const method = (fetchOptions.method || "GET").toUpperCase();
@@ -43,6 +71,7 @@ async function request(path, options = /** @type {any} */ ({})) {
 
   if (!response.ok) {
     const error = payload?.error || {};
+    notifySessionExpired(path, response.status);
     throw new ApiError(
       error.message || "Permintaan gagal.",
       response.status,
@@ -81,6 +110,7 @@ async function stream(path, body, onEvent) {
       payload = null;
     }
     const error = payload?.error || {};
+    notifySessionExpired(path, response.status);
     throw new ApiError(
       error.message || "Permintaan streaming gagal.",
       response.status,

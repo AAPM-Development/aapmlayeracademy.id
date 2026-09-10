@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { isConversationArchived } from "@/lib/aiHistoryState";
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -108,6 +110,113 @@ export function filterAndSortConversations(
     .map(({ conversation }) => conversation);
 }
 
+/**
+ * Keep selection semantics identical in the desktop sidebar, mobile sheet,
+ * and floating APPI history surface. Selection is intentionally local UI
+ * state; the mutations themselves remain server-authoritative in the chat
+ * provider.
+ */
+export function useConversationManagement({
+  conversations = [],
+  query = "",
+  sort = "updated",
+} = {}) {
+  const [scope, setScopeState] = useState("active");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+
+  const activeCount = useMemo(
+    () => conversations.filter((conversation) => !isConversationArchived(conversation)).length,
+    [conversations],
+  );
+  const archivedCount = useMemo(
+    () => conversations.filter((conversation) => isConversationArchived(conversation)).length,
+    [conversations],
+  );
+  const scopedConversations = useMemo(
+    () => conversations.filter((conversation) => (
+      scope === "archived"
+        ? isConversationArchived(conversation)
+        : !isConversationArchived(conversation)
+    )),
+    [conversations, scope],
+  );
+  const visibleConversations = useMemo(
+    () => filterAndSortConversations(scopedConversations, query, sort),
+    [query, scopedConversations, sort],
+  );
+  const visibleIds = useMemo(
+    () => visibleConversations.map((conversation) => String(conversation.id)),
+    [visibleConversations],
+  );
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  useEffect(() => {
+    const scopedIds = new Set(scopedConversations.map((conversation) => String(conversation.id)));
+    setSelectedIds((current) => {
+      const next = new Set([...current].filter((id) => scopedIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [scopedConversations]);
+
+  const setScope = useCallback((nextScope) => {
+    setScopeState(nextScope === "archived" ? "archived" : "active");
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((current) => {
+      if (current) setSelectedIds(new Set());
+      return !current;
+    });
+  }, []);
+
+  const toggleSelected = useCallback((id) => {
+    const key = String(id);
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleAllVisible = useCallback(() => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (visibleIds.every((id) => next.has(id))) {
+        visibleIds.forEach((id) => next.delete(id));
+      } else {
+        visibleIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [visibleIds]);
+
+  const clearSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  return {
+    scope,
+    setScope,
+    selectionMode,
+    toggleSelectionMode,
+    selectedIds,
+    selectedConversationIds: [...selectedIds],
+    selectedCount: selectedIds.size,
+    visibleConversations,
+    activeCount,
+    archivedCount,
+    allVisibleSelected,
+    toggleSelected,
+    toggleAllVisible,
+    clearSelection,
+  };
+}
+
 export function groupConversationsByPeriod(conversations = []) {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -154,99 +263,202 @@ export function AiHistoryToolbar({
   onRefresh,
   isRefreshing = false,
   compact = false,
+  scope = "active",
+  onScopeChange,
+  activeCount = 0,
+  archivedCount = 0,
+  selectionMode = false,
+  onToggleSelectionMode,
+  selectedCount = 0,
 }) {
   return (
     <div className={`min-w-0 max-w-full ${compact ? "space-y-2" : "space-y-2.5"}`}>
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="aapm-ai-segmented">
-            <button
-              type="button"
-              onClick={() => onViewChange("chats")}
-              className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-              data-active={view === "chats"}
-              aria-pressed={view === "chats"}
-            >
-              Chat <span className="ml-0.5 tabular-nums opacity-65">{totalConversationCount}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewChange("activity")}
-              className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-              data-active={view === "activity"}
-              aria-pressed={view === "activity"}
-            >
-              Aktivitas <span className="ml-0.5 tabular-nums opacity-65">{activityCount}</span>
-            </button>
-          </div>
-        </div>
+      <div className="aapm-ai-segmented">
+        <button
+          type="button"
+          onClick={() => onViewChange("chats")}
+          className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+          data-active={view === "chats"}
+          aria-pressed={view === "chats"}
+        >
+          Chat <span className="ml-0.5 tabular-nums opacity-65">{totalConversationCount}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onViewChange("activity")}
+          className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+          data-active={view === "activity"}
+          aria-pressed={view === "activity"}
+        >
+          Aktivitas <span className="ml-0.5 tabular-nums opacity-65">{activityCount}</span>
+        </button>
       </div>
 
       {view === "chats" ? (
-        <div className="flex min-w-0 items-center gap-1.5">
-          <label className="aapm-ai-search-control flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 transition-colors">
-            <AapmIcon
-              name="solar:magnifer-bold-duotone"
-              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-            />
-            <input
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Cari riwayat"
-              className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
-              aria-label="Cari riwayat percakapan"
-            />
-            {query && (
-              <Button
+        <>
+          {onScopeChange && (
+            <div className="aapm-ai-history-scope" role="tablist" aria-label="Status percakapan">
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onClearQuery}
-                className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Hapus pencarian"
+                role="tab"
+                aria-selected={scope === "active"}
+                onClick={() => onScopeChange("active")}
+                className="aapm-ai-history-scope__item"
+                data-active={scope === "active"}
               >
-                <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </label>
-          <Select value={sort} onValueChange={onSortChange}>
-            <SelectTrigger
-              aria-label="Urutkan riwayat percakapan"
-              className="h-[2.15rem] w-[6.7rem] shrink-0 gap-1 px-2 text-[10px]"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end" className="min-w-[7.5rem]">
-              {HISTORY_SORT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="text-xs">
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {onRefresh && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="h-[2.15rem] w-[2.15rem] shrink-0 text-muted-foreground hover:text-brand-orange"
-              aria-label="Muat ulang riwayat chat"
-              title="Muat ulang riwayat"
-            >
-              <AapmIcon
-                name="solar:refresh-circle-bold-duotone"
-                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-            </Button>
+                Aktif <span>{activeCount}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scope === "archived"}
+                onClick={() => onScopeChange("archived")}
+                className="aapm-ai-history-scope__item"
+                data-active={scope === "archived"}
+              >
+                Arsip <span>{archivedCount}</span>
+              </button>
+            </div>
           )}
-        </div>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label className="aapm-ai-search-control flex min-h-[2.15rem] min-w-0 w-full items-center gap-2 px-2.5 py-2 transition-colors">
+              <AapmIcon
+                name="solar:magnifer-bold-duotone"
+                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+              />
+              <input
+                value={query}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder="Cari riwayat percakapan"
+                className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+                aria-label="Cari riwayat percakapan"
+              />
+              {query && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClearQuery}
+                  className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+                  aria-label="Hapus pencarian"
+                >
+                  <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </label>
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.15rem_auto] gap-1.5">
+              <Select value={sort} onValueChange={onSortChange}>
+                <SelectTrigger
+                  aria-label="Urutkan riwayat percakapan"
+                  className="h-[2.15rem] min-w-0 w-full gap-1 px-2 text-[10px]"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end" className="min-w-[7.5rem]">
+                  {HISTORY_SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {onRefresh && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onRefresh}
+                  disabled={isRefreshing}
+                  className="h-[2.15rem] w-[2.15rem] shrink-0 text-muted-foreground hover:text-brand-orange"
+                  aria-label="Muat ulang riwayat chat"
+                  title="Muat ulang riwayat"
+                >
+                  <AapmIcon
+                    name="solar:refresh-circle-bold-duotone"
+                    className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              )}
+              {onToggleSelectionMode && (
+                <Button
+                  type="button"
+                  variant={selectionMode ? "soft" : "ghost"}
+                  size="sm"
+                  onClick={onToggleSelectionMode}
+                  className="h-[2.15rem] min-w-[4.5rem] shrink-0 justify-center gap-1.5 px-2 text-[10px]"
+                  aria-pressed={selectionMode}
+                  aria-label={selectionMode ? "Selesai memilih percakapan" : "Pilih percakapan"}
+                >
+                  <AapmIcon name="solar:checklist-bold-duotone" className="h-3.5 w-3.5" />
+                  {selectionMode ? "Selesai" : "Pilih"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </>
       ) : (
         <p className="px-0.5 text-[10px] text-muted-foreground">
           Jejak pertanyaan dan respons APPI di akun ini.
         </p>
       )}
+    </div>
+  );
+}
+
+export function AiHistoryBulkBar({
+  scope = "active",
+  selectedCount = 0,
+  allVisibleSelected = false,
+  onToggleAll,
+  onArchive,
+  onDelete,
+  disabled = false,
+}) {
+  if (!selectedCount && !allVisibleSelected) {
+    return (
+      <div className="aapm-ai-history-bulkbar flex min-w-0 items-center gap-2 px-2.5 py-2 text-[10px] text-muted-foreground" role="status">
+        <AapmIcon name="solar:checklist-bold-duotone" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
+        <span className="min-w-0 truncate">Mode pilih aktif · pilih chat di bawah.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="aapm-ai-history-bulkbar flex min-w-0 flex-wrap items-center gap-2 px-2.5 py-2" role="toolbar" aria-label="Aksi percakapan terpilih">
+      <label className="flex min-w-0 flex-1 items-center gap-2 text-[10px] font-semibold text-foreground">
+        <Checkbox
+          checked={allVisibleSelected}
+          onCheckedChange={onToggleAll}
+          disabled={disabled}
+          aria-label="Pilih semua percakapan yang terlihat"
+          className="h-4 w-4"
+        />
+        <span className="truncate">{selectedCount} dipilih</span>
+      </label>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onArchive}
+          disabled={disabled || !selectedCount}
+          className="h-7 gap-1 px-2 text-[10px] text-foreground"
+        >
+          <AapmIcon name={scope === "archived" ? "solar:restart-bold-duotone" : "solar:archive-up-bold-duotone"} className="h-3.5 w-3.5 text-brand-orange" />
+          {scope === "archived" ? "Pulihkan" : "Arsipkan"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          disabled={disabled || !selectedCount}
+          className="h-7 gap-1 px-2 text-[10px] text-danger hover:bg-danger/5 hover:text-danger"
+        >
+          <AapmIcon name="solar:trash-bin-trash-bold" className="h-3.5 w-3.5" />
+          Hapus
+        </Button>
+      </div>
     </div>
   );
 }
@@ -258,6 +470,10 @@ export function AiConversationRow({
   onSelect,
   onDelete,
   onRename,
+  onArchive,
+  onToggleSelect,
+  selectable = false,
+  selected = false,
 }) {
   const title = getConversationTitle(conversation);
 
@@ -265,11 +481,21 @@ export function AiConversationRow({
     <div
       className="aapm-ai-history-row group relative flex min-w-0 max-w-full items-center overflow-hidden"
       data-active={active}
+      data-selected={selected}
     >
       {active && (
         <span
           className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand-orange"
           aria-hidden="true"
+        />
+      )}
+      {selectable && (
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggleSelect?.(conversation.id)}
+          disabled={disabled}
+          aria-label={`${selected ? "Batalkan pilihan" : "Pilih"} percakapan ${title}`}
+          className="ml-2 h-4 w-4 shrink-0"
         />
       )}
       <button
@@ -308,6 +534,12 @@ export function AiConversationRow({
             <AapmIcon name="solar:pen-new-square-bold" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
             Ubah judul
           </DropdownMenuItem>
+          {onArchive && (
+            <DropdownMenuItem onSelect={() => onArchive(conversation, !isConversationArchived(conversation))}>
+              <AapmIcon name={isConversationArchived(conversation) ? "solar:restart-bold-duotone" : "solar:archive-up-bold-duotone"} className="mr-2 h-3.5 w-3.5 text-brand-orange" />
+              {isConversationArchived(conversation) ? "Pulihkan dari arsip" : "Arsipkan chat"}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => onDelete(conversation)}
@@ -332,6 +564,10 @@ export function AiConversationHistoryResults({
   onSelect,
   onDelete,
   onRename,
+  onArchive,
+  selectable = false,
+  selectedIds = new Set(),
+  onToggleSelect,
   hasMore = false,
   onLoadMore,
   isLoadingMore = false,
@@ -401,6 +637,10 @@ export function AiConversationHistoryResults({
                 onSelect={onSelect}
                 onDelete={onDelete}
                 onRename={onRename}
+                onArchive={onArchive}
+                selectable={selectable}
+                selected={selectedIds.has(String(conversation.id))}
+                onToggleSelect={onToggleSelect}
               />
             ))}
           </div>
@@ -450,30 +690,40 @@ export function AiConversationRenameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-[28rem] gap-0 overflow-hidden p-0">
         <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>Ubah judul chat</DialogTitle>
-            <DialogDescription>
-              Judul hanya tersimpan di riwayat akun Anda dan membantu pencarian chat berikutnya.
-            </DialogDescription>
+          <DialogHeader className="border-b border-border/60 px-5 py-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-tint-orange text-brand-orange">
+                <AapmIcon name="solar:pen-new-square-bold" className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <DialogTitle className="text-sm">Ubah judul chat</DialogTitle>
+                <DialogDescription className="mt-1 text-xs leading-5">
+                  Beri nama singkat agar mudah ditemukan di riwayat.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="mt-5">
-            <label className="sr-only" htmlFor="appi-conversation-title">
-              Judul chat
-            </label>
+          <div className="px-5 py-4">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-foreground" htmlFor="appi-conversation-title">
+                Judul chat
+              </label>
+              <span className="text-[10px] tabular-nums text-muted-foreground">{title.length}/180</span>
+            </div>
             <Input
               id="appi-conversation-title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={180}
               autoFocus
-              className="h-11"
+              className="h-10"
               placeholder="Judul percakapan"
             />
           </div>
-          <DialogFooter className="mt-5">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="border-t border-border/60 bg-surface-subtle/40 px-5 py-3">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
             <Button
@@ -481,7 +731,8 @@ export function AiConversationRenameDialog({
               disabled={!title.trim() || saving}
               className="bg-brand-orange text-white hover:bg-brand-orange/90"
             >
-              {saving ? "Menyimpan…" : "Simpan judul"}
+              {saving && <AapmIcon name="loading" className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {saving ? "Menyimpan…" : "Simpan"}
             </Button>
           </DialogFooter>
         </form>

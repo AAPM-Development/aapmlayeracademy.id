@@ -10,10 +10,11 @@ import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
+  AiHistoryBulkBar,
   AiConversationHistoryResults,
   AiConversationRenameDialog,
   AiHistoryToolbar,
-  filterAndSortConversations,
+  useConversationManagement,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, Table, useToast } from "@/components/primitives";
@@ -327,6 +328,8 @@ function AssistantMessage({
 function ConversationList({
   conversations,
   conversationTotal,
+  conversationActiveTotal,
+  conversationArchivedTotal,
   activity,
   activeConversationId,
   loading,
@@ -339,6 +342,9 @@ function ConversationList({
   onSelect,
   onDelete,
   onRename,
+  onArchive,
+  onBulkArchive,
+  onBulkDelete,
   onNew,
   onRefresh,
   onLoadMore,
@@ -349,11 +355,25 @@ function ConversationList({
   const [pendingDelete, setPendingDelete] = useState(null);
   const [pendingRename, setPendingRename] = useState(null);
   const [renaming, setRenaming] = useState(false);
-  const visibleConversations = filterAndSortConversations(
-    conversations,
-    query,
-    sort,
-  );
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const management = useConversationManagement({ conversations, query, sort });
+  const {
+    scope,
+    setScope,
+    selectionMode,
+    toggleSelectionMode,
+    selectedIds,
+    selectedConversationIds,
+    selectedCount,
+    visibleConversations,
+    activeCount,
+    archivedCount,
+    allVisibleSelected,
+    toggleSelected,
+    toggleAllVisible,
+    clearSelection,
+  } = management;
 
   return (
     <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
@@ -393,9 +413,37 @@ function ConversationList({
           activityCount={activity.length}
           onRefresh={onRefresh}
           isRefreshing={refreshing}
+          scope={scope}
+          onScopeChange={setScope}
+          activeCount={conversationActiveTotal ?? activeCount}
+          archivedCount={conversationArchivedTotal ?? archivedCount}
+          selectionMode={selectionMode}
+          onToggleSelectionMode={toggleSelectionMode}
+          selectedCount={selectedCount}
           compact
         />
       </div>
+      {view === "chats" && selectionMode && (
+        <AiHistoryBulkBar
+          scope={scope}
+          selectedCount={selectedCount}
+          allVisibleSelected={allVisibleSelected}
+          onToggleAll={toggleAllVisible}
+          onArchive={async () => {
+            if (!selectedCount || bulkBusy) return;
+            setBulkBusy(true);
+            try {
+              await onBulkArchive(selectedConversationIds, scope === "active");
+              clearSelection();
+            } finally {
+              setBulkBusy(false);
+            }
+          }}
+          onDelete={() => setPendingBulkDelete(true)}
+          onCancel={clearSelection}
+          disabled={disabled || bulkBusy}
+        />
+      )}
       <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
         {view === "activity" ? (
           <div className="min-w-0 max-w-full px-2 pt-3">
@@ -410,9 +458,15 @@ function ConversationList({
               error={error}
               disabled={disabled}
               onRetry={onRefresh}
-              onSelect={onSelect}
+              onSelect={(id) => (selectionMode ? toggleSelected(id) : onSelect(id))}
               onDelete={setPendingDelete}
               onRename={setPendingRename}
+              onArchive={async (conversation, archived) => {
+                await onArchive(conversation.id, archived);
+              }}
+              selectable={selectionMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelected}
               hasMore={hasMore && !query}
               onLoadMore={onLoadMore}
               isLoadingMore={loadingMore}
@@ -460,6 +514,25 @@ function ConversationList({
           if (conversationId) onDelete(conversationId);
         }}
       />
+      <ConfirmDialog
+        open={pendingBulkDelete}
+        onOpenChange={(open) => !open && !bulkBusy && setPendingBulkDelete(false)}
+        title={`Hapus ${selectedCount} percakapan?`}
+        description="Percakapan terpilih akan dihapus dari riwayat akun dan tidak dapat dipulihkan."
+        confirmLabel="Hapus terpilih"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={async () => {
+          setPendingBulkDelete(false);
+          setBulkBusy(true);
+          try {
+            await onBulkDelete(selectedConversationIds);
+            clearSelection();
+          } finally {
+            setBulkBusy(false);
+          }
+        }}
+      />
       <AiConversationRenameDialog
         conversation={pendingRename}
         onOpenChange={(open) => !open && !renaming && setPendingRename(null)}
@@ -482,6 +555,8 @@ function MobileConversationSheet({
   open,
   conversations,
   conversationTotal,
+  conversationActiveTotal,
+  conversationArchivedTotal,
   activity,
   activeConversationId,
   loading,
@@ -495,6 +570,9 @@ function MobileConversationSheet({
   onSelect,
   onDelete,
   onRename,
+  onArchive,
+  onBulkArchive,
+  onBulkDelete,
   onNew,
   onRefresh,
   onLoadMore,
@@ -505,11 +583,25 @@ function MobileConversationSheet({
   const [pendingDelete, setPendingDelete] = useState(null);
   const [pendingRename, setPendingRename] = useState(null);
   const [renaming, setRenaming] = useState(false);
-  const visibleConversations = filterAndSortConversations(
-    conversations,
-    query,
-    sort,
-  );
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
+  const management = useConversationManagement({ conversations, query, sort });
+  const {
+    scope,
+    setScope,
+    selectionMode,
+    toggleSelectionMode,
+    selectedIds,
+    selectedConversationIds,
+    selectedCount,
+    visibleConversations,
+    activeCount,
+    archivedCount,
+    allVisibleSelected,
+    toggleSelected,
+    toggleAllVisible,
+    clearSelection,
+  } = management;
 
   if (!open) return null;
 
@@ -575,8 +667,36 @@ function MobileConversationSheet({
             activityCount={activity.length}
             onRefresh={onRefresh}
             isRefreshing={refreshing}
+            scope={scope}
+            onScopeChange={setScope}
+            activeCount={conversationActiveTotal ?? activeCount}
+            archivedCount={conversationArchivedTotal ?? archivedCount}
+            selectionMode={selectionMode}
+            onToggleSelectionMode={toggleSelectionMode}
+            selectedCount={selectedCount}
           />
         </div>
+        {view === "chats" && selectionMode && (
+          <AiHistoryBulkBar
+            scope={scope}
+            selectedCount={selectedCount}
+            allVisibleSelected={allVisibleSelected}
+            onToggleAll={toggleAllVisible}
+            onArchive={async () => {
+              if (!selectedCount || bulkBusy) return;
+              setBulkBusy(true);
+              try {
+                await onBulkArchive(selectedConversationIds, scope === "active");
+                clearSelection();
+              } finally {
+                setBulkBusy(false);
+              }
+            }}
+            onDelete={() => setPendingBulkDelete(true)}
+            onCancel={clearSelection}
+            disabled={disabled || bulkBusy}
+          />
+        )}
         <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 px-3 py-3">
           {view === "activity" ? (
             <div className="min-w-0 max-w-full"><AiActivityList activity={activity} loading={activityLoading} /></div>
@@ -589,9 +709,15 @@ function MobileConversationSheet({
                 error={error}
                 disabled={disabled}
                 onRetry={onRefresh}
-                onSelect={onSelect}
+                onSelect={(id) => (selectionMode ? toggleSelected(id) : onSelect(id))}
                 onDelete={setPendingDelete}
                 onRename={setPendingRename}
+                onArchive={async (conversation, archived) => {
+                  await onArchive(conversation.id, archived);
+                }}
+                selectable={selectionMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelected}
                 hasMore={hasMore && !query}
                 onLoadMore={onLoadMore}
                 isLoadingMore={loadingMore}
@@ -619,6 +745,25 @@ function MobileConversationSheet({
             if (conversationId) onDelete(conversationId);
           }}
         />
+        <ConfirmDialog
+          open={pendingBulkDelete}
+          onOpenChange={(isOpen) => !isOpen && !bulkBusy && setPendingBulkDelete(false)}
+          title={`Hapus ${selectedCount} percakapan?`}
+          description="Percakapan terpilih akan dihapus dari riwayat akun dan tidak dapat dipulihkan."
+          confirmLabel="Hapus terpilih"
+          icon="solar:trash-bin-trash-bold"
+          destructive
+          onConfirm={async () => {
+            setPendingBulkDelete(false);
+            setBulkBusy(true);
+            try {
+              await onBulkDelete(selectedConversationIds);
+              clearSelection();
+            } finally {
+              setBulkBusy(false);
+            }
+          }}
+        />
         <AiConversationRenameDialog
           conversation={pendingRename}
           onOpenChange={(isOpen) => !isOpen && !renaming && setPendingRename(null)}
@@ -644,6 +789,7 @@ export default function AiAssistant() {
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [imageAttachment, setImageAttachment] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState("");
   const initialOpenRef = useRef(false);
   const imageInputRef = useRef(null);
@@ -655,6 +801,8 @@ export default function AiAssistant() {
   const {
     conversations,
     conversationTotal,
+    conversationActiveTotal,
+    conversationArchivedTotal,
     conversationsLoading,
     conversationsRefreshing,
     conversationsError,
@@ -679,6 +827,9 @@ export default function AiAssistant() {
     startNewConversation,
     deleteConversation,
     renameConversation,
+    archiveConversation,
+    bulkArchiveConversations,
+    bulkDeleteConversations,
     send,
     retryPersistAssistant,
     retryingMessageId,
@@ -727,6 +878,64 @@ export default function AiAssistant() {
       return false;
     }
   };
+  const handleArchiveConversation = async (id, archived) => {
+    try {
+      await archiveConversation(id, archived);
+      toast({
+        title: archived ? "Chat diarsipkan" : "Chat dipulihkan",
+        description: archived
+          ? "Percakapan dipindahkan ke arsip akun Anda."
+          : "Percakapan kembali ke riwayat aktif.",
+      });
+      return true;
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Status chat belum berubah",
+        description: error?.message || "Coba lagi beberapa saat lagi.",
+      });
+      return false;
+    }
+  };
+  const handleBulkArchive = async (ids, archived) => {
+    try {
+      const result = await bulkArchiveConversations(ids, archived);
+      if (result.failed.length) {
+        toast({
+          variant: "destructive",
+          title: "Sebagian chat belum dipindahkan",
+          description: `${result.updated.length} berhasil, ${result.failed.length} gagal.`,
+        });
+      } else {
+        toast({
+          title: archived ? "Chat diarsipkan" : "Chat dipulihkan",
+          description: `${result.updated.length} percakapan diperbarui.`,
+        });
+      }
+      return result;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Arsip belum diperbarui", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return { ok: false, updated: [], failed: ids.map((id) => ({ id, error })) };
+    }
+  };
+  const handleBulkDelete = async (ids) => {
+    try {
+      const result = await bulkDeleteConversations(ids);
+      if (result.failed.length) {
+        toast({
+          variant: "destructive",
+          title: "Sebagian chat belum dihapus",
+          description: `${result.deleted.length} berhasil, ${result.failed.length} gagal.`,
+        });
+      } else {
+        toast({ title: "Chat dihapus", description: `${result.deleted.length} percakapan dihapus dari riwayat akun Anda.` });
+      }
+      return result;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Chat belum dihapus", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return { ok: false, deleted: [], failed: ids.map((id) => ({ id, error })) };
+    }
+  };
   useEffect(() => {
     if (initialOpenRef.current || conversationsLoading) return;
     initialOpenRef.current = true;
@@ -765,19 +974,27 @@ export default function AiAssistant() {
     event.target.value = "";
     if (!file) return;
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setImageLoading(false);
       setAttachmentError("Gunakan foto JPG, PNG, atau WebP.");
       return;
     }
     if (file.size > 3 * 1024 * 1024) {
+      setImageLoading(false);
       setAttachmentError("Ukuran foto maksimal 3 MB.");
       return;
     }
+    setImageLoading(true);
+    setAttachmentError("");
     const reader = new FileReader();
     reader.onload = () => {
       setImageAttachment({ dataUrl: String(reader.result), name: file.name });
+      setImageLoading(false);
       setAttachmentError("");
     };
-    reader.onerror = () => setAttachmentError("Foto tidak dapat dibaca.");
+    reader.onerror = () => {
+      setImageLoading(false);
+      setAttachmentError("Foto tidak dapat dibaca.");
+    };
     reader.readAsDataURL(file);
   };
 
@@ -796,10 +1013,12 @@ export default function AiAssistant() {
   };
 
   return (
-    <div className="aapm-ai-workspace aapm-ai-frame flex h-[calc(100dvh-8.6rem-env(safe-area-inset-bottom))] min-h-[31rem] w-full min-w-0 max-w-full overflow-hidden lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="aapm-ai-workspace aapm-ai-workspace--full-mobile aapm-ai-frame flex min-h-0 w-full min-w-0 max-w-full overflow-hidden lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
       <ConversationList
         conversations={conversations}
         conversationTotal={conversationTotal}
+        conversationActiveTotal={conversationActiveTotal}
+        conversationArchivedTotal={conversationArchivedTotal}
         activity={activity}
         activeConversationId={activeConversationId}
         loading={conversationsLoading}
@@ -812,11 +1031,14 @@ export default function AiAssistant() {
         onSelect={selectConversation}
         onDelete={handleDeleteConversation}
         onRename={handleRenameConversation}
+        onArchive={handleArchiveConversation}
+        onBulkArchive={handleBulkArchive}
+        onBulkDelete={handleBulkDelete}
         onNew={startNewConversation}
         onRefresh={refreshHistory}
         onLoadMore={loadMoreConversations}
       />
-      <section className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+      <section className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-default px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
             <AiProfileAvatar
@@ -1003,6 +1225,7 @@ export default function AiAssistant() {
               isStreaming={isStreaming}
               imageInputRef={imageInputRef}
               onImageSelection={handleImageSelection}
+              imageLoading={imageLoading}
               imageAttachment={imageAttachment}
               onRemoveImage={() => setImageAttachment(null)}
               attachmentError={attachmentError}
@@ -1022,6 +1245,8 @@ export default function AiAssistant() {
         open={historyOpen}
         conversations={conversations}
         conversationTotal={conversationTotal}
+        conversationActiveTotal={conversationActiveTotal}
+        conversationArchivedTotal={conversationArchivedTotal}
         activity={activity}
         activeConversationId={activeConversationId}
         loading={conversationsLoading}
@@ -1038,6 +1263,9 @@ export default function AiAssistant() {
         }}
         onDelete={handleDeleteConversation}
         onRename={handleRenameConversation}
+        onArchive={handleArchiveConversation}
+        onBulkArchive={handleBulkArchive}
+        onBulkDelete={handleBulkDelete}
         onNew={() => {
           startNewConversation();
           setHistoryOpen(false);

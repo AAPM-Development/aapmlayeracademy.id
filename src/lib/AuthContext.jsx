@@ -1,5 +1,6 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { nativeApi } from '@/api/nativeClient';
+import { ConfirmDialog } from '@/components/primitives';
 
 const AuthContext = createContext();
 
@@ -9,6 +10,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const sessionLogoutInFlight = useRef(false);
 
   const checkUserAuth = useCallback(async () => {
     try {
@@ -42,7 +45,18 @@ export const AuthProvider = ({ children }) => {
     checkAppState();
   }, [checkAppState]);
 
-  const logout = async (shouldRedirect = true) => {
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      if (isAuthenticated && !sessionLogoutInFlight.current) {
+        setSessionExpired(true);
+      }
+    };
+
+    window.addEventListener('aapm:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('aapm:session-expired', handleSessionExpired);
+  }, [isAuthenticated]);
+
+  const logout = useCallback(async (shouldRedirect = true) => {
     try {
       if (isAuthenticated) await nativeApi.auth.logout();
     } catch (error) {
@@ -54,7 +68,16 @@ export const AuthProvider = ({ children }) => {
     if (shouldRedirect) {
       window.location.href = '/login';
     }
-  };
+  }, [isAuthenticated]);
+
+  const handleSessionLogout = useCallback(() => {
+    if (sessionLogoutInFlight.current) return;
+    sessionLogoutInFlight.current = true;
+    setSessionExpired(false);
+    void logout().finally(() => {
+      sessionLogoutInFlight.current = false;
+    });
+  }, [logout]);
 
   const navigateToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -75,6 +98,19 @@ export const AuthProvider = ({ children }) => {
       checkUserAuth,
       checkAppState
     }}>
+      <ConfirmDialog
+        open={sessionExpired}
+        onOpenChange={(open) => {
+          setSessionExpired(open);
+          if (!open) handleSessionLogout();
+        }}
+        title="Sesi Anda berakhir"
+        description="Sesi login sudah tidak aktif. Masuk lagi untuk melanjutkan."
+        confirmLabel="Masuk lagi"
+        cancelLabel="Keluar"
+        icon="solar:history-2-bold-duotone"
+        onConfirm={handleSessionLogout}
+      />
       {children}
     </AuthContext.Provider>
   );

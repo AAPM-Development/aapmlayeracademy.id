@@ -60,7 +60,7 @@ function restorePresentationVisibility(viewer) {
  * Renders a server-approved, same-origin PPTX as a responsive learner carousel.
  * The viewer is loaded only when an editorial block actually references a deck.
  */
-export default function PptxCarousel({ src, title = "Presentasi", declaredSlideCount, compact = false }) {
+export default function PptxCarousel({ src, title = "Presentasi", name = "", declaredSlideCount, compact = false }) {
   const targetRef = React.useRef(null);
   const viewerRef = React.useRef(null);
   const activeSlideRef = React.useRef(0);
@@ -70,6 +70,8 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
   const [status, setStatus] = React.useState("loading");
   const [error, setError] = React.useState("");
   const [slideErrors, setSlideErrors] = React.useState([]);
+  const [loadProgress, setLoadProgress] = React.useState(0);
+  const [reloadToken, setReloadToken] = React.useState(0);
   const expectedSlides = normaliseDeclaredSlideCount(declaredSlideCount);
   const source = React.useMemo(() => getSameOriginPptxUrl(src), [src]);
 
@@ -113,6 +115,7 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
     setSlideCount(0);
     setError("");
     setSlideErrors([]);
+    setLoadProgress(0);
     setStatus("loading");
 
     if (!target || !source) {
@@ -161,6 +164,11 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
           listOptions: { windowed: true, initialSlides: 1, batchSize: 1, overscanViewport: 0.25 },
           zipLimits: { maxFileBytes: MAX_PPTX_BYTES },
           presentationFullscreen: true,
+          onProgress: (progress) => {
+            if (cancelled) return;
+            const nextProgress = Number(progress);
+            if (Number.isFinite(nextProgress)) setLoadProgress(clamp(nextProgress, 0, 100));
+          },
           onSlideRendered: (_slideNumber, element) => {
             syncRenderedSlides();
             const message = element?.querySelector(".flyfish-pptx-slide-error-card span");
@@ -223,7 +231,7 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
       if (viewerRef.current === viewer) viewerRef.current = null;
       viewer?.destroy();
     };
-  }, [applyCarouselVisibility, source]);
+  }, [applyCarouselVisibility, reloadToken, source]);
 
   const selectSlide = React.useCallback((requestedIndex) => {
     const viewer = viewerRef.current;
@@ -244,6 +252,23 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
     }
   }, [applyCarouselVisibility]);
 
+  const handleKeyDown = React.useCallback((event) => {
+    if (status !== "ready" || !slideCount) return;
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      selectSlide(activeSlide - 1);
+    } else if (event.key === "ArrowRight" || event.key === "ArrowDown" || event.key === " ") {
+      event.preventDefault();
+      selectSlide(activeSlide + 1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      selectSlide(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      selectSlide(slideCount - 1);
+    }
+  }, [activeSlide, selectSlide, slideCount, status]);
+
   const controlsDisabled = status !== "ready" || slideCount < 2;
   const liveStatus = error
     ? error
@@ -252,109 +277,108 @@ export default function PptxCarousel({ src, title = "Presentasi", declaredSlideC
       : `Slide ${activeSlide + 1} dari ${slideCount}.`;
 
   return (
-    <section className={`${compact ? "mt-3" : "my-7"} overflow-hidden rounded-2xl border border-border bg-surface shadow-sm`} aria-label={title || "Presentasi"}>
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-surface-subtle px-4 py-3.5 sm:px-5">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold sm:text-base">{title || "Presentasi"}</h3>
+    <section
+      className={`${compact ? "mt-3" : "my-7"} aapm-presentation-shell overflow-hidden`}
+      aria-label={title || "Presentasi"}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      data-viewer="pptx"
+    >
+      <header className="aapm-presentation-header">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="aapm-presentation-file-icon bg-tint-orange text-brand-orange" aria-hidden="true">
+            <AapmIcon name="fileCheck" className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="aapm-presentation-eyebrow">Presentasi</p>
+            <h3 className="truncate text-sm font-semibold sm:text-base">{title || "Presentasi"}</h3>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              PPTX <span aria-hidden="true">·</span> {slideCount ? `${slideCount} slide` : expectedSlides ? `${expectedSlides} slide` : "siap dibaca"}
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => void enterPresentation()}
-          disabled={status !== "ready" || !slideCount}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold transition-colors hover:border-brand-green/40 hover:text-brand-green disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
-        >
-          <AapmIcon name="solar:full-screen-bold" className="h-4 w-4" />
-          Layar penuh
-        </button>
-      </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {source && <a href={source} download={name || undefined} className="aapm-presentation-icon-action" aria-label="Unduh presentasi">
+            <AapmIcon name="download" className="h-4 w-4" />
+          </a>}
+          <button
+            type="button"
+            onClick={() => void enterPresentation()}
+            disabled={status !== "ready" || !slideCount}
+            className="aapm-presentation-action"
+          >
+            <AapmIcon name="solar:full-screen-bold" className="h-4 w-4" />
+            <span className="hidden sm:inline">Layar penuh</span>
+            <span className="sm:hidden">Buka</span>
+          </button>
+        </div>
+      </header>
 
-      <div className="relative min-w-0 bg-muted/40 p-2 sm:p-4" aria-busy={status === "loading"}>
-        <div ref={targetRef} className="min-h-[13rem] w-full min-w-0 overflow-hidden rounded-xl bg-white" />
+      <div className="aapm-presentation-stage" aria-busy={status === "loading"}>
+        <div className="aapm-pptx-viewport">
+          <div ref={targetRef} className="aapm-pptx-target h-full w-full min-w-0 overflow-hidden" />
+        </div>
         {slideErrors.length > 0 && (
-          <div className="mt-2 rounded-lg border border-brand-orange/25 bg-brand-orange/5 px-3 py-2 text-xs text-muted-foreground" role="status">
-            Slide {slideErrors.join(", ")} belum dapat ditampilkan oleh browser. Coba simpan ulang PPTX dari PowerPoint lalu unggah kembali.
+          <div className="aapm-presentation-notice" role="status">
+            <AapmIcon name="alert" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
+            <span>Slide {slideErrors.join(", ")} belum dapat ditampilkan. Coba simpan ulang PPTX dari PowerPoint lalu unggah kembali.</span>
           </div>
         )}
         {status === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/40 px-5 text-center text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 shadow-sm">
-              <AapmIcon name="loading" className="h-4 w-4 animate-spin text-brand-green" />
-              Memuat presentasi…
-            </span>
+          <div className="aapm-presentation-state" role="status">
+            <div className="aapm-presentation-state-card">
+              <AapmIcon name="loading" className="h-5 w-5 animate-spin text-brand-green" />
+              <div className="min-w-0 text-left">
+                <p className="text-sm font-semibold text-foreground">Menyiapkan presentasi…</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{expectedSlides ? `${expectedSlides} slide sedang diproses` : "Memeriksa file dan memuat slide"}</p>
+                <div className="aapm-presentation-progress" aria-hidden="true"><span style={{ width: `${loadProgress || 6}%` }} /></div>
+              </div>
+            </div>
           </div>
         )}
         {status === "error" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/95 p-5 text-center">
-            <div className="max-w-sm">
-              <AapmIcon name="alert" className="mx-auto h-6 w-6 text-brand-orange" />
-              <p className="mt-2 text-sm font-semibold">Presentasi tidak dapat dimuat</p>
+          <div className="aapm-presentation-state" role="alert">
+            <div className="aapm-presentation-state-card max-w-sm flex-col items-center text-center">
+              <span className="aapm-presentation-error-icon"><AapmIcon name="alert" className="h-5 w-5 text-brand-orange" /></span>
+              <p className="mt-1 text-sm font-semibold text-foreground">Presentasi tidak dapat dimuat</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <button type="button" onClick={() => setReloadToken((value) => value + 1)} className="aapm-presentation-action">Coba lagi</button>
+                {source && <a href={source} download={name || undefined} className="aapm-presentation-action">Unduh file</a>}
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      <div className="border-t border-border bg-background px-4 py-3.5 sm:px-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Slide sebelumnya"
-              onClick={() => selectSlide(activeSlide - 1)}
-              disabled={controlsDisabled || activeSlide === 0}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border text-foreground transition-colors hover:border-brand-green/40 hover:bg-tint-green disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
-            >
-              <AapmIcon name="arrowLeft" className="h-4 w-4" />
-            </button>
-            <span className="min-w-24 text-center text-xs font-semibold tabular-nums text-muted-foreground">
-              {slideCount ? `Slide ${activeSlide + 1} / ${slideCount}` : "Memuat…"}
-            </span>
-            <button
-              type="button"
-              aria-label="Slide berikutnya"
-              onClick={() => selectSlide(activeSlide + 1)}
-              disabled={controlsDisabled || activeSlide >= slideCount - 1}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border text-foreground transition-colors hover:border-brand-green/40 hover:bg-tint-green disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
-            >
-              <AapmIcon name="arrowRight" className="h-4 w-4" />
-            </button>
-          </div>
-
-          {slideCount > 1 && (slideCount <= 12 ? (
-            <div className="flex max-w-full flex-wrap justify-end gap-1" role="group" aria-label="Pilih slide presentasi">
-              {Array.from({ length: slideCount }, (_, index) => {
-                const isActive = index === activeSlide;
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => selectSlide(index)}
-                    aria-label={`Buka slide ${index + 1}`}
-                    aria-current={isActive ? "step" : undefined}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-tint-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
-                  >
-                    <span className={`h-2.5 w-2.5 rounded-full ${isActive ? "bg-brand-green" : "bg-border"}`} />
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <label className="flex min-w-[min(100%,17rem)] flex-1 items-center gap-3 text-xs font-medium text-muted-foreground">
-              <span className="shrink-0">Lompat ke slide</span>
-              <input
-                type="range"
-                min="1"
-                max={slideCount}
-                value={activeSlide + 1}
-                onChange={(event) => selectSlide(Number(event.target.value) - 1)}
-                aria-label="Pilih nomor slide"
-                className="h-11 min-w-0 flex-1 accent-brand-green"
-              />
-            </label>
-          ))}
+      <footer className="aapm-presentation-controls">
+        <div className="flex min-w-0 items-center gap-2">
+          <button type="button" aria-label="Slide sebelumnya" onClick={() => selectSlide(activeSlide - 1)} disabled={controlsDisabled || activeSlide === 0} className="aapm-presentation-icon-action">
+            <AapmIcon name="arrowLeft" className="h-4 w-4" />
+          </button>
+          <span className="min-w-[4.5rem] text-center text-xs font-semibold tabular-nums text-foreground">
+            {slideCount ? <><span>{activeSlide + 1}</span><span className="mx-1 text-muted-foreground">/</span><span className="text-muted-foreground">{slideCount}</span></> : "— / —"}
+          </span>
+          <button type="button" aria-label="Slide berikutnya" onClick={() => selectSlide(activeSlide + 1)} disabled={controlsDisabled || activeSlide >= slideCount - 1} className="aapm-presentation-icon-action">
+            <AapmIcon name="arrowRight" className="h-4 w-4" />
+          </button>
         </div>
+
+        {slideCount > 1 && (slideCount <= 12 ? (
+          <div className="flex max-w-full flex-wrap justify-end gap-0.5" role="group" aria-label="Pilih slide presentasi">
+            {Array.from({ length: slideCount }, (_, index) => {
+              const isActive = index === activeSlide;
+              return <button key={index} type="button" onClick={() => selectSlide(index)} aria-label={`Buka slide ${index + 1}`} aria-current={isActive ? "step" : undefined} className="aapm-presentation-dot-button"><span className={isActive ? "aapm-presentation-dot is-active" : "aapm-presentation-dot"} /></button>;
+            })}
+          </div>
+        ) : (
+          <label className="flex min-w-[min(100%,15rem)] flex-1 items-center gap-2 text-xs font-medium text-muted-foreground">
+            <span className="shrink-0">Lompat</span>
+            <input type="range" min="1" max={slideCount} value={activeSlide + 1} onChange={(event) => selectSlide(Number(event.target.value) - 1)} aria-label="Pilih nomor slide" className="h-8 min-w-0 flex-1 accent-brand-green" />
+          </label>
+        ))}
         <p className="sr-only" aria-live="polite">{liveStatus}</p>
-      </div>
+      </footer>
     </section>
   );
 }

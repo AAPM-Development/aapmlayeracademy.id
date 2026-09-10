@@ -17,6 +17,7 @@ import {
 } from "../src/lib/editorialUrls.js";
 import {
   flattenConversationPages,
+  isConversationArchived,
   removeConversationFromPages,
   upsertConversationInPages,
 } from "../src/lib/aiHistoryState.js";
@@ -24,6 +25,11 @@ import {
   richTextPlainText,
   sanitizeRichTextDocument,
 } from "../src/lib/richTextSafety.js";
+import {
+  encodeRichTextImageTitle,
+  enrichRichTextMarkdownImages,
+  parseRichTextImageTitle,
+} from "../src/lib/richTextImageLayout.js";
 import {
   getCompletedModuleSet,
   getNextModule,
@@ -279,6 +285,50 @@ test("rich-text image nodes stay safe and preserve learner-ready markdown attrib
   });
 });
 
+test("rich-text image layout metadata round-trips with bounded size and alignment", () => {
+  const title = encodeRichTextImageTitle({ width: 640, height: 480, align: "center" });
+  assert.match(title, /^aapm-image:v1;/);
+  assert.deepEqual(parseRichTextImageTitle(title), {
+    width: 640,
+    height: 480,
+    align: "center",
+    title: null,
+  });
+
+  const unsafe = parseRichTextImageTitle("aapm-image:v1;w=999999&h=1&a=sideways");
+  assert.deepEqual(unsafe, {
+    width: 2400,
+    height: 32,
+    align: "left",
+    title: null,
+  });
+
+  const legacyTitle = parseRichTextImageTitle("Diagram farm");
+  assert.deepEqual(legacyTitle, { width: null, height: null, align: "left", title: "Diagram farm" });
+
+  const safeDocument = sanitizeRichTextDocument({
+    type: "doc",
+    content: [{
+      type: "image",
+      attrs: { src: "/uploads/lesson.webp", width: 480, height: 320, align: "right" },
+    }],
+  });
+  assert.deepEqual(safeDocument.content[0].attrs, {
+    src: "/uploads/lesson.webp",
+    alt: "",
+    title: null,
+    width: 480,
+    height: 320,
+    align: "right",
+  });
+
+  const enriched = enrichRichTextMarkdownImages(
+    "Sebelum\n\n![Diagram](/uploads/lesson.webp)\n\nSesudah",
+    { type: "doc", content: [{ type: "image", attrs: { src: "/uploads/lesson.webp", width: 480, align: "right" } }] },
+  );
+  assert.equal(enriched, "Sebelum\n\n![Diagram](/uploads/lesson.webp \"aapm-image:v1;w=480&a=right\")\n\nSesudah");
+});
+
 test("conversation pages deduplicate, upsert newest metadata, and remove safely", () => {
   const original = {
     pages: [
@@ -305,6 +355,43 @@ test("conversation pages deduplicate, upsert newest metadata, and remove safely"
   const removed = removeConversationFromPages(added, "c2");
   assert.equal(removed.pages[0].total, 3);
   assert.deepEqual(flattenConversationPages(removed).map((item) => item.id), ["c4", "c1", "c3"]);
+});
+
+test("conversation archive state stays account-history friendly across page updates", () => {
+  const original = {
+    pages: [{
+      items: [
+        { id: 1, title: "Aktif", archivedAt: null },
+        { id: 2, title: "Arsip", archivedAt: "2026-09-09 10:00:00" },
+      ],
+      total: 2,
+      activeTotal: 1,
+      archivedTotal: 1,
+    }],
+  };
+
+  assert.equal(isConversationArchived(original.pages[0].items[0]), false);
+  assert.equal(isConversationArchived(original.pages[0].items[1]), true);
+
+  const archived = upsertConversationInPages(original, {
+    id: "1",
+    title: "Aktif",
+    archivedAt: "2026-09-10 08:00:00",
+  });
+  assert.equal(archived.pages[0].activeTotal, 0);
+  assert.equal(archived.pages[0].archivedTotal, 2);
+
+  const restored = upsertConversationInPages(archived, {
+    id: 2,
+    title: "Arsip",
+    archivedAt: null,
+  });
+  assert.equal(restored.pages[0].activeTotal, 1);
+  assert.equal(restored.pages[0].archivedTotal, 1);
+
+  const removed = removeConversationFromPages(restored, "1");
+  assert.equal(removed.pages[0].total, 1);
+  assert.equal(removed.pages[0].archivedTotal, 0);
 });
 
 test("progress metrics count only active catalog modules", () => {
@@ -347,4 +434,92 @@ test("admin APPI rewrite remains preview-first and requires explicit confirmatio
   assert.match(editor, /Pratinjau rewrite copywriting/);
   assert.match(editor, /Ganti isi modul dengan rewrite APPI/);
   assert.match(editor, /onConfirm=\{applyRewrite\}/);
+});
+
+test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bounded", () => {
+  const aiPage = readWorkspaceFile("../src/pages/AiAssistant.jsx");
+  const floatingAi = readWorkspaceFile("../src/components/ai/FloatingAiAssistant.jsx");
+  const historyControls = readWorkspaceFile("../src/components/ai/AiHistoryControls.jsx");
+  const chatProvider = readWorkspaceFile("../src/components/ai/AiChatProvider.jsx");
+  const aiComposer = readWorkspaceFile("../src/components/ai/AiComposer.jsx");
+  const dashboard = readWorkspaceFile("../src/components/academy/DashboardComponents.jsx");
+  const editorial = readWorkspaceFile("../src/components/admin/EditorialComposer.jsx");
+  const auth = readWorkspaceFile("../src/lib/AuthContext.jsx");
+  const client = readWorkspaceFile("../src/api/nativeClient.js");
+  const sidebarProfile = readWorkspaceFile("../src/components/layout/SidebarUserCard.jsx");
+  const moduleEditor = readWorkspaceFile("../src/pages/admin/AdminModuleEditor.jsx");
+  const lessonWorkspace = readWorkspaceFile("../src/components/academy/LessonWorkspace.jsx");
+  const learnerContent = readWorkspaceFile("../src/components/academy/EditorialContent.jsx");
+  const richEditor = readWorkspaceFile("../src/components/admin/RichTextEditor.jsx");
+  const iconBridge = readWorkspaceFile("../src/components/icons/AapmIcon.jsx");
+  const styles = readWorkspaceFile("../src/index.css");
+
+  assert.match(aiPage, /aapm-ai-workspace--full-mobile/);
+  assert.match(aiPage, /AiHistoryBulkBar/);
+  assert.match(floatingAi, /AiHistoryBulkBar/);
+  assert.match(historyControls, /Beri nama singkat agar mudah ditemukan/);
+  assert.match(historyControls, /Pulihkan dari arsip/);
+  assert.match(chatProvider, /bulkArchiveConversations/);
+  assert.match(chatProvider, /bulkDeleteConversations/);
+  assert.doesNotMatch(aiPage, /100dvh-8\.6rem/);
+  assert.match(aiComposer, /Menyiapkan foto/);
+  assert.match(dashboard, /aapm-dashboard-welcome__stats/);
+  assert.match(styles, /\.aapm-dashboard-kpi[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /--aapm-shell-border-alpha: 0\.46/);
+  assert.match(styles, /\.aapm-ai-frame[\s\S]*box-shadow: var\(--aapm-shell-shadow, none\)/);
+  assert.match(styles, /\.aapm-ai-conversation-sidebar,[\s\S]*background-image: none/);
+  assert.match(styles, /\.aapm-ai-card--interactive:hover[\s\S]*box-shadow: none/);
+  assert.match(sidebarProfile, /aapm-sidebar-profile-row/);
+  assert.doesNotMatch(sidebarProfile, /aapm-sidebar-user-card/);
+  assert.match(moduleEditor, /aapm-editor-point-row grid/);
+  assert.match(moduleEditor, /aapm-editor-point-action/);
+  assert.match(lessonWorkspace, /aapm-lesson-insight-item grid/);
+  assert.match(lessonWorkspace, /aapm-lesson-insight-index/);
+  assert.match(richEditor, /aapm-rich-editor__toolbar-group/);
+  assert.match(richEditor, /label="Format karakter"/);
+  assert.match(richEditor, /name="editorLink"/);
+  assert.match(richEditor, /setSelectedImageFit/);
+  assert.match(richEditor, /syncSelectedImageSizeToDom/);
+  assert.match(richEditor, /const BLOCK_STYLE_OPTIONS/);
+  assert.match(richEditor, /active=\{blockStyle === value\}/);
+  assert.match(richEditor, /wrapper\.style\.width = width \? `\$\{width\}px` : ""/);
+  assert.match(richEditor, /ResizeObserver/);
+  assert.match(richEditor, /paddingLeft/);
+  assert.match(richEditor, /aria-label="Snap posisi gambar"/);
+  assert.match(richEditor, /onValueCommit=\{\(\[value\]\) => setSelectedImageWidthPercent\(value\)\}/);
+  assert.doesNotMatch(richEditor, /textLabel=/);
+  assert.match(iconBridge, /editorUnlink: "solar:link-broken-minimalistic-linear"/);
+  assert.match(iconBridge, /editorUndo: "solar:undo-left-round-linear"/);
+  assert.doesNotMatch(iconBridge, /"solar:undo-left-round-linear": "refresh"/);
+  assert.doesNotMatch(iconBridge, /"solar:undo-right-round-linear": "refresh"/);
+  assert.match(iconBridge, /imageAlignCenter: "solar:align-horizontal-center-linear"/);
+  assert.match(iconBridge, /imageFit: "solar:maximize-square-minimalistic-linear"/);
+  assert.match(styles, /\.aapm-rich-editor__toolbar-separator/);
+  assert.match(styles, /\.aapm-rich-editor__toolbar-button\[aria-pressed="true"\]/);
+  assert.match(styles, /\[data-resize-container\]:has\(img\[data-image-align="center"\]\)/);
+  assert.doesNotMatch(learnerContent, /rounded-xl border border-border object-contain/);
+  assert.match(styles, /\.aapm-ai-workspace__main,[\s\S]*min-height: 0/);
+  assert.match(styles, /\.aapm-sidebar-profile-row \{[\s\S]*background: transparent/);
+  assert.doesNotMatch(editorial, /File presentasi baru akan menggantikan/);
+  assert.match(editorial, /Siap mengganti sumber slide/);
+  assert.match(editorial, /aria-busy=\{uploadState\.status === "loading"\}/);
+  assert.match(client, /aapm:session-expired/);
+  assert.match(auth, /Sesi Anda berakhir/);
+});
+
+test("editorial document players keep a shared reading-stage contract", () => {
+  const pptx = readWorkspaceFile("../src/components/academy/PptxCarousel.jsx");
+  const presentation = readWorkspaceFile("../src/components/academy/EditorialPresentation.jsx");
+  const styles = readWorkspaceFile("../src/index.css");
+
+  assert.match(pptx, /aapm-presentation-shell/);
+  assert.match(pptx, /onProgress:/);
+  assert.match(pptx, /setReloadToken/);
+  assert.match(pptx, /Buka slide \$\{index \+ 1\}/);
+  assert.match(presentation, /function PdfViewer/);
+  assert.match(presentation, /aapm-pdf-viewport/);
+  assert.match(presentation, /Buka tab baru/);
+  assert.match(styles, /\.aapm-presentation-shell/);
+  assert.match(styles, /\.aapm-pptx-viewport/);
+  assert.match(styles, /\.aapm-pdf-frame/);
 });

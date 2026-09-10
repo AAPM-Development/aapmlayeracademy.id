@@ -196,7 +196,7 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
       </div>
       <div className="aapm-editor-point-list space-y-1.5" role="list" aria-label={`${label} untuk learner`}>
         {points.map((point, index) => (
-          <div key={`${id}-point-${index + 1}`} className="aapm-editor-point-row flex min-w-0 items-center gap-1.5 rounded-[var(--radius-control)] p-1" role="listitem">
+          <div key={`${id}-point-${index + 1}`} className="aapm-editor-point-row grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_2.25rem] items-center gap-1.5 rounded-[var(--radius-control)] p-1" role="listitem">
             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ${tone === "orange" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green"}`} aria-hidden="true">
               {String(index + 1).padStart(2, "0")}
             </span>
@@ -215,7 +215,7 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
                   insertPointAfter(index);
                 }
               }}
-              className="h-8 min-w-0 flex-1 border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0"
+              className="h-8 min-w-0 w-full border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0"
               placeholder={`Tulis poin ${index + 1}…`}
               aria-label={`${label}, poin ${index + 1}`}
             />
@@ -223,7 +223,7 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
               type="button"
               size="icon"
               variant="ghost"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-danger"
+              className="aapm-editor-point-action h-8 w-8 shrink-0 justify-self-end text-muted-foreground hover:text-danger"
               onClick={() => removePoint(index)}
               disabled={points.length === 1 && !point.trim()}
               aria-label={`Hapus ${label.toLowerCase()} poin ${index + 1}`}

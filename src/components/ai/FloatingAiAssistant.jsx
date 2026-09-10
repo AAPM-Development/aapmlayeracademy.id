@@ -10,10 +10,11 @@ import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
+  AiHistoryBulkBar,
   AiConversationHistoryResults,
   AiConversationRenameDialog,
   AiHistoryToolbar,
-  filterAndSortConversations,
+  useConversationManagement,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
 import AiQuickActions from "@/components/ai/AiQuickActions";
@@ -164,7 +165,10 @@ export default function FloatingAiAssistant() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [pendingRename, setPendingRename] = useState(null);
   const [renaming, setRenaming] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   const [imageAttachment, setImageAttachment] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState("");
   const closeTimer = useRef(null);
   const imageInputRef = useRef(null);
@@ -178,6 +182,8 @@ export default function FloatingAiAssistant() {
     activeConversationId,
     conversations,
     conversationTotal,
+    conversationActiveTotal,
+    conversationArchivedTotal,
     conversationsLoading,
     conversationsRefreshing,
     conversationsError,
@@ -200,6 +206,9 @@ export default function FloatingAiAssistant() {
     selectConversation,
     deleteConversation,
     renameConversation,
+    archiveConversation,
+    bulkArchiveConversations,
+    bulkDeleteConversations,
     send,
     retryPersistAssistant,
     retryingMessageId,
@@ -261,13 +270,29 @@ export default function FloatingAiAssistant() {
     return () => window.clearTimeout(closeTimer.current);
   }, [closing]);
 
-  if (location.pathname === "/ai-assistant") return null;
-
-  const visibleConversations = filterAndSortConversations(
+  const management = useConversationManagement({
     conversations,
-    historyQuery,
-    historySort,
-  );
+    query: historyQuery,
+    sort: historySort,
+  });
+  const {
+    scope: historyScope,
+    setScope: setHistoryScope,
+    selectionMode: historySelectionMode,
+    toggleSelectionMode: toggleHistorySelectionMode,
+    selectedIds: historySelectedIds,
+    selectedConversationIds: historySelectedConversationIds,
+    selectedCount: historySelectedCount,
+    visibleConversations,
+    activeCount: historyActiveCount,
+    archivedCount: historyArchivedCount,
+    allVisibleSelected: historyAllVisibleSelected,
+    toggleSelected: toggleHistorySelected,
+    toggleAllVisible: toggleHistoryAllVisible,
+    clearSelection: clearHistorySelection,
+  } = management;
+
+  if (location.pathname === "/ai-assistant") return null;
   const historySyncLabel = {
     saving: "Menyimpan di akun…",
     saved: "Tersimpan di akun",
@@ -306,17 +331,26 @@ export default function FloatingAiAssistant() {
     event.target.value = "";
     if (!file) return;
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setImageLoading(false);
       setAttachmentError("Gunakan foto JPG, PNG, atau WebP.");
       return;
     }
     if (file.size > 3 * 1024 * 1024) {
+      setImageLoading(false);
       setAttachmentError("Ukuran foto maksimal 3 MB.");
       return;
     }
+    setImageLoading(true);
+    setAttachmentError("");
     const reader = new FileReader();
     reader.onload = () => {
       setImageAttachment({ dataUrl: String(reader.result), name: file.name });
+      setImageLoading(false);
       setAttachmentError("");
+    };
+    reader.onerror = () => {
+      setImageLoading(false);
+      setAttachmentError("Foto tidak dapat dibaca.");
     };
     reader.readAsDataURL(file);
   };
@@ -338,6 +372,49 @@ export default function FloatingAiAssistant() {
     } catch (error) {
       toast({ variant: "destructive", title: "Judul belum disimpan", description: error?.message || "Coba lagi beberapa saat lagi." });
       return false;
+    }
+  };
+  const handleArchiveConversation = async (id, archived) => {
+    try {
+      await archiveConversation(id, archived);
+      toast({
+        title: archived ? "Chat diarsipkan" : "Chat dipulihkan",
+        description: archived
+          ? "Percakapan dipindahkan ke arsip akun Anda."
+          : "Percakapan kembali ke riwayat aktif.",
+      });
+      return true;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Status chat belum berubah", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return false;
+    }
+  };
+  const handleBulkArchive = async (ids, archived) => {
+    try {
+      const result = await bulkArchiveConversations(ids, archived);
+      if (result.failed.length) {
+        toast({ variant: "destructive", title: "Sebagian chat belum dipindahkan", description: `${result.updated.length} berhasil, ${result.failed.length} gagal.` });
+      } else {
+        toast({ title: archived ? "Chat diarsipkan" : "Chat dipulihkan", description: `${result.updated.length} percakapan diperbarui.` });
+      }
+      return result;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Arsip belum diperbarui", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return { ok: false, updated: [], failed: ids.map((id) => ({ id, error })) };
+    }
+  };
+  const handleBulkDelete = async (ids) => {
+    try {
+      const result = await bulkDeleteConversations(ids);
+      if (result.failed.length) {
+        toast({ variant: "destructive", title: "Sebagian chat belum dihapus", description: `${result.deleted.length} berhasil, ${result.failed.length} gagal.` });
+      } else {
+        toast({ title: "Chat dihapus", description: `${result.deleted.length} percakapan dihapus dari riwayat akun Anda.` });
+      }
+      return result;
+    } catch (error) {
+      toast({ variant: "destructive", title: "Chat belum dihapus", description: error?.message || "Coba lagi beberapa saat lagi." });
+      return { ok: false, deleted: [], failed: ids.map((id) => ({ id, error })) };
     }
   };
   const handleAction = (action) => {
@@ -420,7 +497,7 @@ export default function FloatingAiAssistant() {
               </IconButton>
             </div>
           </header>
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
+          <div className="aapm-ai-floating-panel__body relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
             <div
               ref={chatViewportRef}
               role="log"
@@ -585,9 +662,37 @@ export default function FloatingAiAssistant() {
                     activityCount={activity.length}
                     onRefresh={refreshHistory}
                     isRefreshing={conversationsRefreshing}
+                    scope={historyScope}
+                    onScopeChange={setHistoryScope}
+                    activeCount={conversationActiveTotal ?? historyActiveCount}
+                    archivedCount={conversationArchivedTotal ?? historyArchivedCount}
+                    selectionMode={historySelectionMode}
+                    onToggleSelectionMode={toggleHistorySelectionMode}
+                    selectedCount={historySelectedCount}
                     compact
                   />
                 </div>
+                {historyView === "chats" && historySelectionMode && (
+                  <AiHistoryBulkBar
+                    scope={historyScope}
+                    selectedCount={historySelectedCount}
+                    allVisibleSelected={historyAllVisibleSelected}
+                    onToggleAll={toggleHistoryAllVisible}
+                    onArchive={async () => {
+                      if (!historySelectedCount || bulkBusy) return;
+                      setBulkBusy(true);
+                      try {
+                        await handleBulkArchive(historySelectedConversationIds, historyScope === "active");
+                        clearHistorySelection();
+                      } finally {
+                        setBulkBusy(false);
+                      }
+                    }}
+                    onDelete={() => setPendingBulkDelete(true)}
+                    onCancel={clearHistorySelection}
+                    disabled={isStreaming || bulkBusy}
+                  />
+                )}
                 <div ref={historyScrollRef} className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3">
                   {historyView === "activity" ? (
                     <div className="min-w-0 max-w-full pt-3">
@@ -603,11 +708,19 @@ export default function FloatingAiAssistant() {
                         disabled={isStreaming}
                         onRetry={refreshHistory}
                         onSelect={(conversationId) => {
+                          if (historySelectionMode) {
+                            toggleHistorySelected(conversationId);
+                            return;
+                          }
                           selectConversation(conversationId);
                           setHistoryOpen(false);
                         }}
                         onDelete={setPendingDelete}
                         onRename={setPendingRename}
+                        onArchive={handleArchiveConversation}
+                        selectable={historySelectionMode}
+                        selectedIds={historySelectedIds}
+                        onToggleSelect={toggleHistorySelected}
                         hasMore={hasMoreConversations && !historyQuery}
                         onLoadMore={loadMoreConversations}
                         isLoadingMore={isLoadingMoreConversations}
@@ -628,6 +741,7 @@ export default function FloatingAiAssistant() {
               isStreaming={isStreaming}
               imageInputRef={imageInputRef}
               onImageSelection={handleImageSelection}
+              imageLoading={imageLoading}
               imageAttachment={imageAttachment}
               onRemoveImage={() => setImageAttachment(null)}
               attachmentError={attachmentError}
@@ -676,6 +790,25 @@ export default function FloatingAiAssistant() {
           const conversationId = pendingDelete?.id;
           setPendingDelete(null);
           if (conversationId) handleDeleteConversation(conversationId);
+        }}
+      />
+      <ConfirmDialog
+        open={pendingBulkDelete}
+        onOpenChange={(isOpen) => !isOpen && !bulkBusy && setPendingBulkDelete(false)}
+        title={`Hapus ${historySelectedCount} percakapan?`}
+        description="Percakapan terpilih akan dihapus dari riwayat akun dan tidak dapat dipulihkan."
+        confirmLabel="Hapus terpilih"
+        icon="solar:trash-bin-trash-bold"
+        destructive
+        onConfirm={async () => {
+          setPendingBulkDelete(false);
+          setBulkBusy(true);
+          try {
+            await handleBulkDelete(historySelectedConversationIds);
+            clearHistorySelection();
+          } finally {
+            setBulkBusy(false);
+          }
         }}
       />
       <AiConversationRenameDialog

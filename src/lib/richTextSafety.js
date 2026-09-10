@@ -1,4 +1,10 @@
 import { safeEditorialImage, safeEditorialLink } from "./editorialUrls.js";
+import {
+  normaliseRichTextImageAlign,
+  normaliseRichTextImageHeight,
+  normaliseRichTextImageWidth,
+  parseRichTextImageTitle,
+} from "./richTextImageLayout.js";
 
 const allowedNodeTypes = new Set([
   "doc",
@@ -48,14 +54,22 @@ function safeNode(node, depth = 0) {
     const src = safeEditorialImage(node.attrs?.src);
     if (!src) return null;
     const alt = safeText(node.attrs?.alt, 280);
-    const title = safeText(node.attrs?.title, 160);
+    const parsedTitle = parseRichTextImageTitle(node.attrs?.title);
+    const title = safeText(parsedTitle.title || node.attrs?.title, 160);
+    const width = normaliseRichTextImageWidth(node.attrs?.width) ?? parsedTitle.width;
+    const height = normaliseRichTextImageHeight(node.attrs?.height) ?? parsedTitle.height;
+    const align = normaliseRichTextImageAlign(node.attrs?.align || parsedTitle.align);
+    const attrs = {
+      src,
+      alt,
+      title: title || null,
+    };
+    if (width !== null) attrs.width = width;
+    if (height !== null) attrs.height = height;
+    if (align !== "left") attrs.align = align;
     return {
       type,
-      attrs: {
-        src,
-        alt,
-        title: title || null,
-      },
+      attrs,
     };
   }
 
@@ -142,6 +156,9 @@ function cleanPasteNode(node) {
     const src = safeEditorialImage(element.getAttribute("src"));
     const alt = safeText(element.getAttribute("alt"), 280);
     const title = safeText(element.getAttribute("title"), 160);
+    const width = normaliseRichTextImageWidth(element.getAttribute("width"));
+    const height = normaliseRichTextImageHeight(element.getAttribute("height"));
+    const align = normaliseRichTextImageAlign(element.getAttribute("data-image-align"));
     Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
     if (!src) {
       element.remove();
@@ -150,6 +167,9 @@ function cleanPasteNode(node) {
     element.setAttribute("src", src);
     if (alt) element.setAttribute("alt", alt);
     if (title) element.setAttribute("title", title);
+    if (width !== null) element.setAttribute("width", String(width));
+    if (height !== null) element.setAttribute("height", String(height));
+    if (align !== "left") element.setAttribute("data-image-align", align);
     return;
   }
 

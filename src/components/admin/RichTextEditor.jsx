@@ -10,11 +10,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import {
   Button,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Slider,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -22,7 +18,67 @@ import {
 } from "@/components/primitives";
 import { safeEditorialImage, safeEditorialLink } from "@/lib/editorialUrls";
 import { sanitizePastedHtml, sanitizeRichTextDocument } from "@/lib/richTextSafety";
+import {
+  encodeRichTextImageTitle,
+  enrichRichTextMarkdownImages,
+  normaliseRichTextImageAlign,
+  normaliseRichTextImageHeight,
+  normaliseRichTextImageWidth,
+  parseRichTextImageTitle,
+} from "@/lib/richTextImageLayout";
 import { cn } from "@/lib/utils";
+
+const RichTextImage = Image.extend({
+  addAttributes() {
+    const parentAttributes = this.parent?.() || {};
+    return {
+      ...parentAttributes,
+      title: {
+        ...parentAttributes.title,
+        parseHTML: (element) => parseRichTextImageTitle(element.getAttribute("title")).title,
+      },
+      width: {
+        ...parentAttributes.width,
+        parseHTML: (element) => normaliseRichTextImageWidth(element.getAttribute("width"))
+          ?? parseRichTextImageTitle(element.getAttribute("title")).width,
+      },
+      height: {
+        ...parentAttributes.height,
+        parseHTML: (element) => normaliseRichTextImageHeight(element.getAttribute("height"))
+          ?? parseRichTextImageTitle(element.getAttribute("title")).height,
+      },
+      align: {
+        default: "left",
+        parseHTML: (element) => normaliseRichTextImageAlign(element.getAttribute("data-image-align")),
+        renderHTML: (attributes) => {
+          const align = normaliseRichTextImageAlign(attributes.align);
+          return {
+            "data-image-align": align,
+          };
+        },
+      },
+    };
+  },
+
+  parseMarkdown: (token, helpers) => {
+    const layout = parseRichTextImageTitle(token.title);
+    return helpers.createNode("image", {
+      src: token.href,
+      alt: token.text,
+      title: layout.title,
+      width: layout.width,
+      height: layout.height,
+      align: layout.align,
+    });
+  },
+
+  renderMarkdown: (node) => {
+    const src = node.attrs?.src ?? "";
+    const alt = node.attrs?.alt ?? "";
+    const title = encodeRichTextImageTitle(node.attrs || {});
+    return title ? `![${alt}](${src} "${title}")` : `![${alt}](${src})`;
+  },
+});
 
 const extensions = [
   StarterKit.configure({
@@ -40,10 +96,16 @@ const extensions = [
     isAllowedUri: (url) => Boolean(safeEditorialLink(url)),
   }),
   Underline,
-  Image.configure({
+  RichTextImage.configure({
     inline: false,
     allowBase64: false,
-    resize: false,
+    resize: {
+      enabled: true,
+      directions: ["bottom-left", "bottom-right", "top-left", "top-right"],
+      minWidth: 120,
+      minHeight: 48,
+      alwaysPreserveAspectRatio: true,
+    },
     HTMLAttributes: {
       class: "aapm-rich-editor__image",
     },
@@ -51,7 +113,7 @@ const extensions = [
   Markdown,
 ];
 
-function ToolbarButton({ label, textLabel = "", active = false, disabled = false, onClick, onBeforeAction, children }) {
+function ToolbarButton({ label, active = false, toggle = false, disabled = false, onClick, onBeforeAction, children }) {
   const preserveEditorSelection = (event) => {
     if (event.button !== 0) return;
     onBeforeAction?.();
@@ -63,10 +125,10 @@ function ToolbarButton({ label, textLabel = "", active = false, disabled = false
   const control = (
     <Button
       type="button"
-      size={textLabel ? "sm" : "icon"}
+      size="icon"
       variant={active ? "soft" : "ghost"}
       aria-label={label}
-      aria-pressed={active}
+      aria-pressed={toggle ? active : undefined}
       title={label}
       disabled={disabled}
       onPointerDown={preserveEditorSelection}
@@ -76,45 +138,74 @@ function ToolbarButton({ label, textLabel = "", active = false, disabled = false
         onClick?.(event);
       }}
       className={cn(
-        textLabel ? "h-8 min-w-fit shrink-0 gap-1.5 px-2 text-[11px]" : "h-8 w-8 shrink-0 text-xs",
+        "aapm-rich-editor__toolbar-button h-8 w-8 shrink-0 rounded-[var(--radius-sm)] text-xs focus-visible:ring-2 focus-visible:ring-brand-orange/25",
         active && "bg-tint-orange text-brand-orange",
       )}
     >
       <span className="inline-flex shrink-0 items-center justify-center">{children}</span>
-      {textLabel && <span className="hidden md:inline">{textLabel}</span>}
     </Button>
   );
 
-  if (textLabel) return control;
   return (
     <Tooltip>
       <TooltipTrigger asChild>{control}</TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent side="bottom" sideOffset={6}>{label}</TooltipContent>
     </Tooltip>
   );
 }
 
-function TextIcon({ children }) {
-  return <span aria-hidden="true" className="font-semibold leading-none">{children}</span>;
+function ToolbarGroup({ label, children, className }) {
+  return <div className={cn("aapm-rich-editor__toolbar-group", className)} role="group" aria-label={label}>{children}</div>;
+}
+
+function ToolbarSeparator() {
+  return <span className="aapm-rich-editor__toolbar-separator" aria-hidden="true" />;
+}
+
+function TextIcon({ children, className }) {
+  return <span aria-hidden="true" className={cn("font-semibold leading-none", className)}>{children}</span>;
 }
 
 function ListGlyph({ ordered = false }) {
   return (
-    <span aria-hidden="true" className="inline-flex items-start gap-1">
-      <span className="w-3 text-right text-[10px] font-semibold leading-4">{ordered ? "1." : "•"}</span>
-      <span className="flex flex-col gap-[3px] pt-[5px]">
-        <span className="h-px w-3 rounded-full bg-current" />
-        <span className="h-px w-3 rounded-full bg-current" />
-        <span className="h-px w-3 rounded-full bg-current" />
+    <span aria-hidden="true" className="inline-flex h-4 w-[1.1rem] items-start gap-1">
+      <span className="w-2.5 text-right text-[9px] font-semibold leading-4">{ordered ? "1." : "•"}</span>
+      <span className="flex flex-1 flex-col gap-[3px] pt-[4px]">
+        <span className="h-px w-full rounded-full bg-current" />
+        <span className="h-px w-full rounded-full bg-current" />
+        <span className="h-px w-full rounded-full bg-current" />
       </span>
     </span>
   );
 }
 
+const IMAGE_SIZE_OPTIONS = [
+  { value: "natural", label: "Asli", ratio: null },
+  { value: "small", label: "Kecil", ratio: 0.4 },
+  { value: "medium", label: "Sedang", ratio: 0.62 },
+  { value: "large", label: "Besar", ratio: 0.82 },
+  { value: "full", label: "Lebar", ratio: 1 },
+];
+
+// Keep block styles visible like the compact style strip in familiar office
+// editors. The active button follows the current block instead of hiding the
+// choice behind a select menu, which makes the author's position obvious.
+const BLOCK_STYLE_OPTIONS = [
+  { value: "paragraph", label: "Paragraf", glyph: "P" },
+  { value: "heading-1", label: "Judul 1", glyph: "H1" },
+  { value: "heading-2", label: "Judul 2", glyph: "H2" },
+  { value: "heading-3", label: "Judul 3", glyph: "H3" },
+];
+
+const IMAGE_ALIGNMENT_OPTIONS = [
+  { value: "left", label: "Snap kiri", icon: "imageAlignLeft" },
+  { value: "center", label: "Snap tengah", icon: "imageAlignCenter" },
+  { value: "right", label: "Snap kanan", icon: "imageAlignRight" },
+];
+
 export default function RichTextEditor({ id, value = "", onChange = () => {}, onUploadImage }) {
   const onChangeRef = useRef(onChange);
   const selectionRef = useRef(null);
-  const toolbarSelectionRef = useRef(null);
   const lastExternalValueRef = useRef(typeof value === "string" ? value : "");
   const [, refreshSelectionState] = useState(0);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -155,8 +246,8 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
     onSelectionUpdate: ({ editor: currentEditor }) => {
       const { from, to } = currentEditor.state.selection;
       selectionRef.current = { from, to };
-      // Re-render the toolbar so its block-style label follows the caret when
-      // the author moves between paragraphs or headings in this editor.
+      // Re-render the toolbar so the active block-style button follows the
+      // caret when the author moves between paragraphs or headings.
       refreshSelectionState((version) => version + 1);
     },
     onUpdate: ({ editor: currentEditor }) => {
@@ -170,7 +261,8 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
       // document. Do not replace it during every keystroke: doing so resets
       // the ProseMirror transaction and makes spaces, caret position, and
       // paragraph flow feel like the editor is forcing a new line.
-      onChangeRef.current(currentEditor.getMarkdown());
+      const markdown = currentEditor.getMarkdown();
+      onChangeRef.current(enrichRichTextMarkdownImages(markdown, currentEditor.getJSON()));
     },
   });
 
@@ -229,13 +321,12 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
       setImageError("Gunakan URL HTTPS gambar atau path gambar pada /assets/, /media/, atau /uploads/.");
       return false;
     }
-    const selection = toolbarSelectionRef.current || selectionRef.current;
+    const selection = selectionRef.current;
     editorChain(selection).setImage({
       src: safeSrc,
       alt: imageAlt.trim() || fallbackAlt,
       title: null,
     }).run();
-    toolbarSelectionRef.current = null;
     setImageOpen(false);
     setImageError("");
     return true;
@@ -245,6 +336,190 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
     event.preventDefault();
     insertImage(imageValue);
   };
+
+  const selectedImageNode = editor?.state?.selection?.node?.type?.name === "image"
+    ? editor.state.selection.node
+    : null;
+  const selectedImageAttrs = selectedImageNode?.attrs || {};
+
+  const selectedImageDom = () => {
+    if (!editor || !selectedImageNode) return null;
+    const dom = editor.view.nodeDOM(editor.state.selection.from);
+    if (!dom) return null;
+    if (dom.nodeName?.toLowerCase() === "img") return dom;
+    return dom.querySelector?.("img") || null;
+  };
+
+  const selectedImageAvailableWidth = () => {
+    const image = selectedImageDom();
+    const editorDom = editor?.view?.dom;
+    let editorWidth = editorDom?.clientWidth || 0;
+    // clientWidth includes the editor's horizontal padding. Fit controls
+    // should target the actual writing canvas so the image can use the full
+    // available line without being clipped by the content box.
+    if (editorDom && typeof window !== "undefined") {
+      const styles = window.getComputedStyle(editorDom);
+      const padding = (Number.parseFloat(styles.paddingLeft) || 0)
+        + (Number.parseFloat(styles.paddingRight) || 0);
+      editorWidth = Math.max(0, editorWidth - padding);
+    }
+    const parentWidth = image?.parentElement?.parentElement?.clientWidth || image?.parentElement?.clientWidth || 0;
+    return Math.max(120, editorWidth || parentWidth || 720);
+  };
+
+  const selectedImageSize = () => {
+    const width = normaliseRichTextImageWidth(selectedImageAttrs.width);
+    if (!width) return "natural";
+    const ratio = width / selectedImageAvailableWidth();
+    const sizedOptions = IMAGE_SIZE_OPTIONS.filter((option) => option.ratio !== null);
+    return sizedOptions.reduce((closest, option) => (
+      Math.abs(option.ratio - ratio) < Math.abs(closest.ratio - ratio) ? option : closest
+    ), sizedOptions[sizedOptions.length - 1]).value;
+  };
+
+  const selectedImageWidthPercent = () => {
+    const image = selectedImageDom();
+    const width = normaliseRichTextImageWidth(selectedImageAttrs.width)
+      ?? normaliseRichTextImageWidth(image?.offsetWidth)
+      ?? selectedImageAvailableWidth();
+    return Math.max(10, Math.min(100, Math.round((width / selectedImageAvailableWidth()) * 100)));
+  };
+
+  const updateSelectedImage = (attributes) => {
+    if (!editor || !selectedImageNode) return;
+    editor.chain().focus().updateAttributes("image", attributes).run();
+  };
+
+  const applySelectedImageAlignmentToDom = (align) => {
+    const image = selectedImageDom();
+    if (!image) return;
+    const nextAlign = normaliseRichTextImageAlign(align);
+    const container = image.closest?.("[data-resize-container]");
+    const wrapper = image.closest?.("[data-resize-wrapper]");
+    const justifyContent = nextAlign === "right" ? "flex-end" : nextAlign === "center" ? "center" : "flex-start";
+    if (container) {
+      container.dataset.imageAlign = nextAlign;
+      container.style.justifyContent = justifyContent;
+    }
+    if (wrapper) wrapper.style.marginInline = "0";
+    image.dataset.imageAlign = nextAlign;
+    image.style.marginInline = "0";
+  };
+
+  const syncSelectedImageSizeToDom = (attributes = {}) => {
+    if (!("width" in attributes || "height" in attributes)) return;
+    const width = normaliseRichTextImageWidth(attributes.width);
+    const height = normaliseRichTextImageHeight(attributes.height);
+    const apply = () => {
+      const image = selectedImageDom();
+      if (!image) return;
+      const wrapper = image.closest?.("[data-resize-wrapper]");
+      image.style.width = width ? `${width}px` : "";
+      image.style.height = height ? `${height}px` : "";
+      // Tiptap's ResizableNodeView owns a wrapper around the image and applies
+      // its width to the image element only. Keep both boxes in sync so fit,
+      // presets, and the slider are visible immediately instead of being
+      // constrained to the image's intrinsic width by max-width: 100%.
+      if (wrapper) {
+        wrapper.style.width = width ? `${width}px` : "";
+        wrapper.style.height = height ? `${height}px` : "";
+      }
+    };
+    apply();
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        apply();
+        window.requestAnimationFrame(apply);
+      });
+    }
+  };
+
+  const setSelectedImageSize = (option) => {
+    if (option.value === "natural") {
+      const attributes = { width: null, height: null };
+      updateSelectedImage(attributes);
+      syncSelectedImageSizeToDom(attributes);
+      return;
+    }
+    const width = Math.round(selectedImageAvailableWidth() * option.ratio);
+    const attributes = {
+      width: normaliseRichTextImageWidth(width),
+      height: null,
+    };
+    updateSelectedImage(attributes);
+    syncSelectedImageSizeToDom(attributes);
+  };
+
+  const setSelectedImageFit = () => {
+    const attributes = {
+      width: normaliseRichTextImageWidth(selectedImageAvailableWidth()),
+      height: null,
+    };
+    updateSelectedImage(attributes);
+    syncSelectedImageSizeToDom(attributes);
+  };
+
+  const setSelectedImageWidthPercent = (value) => {
+    const percent = Math.max(10, Math.min(100, Number(value)));
+    if (!Number.isFinite(percent)) return;
+    const attributes = {
+      width: normaliseRichTextImageWidth(Math.round(selectedImageAvailableWidth() * (percent / 100))),
+      height: null,
+    };
+    updateSelectedImage(attributes);
+    syncSelectedImageSizeToDom(attributes);
+  };
+
+  const setSelectedImageAlign = (align) => {
+    const nextAlign = normaliseRichTextImageAlign(align);
+    updateSelectedImage({ align: nextAlign });
+    // The resizable NodeView can replace its image element during the same
+    // transaction. Apply the visual placement after both the transaction and
+    // the NodeView patch so the author gets immediate feedback.
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        applySelectedImageAlignmentToDom(nextAlign);
+        window.requestAnimationFrame(() => applySelectedImageAlignmentToDom(nextAlign));
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || !selectedImageNode || typeof window === "undefined") return undefined;
+    const image = selectedImageDom();
+    const wrapper = image?.closest?.("[data-resize-wrapper]");
+    if (!image || !wrapper) return undefined;
+
+    const syncWrapperWithImage = () => {
+      if (!image.isConnected || !wrapper.isConnected) return;
+      // Tiptap changes the image element during a drag, while its wrapper
+      // remains mounted. Mirror the live styles so the handles follow the
+      // image instead of staying at the previous preset's edge.
+      wrapper.style.width = image.style.width || "";
+      wrapper.style.height = image.style.height || "";
+    };
+
+    const scheduleWrapperSync = () => {
+      syncWrapperWithImage();
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(syncWrapperWithImage);
+      } else {
+        window.setTimeout(syncWrapperWithImage, 0);
+      }
+    };
+
+    syncWrapperWithImage();
+    const resizeEvents = ["mousemove", "touchmove", "mouseup", "touchend"];
+    resizeEvents.forEach((eventName) => document.addEventListener(eventName, scheduleWrapperSync));
+    const observer = typeof window.ResizeObserver === "function"
+      ? new window.ResizeObserver(scheduleWrapperSync)
+      : null;
+    observer?.observe(image);
+    return () => {
+      resizeEvents.forEach((eventName) => document.removeEventListener(eventName, scheduleWrapperSync));
+      observer?.disconnect();
+    };
+  }, [editor, selectedImageNode, selectedImageAttrs.width, selectedImageAttrs.height]);
 
   const uploadImage = async (file) => {
     if (!file) return;
@@ -292,9 +567,8 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
       to: Math.min(selection.to, maxPosition),
     };
 
-    // Radix Select returns focus to its trigger after an option is chosen. Let
-    // that focus transition finish, then return the caret to the editor so the
-    // author can keep typing and the style label stays tied to the same block.
+    // Let the toolbar focus transition finish, then return the caret to the
+    // editor so the author can keep typing in the same block.
     window.setTimeout(() => {
       if (!editor || editor.isDestroyed) return;
       editor.chain().focus().setTextSelection(nextSelection).run();
@@ -308,7 +582,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
 
   const applyBlockStyle = (style) => {
     if (!editor) return;
-    const selection = toolbarSelectionRef.current || selectionRef.current;
+    const selection = selectionRef.current;
     const chain = editorChain(selection);
     if (style === "paragraph") {
       chain.setParagraph().run();
@@ -325,74 +599,77 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
   return (
     <div id={id} className="aapm-rich-editor aapm-token-panel overflow-hidden border-input focus-within:border-brand-orange/45 focus-within:ring-1 focus-within:ring-brand-orange/10">
       <TooltipProvider delayDuration={250}>
-        <div className="aapm-token-toolbar aapm-scrollbar sticky top-0 z-10 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto p-1 backdrop-blur" role="toolbar" aria-label="Format materi">
-        <Select
-          value={blockStyle}
-          onOpenChange={(open) => {
-            if (open) {
-              toolbarSelectionRef.current = rememberSelection();
-              return;
-            }
-            restoreEditorSelection(toolbarSelectionRef.current || selectionRef.current);
-            toolbarSelectionRef.current = null;
-          }}
-          onValueChange={applyBlockStyle}
-        >
-          <SelectTrigger
-            type="button"
-            aria-label="Gaya blok teks"
-            title="Gaya blok teks"
-            className="h-8 w-[8.5rem] shrink-0 px-2 text-xs"
-            onPointerDown={rememberSelection}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="paragraph">Paragraf</SelectItem>
-            <SelectItem value="heading-1">Judul 1</SelectItem>
-            <SelectItem value="heading-2">Judul 2</SelectItem>
-            <SelectItem value="heading-3">Judul 3</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <ToolbarButton label="Tebal (Ctrl/⌘+B)" active={editor.isActive("bold")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBold().run()}>
-          <TextIcon>B</TextIcon>
-        </ToolbarButton>
-        <ToolbarButton label="Miring (Ctrl/⌘+I)" active={editor.isActive("italic")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleItalic().run()}>
-          <TextIcon><em>I</em></TextIcon>
-        </ToolbarButton>
-        <ToolbarButton label="Garis bawah (Ctrl/⌘+U)" active={editor.isActive("underline")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleUnderline().run()}>
-          <TextIcon><u>U</u></TextIcon>
-        </ToolbarButton>
-        <ToolbarButton label="Coret" active={editor.isActive("strike")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleStrike().run()}>
-          <TextIcon><s>S</s></TextIcon>
-        </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <ToolbarButton label="Daftar bullet" textLabel="Poin" active={editor.isActive("bulletList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBulletList().run()}>
-          <ListGlyph />
-        </ToolbarButton>
-        <ToolbarButton label="Daftar bernomor" textLabel="Nomor" active={editor.isActive("orderedList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleOrderedList().run()}>
-          <ListGlyph ordered />
-        </ToolbarButton>
-        <ToolbarButton label="Kutipan" textLabel="Kutip" active={editor.isActive("blockquote")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBlockquote().run()}>
-          <span aria-hidden="true" className="text-sm font-bold">“</span>
-        </ToolbarButton>
-        <ToolbarButton label="Tautkan teks" textLabel="Tautan" active={editor.isActive("link")} onBeforeAction={rememberSelection} onClick={openLinkEditor}>
-          <AapmIcon name="link" className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Lepas tautan" textLabel="Lepas" disabled={!editor.isActive("link")} onBeforeAction={rememberSelection} onClick={() => editorChain().unsetLink().run()}>
-          <AapmIcon name="clear" className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Sisipkan gambar di posisi kursor" textLabel="Gambar" onBeforeAction={rememberSelection} onClick={openImageEditor}>
-          <AapmIcon name="image" className="h-4 w-4" />
-        </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <ToolbarButton label="Urungkan perubahan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).undo().run()}>
-          <AapmIcon name="undo" className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Ulangi perubahan (Ctrl/⌘+Shift+Z atau Ctrl+Y)" disabled={!editor.can().redo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).redo().run()}>
-          <AapmIcon name="redo" className="h-4 w-4" />
-        </ToolbarButton>
+        <div className="aapm-rich-editor__toolbar aapm-token-toolbar aapm-scrollbar sticky top-0 z-10 flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto px-2 py-1.5 backdrop-blur" role="toolbar" aria-label="Format materi" aria-orientation="horizontal">
+          <ToolbarGroup label="Gaya blok" className="aapm-rich-editor__toolbar-group--style">
+            {BLOCK_STYLE_OPTIONS.map(({ value, label, glyph }) => (
+              <ToolbarButton
+                key={value}
+                label={label}
+                toggle
+                active={blockStyle === value}
+                onBeforeAction={rememberSelection}
+                onClick={() => applyBlockStyle(value)}
+              >
+                <TextIcon className={cn("text-[11px]", value === "paragraph" ? "font-semibold" : "font-bold tracking-[-0.04em]")}>{glyph}</TextIcon>
+              </ToolbarButton>
+            ))}
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup label="Format karakter">
+            <ToolbarButton label="Tebal (Ctrl/⌘+B)" toggle active={editor.isActive("bold")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBold().run()}>
+              <TextIcon className="font-bold">B</TextIcon>
+            </ToolbarButton>
+            <ToolbarButton label="Miring (Ctrl/⌘+I)" toggle active={editor.isActive("italic")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleItalic().run()}>
+              <TextIcon className="italic"><em>I</em></TextIcon>
+            </ToolbarButton>
+            <ToolbarButton label="Garis bawah (Ctrl/⌘+U)" toggle active={editor.isActive("underline")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleUnderline().run()}>
+              <TextIcon><u>U</u></TextIcon>
+            </ToolbarButton>
+            <ToolbarButton label="Coret" toggle active={editor.isActive("strike")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleStrike().run()}>
+              <TextIcon><s>S</s></TextIcon>
+            </ToolbarButton>
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup label="Paragraf">
+            <ToolbarButton label="Daftar bullet" toggle active={editor.isActive("bulletList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBulletList().run()}>
+              <ListGlyph />
+            </ToolbarButton>
+            <ToolbarButton label="Daftar bernomor" toggle active={editor.isActive("orderedList")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleOrderedList().run()}>
+              <ListGlyph ordered />
+            </ToolbarButton>
+            <ToolbarButton label="Kutipan" toggle active={editor.isActive("blockquote")} onBeforeAction={rememberSelection} onClick={() => editorChain().toggleBlockquote().run()}>
+              <span aria-hidden="true" className="font-serif text-lg font-bold leading-none">“</span>
+            </ToolbarButton>
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup label="Sisipkan">
+            <ToolbarButton label="Tautkan teks" toggle active={editor.isActive("link")} onBeforeAction={rememberSelection} onClick={openLinkEditor}>
+              <AapmIcon name="editorLink" className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Lepas tautan" disabled={!editor.isActive("link")} onBeforeAction={rememberSelection} onClick={() => editorChain().unsetLink().run()}>
+              <AapmIcon name="editorUnlink" className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Sisipkan gambar di posisi kursor" onBeforeAction={rememberSelection} onClick={openImageEditor}>
+              <AapmIcon name="image" className="h-4 w-4" />
+            </ToolbarButton>
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup label="Riwayat perubahan">
+            <ToolbarButton label="Urungkan perubahan (Ctrl/⌘+Z)" disabled={!editor.can().undo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).undo().run()}>
+              <AapmIcon name="editorUndo" className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton label="Ulangi perubahan (Ctrl/⌘+Shift+Z atau Ctrl+Y)" disabled={!editor.can().redo()} onBeforeAction={rememberSelection} onClick={() => editorChain(null).redo().run()}>
+              <AapmIcon name="editorRedo" className="h-4 w-4" />
+            </ToolbarButton>
+          </ToolbarGroup>
         </div>
       </TooltipProvider>
       {linkOpen && (
@@ -491,13 +768,107 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
                 if (file) void uploadImage(file);
               }}
             />
-            <Button type="button" size="sm" variant="outline" className="h-9 px-3 text-xs" disabled={!onUploadImage || imageUploadState.status === "loading"} onClick={() => imageInputRef.current?.click()}>
-              <AapmIcon name="fileCheck" className="h-3.5 w-3.5" />{imageUploadState.status === "loading" ? "Mengunggah…" : "Unggah gambar"}
+            <Button type="button" size="sm" variant="outline" className="h-9 px-3 text-xs" disabled={!onUploadImage || imageUploadState.status === "loading"} aria-busy={imageUploadState.status === "loading"} onClick={() => imageInputRef.current?.click()}>
+              <AapmIcon name={imageUploadState.status === "loading" ? "loading" : "fileCheck"} className={cn("h-3.5 w-3.5", imageUploadState.status === "loading" && "animate-spin")} />{imageUploadState.status === "loading" ? "Mengunggah…" : "Unggah gambar"}
             </Button>
             <Button type="button" size="sm" variant="ghost" className="h-9 px-3 text-xs" onClick={() => setImageOpen(false)}>Batal</Button>
             <span className="text-[10px] leading-4 text-muted-foreground">JPG, PNG, GIF, WebP, AVIF · maks. 20 MB</span>
           </div>
-          {(imageError || imageUploadState.status !== "idle") && <p className={cn("text-[10px] leading-4", imageError || imageUploadState.status === "error" ? "text-danger" : imageUploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={imageError || imageUploadState.status === "error" ? "alert" : "status"}>{imageError || imageUploadState.message}</p>}
+          {(imageError || imageUploadState.status !== "idle") && <p className={cn("inline-flex items-center gap-1.5 text-[10px] leading-4", imageError || imageUploadState.status === "error" ? "text-danger" : imageUploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={imageError || imageUploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={imageError || imageUploadState.status === "error" ? "danger" : imageUploadState.status === "success" ? "approve" : "loading"} className={cn("h-3.5 w-3.5 shrink-0", imageUploadState.status === "loading" && "animate-spin")} />{imageError || imageUploadState.message}</p>}
+        </div>
+      )}
+      {selectedImageNode && !imageOpen && (
+        <div className="aapm-rich-editor__image-controls flex flex-col gap-2 border-b border-border bg-surface-subtle/70 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between" role="group" aria-label="Atur gambar terpilih">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-tint-green text-brand-green" aria-hidden="true"><AapmIcon name="image" className="h-4 w-4" /></span>
+            <div className="min-w-0 leading-4">
+              <p className="text-[11px] font-semibold text-foreground">Gambar</p>
+              <p className="truncate text-[10px] text-muted-foreground">Seret sudut gambar untuk ukuran bebas.</p>
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <div className="flex min-w-[9rem] items-center gap-2 rounded-[var(--radius-sm)] bg-background/55 px-2 py-1" role="group" aria-label="Lebar gambar">
+              <span className="sr-only">Lebar gambar</span>
+              <Slider
+                min={10}
+                max={100}
+                step={1}
+                value={[selectedImageWidthPercent()]}
+                onValueCommit={([value]) => setSelectedImageWidthPercent(value)}
+                aria-label="Lebar gambar, dalam persen dari lebar editor"
+                className="w-24 sm:w-32"
+              />
+              <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground" aria-live="polite">{selectedImageWidthPercent()}%</span>
+            </div>
+            <div className="flex items-center gap-0.5 rounded-[var(--radius-sm)] bg-background/55 p-0.5" role="group" aria-label="Preset ukuran gambar">
+              <Button
+                type="button"
+                size="icon"
+                variant={selectedImageSize() === "natural" ? "soft" : "ghost"}
+                aria-label="Ukuran asli"
+                aria-pressed={selectedImageSize() === "natural"}
+                title="Ukuran asli"
+                className="h-7 w-7"
+                onPointerDown={(event) => event.preventDefault()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setSelectedImageSize(IMAGE_SIZE_OPTIONS[0])}
+              >
+                <AapmIcon name="imageNatural" className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant={selectedImageSize() === "full" ? "soft" : "ghost"}
+                aria-label="Sesuaikan gambar dengan lebar editor"
+                aria-pressed={selectedImageSize() === "full"}
+                title="Sesuaikan dengan lebar editor"
+                className="h-7 w-7"
+                onPointerDown={(event) => event.preventDefault()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={setSelectedImageFit}
+              >
+                <AapmIcon name="imageFit" className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-0.5 rounded-[var(--radius-sm)] bg-background/55 p-0.5" role="group" aria-label="Snap posisi gambar">
+              {IMAGE_ALIGNMENT_OPTIONS.map(({ value, label, icon }) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="icon"
+                  variant={normaliseRichTextImageAlign(selectedImageAttrs.align) === value ? "soft" : "ghost"}
+                  aria-label={label}
+                  aria-pressed={normaliseRichTextImageAlign(selectedImageAttrs.align) === value}
+                  title={label}
+                  className="h-7 w-7"
+                  onPointerDown={(event) => event.preventDefault()}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => setSelectedImageAlign(value)}
+                >
+                  <AapmIcon name={icon} className="h-3.5 w-3.5" />
+                </Button>
+              ))}
+            </div>
+            <div className="hidden items-center gap-0.5 rounded-[var(--radius-sm)] bg-background/55 p-0.5 lg:flex" role="group" aria-label="Ukuran cepat gambar">
+              {IMAGE_SIZE_OPTIONS.filter((option) => option.value !== "natural" && option.value !== "full").map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={selectedImageSize() === option.value ? "soft" : "ghost"}
+                aria-pressed={selectedImageSize() === option.value}
+                aria-label={`Ukuran ${option.label.toLowerCase()}`}
+                title={`Ukuran ${option.label.toLowerCase()}`}
+                className={cn("h-7 px-2 text-[10px]", selectedImageSize() === option.value && "bg-tint-green text-brand-green")}
+                onPointerDown={(event) => event.preventDefault()}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setSelectedImageSize(option)}
+              >
+                {option.label}
+              </Button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
       <EditorContent editor={editor} />

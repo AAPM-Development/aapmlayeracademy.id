@@ -189,37 +189,101 @@ export function LessonSidebar({
   onSectionChange = (_section) => {},
   sections = lessonSections,
 } = {}) {
-  if (!module) return null;
+  if (!module || !sections.length) return null;
+
+  const activeIndex = Math.max(0, sections.findIndex((section) => section.id === activeSection));
+  const activeMeta = sections[activeIndex] || sections[0];
+  const nextMeta = sections[activeIndex + 1] || null;
+  const progress = Math.round(((activeIndex + 1) / sections.length) * 100);
+  const selectId = `lesson-section-jump-${module.moduleNumber || "current"}`;
+
   return (
-    <Card className="shadow-none lg:sticky lg:top-6" aria-label="Peta materi">
-      <CardContent className="p-3">
-        <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Peta materi
+    <nav
+      className="border-y border-border/60 py-3 sm:py-4"
+      aria-label="Navigasi bagian modul"
+      data-t7-region="lesson-navigation"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-green/10 text-xs font-semibold tabular-nums text-brand-green"
+          >
+            {String(activeIndex + 1).padStart(2, "0")}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Bagian modul
+            </p>
+            <p className="truncate text-sm font-semibold text-foreground">
+              {activeMeta.label}
+            </p>
+          </div>
         </div>
-        <div className="space-y-1">
-          {sections.map((section) => {
-            const active = activeSection === section.id;
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => onSectionChange(section.id)}
-                aria-current={active ? "location" : undefined}
-                className={cn(
-                  "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  active
-                    ? "bg-brand-orange/10 text-brand-orange"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <AapmIcon name={section.icon} className="h-4 w-4 shrink-0" />
-                {section.label}
-              </button>
-            );
-          })}
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {activeIndex + 1} dari {sections.length} bagian
+          </span>
+          {nextMeta ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onSectionChange(nextMeta.id)}
+              className="w-full bg-brand-green text-white hover:bg-brand-green/90 sm:w-auto"
+            >
+              <span className="truncate">Lanjutkan ke {nextMeta.label}</span>
+              <AapmIcon name="arrowRight" className="shrink-0" />
+            </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-green">
+              <AapmIcon name="check" className="h-3.5 w-3.5" /> Bagian terakhir
+            </span>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div
+        className="mt-3 h-1 overflow-hidden rounded-full bg-surface-subtle"
+        role="progressbar"
+        aria-label="Progres bagian modul"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <span
+          className="block h-full rounded-full bg-brand-green transition-[width] duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <label htmlFor={selectId} className="shrink-0 text-xs font-medium text-muted-foreground">
+          Lompat ke bagian
+        </label>
+        <div className="relative min-w-0 sm:max-w-sm sm:flex-1">
+          <select
+            id={selectId}
+            value={activeMeta.id}
+            onChange={(event) => onSectionChange(event.target.value)}
+            className="h-10 w-full appearance-none rounded-[var(--radius-control)] border border-border/70 bg-background px-3 pr-9 text-sm text-foreground outline-none transition-colors hover:border-border focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {sections.map((section, index) => (
+              <option key={section.id} value={section.id}>
+                {String(index + 1).padStart(2, "0")} · {section.label}
+              </option>
+            ))}
+          </select>
+          <AapmIcon
+            name="chevronDown"
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
+        </div>
+        <span className="hidden text-xs text-muted-foreground lg:inline">
+          Pilih bagian lain tanpa meninggalkan lesson.
+        </span>
+      </div>
+    </nav>
   );
 }
 
@@ -345,19 +409,19 @@ export function LessonInsightList({
   marker = "number",
 } = {}) {
   return (
-    <ol className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
+    <ol className={cn("aapm-lesson-insight-list", density === "compact" ? "space-y-1.5" : "space-y-2")}>
       {items.map((item, index) => (
-        <li key={`${item}-${index}`} className="flex items-start gap-2.5 text-sm leading-6">
+        <li key={`${item}-${index}`} className="aapm-lesson-insight-item grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-x-2.5 text-sm leading-6">
           {marker === "icon" ? (
             <AapmIcon
               name={icon}
-              className={cn("mt-1 h-4 w-4 shrink-0", iconClassName)}
+              className={cn("mt-1 h-4 w-4 shrink-0 justify-self-start", iconClassName)}
             />
           ) : (
             <span
               aria-hidden="true"
               className={cn(
-                "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] font-semibold tabular-nums",
+                "aapm-lesson-insight-index mt-0.5 grid h-6 w-6 shrink-0 place-items-center justify-self-start rounded-full border text-[10px] font-semibold tabular-nums",
                 iconClassName,
                 "border-current/25 bg-current/5",
               )}

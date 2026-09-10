@@ -32,6 +32,19 @@ export const aapmIconSources = Object.freeze({
   arrowRight: "solar:alt-arrow-right-linear",
   undo: "solar:undo-left-round-linear",
   redo: "solar:undo-right-round-linear",
+  // Rich-text actions keep directional Office-like marks. These aliases use
+  // the local Solar source until the Ten4Seven registry exposes truthful
+  // link/history semantics; they still inherit the shared icon size/color
+  // tokens through AapmIcon.
+  editorLink: "solar:link-minimalistic-linear",
+  editorUnlink: "solar:link-broken-minimalistic-linear",
+  editorUndo: "solar:undo-left-round-linear",
+  editorRedo: "solar:undo-right-round-linear",
+  imageAlignLeft: "solar:align-left-linear",
+  imageAlignCenter: "solar:align-horizontal-center-linear",
+  imageAlignRight: "solar:align-right-linear",
+  imageFit: "solar:maximize-square-minimalistic-linear",
+  imageNatural: "solar:scale-linear",
   logout: "solar:logout-3-bold",
   progress: "solar:chart-square-bold-duotone",
   themeLight: "solar:sun-2-bold-duotone",
@@ -142,8 +155,8 @@ const semanticIconByAapmName = Object.freeze({
   chevronUp: "chevronUp",
   arrowLeft: "arrowLeft",
   arrowRight: "arrowRight",
-  undo: "refresh",
-  redo: "refresh",
+  // T7 does not expose a truthful history glyph yet. Keep these authored
+  // Solar arrows intact instead of substituting the generic refresh icon.
   // There is no logout glyph in the canonical registry yet; keep the
   // authored Solar logout mark rather than changing the meaning to an arrow.
   progress: "progress",
@@ -236,8 +249,6 @@ const semanticIconBySourceName = Object.freeze({
   "solar:alt-arrow-up-linear": "chevronUp",
   "solar:arrow-right-bold": "arrowRight",
   "solar:arrow-right-up-bold": "arrowRight",
-  "solar:undo-left-round-linear": "refresh",
-  "solar:undo-right-round-linear": "refresh",
   "solar:sun-2-bold-duotone": "sun",
   "solar:moon-bold-duotone": "moon",
   "solar:lock-keyhole-bold-duotone": "lock",
