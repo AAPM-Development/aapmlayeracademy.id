@@ -57,6 +57,7 @@ The API exposes:
 - `/api/farm-data` — per-user KPI rows
 - `/api/ai-assistant` — local assistant response
 - `/api/admin/ai/rewrite-editorial` — admin-only APPI rewrite for structured module copy and text blocks (preview-first)
+- `/api/admin/ai/module-companion` — native cPanel APPI companion for module copy, structure, review, and course ordering (preview-first)
 - `/api/health` — deployment health check
 
 All mutating authenticated requests use the session's CSRF token. PHP creates

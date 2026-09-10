@@ -7,6 +7,7 @@ import { EditorialContent, EditorialMarkdown } from "@/components/academy/Editor
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
+import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import EditorQuickNav from "@/components/admin/EditorQuickNav";
 import {
   Badge,
@@ -204,7 +205,7 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
   };
 
   return (
-    <div className="aapm-editor-point-card aapm-token-card min-w-0 border border-border bg-background p-3">
+    <div className="aapm-editor-point-card min-w-0">
       <div className="mb-2 flex min-w-0 items-center gap-2">
         <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone === "orange" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green"}`}>
           <AapmIcon name={icon} className="h-3.5 w-3.5" />
@@ -1376,6 +1377,29 @@ export default function AdminModuleEditor() {
       });
     }
   };
+  const applyCompanionDraft = (draft) => {
+    if (!draft) return;
+    setForm((current) => {
+      const hasField = (field) => draft.fieldPresence?.[field] ?? true;
+      const next = {
+        ...current,
+        ...(hasField("title") && draft.title ? { title: draft.title } : {}),
+        ...(hasField("summary") && draft.summary ? { summary: draft.summary } : {}),
+        ...(hasField("learningObjectives") ? { learningObjectives: draft.learningObjectives.join("\n") } : {}),
+        ...(hasField("keyTakeaways") ? { keyTakeaways: draft.keyTakeaways.join("\n") } : {}),
+        ...(hasField("checklist") ? { checklist: draft.checklist.join("\n") } : {}),
+        ...(hasField("practicalAssignment") ? { practicalAssignment: draft.practicalAssignment } : {}),
+      };
+      const material = applyAiEditorialMaterial(current.editorialContent, current.content, draft.materialBlocks);
+      if (material?.editorialContent) {
+        next.editorialContent = material.editorialContent;
+        if (material.content !== undefined) next.content = material.content;
+      }
+      formRef.current = next;
+      return next;
+    });
+    toast({ title: "Saran APPI diterapkan", description: "Perubahan masih berupa draft lokal. Tinjau lalu pilih Simpan modul." });
+  };
   if (!isNew && isLoading)
     return (
       <AdminPageFrame title="Editor modul">
@@ -1411,15 +1435,15 @@ export default function AdminModuleEditor() {
       }
     >
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="aapm-editor-mode-tabs aapm-scrollbar h-auto w-full justify-start gap-1 overflow-x-auto rounded-[var(--radius-control)] bg-surface-subtle/60 p-1">
-          <TabsTrigger value="content" className="rounded-[var(--radius-control)] border-0 px-3 py-1.5 text-xs shadow-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Konten modul</TabsTrigger>
-          <TabsTrigger value="preview" className="rounded-[var(--radius-control)] border-0 px-3 py-1.5 text-xs shadow-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Pratinjau learner</TabsTrigger>
-          <TabsTrigger value="assessment" disabled={isNew} className="rounded-[var(--radius-control)] border-0 px-3 py-1.5 text-xs shadow-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+        <TabsList className="aapm-editor-mode-tabs aapm-scrollbar h-auto w-full justify-start gap-4 overflow-x-auto border-b border-border/45 bg-transparent p-0">
+          <TabsTrigger value="content" className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Konten modul</TabsTrigger>
+          <TabsTrigger value="preview" className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Pratinjau learner</TabsTrigger>
+          <TabsTrigger value="assessment" disabled={isNew} className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">
             Bank soal
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="content" className="mt-4">
-          <div className="space-y-3">
+        <TabsContent value="content" className="aapm-editor-content mt-4">
+          <div className="space-y-4">
             <EditorQuickNav
               sections={EDITOR_SECTIONS}
               activeSection={activeSection}
@@ -1430,7 +1454,7 @@ export default function AdminModuleEditor() {
               elementItems={editorialInsertActions}
               onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             />
-            <form id="module-editor-form" onSubmit={save} className="space-y-5">
+            <form id="module-editor-form" onSubmit={save} className="aapm-editor-form space-y-5">
             <section id="module-section-identity" className="aapm-editor-section scroll-mt-24 border-b border-border" data-active={activeSection === "module-section-identity" ? "true" : "false"}>
               <div className="grid gap-3 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div className="min-w-0">
@@ -1549,7 +1573,7 @@ export default function AdminModuleEditor() {
                   </div>
                   <Badge variant="outline" className="text-[10px]">Konten utama</Badge>
                 </div>
-                <div className="grid gap-3 lg:grid-cols-3">
+                <div className="aapm-editor-outcome-grid grid gap-3 lg:grid-cols-3">
                   <CompactListField
                     id="module-learning-objectives"
                     label="Tujuan pembelajaran"
@@ -1573,36 +1597,16 @@ export default function AdminModuleEditor() {
                     onChange={(event) => set("checklist", event.target.value)}
                   />
                 </div>
+                <AdminModuleCompanion
+                  module={form}
+                  onApplyModule={applyCompanionDraft}
+                />
                 <AiModuleDraft
                   form={form}
                   toast={toast}
-                  onApply={(draft) => {
-                    setForm((current) => {
-                      const hasField = (field) => draft.fieldPresence?.[field] ?? true;
-                      const next = {
-                        ...current,
-                        ...(hasField("title") && draft.title ? { title: draft.title } : {}),
-                        ...(hasField("summary") && draft.summary ? { summary: draft.summary } : {}),
-                        ...(hasField("learningObjectives") ? { learningObjectives: draft.learningObjectives.join("\n") } : {}),
-                        ...(hasField("keyTakeaways") ? { keyTakeaways: draft.keyTakeaways.join("\n") } : {}),
-                        ...(hasField("checklist") ? { checklist: draft.checklist.join("\n") } : {}),
-                        ...(hasField("practicalAssignment") ? { practicalAssignment: draft.practicalAssignment } : {}),
-                      };
-                      const material = applyAiEditorialMaterial(
-                        current.editorialContent,
-                        current.content,
-                        draft.materialBlocks,
-                      );
-                      if (material?.editorialContent) {
-                        next.editorialContent = material.editorialContent;
-                        if (material.content !== undefined) next.content = material.content;
-                      }
-                      formRef.current = next;
-                      return next;
-                    });
-                  }}
+                  onApply={applyCompanionDraft}
                 />
-                <details className="rounded-[var(--radius-control)] border border-border bg-surface-subtle/45">
+                <details className="aapm-editor-settings">
                   <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold [&::-webkit-details-marker]:hidden">
                     <AapmIcon name="settings" className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="flex-1">Tampilan tujuan & insight</span>
@@ -1617,19 +1621,19 @@ export default function AdminModuleEditor() {
                 </details>
               </div>
               <div id="module-section-practice" className="aapm-editor-section mt-4 scroll-mt-24 space-y-3" data-active={activeSection === "module-section-practice" ? "true" : "false"}>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <div className="aapm-editor-point-card aapm-token-card min-w-0 border border-border bg-background p-3">
+                <div className="aapm-editor-practice-fields grid gap-6 lg:grid-cols-2">
+                  <div className="aapm-editor-point-card min-w-0">
                     <Label htmlFor="module-practical-assignment" className="text-xs font-semibold">Tugas praktik</Label>
                     <p className="mt-0.5 text-[10px] text-muted-foreground">Satu tugas yang dapat dikerjakan learner.</p>
                     <Textarea id="module-practical-assignment" rows={3} className="mt-2 min-h-[6.25rem] resize-y text-sm" value={form.practicalAssignment} onChange={(event) => set("practicalAssignment", event.target.value)} placeholder="Tulis tugas praktik…" />
                   </div>
-                  <div className="aapm-editor-point-card aapm-token-card min-w-0 border border-border bg-background p-3">
+                  <div className="aapm-editor-point-card min-w-0">
                     <Label htmlFor="module-video-script" className="text-xs font-semibold">Naskah video</Label>
                     <p className="mt-0.5 text-[10px] text-muted-foreground">Opsional, tampil sebagai pendamping video.</p>
                     <Textarea id="module-video-script" rows={3} className="mt-2 min-h-[6.25rem] resize-y text-sm" value={form.videoScript} onChange={(event) => set("videoScript", event.target.value)} placeholder="Tulis catatan video…" />
                   </div>
                 </div>
-                <details className="rounded-[var(--radius-control)] border border-border bg-surface-subtle/45">
+                <details className="aapm-editor-settings">
                   <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold [&::-webkit-details-marker]:hidden">
                     <AapmIcon name="settings" className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="flex-1">Tampilan praktik & checklist</span>

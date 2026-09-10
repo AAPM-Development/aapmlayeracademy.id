@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import { Badge, Button, ConfirmDialog, IconTile, KPICluster, Surface, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
+import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import { useAdminCourse, useDeleteAdminModule, useReorderAdminModules } from "@/lib/useAdminData";
 import { AdminError, AdminLoading, AdminPageFrame, AdminUnavailable } from "@/components/admin/AdminPage";
 
@@ -114,6 +115,25 @@ export default function AdminCourseDetail() {
     }
   };
 
+  const applyCompanionOrder = async (ids) => {
+    if (!Array.isArray(ids) || reorderModules.isPending) return;
+    const previousLevels = cloneLevels(boardLevels);
+    const byId = new Map(boardLevels.flatMap((level) => level.modules || []).map((module) => [String(module.id), module]));
+    const orderedModules = ids.map((id) => byId.get(String(id))).filter(Boolean);
+    if (orderedModules.length !== byId.size) {
+      toast({ variant: "destructive", title: "Urutan APPI tidak lengkap", description: "Semua modul aktif harus tetap ada sebelum urutan disimpan." });
+      return;
+    }
+    // The API stores one global sort_order. Keep each chapter's visual grouping
+    // intact while following the proposed global sequence within that chapter.
+    const rank = new Map(orderedModules.map((module, index) => [String(module.id), index]));
+    const nextLevels = boardLevels.map((level) => ({
+      ...level,
+      modules: [...(level.modules || [])].sort((left, right) => (rank.get(String(left.id)) ?? 0) - (rank.get(String(right.id)) ?? 0)),
+    }));
+    await persistOrder(nextLevels, previousLevels, "Urutan APPI disimpan");
+  };
+
   return (
     <AdminPageFrame
       title={course?.title || "Kurikulum Academy"}
@@ -138,6 +158,13 @@ export default function AdminCourseDetail() {
                   <button type="button" onClick={() => setView("list")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:flex-none ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}><AapmIcon name="modules" /> List</button>
                 </div>
               </div>
+
+              <AdminModuleCompanion
+                scope="course"
+                module={{ title: course.title, summary: course.availabilityNote }}
+                modules={modules}
+                onApplyOrder={applyCompanionOrder}
+              />
 
               <div className="flex flex-wrap items-center gap-2 border-y border-border/70 py-2 text-xs text-muted-foreground xl:hidden">
                 {nextLevelNumber ? <Button asChild size="sm" variant="outline" className="h-8"><Link to={newChapterPath}><AapmIcon name="add" className="h-3.5 w-3.5" /> Chapter baru</Link></Button> : <Button type="button" size="sm" variant="outline" className="h-8" disabled title="Maksimal 20 chapter."><AapmIcon name="add" className="h-3.5 w-3.5" /> Chapter penuh</Button>}

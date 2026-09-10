@@ -330,6 +330,8 @@ export const nativeApi = {
       request("/ai-assistant", json({ message, farmContext, includeFarmContext })),
     rewriteEditorial: ({ message }) =>
       request("/admin/ai/rewrite-editorial", json({ message })),
+    moduleCompanion: ({ action = "chat", message = "", module = {}, modules = [] } = {}) =>
+      request("/admin/ai/module-companion", json({ action, message, module, modules })),
     stream: ({ message, farmContext, includeFarmContext = true, onEvent }) =>
       stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent),
     conversations: {

@@ -477,6 +477,27 @@ try {
         json_response($response);
     }
 
+    if ($path === 'admin/ai/module-companion' && $method === 'POST') {
+        $user = require_admin();
+        require_csrf();
+        $input = request_json();
+        $action = trim((string) ($input['action'] ?? 'chat'));
+        $message = trim((string) ($input['message'] ?? ''));
+        if (strlen($message) > 4000) {
+            error_response('Instruksi APPI maksimal 4.000 karakter.', 422, 'validation_error');
+        }
+        $module = is_array($input['module'] ?? null) ? $input['module'] : [];
+        $modules = is_array($input['modules'] ?? null) ? $input['modules'] : [];
+        $contextSize = strlen((string) json_encode([$module, $modules], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+        if ($contextSize > 52000) {
+            error_response('Konteks kurikulum terlalu besar untuk satu saran. Pilih modul atau chapter yang lebih kecil.', 422, 'context_too_large');
+        }
+        rate_limit_guard('ai-admin-module-companion', (string) $user['id'], 30, 300, 300);
+        $response = ai_admin_companion_reply($action, $message, $module, $modules);
+        rate_limit_failure('ai-admin-module-companion', (string) $user['id'], 30, 300, 300);
+        json_response($response);
+    }
+
     if ($path === 'modules' && $method === 'GET') {
         require_user();
         $rows = db()->query('SELECT * FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();

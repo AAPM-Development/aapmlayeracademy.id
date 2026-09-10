@@ -605,5 +605,47 @@ test("editorial document players keep a shared reading-stage contract", () => {
   assert.match(styles, /\.aapm-presentation-shell/);
   assert.match(styles, /\.aapm-pptx-viewport/);
   assert.match(styles, /svg\.drawing[\s\S]*max-width: none/);
-  assert.match(styles, /\.aapm-pdf-frame/);
+  assert.match(styles, /\.aapm-pdf-canvas/);
+});
+
+test("native cPanel APPI companion stays provider-backed and preview-first", () => {
+  const client = readWorkspaceFile("../src/api/nativeClient.js");
+  const api = readWorkspaceFile("../public/api/index.php");
+  const provider = readWorkspaceFile("../public/api/openrouter.php");
+  const companion = readWorkspaceFile("../src/components/admin/AdminModuleCompanion.jsx");
+  const moduleEditor = readWorkspaceFile("../src/pages/admin/AdminModuleEditor.jsx");
+  const courseEditor = readWorkspaceFile("../src/pages/admin/AdminCourseDetail.jsx");
+
+  assert.match(client, /moduleCompanion/);
+  assert.match(api, /admin\/ai\/module-companion/);
+  assert.match(api, /ai_admin_companion_reply/);
+  assert.match(api, /require_admin\(\)/);
+  assert.match(api, /require_csrf\(\)/);
+  assert.match(provider, /ai_admin_companion_reply/);
+  assert.match(provider, /Maksimal 5 saran/);
+  assert.match(companion, /APPI companion/);
+  assert.match(companion, /preview/);
+  assert.match(companion, /ConfirmDialog/);
+  assert.match(companion, /onApplyModule/);
+  assert.match(companion, /onApplyOrder/);
+  assert.match(moduleEditor, /AdminModuleCompanion/);
+  assert.match(courseEditor, /scope="course"/);
+});
+
+test("PDF player has a recovery path when embedded cPanel rendering fails", () => {
+  const viewer = readWorkspaceFile("../src/components/academy/EditorialPresentation.jsx");
+  const styles = readWorkspaceFile("../src/index.css");
+  const packageJson = readWorkspaceFile("../package.json");
+  const htaccess = readWorkspaceFile("../public/.htaccess");
+  assert.match(packageJson, /pdfjs-dist/);
+  assert.match(viewer, /pdfjs\.getDocument/);
+  assert.match(viewer, /pdfjsWorker/);
+  assert.match(viewer, /canvasRef/);
+  assert.match(viewer, /disableRange: true/);
+  assert.match(viewer, /Buka PDF/);
+  assert.match(viewer, /aapm-pdf-reader-controls/);
+  assert.match(styles, /\.aapm-pdf-canvas/);
+  assert.match(styles, /\.aapm-pdf-reader-controls/);
+  assert.match(htaccess, /AddType application\/javascript \.mjs/);
+  assert.match(htaccess, /AddType application\/pdf \.pdf/);
 });
