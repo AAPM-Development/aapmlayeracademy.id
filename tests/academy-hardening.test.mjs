@@ -464,6 +464,11 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.doesNotMatch(aiPage, /100dvh-8\.6rem/);
   assert.match(aiComposer, /Menyiapkan foto/);
   assert.match(dashboard, /aapm-dashboard-welcome__stats/);
+  assert.match(dashboard, /aapm-dashboard-tools-card/);
+  assert.match(dashboard, /aapm-dashboard-tool-row/);
+  assert.match(styles, /\.t7-mobile-sidebar > \.t7-drawer-body > div:has\(> \.aapm-academy-sidebar\)/);
+  assert.match(styles, /\.aapm-dashboard-welcome__hero > \.pointer-events-none/);
+  assert.match(styles, /\.aapm-dashboard-tools-list > \.aapm-dashboard-tool-row/);
   assert.match(styles, /\.aapm-dashboard-kpi[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /--aapm-shell-border-alpha: 0\.46/);
   assert.match(styles, /\.aapm-ai-frame[\s\S]*box-shadow: var\(--aapm-shell-shadow, none\)/);

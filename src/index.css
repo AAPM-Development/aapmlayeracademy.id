@@ -4362,3 +4362,96 @@
     @apply mt-0;
   }
 }
+
+/* Runtime edge overrides -------------------------------------------------
+ * The Ten4Seven package stylesheet is intentionally unlayered. Keep the
+ * small mobile composition decisions that must win that baseline outside the
+ * feature layer so the installed PWA gets the same geometry as the browser. */
+@media (max-width: 860px) {
+  .t7-mobile-sidebar > .t7-drawer-body {
+    padding: 0;
+  }
+
+  .t7-mobile-sidebar > .t7-drawer-body > div:has(> .aapm-academy-sidebar) {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .t7-mobile-sidebar .aapm-token-sidebar,
+  .t7-mobile-sidebar .aapm-academy-sidebar {
+    width: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .aapm-dashboard-welcome__hero > .pointer-events-none {
+    display: none;
+  }
+
+  .aapm-dashboard-welcome__hero > .relative,
+  .aapm-dashboard-welcome__hero .aapm-dashboard-welcome__stats,
+  .aapm-dashboard-welcome__hero .aapm-dashboard-welcome__journey {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .aapm-dashboard-welcome__hero .aapm-dashboard-welcome__stats {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .aapm-dashboard-secondary-grid {
+    gap: var(--space-4);
+  }
+
+  .aapm-dashboard-secondary-column {
+    min-width: 0;
+    gap: var(--space-4);
+  }
+
+  .aapm-dashboard-secondary-column > .t7-card,
+  .aapm-dashboard-secondary-card {
+    min-width: 0;
+    border-color: hsl(var(--surface-border) / 0.7);
+    box-shadow: none;
+  }
+
+  .aapm-dashboard-secondary-card .t7-card-header,
+  .aapm-dashboard-secondary-card .t7-card-content {
+    min-width: 0;
+  }
+
+  .aapm-dashboard-tools-list {
+    gap: 0;
+  }
+
+  .aapm-dashboard-tools-list > .aapm-dashboard-tool-row {
+    min-width: 0;
+    border: 0;
+    border-top: 1px solid hsl(var(--surface-border) / 0.62);
+    border-radius: 0;
+    padding-inline: 0;
+    box-shadow: none;
+  }
+
+  .aapm-dashboard-tools-list > .aapm-dashboard-tool-row:first-child {
+    border-top: 0;
+  }
+
+  .aapm-dashboard-next-card .t7-card-content > a:not(:last-child) {
+    min-width: 0;
+  }
+
+  .aapm-dashboard-note-card {
+    border-inline: 0;
+    border-radius: 0;
+    background: hsl(var(--tint-green) / 0.42);
+  }
+}

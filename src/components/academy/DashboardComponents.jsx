@@ -425,7 +425,7 @@ export function LearningProgressSummary({ modules = [], progress = [] } = {}) {
   const hasProgress = progress.length > 0;
 
   return (
-    <Card className="bg-card/95">
+    <Card className="aapm-dashboard-secondary-card aapm-dashboard-progress-card bg-card/95">
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -610,19 +610,19 @@ export function QuickToolGrid() {
   ];
 
   return (
-    <Card className="bg-card/95">
+    <Card className="aapm-dashboard-secondary-card aapm-dashboard-tools-card bg-card/95">
       <CardHeader className="p-5 pb-3 sm:p-6 sm:pb-3">
         <CardTitle className="text-base">Alat cepat</CardTitle>
         <CardDescription className="mt-1">
           Alat bantu saat Anda belajar.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-2 p-5 pt-2 sm:p-6 sm:pt-2">
+      <CardContent className="aapm-dashboard-tools-list grid gap-2 p-5 pt-2 sm:p-6 sm:pt-2">
         {tools.map((tool) => (
           <Link
             key={tool.to}
             to={tool.to}
-            className="group aapm-interactive-card flex items-center gap-3 rounded-xl border border-border p-3"
+            className="group aapm-interactive-card aapm-dashboard-tool-row flex items-center gap-3 rounded-xl border border-border p-3"
           >
             <IconTile icon={tool.icon} tone={tool.tone} size="sm" />
             <div className="min-w-0 flex-1">
