@@ -416,8 +416,7 @@ function ai_http_json(string $url, array $headers, array $body, string $provider
     curl_close($handle);
     $decoded = is_string($bodyText) ? json_decode($bodyText, true) : null;
     if ($status < 200 || $status >= 300 || !is_array($decoded)) {
-        $message = is_array($decoded) ? trim((string) ($decoded['error']['message'] ?? $decoded['message'] ?? '')) : '';
-        throw new RuntimeException($providerLabel . ': ' . substr($message !== '' ? $message : ($curlError !== '' ? $curlError : 'tidak merespons dengan sukses'), 0, 220));
+        throw new RuntimeException($providerLabel . ': ' . ai_registry_provider_error_message($decoded, $curlError !== '' ? $curlError : 'tidak merespons dengan sukses', $status));
     }
     return $decoded;
 }
@@ -441,9 +440,11 @@ function ai_openai_compatible_completion(array $settings, string $apiKey, string
         'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS,
     ];
     if ($settings['provider'] === 'openrouter') {
-        // Reasoning-capable free models may expose an intermediate trace.
-        // OpenRouter suppresses that trace while retaining the final answer.
-        $body['reasoning'] = ['effort' => 'none', 'exclude' => true];
+        // Do not force a reasoning effort here. OpenRouter models expose
+        // different supported effort levels (some accept only high/medium),
+        // and sending effort=none makes otherwise healthy free models fail
+        // with the opaque "Provider returned error" response. APPI only reads
+        // the final content field, so provider reasoning is never shown.
         if ($allowWebSearch) {
             $body['tools'] = [[
                 'type' => 'openrouter:web_search',
@@ -531,10 +532,9 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS,
         'stream' => true,
     ];
-    if ($settings['provider'] === 'openrouter') {
-        // Only public output is sent to the browser. Provider reasoning is never relayed.
-        $requestBody['reasoning'] = ['effort' => 'none', 'exclude' => true];
-    }
+    // Keep the request compatible with every OpenRouter model. The provider
+    // may choose internal reasoning, but the stream handler only relays
+    // message content and never forwards reasoning fields.
     if ($allowWebSearch && $settings['provider'] === 'openrouter') {
         // OpenRouter runs this server-side tool only when the model needs current
         // information. The low cap keeps the learner-facing mode predictable.

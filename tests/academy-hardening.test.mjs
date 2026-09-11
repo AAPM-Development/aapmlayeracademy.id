@@ -498,6 +498,21 @@ test("APPI editorial rewrite preserves Markdown media and non-text blocks", () =
   assert.equal(applied.editorialContent.blocks[2].type, "image");
 });
 
+test("OpenRouter requests stay model-compatible and surface upstream diagnostics", () => {
+  const provider = readWorkspaceFile("../public/api/openrouter.php");
+  const registry = readWorkspaceFile("../public/api/aiProviders.php");
+
+  // OpenRouter free models do not share one reasoning-effort contract. The
+  // transport must not force effort=none and turn a healthy provider into an
+  // opaque "Provider returned error" failure.
+  assert.doesNotMatch(provider, /\$body\[['"]reasoning['"]\]/);
+  assert.doesNotMatch(provider, /\$requestBody\[['"]reasoning['"]\]/);
+  assert.match(registry, /error\['metadata'\]/);
+  assert.match(registry, /Provider returned error/);
+  assert.match(registry, /ai_registry_provider_error_retryable/);
+  assert.match(registry, /usleep\(250000\)/);
+});
+
 test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bounded", () => {
   const aiPage = readWorkspaceFile("../src/pages/AiAssistant.jsx");
   const floatingAi = readWorkspaceFile("../src/components/ai/FloatingAiAssistant.jsx");

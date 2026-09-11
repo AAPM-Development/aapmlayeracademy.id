@@ -651,10 +651,46 @@ function ai_registry_http_get_json(string $url, array $headers, string $provider
     curl_close($handle);
     $decoded = is_string($body) ? json_decode($body, true) : null;
     if ($status < 200 || $status >= 300 || !is_array($decoded)) {
-        $message = is_array($decoded) ? trim((string) ($decoded['error']['message'] ?? $decoded['message'] ?? '')) : '';
-        throw new RuntimeException($providerLabel . ': ' . substr($message !== '' ? $message : ($error !== '' ? $error : 'endpoint model tidak merespons dengan sukses'), 0, 220));
+        throw new RuntimeException($providerLabel . ': ' . ai_registry_provider_error_message($decoded, $error !== '' ? $error : 'endpoint model tidak merespons dengan sukses', $status));
     }
     return $decoded;
+}
+
+/**
+ * Keep provider failures actionable without echoing request credentials.
+ * OpenRouter often returns the deliberately generic "Provider returned error"
+ * message and puts the useful upstream reason in error.metadata.raw. Surface
+ * that reason to admins so a bad model/parameter and an upstream outage can be
+ * distinguished from one another.
+ */
+function ai_registry_provider_error_message($decoded, string $fallback, int $status = 0): string
+{
+    $error = is_array($decoded) && is_array($decoded['error'] ?? null) ? $decoded['error'] : [];
+    $message = trim((string) ($error['message'] ?? (is_array($decoded) ? ($decoded['message'] ?? '') : '')));
+    $metadata = is_array($error['metadata'] ?? null) ? $error['metadata'] : [];
+    $raw = $metadata['raw'] ?? ($metadata['provider_message'] ?? ($metadata['reason'] ?? ''));
+    if (is_array($raw)) {
+        $raw = json_encode($raw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?: '';
+    }
+    $raw = trim((string) $raw);
+    if ($raw !== '' && strcasecmp($message, 'Provider returned error') === 0) {
+        $message .= ': ' . $raw;
+    }
+    if ($message === '') $message = trim($fallback);
+    if ($status >= 400 && !preg_match('/\bHTTP\s*\d{3}\b/i', $message)) {
+        $message .= ' (HTTP ' . $status . ')';
+    }
+
+    // Metadata is provider-controlled. Redact common credential forms before
+    // the message reaches the admin toast or application error log.
+    $message = preg_replace('/\b(?:sk-or-v1|sk-[A-Za-z0-9_-]+|AIza)[A-Za-z0-9._-]*/i', '[credential disamarkan]', $message) ?? $message;
+    return substr(trim($message), 0, 260);
+}
+
+function ai_registry_provider_error_retryable(RuntimeException $exception): bool
+{
+    $message = strtolower($exception->getMessage());
+    return (bool) preg_match('/provider returned error|http\s*(?:408|425|429|500|502|503|504)|timed?\s*out|temporarily rate[- ]limited|upstream/', $message);
 }
 
 function ai_registry_resolve_test_settings(array $input): array
@@ -688,10 +724,20 @@ function ai_registry_test_connection(array $input = []): array
     $apiKey = array_key_exists('_testApiKey', $settings) ? (string) $settings['_testApiKey'] : ai_registry_api_key($settings);
     if (!$settings['enabled']) error_response('Aktifkan provider AI sebelum menjalankan test.', 422, 'ai_disabled');
     if ($settings['apiKeyRequired'] && $apiKey === '') error_response('Simpan API key untuk provider ini terlebih dahulu.', 422, 'ai_key_missing');
-    try {
-        $reply = ai_provider_completion($settings, $apiKey, 'Anda adalah service test. Jawab persis dengan: AAPM AI siap.', 'Jalankan pemeriksaan koneksi.');
-    } catch (RuntimeException $exception) {
-        error_response('Koneksi provider gagal: ' . ai_provider_test_error($exception), 502, 'ai_provider_unavailable');
+    for ($attempt = 0; $attempt < 2; $attempt += 1) {
+        try {
+            $reply = ai_provider_completion($settings, $apiKey, 'Anda adalah service test. Jawab persis dengan: AAPM AI siap.', 'Jalankan pemeriksaan koneksi.');
+            break;
+        } catch (RuntimeException $exception) {
+            if ($attempt === 0 && ai_registry_provider_error_retryable($exception)) {
+                // Free provider pools can be briefly saturated. A single short
+                // retry improves the admin test without hiding a persistent
+                // invalid key/model or turning the endpoint into a retry loop.
+                usleep(250000);
+                continue;
+            }
+            error_response('Koneksi provider gagal: ' . ai_provider_test_error($exception), 502, 'ai_provider_unavailable');
+        }
     }
     return ['ok' => true, 'providerId' => $settings['providerId'], 'provider' => $settings['provider'], 'providerLabel' => $settings['providerLabel'], 'model' => $settings['model'], 'reply' => $reply];
 }
