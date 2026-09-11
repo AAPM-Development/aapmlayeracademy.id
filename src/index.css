@@ -1866,9 +1866,9 @@
     border-top: 1px solid var(--aapm-editor-hairline);
     border-bottom: 1px solid var(--aapm-editor-hairline);
     border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: blur(6px);
+    background: hsl(var(--surface-elevated) / 0.98);
+    box-shadow: 0 0 0 6px hsl(var(--surface-elevated) / 0.88), 0 8px 22px hsl(var(--surface-border) / 0.24);
+    backdrop-filter: none;
   }
 
   .aapm-editor-command-top {
@@ -1927,7 +1927,17 @@
 
   .aapm-editorial-layout {
     align-items: start;
-    gap: var(--t7-ref-space-8, 2rem);
+    gap: var(--t7-ref-space-5, 1.25rem);
+  }
+
+  .aapm-editor-block-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--t7-ref-space-3, 0.75rem) !important;
+  }
+
+  .aapm-editor-block-list > * {
+    margin-top: 0 !important;
   }
 
   .aapm-editorial-block {
@@ -1937,16 +1947,47 @@
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none;
+    padding-bottom: var(--t7-ref-space-3, 0.75rem);
   }
 
   .aapm-editorial-block__header {
     border-bottom: 0 !important;
     background: transparent !important;
-    padding: var(--t7-ref-space-3, 0.75rem) 0 !important;
+    align-items: center !important;
+    gap: var(--t7-ref-space-2, 0.5rem) !important;
+    min-height: 2.5rem;
+    padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
   }
 
   .aapm-editorial-block__body {
-    padding: 0 0 var(--t7-ref-space-5, 1.25rem) !important;
+    padding: 0 0 var(--t7-ref-space-3, 0.75rem) !important;
+  }
+
+  .aapm-editorial-element-preview {
+    margin-top: var(--t7-ref-space-2, 0.5rem) !important;
+    border-top: 1px solid var(--aapm-editor-hairline) !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .aapm-editorial-element-preview [data-editorial-element-preview-toggle] {
+    min-height: 2rem;
+    border-radius: 0 !important;
+    background: hsl(var(--surface-subtle) / 0.3) !important;
+    padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
+  }
+
+  .aapm-editorial-element-preview [data-editorial-element-preview-toggle]:hover {
+    background: hsl(var(--surface-subtle) / 0.58) !important;
+  }
+
+  .aapm-editorial-element-preview__body {
+    border-top: 0 !important;
+    padding: var(--t7-ref-space-2, 0.5rem) 0 !important;
   }
 
   .aapm-editor-media-fields {
@@ -1978,10 +2019,37 @@
     min-height: 2.5rem;
   }
 
+  .aapm-editor-video-row,
+  .aapm-editor-video-row > * {
+    min-width: 0;
+  }
+
+  .aapm-editor-video-row textarea {
+    height: 2.5rem;
+    resize: vertical;
+  }
+
+  .aapm-editor-video-fields .aapm-editor-media-actions {
+    padding-top: 0;
+  }
+
   .aapm-editor-slide-source {
     border-color: hsl(var(--brand-aapm-orange) / 0.24) !important;
     background: hsl(var(--brand-aapm-orange) / 0.045) !important;
-    padding: var(--t7-ref-space-3, 0.75rem) !important;
+    padding: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+  .aapm-editor-slide-fields {
+    gap: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+  .aapm-editor-slide-fields > :not([hidden]) ~ :not([hidden]) {
+    margin-top: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+  .aapm-editor-slide-assets {
+    display: grid;
+    gap: var(--t7-ref-space-2, 0.5rem);
   }
 
   .aapm-editor-slide-source__inner {
@@ -1996,7 +2064,13 @@
     border-color: hsl(var(--surface-border) / 0.4) !important;
     border-radius: var(--radius-control) !important;
     box-shadow: none !important;
-    padding: var(--t7-ref-space-3, 0.75rem) !important;
+    padding: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+  .aapm-editor-slide-statuses,
+  .aapm-editor-slide-manual-controls,
+  .aapm-editor-slide-manual-list {
+    min-width: 0;
   }
 
   .aapm-editor-media-actions {
@@ -2152,6 +2226,39 @@
 
     .aapm-editor-slide-source__meta {
       flex-basis: 100%;
+    }
+  }
+
+  @media (min-width: 861px) {
+    .aapm-editor-video-row {
+      grid-template-columns: minmax(0, 1.4fr) minmax(11rem, 1fr) minmax(8.5rem, 0.62fr);
+      align-items: start;
+    }
+
+    .aapm-editor-slide-assets {
+      grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.82fr);
+      grid-template-areas:
+        "source file"
+        "status status"
+        "manual manual";
+      align-items: stretch;
+    }
+
+    .aapm-editor-slide-source {
+      grid-area: source;
+    }
+
+    .aapm-editor-slide-presentation-file {
+      grid-area: file;
+    }
+
+    .aapm-editor-slide-statuses {
+      grid-area: status;
+    }
+
+    .aapm-editor-slide-manual-controls,
+    .aapm-editor-slide-manual-list {
+      grid-column: 1 / -1;
     }
   }
 
