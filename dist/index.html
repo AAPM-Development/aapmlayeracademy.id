@@ -10,6 +10,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preload" href="/fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      // Apply the saved appearance before first paint (no light→dark flash).
+      try {
+        if (localStorage.getItem("aapm-theme") === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      } catch (error) {}
+    </script>
 
     <title>AAPM Layer Academy — Pelatihan Profesional Manajemen Peternakan Ayam Petelur</title>
     <meta name="description" content="Platform e-learning profesional AAPM untuk manajemen peternakan ayam petelur komersial. 22 modul, kalkulator interaktif, KPI dashboard, AI Farm Assistant, dan 6 professional certification tiers." />
@@ -27,8 +37,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="AAPM Layer Academy — Pelatihan Profesional Manajemen Peternakan Ayam Petelur" />
     <meta name="twitter:description" content="Platform e-learning profesional AAPM untuk manajemen peternakan ayam petelur komersial." />
-    <script type="module" crossorigin src="/assets/index-CAb1Tx4z.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BcE1j4jl.css">
+    <script type="module" crossorigin src="/assets/index-DdJZNFJg.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CMhkn1oP.css">
   </head>
   <body>
     <div id="root"></div>
