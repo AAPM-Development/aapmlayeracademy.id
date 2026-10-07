@@ -105,8 +105,12 @@ function SegmentedControl({ label, options = [], value, onChange, className, siz
 }
 
 /* ----------------------------------------------------------- ScrollArea */
-const ScrollArea = React.forwardRef(function ScrollArea({ className, children, ...props }, ref) {
-  return <div ref={ref} className={cn("min-h-0 overflow-y-auto overscroll-contain", className)} {...props}>{children}</div>;
+const ScrollArea = React.forwardRef(function ScrollArea({ className, children, viewportRef, ...props }, ref) {
+  const setRef = React.useCallback((node) => {
+    if (typeof ref === "function") ref(node); else if (ref) ref.current = node;
+    if (typeof viewportRef === "function") viewportRef(node); else if (viewportRef) viewportRef.current = node;
+  }, [ref, viewportRef]);
+  return <div ref={setRef} className={cn("min-h-0 overflow-y-auto overscroll-contain", className)} data-radix-scroll-area-viewport="" {...props}>{children}</div>;
 });
 const ScrollBar = () => null;
 

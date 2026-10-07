@@ -13,6 +13,8 @@
 @import "./styles/features/content.css";
 @import "./styles/features/presentation.css";
 @import "./styles/features/editor.css";
+@import "./styles/features/editor-workspace.css";
+@import "./styles/features/editor-blocks.css";
 @import "./styles/features/ai.css";
 
 @tailwind base;
