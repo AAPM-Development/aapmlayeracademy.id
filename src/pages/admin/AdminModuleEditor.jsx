@@ -27,6 +27,8 @@ import {
   TabsTrigger,
   Textarea,
   useToast,
+  Alert,
+  OverflowMenu,
 } from "@/components/primitives";
 import {
   AdminError,
@@ -914,7 +916,7 @@ function QuestionEditor({ moduleId }) {
         title="Hapus soal?"
         description="Soal ini akan dihapus dari bank soal modul dan tidak dapat dipulihkan."
         confirmLabel="Hapus soal"
-        icon="solar:trash-bin-trash-bold"
+        icon="delete"
         destructive
         onConfirm={() => {
           const question = pendingQuestionDelete;
@@ -962,7 +964,6 @@ export default function AdminModuleEditor() {
   const [editorReady, setEditorReady] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
   const [activeSection, setActiveSection] = useState(EDITOR_SECTIONS[0].id);
-  const [identityExpanded, setIdentityExpanded] = useState(isNew);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
   const serverFormSnapshotRef = useRef(moduleFormSnapshot(emptyModule));
   const editorContextRef = useRef("");
@@ -1002,7 +1003,6 @@ export default function AdminModuleEditor() {
   }, [draftKey, form, isDirty]);
 
   useEffect(() => {
-    setIdentityExpanded(isNew);
   }, [editorContextKey, isNew]);
 
   const promptNavigation = (request) => {
@@ -1244,7 +1244,6 @@ export default function AdminModuleEditor() {
         event.preventDefault();
         setActiveTab("content");
         setActiveSection(section.id);
-        if (section.id === "module-section-identity") setIdentityExpanded(true);
         window.requestAnimationFrame(() => {
           document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
@@ -1288,15 +1287,10 @@ export default function AdminModuleEditor() {
   const scrollToEditorSection = (sectionId) => {
     setActiveTab("content");
     setActiveSection(sectionId);
-    if (sectionId === "module-section-identity") setIdentityExpanded(true);
     if (typeof window === "undefined") return;
     window.requestAnimationFrame(() => {
       document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  };
-  const toggleIdentity = () => {
-    if (identityExpanded && !identityIsComplete) return;
-    setIdentityExpanded((open) => !open);
   };
   const submitEditorForm = () => {
     if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
@@ -1415,32 +1409,37 @@ export default function AdminModuleEditor() {
   return (
     <AdminPageFrame
       editor
-      title={isNew ? "Tambah modul" : `Edit modul ${form.moduleNumber || ""}`}
-      description="Kelola isi modul, media, dan evaluasi."
-      actions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}>
-            <AapmIcon name="arrowLeft" className="h-4 w-4" /> Kurikulum
-          </Button>
-          {!isNew && (
-            <Button
-              variant="outline"
-              onClick={() => setPendingModuleDelete(true)}
-              disabled={deleteModule.isPending}
-            >
-              <AapmIcon name="delete" className="h-4 w-4 text-danger" /> Hapus
-            </Button>
-          )}
-        </div>
-      }
+      eyebrow={form.levelName ? `Chapter ${form.levelNumber} · ${form.levelName}` : "Editor modul"}
+      back={{ to: `/admin/courses/${courseId}`, label: "Kurikulum" }}
+      title={isNew ? "Modul baru" : form.title || `Modul ${form.moduleNumber || ""}`}
+      description={isNew ? "Isi identitas modul, susun materi, lalu simpan untuk membuka bank soal." : `Modul ${form.moduleNumber || "—"} · materi, outcome, praktik, dan bank soal.`}
+      actions={(
+        <>
+          <span className="aapm-meta" role="status" aria-live="polite">
+            <span className="aapm-chip__dot" style={{ color: isSaving || isDirty ? "var(--aapm-semantic-attention)" : "var(--aapm-semantic-success)" }} aria-hidden="true" />
+            {isSaving ? "Menyimpan…" : isDirty ? "Belum disimpan" : "Tersimpan"}
+          </span>
+          <Button type="button" variant="secondary" onClick={() => setActiveTab("preview")}><AapmIcon name="eye" />Pratinjau</Button>
+          <Button type="button" loading={isSaving} onClick={submitEditorForm}><AapmIcon name="check" />Simpan</Button>
+          {!isNew ? (
+            <OverflowMenu
+              label="Aksi modul"
+              triggerVariant="secondary"
+              size="md"
+              items={[
+                { id: "learner", label: "Lihat di Academy", icon: "eye", onSelect: () => requestNavigation(`/modules/${form.moduleNumber}`) },
+                { id: "delete", label: "Hapus modul", icon: "delete", tone: "danger", disabled: deleteModule.isPending, onSelect: () => setPendingModuleDelete(true) },
+              ]}
+            />
+          ) : null}
+        </>
+      )}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="aapm-editor-mode-tabs aapm-scrollbar h-auto w-full justify-start gap-4 overflow-x-auto border-b border-border/45 bg-transparent p-0">
-          <TabsTrigger value="content" className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Konten modul</TabsTrigger>
-          <TabsTrigger value="preview" className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Pratinjau learner</TabsTrigger>
-          <TabsTrigger value="assessment" disabled={isNew} className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">
-            Bank soal
-          </TabsTrigger>
+        <TabsList variant="underline" className="aapm-editor-mode-tabs">
+          <TabsTrigger value="content" icon="edit">Konten modul</TabsTrigger>
+          <TabsTrigger value="preview" icon="eye">Pratinjau learner</TabsTrigger>
+          <TabsTrigger value="assessment" icon="quiz" disabled={isNew}>Bank soal</TabsTrigger>
         </TabsList>
         <TabsContent value="content" className="aapm-editor-content mt-4">
           <div className="space-y-4">
@@ -1454,100 +1453,8 @@ export default function AdminModuleEditor() {
               elementItems={editorialInsertActions}
               onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             />
-            <form id="module-editor-form" onSubmit={save} className="aapm-editor-form space-y-5">
-            <section id="module-section-identity" className="aapm-editor-section scroll-mt-24 border-b border-border" data-active={activeSection === "module-section-identity" ? "true" : "false"}>
-              <div className="grid gap-3 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Struktur</div>
-                  <h2 className="mt-1 line-clamp-2 text-base font-semibold">{form.title || "Identitas modul"}</h2>
-                  {form.summary && <p className="mt-1 hidden line-clamp-1 text-xs leading-5 text-muted-foreground sm:block">{form.summary}</p>}
-                </div>
-                <div className="flex items-center justify-start lg:justify-end">
-                  <Button type="button" size="sm" variant={identityExpanded ? "ghost" : "outline"} className="shrink-0" aria-expanded={identityExpanded} aria-controls="module-identity-fields" onClick={toggleIdentity}>
-                    <AapmIcon name={identityExpanded ? "chevronUp" : "edit"} className="h-3.5 w-3.5" />
-                    <span className="sm:hidden">{identityExpanded ? "Tutup" : "Edit"}</span>
-                    <span className="hidden sm:inline">{identityExpanded ? "Ringkaskan" : "Ubah identitas"}</span>
-                  </Button>
-                </div>
-              </div>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-3 sm:grid-cols-4">
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Chapter</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</dd></div>
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Modul</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.moduleNumber || "—"}</dd></div>
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Roadmap</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.order === "" ? "—" : form.order}</dd></div>
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Kategori</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.category || "—"}</dd></div>
-              </dl>
-              {identityExpanded && <div id="module-identity-fields" className="border-t border-border bg-surface-subtle/45 py-4">
-                {!identityIsComplete && <div className="mb-3 flex justify-end"><span className="text-[10px] text-brand-orange">Lengkapi field wajib sebelum ditutup.</span></div>}
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="space-y-1.5">
-                    <Label>Nomor chapter</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={form.levelNumber}
-                      onChange={(event) => set("levelNumber", event.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Nama chapter</Label>
-                    <Input
-                      value={form.levelName}
-                      onChange={(event) => set("levelName", event.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Nomor modul</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={form.moduleNumber}
-                      onChange={(event) =>
-                        set("moduleNumber", event.target.value)
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Urutan modul di roadmap</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={form.order}
-                      onChange={(event) => set("order", event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>Judul modul</Label>
-                    <Input
-                      value={form.title}
-                      onChange={(event) => set("title", event.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Kategori</Label>
-                    <Input
-                      value={form.category}
-                      onChange={(event) => set("category", event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  <Label>Ringkasan</Label>
-                  <Textarea
-                    rows={2}
-                    value={form.summary}
-                    onChange={(event) => set("summary", event.target.value)}
-                  />
-                </div>
-              </div>}
-            </section>
+            <form id="module-editor-form" onSubmit={save} className="aapm-editor-form aapm-editor-workspace">
+            <div className="aapm-editor-canvas min-w-0 space-y-5">
             <section id="module-section-content" className="aapm-editor-section scroll-mt-24" data-active={activeSection === "module-section-content" ? "true" : "false"}>
               <h2 className="mb-3 text-base font-semibold">Materi utama</h2>
               <EditorialComposer
@@ -1648,16 +1555,93 @@ export default function AdminModuleEditor() {
                 </details>
               </div>
             </section>
-            <div className="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 border-t border-border bg-background/95 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="aapm-editor-savebar">
               <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground" role="status" aria-live="polite">
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isSaving ? "animate-pulse bg-brand-orange" : isDirty ? "bg-brand-orange" : "bg-brand-green"}`} aria-hidden="true" />
+                <span className="aapm-chip__dot" style={{ color: isSaving || isDirty ? "var(--aapm-semantic-attention)" : "var(--aapm-semantic-success)" }} aria-hidden="true" />
                 <span className="truncate">{isSaving ? "Menyimpan…" : isDirty ? "Ada perubahan belum disimpan" : "Semua perubahan tersimpan"}</span>
               </div>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>
-                {isSaving ? "Menyimpan…" : "Simpan modul"}
-                <AapmIcon name={isSaving ? "refresh" : "checkRead"} className={isSaving ? "animate-spin" : undefined} />
-              </Button>
+              <Button type="submit" loading={isSaving} leadingIcon="check">Simpan modul</Button>
             </div>
+            </div>
+            <aside className="aapm-editor-inspector" id="module-section-identity" aria-label="Identitas modul" data-active={activeSection === "module-section-identity" ? "true" : "false"}>
+              <div className="aapm-card">
+                <div className="aapm-card__header">
+                  <h2 className="aapm-card__title">Identitas modul</h2>
+                  <p className="aapm-card__description">Posisi di kurikulum dan informasi yang tampil di katalog learner.</p>
+                </div>
+                <div className="aapm-card__content" id="module-identity-fields">
+                  <div className="grid grid-cols-2 gap-3">
+                  <div className="aapm-field">
+                    <Label>Nomor chapter</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={form.levelNumber}
+                      onChange={(event) => set("levelNumber", event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="aapm-field">
+                    <Label>Nama chapter</Label>
+                    <Input
+                      value={form.levelName}
+                      onChange={(event) => set("levelName", event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="aapm-field">
+                    <Label>Nomor modul</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="999"
+                      value={form.moduleNumber}
+                      onChange={(event) =>
+                        set("moduleNumber", event.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="aapm-field">
+                    <Label>Urutan roadmap</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={form.order}
+                      onChange={(event) => set("order", event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3">
+                  <div className="aapm-field">
+                    <Label>Judul modul</Label>
+                    <Input
+                      value={form.title}
+                      onChange={(event) => set("title", event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="aapm-field">
+                    <Label>Kategori</Label>
+                    <Input
+                      value={form.category}
+                      onChange={(event) => set("category", event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="aapm-field mt-3">
+                  <Label>Ringkasan</Label>
+                  <Textarea
+                    rows={3}
+                    value={form.summary}
+                    onChange={(event) => set("summary", event.target.value)}
+                  />
+                </div>
+                  {!identityIsComplete ? <Alert tone="warning" className="mt-3" title="Lengkapi field wajib" description="Chapter, nomor modul, dan judul diperlukan sebelum menyimpan." /> : null}
+                </div>
+              </div>
+            </aside>
             </form>
           </div>
         </TabsContent>
@@ -1710,7 +1694,7 @@ export default function AdminModuleEditor() {
         description="Ada perubahan lokal yang belum tersimpan untuk modul ini. Pulihkan draft untuk melanjutkan dari titik terakhir atau buang draft tersebut."
         confirmLabel="Pulihkan draft"
         cancelLabel="Buang draft"
-        icon="solar:history-bold-duotone"
+        icon="history"
         onConfirm={() => {
            const draft = pendingDraft;
            if (!draft) return;
@@ -1727,7 +1711,7 @@ export default function AdminModuleEditor() {
         description="Perubahan belum disimpan. Jika Anda keluar sekarang, draft aman akan tetap disimpan di browser dan dapat dipulihkan saat editor ini dibuka lagi."
         confirmLabel="Tinggalkan tanpa simpan"
         cancelLabel="Tetap di editor"
-        icon="solar:logout-2-bold-duotone"
+        icon="logout"
         onConfirm={() => {
           const request = pendingNavigationRef.current || pendingNavigation;
           clearNavigationPrompt();
@@ -1750,7 +1734,7 @@ export default function AdminModuleEditor() {
         title="Hapus modul?"
         description={`Modul dan seluruh bank soalnya akan dihapus. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang setelah Anda mengonfirmasi. " : ""}Jika modul memiliki progres learner, sistem akan meminta konfirmasi tambahan sebelum ikut menghapus progres tersebut.`}
         confirmLabel="Hapus modul"
-        icon="solar:trash-bin-trash-bold"
+        icon="delete"
         destructive
         onConfirm={() => {
           setPendingModuleDelete(false);
@@ -1763,7 +1747,7 @@ export default function AdminModuleEditor() {
         title="Hapus modul beserta progress learner?"
         description={`Modul, bank soal, dan seluruh progress learner pada Modul ${form.moduleNumber || "ini"} akan dihapus permanen. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang. " : ""}Sertifikat, data farm, dan percakapan pengguna tetap dipertahankan.`}
         confirmLabel="Hapus bersama progress"
-        icon="solar:trash-bin-trash-bold"
+        icon="delete"
         destructive
         onConfirm={() => {
           setPendingModuleDeleteWithProgress(false);

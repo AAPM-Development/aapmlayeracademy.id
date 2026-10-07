@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
-import { Button } from "@/components/primitives";
+import { Button, Alert } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
-import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";
 
 export default function ResetPassword() {
@@ -38,7 +37,7 @@ export default function ResetPassword() {
         title="Tautan reset tidak valid"
          subtitle="Tautan kata sandi ini tidak lengkap atau sudah tidak berlaku."
         footer={
-          <Link to="/forgot-password" className="text-primary font-medium hover:underline">
+          <Link to="/forgot-password" className="aapm-auth__link">
             Minta tautan baru
           </Link>
         }
@@ -52,12 +51,7 @@ export default function ResetPassword() {
 
   return (
       <AuthLayout title="Buat kata sandi baru" subtitle="Gunakan kata sandi baru untuk mengamankan akun Academy.">
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          <AapmIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <Alert tone="danger" description={error} className="mb-5" />}
       <form onSubmit={handleSubmit} className="space-y-4">
         <PasswordField
           id="password"
@@ -77,15 +71,8 @@ export default function ResetPassword() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           minLength={8}
         />
-        <Button type="submit" className="h-12 w-full shadow-[var(--card-shadow)]" disabled={loading}>
-          {loading ? (
-            <>
-              <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
-              Menyimpan password…
-            </>
-          ) : (
-            "Simpan password"
-          )}
+        <Button type="submit" size="lg" block loading={loading}>
+          {loading ? "Menyimpan password…" : "Simpan password"}
         </Button>
       </form>
     </AuthLayout>

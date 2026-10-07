@@ -209,7 +209,7 @@ a.aapm-progress-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 28p
 .aapm-stat__icon .aapm-icon { width: 22px; height: 22px; }
 .aapm-stat__copy { display: grid; min-width: 0; }
 .aapm-stat__label { overflow: hidden; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); line-height: var(--aapm-component-type-caption-line); text-overflow: ellipsis; white-space: nowrap; }
-.aapm-stat__value { font-size: var(--aapm-component-type-section-size); line-height: var(--aapm-component-type-section-line); font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.aapm-stat__value { font-size: var(--aapm-component-type-section-size); line-height: var(--aapm-component-type-section-line); font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
 
 /* ------------------------------------------------------- Continue card */
 .aapm-continue {
@@ -662,3 +662,67 @@ a.aapm-lesson-row__title:hover { color: var(--aapm-semantic-primary); }
 .aapm-callout-grid[data-layout="split"] { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
 .aapm-hero .aapm-ring__track,
 .aapm-progress-tile .aapm-ring__track { stroke: color-mix(in srgb, var(--aapm-semantic-surface) 70%, transparent); }
+.aapm-lesson-row__index { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--hue-tint); color: var(--hue-ink); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; }
+.dark .aapm-lesson-row__index { background: var(--hue-soft); }
+.aapm-course-summary { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-4); padding: var(--aapm-primitive-space-4); }
+.aapm-course-summary .aapm-cover { width: 120px; min-height: 88px; }
+.aapm-text-caption .aapm-icon { width: 12px; height: 12px; vertical-align: -2px; }
+
+/* ----------------------------------------------------------- Calculators */
+.aapm-calc-layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: var(--aapm-primitive-space-5); align-items: start; }
+.aapm-calc-tools { position: sticky; top: var(--aapm-primitive-space-4); display: grid; gap: 2px; }
+.aapm-calc-tool {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-panel);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.aapm-calc-tool:hover { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); }
+.aapm-calc-tool[aria-pressed="true"] { background: var(--hue-tint); color: var(--aapm-semantic-foreground); }
+.dark .aapm-calc-tool[aria-pressed="true"] { background: var(--hue-soft); }
+.aapm-calc-tool__name { display: block; font-size: var(--aapm-component-type-body-size); font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-calc-tool__description { display: block; overflow: hidden; font-size: var(--aapm-component-type-caption-size); text-overflow: ellipsis; white-space: nowrap; color: var(--aapm-semantic-muted); }
+.aapm-calc { gap: var(--aapm-primitive-space-4); padding: var(--aapm-primitive-space-5); animation: aapm-rise-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease); }
+.aapm-calc__header { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); }
+.aapm-calc__formula { border-radius: var(--aapm-primitive-radius-control); background: var(--aapm-semantic-surface-subtle); }
+.aapm-calc__formula summary { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); font-weight: var(--aapm-primitive-weight-label); cursor: pointer; }
+.aapm-calc__formula code { display: block; padding: 0 var(--aapm-primitive-space-3) var(--aapm-primitive-space-3); font-family: var(--aapm-primitive-font-mono); font-size: var(--aapm-component-type-caption-size); line-height: 1.6; white-space: pre-wrap; }
+.aapm-calc__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem); gap: var(--aapm-primitive-space-5); align-items: start; }
+.aapm-calc__inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--aapm-primitive-space-4); align-content: start; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); }
+.aapm-calc__inputs > :not(.aapm-field) { grid-column: 1 / -1; padding: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3); border-radius: var(--aapm-primitive-radius-control); background: var(--aapm-semantic-surface-subtle); font-variant-numeric: tabular-nums; }
+.aapm-calc__unit { padding-inline-end: var(--aapm-primitive-space-3); font-size: var(--aapm-component-type-caption-size); pointer-events: none; }
+.aapm-calc__result { position: sticky; top: var(--aapm-primitive-space-4); display: grid; gap: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-5); border-radius: var(--aapm-component-surface-radius); background: var(--hue-tint); }
+.dark .aapm-calc__result { background: var(--hue-soft); }
+.aapm-calc__value { margin: 0; font-size: var(--aapm-component-type-display-size); line-height: var(--aapm-component-type-display-line); font-weight: var(--aapm-primitive-weight-strong); letter-spacing: var(--aapm-primitive-tracking-tight); color: var(--hue-ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.aapm-calc__note { display: flex; align-items: flex-start; gap: var(--aapm-primitive-space-2); margin: 0; font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
+.aapm-calc__note .aapm-icon { margin-top: 2px; color: var(--hue); }
+@media (max-width: 1023px) {
+  .aapm-calc-layout { grid-template-columns: minmax(0, 1fr); }
+  .aapm-calc-tools { position: static; display: flex; overflow-x: auto; gap: var(--aapm-primitive-space-2); scrollbar-width: none; }
+  .aapm-calc-tool { flex: none; grid-template-columns: auto auto; border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-pill); padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-3) var(--aapm-primitive-space-1) var(--aapm-primitive-space-1); }
+  .aapm-calc-tool__description { display: none; }
+  .aapm-calc__body { grid-template-columns: minmax(0, 1fr); }
+  .aapm-calc__result { position: static; }
+}
+.aapm-progress-tile .aapm-ring__label .aapm-icon { width: 22px; height: 22px; color: var(--hue); }
+.aapm-progress-tile[data-state="locked"] { filter: saturate(.35); }
+.aapm-progress-tile .aapm-link { display: inline-flex; align-items: center; gap: 2px; color: var(--hue-ink); font-weight: var(--aapm-primitive-weight-heading); text-decoration: none; }
+@media (max-width: 639px) {
+  .aapm-stat { gap: var(--aapm-primitive-space-2-5); padding: var(--aapm-primitive-space-3); }
+  .aapm-stat__icon { width: 36px; height: 36px; }
+  .aapm-stat__icon .aapm-icon { width: 18px; height: 18px; }
+  .aapm-stat__label { white-space: normal; }
+  .aapm-stat__value { font-size: var(--aapm-component-type-heading-size); line-height: var(--aapm-component-type-heading-line); }
+}
+@media (max-width: 479px) {
+  .aapm-flow { grid-auto-flow: column; grid-auto-columns: auto; justify-content: space-between; }
+  .aapm-flow__step[data-state="current"] .aapm-flow__text { overflow: visible; }
+}

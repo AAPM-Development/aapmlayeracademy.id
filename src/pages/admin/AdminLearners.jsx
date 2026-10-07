@@ -13,7 +13,7 @@ export default function AdminLearners() {
   const learners = data?.learners || [];
 
   return (
-    <AdminPageFrame title="Learners" description="Daftar akun dan progres pembelajaran yang tersimpan di sistem native.">
+    <AdminPageFrame title="Peserta" description="Daftar akun dan progres pembelajaran yang tersimpan di sistem native.">
       <div className="mb-5 flex max-w-md items-center gap-2 rounded-xl border border-[hsl(var(--surface-border))] bg-[hsl(var(--surface-default))] px-3 shadow-[var(--surface-shadow)]"><AapmIcon name="search" className="h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau email…" className="h-11 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" aria-label="Cari learner" /></div>
       {isLoading ? <AdminLoading label="Memuat data learner…" /> : error ? <AdminError error={error} onRetry={refetch} /> : !learners.length ? <AdminUnavailable title="Tidak ada learner ditemukan" description={search ? "Coba gunakan kata kunci lain." : "Belum ada data akun yang dapat ditampilkan."} /> : <Surface className="p-0"><DataTable
         caption="Daftar learner dan progres pembelajaran"

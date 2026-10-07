@@ -201,11 +201,10 @@ const DropdownMenuContent = React.forwardRef(function DropdownMenuContent({ clas
   );
 });
 
-const DropdownMenuItem = React.forwardRef(function DropdownMenuItem({ className, inset, tone, icon, children, ...props }, ref) {
+const DropdownMenuItem = React.forwardRef(function DropdownMenuItem({ className, inset, tone, icon, asChild, children, ...props }, ref) {
   return (
-    <DropdownPrimitive.Item ref={ref} className={cn("aapm-menu-item", className)} data-inset={inset ? "true" : undefined} data-tone={tone} {...props}>
-      {icon ? <AapmIcon name={icon} /> : null}
-      {children}
+    <DropdownPrimitive.Item ref={ref} asChild={asChild} className={cn("aapm-menu-item", className)} data-inset={inset ? "true" : undefined} data-tone={tone} {...props}>
+      {asChild ? children : <>{icon ? <AapmIcon name={icon} /> : null}{children}</>}
     </DropdownPrimitive.Item>
   );
 });

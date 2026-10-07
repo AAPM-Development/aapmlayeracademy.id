@@ -640,3 +640,29 @@
 .aapm-rich-editor__content > *:first-child {
     @apply mt-0;
   }
+
+/* Editor workspace: canvas + always-visible identity inspector. */
+.aapm-editor-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--aapm-component-editor-inspector-width);
+  align-items: start;
+  gap: var(--aapm-primitive-space-6);
+}
+.aapm-editor-inspector { position: sticky; top: var(--aapm-primitive-space-4); display: grid; gap: var(--aapm-primitive-space-4); }
+.aapm-editor-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--aapm-primitive-layer-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-3) 0;
+  border-top: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  background: color-mix(in srgb, var(--aapm-semantic-background) 94%, transparent);
+  backdrop-filter: blur(8px);
+}
+@media (max-width: 1199px) {
+  .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); }
+  .aapm-editor-inspector { position: static; order: -1; }
+}

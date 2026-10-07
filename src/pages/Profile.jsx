@@ -14,11 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
   Surface,
+  StateView,
   Switch,
   Textarea,
   useToast,
 } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
+import { Page } from "@/design-system/patterns/AppShell";
 import {
   useHallOfFame,
   useLearningProfile,
@@ -208,10 +210,10 @@ export default function Profile() {
   };
 
   if (isLoading) {
-    return <div className="mx-auto w-full max-w-[1360px] p-4 sm:p-6 lg:p-8"><Surface variant="muted" className="min-h-64 animate-pulse" /></div>;
+    return <Page><StateView kind="loading" title="Memuat profil…" framed={false} /></Page>;
   }
   if (error) {
-    return <div className="mx-auto w-full max-w-[1360px] p-4 sm:p-6 lg:p-8"><Surface tone="orange" className="p-6"><h1 className="text-lg font-semibold">Profil belum dapat dimuat</h1><p className="mt-2 text-sm text-muted-foreground">{error.message}</p><Button className="mt-4" variant="outline" onClick={refetch}>Coba lagi</Button></Surface></div>;
+    return <Page><StateView kind="error" title="Profil belum dapat dimuat" description={error.message} action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>} /></Page>;
   }
 
   const learning = data?.learning || {};
@@ -222,8 +224,8 @@ export default function Profile() {
     : 100;
 
   return (
-    <div className="mx-auto w-full max-w-[1360px] space-y-6 p-4 sm:p-6 lg:p-8">
-      <section className="overflow-hidden rounded-[calc(var(--card-radius)_+_0.25rem)] border border-border bg-surface-default shadow-[var(--surface-shadow)]">
+    <Page>
+      <section className="aapm-card overflow-hidden">
         <div className="relative border-b border-border bg-surface-subtle px-5 py-7 sm:px-7 sm:py-9">
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
@@ -286,6 +288,6 @@ export default function Profile() {
         <div className="space-y-5"><Surface className="p-5"><div className="flex items-center gap-2"><AapmIcon name="award" className="h-5 w-5 text-brand-orange" /><h2 className="text-base font-semibold">Hall of Fame</h2></div><p className="mt-2 text-xs leading-5 text-muted-foreground">{hall?.criteria}</p><div className="mt-4 space-y-2">{hall?.entries?.length ? hall.entries.slice(0, 5).map((entry) => <div key={entry.userId} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle px-3 py-2.5"><span className="w-5 text-center text-xs font-semibold text-brand-orange">{entry.rank}</span><span className="flex h-8 w-8 items-center justify-center rounded-full bg-tint-green text-xs font-semibold text-brand-green">{entry.name.slice(0, 1).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{entry.name}</span><span className="block text-[10px] text-muted-foreground">{entry.level}</span></span><span className="text-xs font-semibold tabular-nums">{entry.points}</span></div>) : <p className="rounded-xl border border-dashed border-border p-3 text-xs leading-5 text-muted-foreground">Belum ada peserta yang memilih tampil di Hall of Fame.</p>}</div></Surface>
           <Surface className="p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="text-base font-semibold">Pengaturan profil</h2><p className="mt-1 text-xs text-muted-foreground">Atur identitas yang tampil di ruang belajar.</p></div><AapmIcon name="settings" className="h-5 w-5 text-brand-orange" /></div><div className="mt-4 space-y-4"><div className="rounded-xl border border-border bg-surface-subtle p-3"><input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Pilih foto profil" onChange={handleAvatarSelection} className="sr-only" /><div className="flex items-center gap-3"><ProfileAvatar user={profileUser} name={profileName} className="h-14 w-14" fallbackClassName="bg-tint-green text-lg text-brand-green" /><div className="min-w-0 flex-1"><div className="text-xs font-semibold">Foto profil</div><p className="mt-1 text-[11px] leading-4 text-muted-foreground">Foto dipotong persegi dan disimpan aman di akun Anda.</p><div className="mt-2 flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}><AapmIcon name="solar:camera-bold-duotone" />{avatarData ? "Ganti foto" : "Tambah foto"}</Button>{avatarData && <Button type="button" variant="ghost" size="sm" onClick={() => { setAvatarData(""); setAvatarError(""); }}>Hapus</Button>}</div></div></div>{avatarError && <p className="mt-2 text-[11px] font-medium text-danger">{avatarError}</p>}</div><div className="space-y-2"><Label htmlFor="profile-name">Nama tampil</Label><Input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={160} /></div><div className="space-y-2"><Label htmlFor="profile-bio">Tentang saya <span className="font-normal text-muted-foreground">(opsional)</span></Label><Textarea id="profile-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={600} rows={3} placeholder="Fokus belajar atau konteks farm yang ingin Anda bagikan." /></div><div className="flex items-start gap-3 rounded-xl border border-border bg-surface-subtle p-3"><Switch checked={optIn} onCheckedChange={setOptIn} aria-label="Tampilkan profil di Hall of Fame" /><div><div className="text-xs font-semibold">Tampilkan di Hall of Fame</div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">Hanya nama, level, dan poin pembelajaran yang ditampilkan. Email tidak pernah ditampilkan.</p></div></div><Button className="w-full" onClick={save} disabled={saveProfile.isPending}>{saveProfile.isPending ? "Menyimpan…" : "Simpan profil"}</Button></div></Surface><PwaInstallShortcut /><AiAccountPreferences /></div>
       </section>
-    </div>
+    </Page>
   );
 }

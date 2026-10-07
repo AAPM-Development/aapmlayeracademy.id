@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import ContentContainer from "@/components/layout/ContentContainer";
-import PageHeader from "@/components/layout/PageHeader";
+import { Page } from "@/design-system/patterns/AppShell";
+import { StatTile } from "@/components/academy/CourseElements";
+import { hueFor } from "@/design-system/components/display";
 import CertificationPath from "@/components/academy/CertificationPath";
-import { Badge, Button, IconTile, KPICluster, Surface, useToast } from "@/components/primitives";
+import { Badge, Button, IconButton, IconTile, PageHeader, SectionHeader, useToast } from "@/components/primitives";
 import { useCertificates, useIssueCertificate, useModules, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
@@ -72,65 +73,60 @@ export default function Certification() {
     }
   };
 
+  const download = async (certificate) => {
+    setDownloadingId(certificate.id);
+    try {
+      await downloadCertificatePdf(certificate);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Sertifikat belum dapat diunduh", description: error?.message || "Coba lagi." });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
-    <ContentContainer className="max-w-6xl">
+    <Page>
       <PageHeader
         eyebrow="Prestasi"
         title="Sertifikasi profesional"
-        description="Setiap tier merangkum kemampuan yang dibangun dari modul, praktik, dan evaluasi—bukan sekadar angka progres."
-        actions={<Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground"><AapmIcon name="award" className="h-3.5 w-3.5" /> 6 tingkat</Badge>}
+        description="Setiap tingkat merangkum kemampuan dari modul, praktik, dan evaluasi. Klaim saat semua prasyaratnya tuntas."
+        actions={<Badge size="lg" icon="certificate">{certificates.length}/6 tingkat dimiliki</Badge>}
       />
 
-      <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
-        <Surface tone="green" className="relative overflow-hidden p-5 sm:p-7">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border-[16px] border-brand-lime/15" />
-          <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-            <div className="max-w-xl"><Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-brand-green">Perkembangan Anda</Badge><h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Bangun bukti dari setiap keputusan.</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Selesaikan modul yang relevan, jaga kualitas pemahaman, lalu gunakan ujian akhir saat fondasi Anda sudah siap.</p></div>
-            <div className="shrink-0 rounded-xl border border-tint-green-border bg-background/80 px-4 py-3"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Progress kurikulum</div><div className="mt-1 text-2xl font-semibold tabular-nums">{curriculumPercent}%</div><div className="mt-2 h-1.5 w-36 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-brand-green" style={{ width: `${curriculumPercent}%` }} /></div></div>
-          </div>
-        </Surface>
-        <Surface className="flex flex-col justify-between p-5 sm:p-7"><div className="flex items-start gap-3"><IconTile icon="graduation" tone={finalExamPassed ? "green" : "orange"} size="lg" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Evaluasi akhir</div><h2 className="mt-1 text-lg font-semibold">Tingkat 6 · Ahli</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{finalExamPassed ? "Ujian akhir sudah lulus. Sertifikat ahli tersedia." : `Pastikan ${totalModules} modul sudah Anda kuasai sebelum mengirim jawaban.`}</p></div></div><Button asChild className="mt-5 w-full" variant={finalExamPassed ? "outline" : "default"}><Link to={finalExamPassed ? "/profile" : "/final-exam"}>{finalExamPassed ? "Lihat profil & sertifikat" : "Buka ujian akhir"}<AapmIcon name="arrowRight" /></Link></Button></Surface>
+      <section className="aapm-stat-grid" aria-label="Ringkasan sertifikasi">
+        <StatTile icon="check" hue="green" label="Modul selesai" value={`${completedModules}/${totalModules}`} />
+        <StatTile icon="roadmap" hue="blue" label="Progress kurikulum" value={`${curriculumPercent}%`} />
+        <StatTile icon="certificate" hue="violet" label="Sertifikat dimiliki" value={certificates.length} />
+        <StatTile icon="exam" hue="orange" label="Ujian akhir" value={finalExamPassed ? "Lulus" : "Belum"} />
       </section>
 
-      <KPICluster
-        className="mb-7 aapm-certification-kpi"
-        label="Ringkasan sertifikasi"
-        columns={3}
-        variant="cards"
-        items={[
-          {
-            icon: "book",
-            label: "Tingkat belajar",
-            value: "14",
-            note: `${completedModules} modul selesai`,
-            tone: "success",
-            colorway: 1,
-            emphasis: "solid",
-          },
-          {
-            icon: "fileCheck",
-            label: "Modul inti",
-            value: String(totalModules),
-            note: "Roadmap Academy",
-            tone: "info",
-            colorway: 2,
-            emphasis: "solid",
-          },
-          {
-            icon: "approve",
-            label: "Tingkat profesional",
-            value: "6",
-            note: `${certificates.length} sertifikat dimiliki`,
-            tone: "warning",
-            colorway: 3,
-            emphasis: "solid",
-          },
-        ]}
-      />
+      <section aria-labelledby="cert-path-title">
+        <SectionHeader
+          id="cert-path-title"
+          title="Jalur sertifikasi"
+          description="Status tingkat mengikuti progress yang tersimpan di akun Anda."
+          actions={!finalExamPassed ? <Button asChild variant="secondary" size="sm"><Link to="/final-exam"><AapmIcon name="exam" />Ujian akhir</Link></Button> : null}
+        />
+        <CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} />
+      </section>
 
-      <section><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Jalur sertifikasi</div><h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Pilih bukti kompetensi berikutnya</h2><p className="mt-1 text-sm text-muted-foreground">Status tingkat berubah berdasarkan progress yang tersimpan di akun Anda.</p></div><span className="text-xs text-muted-foreground">{certificates.length} sertifikat tersimpan</span></div><CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} /></section>
-
-      {certificates.length > 0 && <section className="mt-8"><div className="mb-3 flex items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Bukti tersimpan</div><h2 className="mt-1 text-lg font-semibold">Sertifikat saya</h2><p className="mt-1 text-xs text-muted-foreground">Setiap kartu adalah bukti yang diterbitkan dari progress dan evaluasi akun ini.</p></div><Link to="/profile" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green hover:underline">Buka profil <AapmIcon name="arrowRight" className="h-3.5 w-3.5" /></Link></div><div className="grid gap-3 md:grid-cols-2">{certificates.map((certificate) => <Surface key={certificate.id} variant="interactive" className="aapm-certificate-card flex flex-col gap-4 p-4 sm:p-5"><div className="flex items-start gap-3"><IconTile icon="award" tone="orange" size="md" /><div className="min-w-0 flex-1"><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Tingkat {certificate.levelNumber}</div><div className="mt-1 text-sm font-semibold">{certificate.levelName}</div><div className="mt-1 text-xs text-muted-foreground">{certificate.holderName} · Nilai {certificate.score}%</div><div className="mt-1 text-[11px] text-muted-foreground">Diterbitkan {certificate.issuedAt ? new Date(certificate.issuedAt).toLocaleDateString("id-ID") : "—"}</div></div></div><div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><Badge variant="soft" className="bg-tint-green text-tint-green-foreground">Bukti valid di akun</Badge><Button type="button" variant="outline" size="sm" onClick={async () => { setDownloadingId(certificate.id); try { await downloadCertificatePdf(certificate); } catch (error) { toast({ variant: "destructive", title: "Sertifikat belum dapat diunduh", description: error?.message || "Coba lagi." }); } finally { setDownloadingId(null); } }} disabled={downloadingId === certificate.id}><AapmIcon name={downloadingId === certificate.id ? "refresh" : "download"} className={downloadingId === certificate.id ? "animate-spin" : undefined} />{downloadingId === certificate.id ? "Menyiapkan…" : "Unduh PDF"}</Button></div></Surface>)}</div></section>}
-    </ContentContainer>
+      {certificates.length > 0 ? (
+        <section aria-labelledby="my-certs-title">
+          <SectionHeader id="my-certs-title" title="Sertifikat saya" description="Unduh PDF untuk dibagikan atau dicetak." />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {certificates.map((certificate) => (
+              <article key={certificate.id} className="aapm-card flex-row items-center gap-3 p-4" data-hue="violet">
+                <IconTile icon="certificate" hue={hueFor(Number(certificate.levelNumber) || 1)} size="lg" shape="circle" />
+                <div className="min-w-0 flex-1">
+                  <p className="aapm-text-label m-0 truncate">{certificate.levelName}</p>
+                  <p className="aapm-text-caption m-0">{certificate.issuedAt ? new Date(certificate.issuedAt).toLocaleDateString("id-ID") : "Diterbitkan"} · nilai {certificate.score}</p>
+                </div>
+                <IconButton label="Unduh PDF" icon="download" variant="secondary" disabled={downloadingId === certificate.id} onClick={() => download(certificate)} />
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </Page>
   );
 }

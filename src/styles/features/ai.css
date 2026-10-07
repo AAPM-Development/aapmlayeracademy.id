@@ -1681,3 +1681,29 @@
       transform: none;
     }
   }
+
+/* Chat empty state (ChatGPT/Claude pattern): centred greeting + suggestions. */
+.aapm-chat-welcome { display: grid; justify-items: center; gap: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-10) 0 var(--aapm-primitive-space-4); text-align: center; }
+.aapm-chat-welcome__mark { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: var(--aapm-primitive-space-2); border-radius: 50%; background: var(--aapm-semantic-ai-soft); color: var(--aapm-semantic-ai); }
+.aapm-chat-welcome__mark .aapm-icon { width: 28px; height: 28px; }
+.aapm-chat-welcome__title { margin: 0; font-size: var(--aapm-component-type-title-compact-size); line-height: var(--aapm-component-type-title-compact-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-snug); }
+.aapm-chat-welcome__text { max-width: 52ch; margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); }
+.aapm-chat-suggestions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--aapm-primitive-space-3); width: 100%; margin-top: var(--aapm-primitive-space-6); text-align: start; }
+.aapm-chat-suggestion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border: 0;
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--hue-tint);
+  color: var(--aapm-semantic-foreground);
+  font: inherit;
+  font-size: var(--aapm-component-type-support-size);
+  line-height: var(--aapm-component-type-support-line);
+  cursor: pointer;
+  transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
+}
+.dark .aapm-chat-suggestion { background: var(--hue-soft); }
+.aapm-chat-suggestion:hover { transform: translateY(-2px); }

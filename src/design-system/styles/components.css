@@ -1421,3 +1421,17 @@ a.aapm-surface { text-decoration: none; }
   background: color-mix(in srgb, var(--aapm-semantic-ai) 16%, var(--aapm-semantic-surface));
 }
 .aapm-button[data-variant="ai"] > .aapm-icon { color: var(--aapm-semantic-ai); }
+
+/* Numeric fields: units and steppers are explicit, browser spinners are noise. */
+.aapm-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.aapm-input[type="number"]::-webkit-outer-spin-button,
+.aapm-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.aapm-link { display: inline-flex; align-items: center; gap: 2px; color: var(--aapm-semantic-primary); font-weight: var(--aapm-primitive-weight-label); text-decoration: none; }
+.aapm-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.aapm-link .aapm-icon { width: 14px; height: 14px; }
+
+/* Overlays keep their positioning even when feature classes (scroll fades,
+ * relative wrappers) are composed onto the same element. */
+.aapm-dialog[role],
+.aapm-sheet[role] { position: fixed; }

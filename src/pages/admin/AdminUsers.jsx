@@ -308,7 +308,7 @@ export default function AdminUsers() {
 
   return (
     <AdminPageFrame
-      title="User management"
+      title="Pengguna & akses"
       description="Kelola akses akun, role, password, dan reset progress dari satu tempat."
       actions={
         <Button onClick={() => setDialogUser(null)}>

@@ -1,134 +1,123 @@
 import React, { useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
-import ContentContainer from "@/components/layout/ContentContainer";
-import PageHeader from "@/components/layout/PageHeader";
-import { Badge, IconTile, Input, Surface } from "@/components/primitives";
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
+import { Badge, IconTile, Input, PageHeader } from "@/design-system";
+import { Page } from "@/design-system/patterns/AppShell";
 
 const tools = [
-  { id: "fcr", name: "FCR", icon: "equalRatio", tone: "green", description: "Baca efisiensi pakan terhadap egg mass." },
-  { id: "eggmass", name: "Egg Mass", icon: "egg", tone: "orange", description: "Ukur output telur per ekor per hari." },
-  { id: "uniformity", name: "Uniformity", icon: "weight", tone: "lime", description: "Lihat konsistensi bobot flock." },
-  { id: "mortality", name: "Mortality", icon: "mortality", tone: "orange", description: "Pantau kehilangan dan livability." },
-  {
-    id: "waterfeed",
-    name: "Water/Feed Ratio",
-    icon: "waterRate",
-    tone: "lime",
-    description: "Deteksi perubahan konsumsi air dan pakan.",
-  },
-  { id: "ventilation", name: "Ventilasi", icon: "hvac", tone: "green", description: "Terjemahkan volume kandang menjadi airflow." },
-  { id: "roi", name: "ROI & Break Even", icon: "marginalRoi", tone: "orange", description: "Uji kelayakan keputusan investasi farm." },
+  { id: "fcr", name: "FCR", icon: "equalRatio", hue: "green", description: "Efisiensi pakan terhadap egg mass." },
+  { id: "eggmass", name: "Egg Mass", icon: "egg", hue: "orange", description: "Output telur per ekor per hari." },
+  { id: "uniformity", name: "Uniformity", icon: "weight", hue: "blue", description: "Konsistensi bobot flock." },
+  { id: "mortality", name: "Mortality", icon: "mortality", hue: "rose", description: "Kehilangan dan livability." },
+  { id: "waterfeed", name: "Water/Feed Ratio", icon: "waterRate", hue: "teal", description: "Perubahan konsumsi air dan pakan." },
+  { id: "ventilation", name: "Ventilasi", icon: "hvac", hue: "violet", description: "Volume kandang menjadi airflow." },
+  { id: "roi", name: "ROI & Break Even", icon: "marginalRoi", hue: "amber", description: "Kelayakan keputusan investasi." },
 ];
 
+const ToolContext = React.createContext(tools[0]);
+
+/**
+ * Calculator workspace (tool pattern): pick a tool, enter actual numbers on
+ * the left, read the result and its interpretation on the right.
+ */
 export default function Calculators() {
   const [active, setActive] = useState("fcr");
-  const toolScrollRef = useScrollEdgeFade();
   const activeTool = tools.find((tool) => tool.id === active) || tools[0];
 
   return (
-    <ContentContainer className="max-w-6xl">
+    <Page>
       <PageHeader
         eyebrow="Alat farm"
-        title="Kalkulator interaktif"
-        description="Ubah catatan harian menjadi sinyal keputusan yang bisa langsung dibaca tim farm."
-        actions={
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground">
-            <AapmIcon
-              name="analytics"
-              className="h-3.5 w-3.5 text-brand-orange"
-            />{" "}
-            7 kalkulator
-          </div>
-        }
+        title="Kalkulator farm"
+        description="Ubah catatan harian menjadi sinyal keputusan. Hasil adalah titik awal untuk observasi kandang, bukan penggantinya."
+        actions={<Badge size="lg" icon="calculator">{tools.length} kalkulator</Badge>}
       />
-
-      <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
-        <Surface tone="orange" className="relative overflow-hidden p-5 sm:p-6">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border-[16px] border-brand-orange/10" />
-          <div className="relative">
-            <Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-tint-orange-foreground">Alat keputusan</Badge>
-            <h2 className="mt-4 max-w-xl text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">Hitung sebelum mengambil keputusan.</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Mulai dari angka yang paling mudah Anda catat. Hasilnya bukan pengganti observasi kandang—tetapi titik awal untuk bertanya dengan lebih tepat.</p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-3">
-              {["Masukkan data", "Baca rumus", "Tentukan tindak lanjut"].map((step, index) => <div key={step} className="rounded-xl border border-tint-orange-border bg-background/70 p-3"><div className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-orange text-[11px] font-bold text-white">{index + 1}</div><div className="mt-2 text-xs font-semibold text-foreground">{step}</div></div>)}
-            </div>
+      <section className="aapm-calc-layout">
+        <nav className="aapm-calc-tools" aria-label="Pilih kalkulator">
+          {tools.map((tool) => (
+            <button
+              key={tool.id}
+              type="button"
+              className="aapm-calc-tool"
+              data-hue={tool.hue}
+              aria-pressed={active === tool.id}
+              onClick={() => setActive(tool.id)}
+            >
+              <IconTile icon={tool.icon} hue={tool.hue} size="sm" shape="circle" variant={active === tool.id ? "badge" : undefined} />
+              <span className="min-w-0">
+                <span className="aapm-calc-tool__name">{tool.name}</span>
+                <span className="aapm-calc-tool__description">{tool.description}</span>
+              </span>
+            </button>
+          ))}
+        </nav>
+        <ToolContext.Provider value={activeTool}>
+          <div className="min-w-0" key={active}>
+            {active === "fcr" && <FcrCalc />}
+            {active === "eggmass" && <EggMassCalc />}
+            {active === "uniformity" && <UniformityCalc />}
+            {active === "mortality" && <MortalityCalc />}
+            {active === "waterfeed" && <WaterFeedCalc />}
+            {active === "ventilation" && <VentilationCalc />}
+            {active === "roi" && <RoiCalc />}
           </div>
-        </Surface>
-        <Surface className="flex flex-col justify-between p-5 sm:p-6">
-          <div className="flex items-start gap-3"><IconTile icon={activeTool.icon} tone={activeTool.tone} size="lg" /><div className="min-w-0"><div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Alat aktif</div><h2 className="mt-1 text-lg font-semibold">{activeTool.name}</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{activeTool.description}</p></div></div>
-          <div className="mt-5 border-t border-border pt-4 text-xs leading-5 text-muted-foreground"><span className="font-semibold text-foreground">Tip:</span> gunakan periode pengukuran yang sama agar hasil antarminggu tetap bisa dibandingkan.</div>
-        </Surface>
+        </ToolContext.Provider>
       </section>
-
-      <section className="grid min-w-0 gap-5 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
-        <Surface className="min-w-0 p-3 lg:sticky lg:top-5 lg:self-start">
-          <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pilih alat</div>
-          <div ref={toolScrollRef} className="aapm-scroll-fade aapm-scroll-fade--x aapm-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible">
-            {tools.map((tool) => <button key={tool.id} type="button" onClick={() => setActive(tool.id)} className={`aapm-token-control group flex min-w-[11.5rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors lg:min-w-0 lg:w-full ${active === tool.id ? "border-brand-orange/45 bg-tint-orange text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:bg-surface-subtle hover:text-foreground"}`}><IconTile icon={tool.icon} tone={active === tool.id ? tool.tone : "neutral"} size="sm" /><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{tool.name}</span><span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{tool.description}</span></span><AapmIcon name="chevronRight" className={`h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${active === tool.id ? "text-brand-orange" : "text-muted-foreground/50"}`} /></button>)}
-          </div>
-        </Surface>
-        <div className="min-w-0">
-          {active === "fcr" && <FcrCalc />}
-          {active === "eggmass" && <EggMassCalc />}
-          {active === "uniformity" && <UniformityCalc />}
-          {active === "mortality" && <MortalityCalc />}
-          {active === "waterfeed" && <WaterFeedCalc />}
-          {active === "ventilation" && <VentilationCalc />}
-          {active === "roi" && <RoiCalc />}
-        </div>
-      </section>
-    </ContentContainer>
+    </Page>
   );
 }
 
-function CalculatorCard({ title, formula, children, result, icon = "analytics", tone = "orange" }) {
+function CalcResult() {
+  return null;
+}
+
+const attentionPattern = /perlu|evaluasi|tinggi|risiko|rendah|kurang|waspada|cek|periksa|rugi|buruk/i;
+
+function CalculatorCard({ title, formula, children, result }) {
+  const tool = React.useContext(ToolContext);
+  const items = React.Children.toArray(children);
+  const outcome = items.find((child) => React.isValidElement(child) && child.type === CalcResult);
+  const inputs = items.filter((child) => child !== outcome);
+  const value = outcome ? outcome.props.value : result;
+  const note = outcome?.props.note;
+  const resultHue = note && attentionPattern.test(String(note)) ? "orange" : tool.hue;
+
   return (
-    <Surface className="aapm-token-card relative min-w-0 max-w-full overflow-hidden p-5 sm:p-6" data-t7-region="calculator-card">
-      <div className="absolute inset-x-0 top-0 h-1 bg-brand-orange" />
-      <div className="mb-4 flex items-start gap-3">
-        <IconTile icon={icon} tone={tone} size="md" />
-        <div className="min-w-0"><h2 className="font-semibold">{title}</h2><p className="mt-1 text-xs text-muted-foreground">Masukkan angka aktual untuk mendapatkan indikator awal.</p></div>
+    <article className="aapm-card aapm-calc">
+      <header className="aapm-calc__header">
+        <IconTile icon={tool.icon} hue={tool.hue} size="lg" shape="circle" />
+        <div className="min-w-0">
+          <h2 className="aapm-text-section m-0">{title}</h2>
+          <p className="aapm-text-support m-0">{tool.description}</p>
+        </div>
+      </header>
+      {formula ? (
+        <details className="aapm-calc__formula">
+          <summary><AapmIcon name="insight" />Lihat rumus</summary>
+          <code>{formula}</code>
+        </details>
+      ) : null}
+      <div className="aapm-calc__body">
+        <div className="aapm-calc__inputs">{inputs}</div>
+        <aside className="aapm-calc__result" data-hue={resultHue} aria-live="polite">
+          <p className="aapm-text-overline m-0">Hasil</p>
+          <p className="aapm-calc__value">{value ?? "—"}</p>
+          {note ? <p className="aapm-calc__note"><AapmIcon name={resultHue === "orange" ? "warning" : "check"} />{note}</p> : <p className="aapm-calc__note">Isi angka aktual untuk melihat interpretasi.</p>}
+        </aside>
       </div>
-      {formula && (
-        <div className="aapm-token-inset mb-4 min-w-0 max-w-full overflow-x-auto px-3 py-2.5 font-mono text-xs leading-5 text-muted-foreground whitespace-nowrap">
-          {formula}
-        </div>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
-      {result !== undefined && result !== null && (
-        <div className="aapm-token-alert mt-5 border border-tint-orange-border bg-tint-orange px-4 py-3">
-          <div className="text-xs font-medium text-tint-orange-foreground">
-            Hasil
-          </div>
-          <div className="mt-0.5 text-2xl font-bold text-tint-orange-foreground">
-            {result}
-          </div>
-        </div>
-      )}
-    </Surface>
+    </article>
   );
 }
 
 function Field({ label, value, onChange, unit, placeholder }) {
+  const id = React.useId();
   return (
-    <label className="block">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="aapm-field aapm-token-control mt-1 flex min-h-11 items-center border border-input px-3 transition-colors focus-within:border-brand-orange/55 focus-within:ring-2 focus-within:ring-brand-orange/10">
-        <Input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-10 w-full border-0 bg-transparent px-0 py-2.5 text-sm shadow-none outline-none focus-visible:ring-0"
-        />
-        {unit && (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {unit}
-          </span>
-        )}
+    <div className="aapm-field">
+      <label className="aapm-label" htmlFor={id}>{label}</label>
+      <div className="aapm-input-group">
+        <Input id={id} type="number" inputMode="decimal" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={unit ? "pe-16" : undefined} />
+        {unit ? <span className="aapm-input-group__suffix aapm-calc__unit">{unit}</span> : null}
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -499,19 +488,5 @@ function RoiCalc() {
 }
 
 function resultTag(value, note) {
-  return (
-    <div className="mt-5 rounded-xl border border-tint-orange-border bg-tint-orange px-4 py-3 sm:col-span-2">
-      <div className="text-xs font-medium text-tint-orange-foreground">
-        Hasil
-      </div>
-      <div className="mt-0.5 text-2xl font-bold text-tint-orange-foreground">
-        {value}
-      </div>
-      {note && (
-        <div className="mt-1 text-xs text-tint-orange-foreground/80">
-          {note}
-        </div>
-      )}
-    </div>
-  );
+  return <CalcResult value={value} note={note} />;
 }

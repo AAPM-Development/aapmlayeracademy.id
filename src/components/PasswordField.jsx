@@ -1,6 +1,5 @@
 import React from "react";
-import { PasswordInput } from "@/components/primitives";
-import AapmIcon from "@/components/icons/AapmIcon";
+import { Field, PasswordInput } from "@/components/primitives";
 
 export default function PasswordField({
   id,
@@ -12,23 +11,21 @@ export default function PasswordField({
   minLength = undefined,
   required = true,
   autoFocus = false,
+  hint,
 }) {
   return (
-    <div className="relative">
-      <AapmIcon name="lock" className="pointer-events-none absolute left-3 top-[calc(50%+0.875rem)] z-10 h-4 w-4 -translate-y-1/2 text-foreground/55" />
+    <Field id={id} label={label} hint={hint}>
       <PasswordInput
-        id={id}
-        label={label}
-        revealLabel="Tampilkan password"
+        leadingIcon="lock"
+        revealLabel="Tampilkan kata sandi"
         autoComplete={autoComplete}
         autoFocus={autoFocus}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className="h-12 border-border/80 bg-surface-subtle pl-10 pr-12 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
         minLength={minLength}
         required={required}
       />
-    </div>
+    </Field>
   );
 }

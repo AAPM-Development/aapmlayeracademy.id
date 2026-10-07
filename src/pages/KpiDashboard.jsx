@@ -5,6 +5,8 @@ import PageHeader from "@/components/layout/PageHeader";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { LineChart as T7LineChart } from "@/design-system/charts";
 import {
+  ConfirmDialog,
+  OverflowMenu,
   Badge,
   Button,
   Card,
@@ -17,7 +19,6 @@ import {
   FilterToolbar,
   FormGrid,
   FormSection,
-  IconButton,
   IconTile,
   Input,
   KPICluster,
@@ -201,6 +202,7 @@ export default function KpiDashboard() {
     });
   };
 
+  const [pendingDelete, setPendingDelete] = useState(null);
   const remove = async (id) => {
     try {
       await deleteFarmData(id);
@@ -281,23 +283,13 @@ export default function KpiDashboard() {
         overflow: "nowrap",
         render: (row) => (
           <div className="flex justify-end gap-1">
-            <IconButton
-              label={`Edit minggu ${row.week}`}
-              tooltip="Edit data"
-              variant="outline"
-              onClick={() => startEdit(row)}
-            >
-              <AapmIcon name="edit" className="h-4 w-4" />
-            </IconButton>
-            <IconButton
-              label={`Hapus minggu ${row.week}`}
-              tooltip="Hapus data"
-              variant="ghost"
-              className="text-danger hover:bg-danger/10 hover:text-danger"
-              onClick={() => remove(row.id)}
-            >
-              <AapmIcon name="delete" className="h-4 w-4" />
-            </IconButton>
+            <Button size="sm" variant="secondary" onClick={() => startEdit(row)}>
+              <AapmIcon name="edit" />Edit
+            </Button>
+            <OverflowMenu
+              label={`Aksi minggu ${row.week}`}
+              items={[{ id: "delete", label: "Hapus data minggu ini", icon: "delete", tone: "danger", onSelect: () => setPendingDelete(row) }]}
+            />
           </div>
         ),
       },
@@ -605,6 +597,19 @@ export default function KpiDashboard() {
       {devFixtureTools && previewWisman && (
         <WismanPreviewSection rows={WISMAN_FIXTURE_ROWS} />
       )}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={`Hapus data minggu ${pendingDelete?.week ?? ""}?`}
+        description="Catatan KPI mingguan ini akan dihapus dari akun Anda dan tidak lagi dihitung di grafik."
+        confirmLabel="Hapus data"
+        destructive
+        onConfirm={() => {
+          const row = pendingDelete;
+          setPendingDelete(null);
+          if (row) remove(row.id);
+        }}
+      />
     </ContentContainer>
   );
 }

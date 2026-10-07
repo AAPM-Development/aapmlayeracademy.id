@@ -1130,36 +1130,23 @@ export default function AiAssistant() {
                   Memuat riwayat...
                 </p>
               ) : messages.length === 0 ? (
-                <div className="py-3 sm:py-8">
-                  <div>
-                    <h2 className="text-base font-semibold tracking-[-0.02em]">
-                      Mari mulai dari situasi di farm.
-                    </h2>
-                    <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">
-                      {welcomeMessage}
-                    </p>
-                  </div>
-                  <div className="aapm-ai-suggestion-grid mt-8 grid gap-2 sm:grid-cols-2">
-                    {suggestions.map((suggestion) => (
+                <div className="aapm-chat-welcome">
+                  <span className="aapm-chat-welcome__mark"><AapmIcon name="ai" /></span>
+                  <h2 className="aapm-chat-welcome__title">Halo! Apa yang terjadi di farm hari ini?</h2>
+                  <p className="aapm-chat-welcome__text">{welcomeMessage}</p>
+                  <div className="aapm-ai-suggestion-grid aapm-chat-suggestions">
+                    {suggestions.map((suggestion, index) => (
                       <button
                         key={suggestion.id}
                         type="button"
                         onClick={() => submit(suggestion.prompt)}
-                        className="aapm-ai-card aapm-ai-card--interactive aapm-ai-suggestion-card group min-w-0 text-left text-xs leading-5 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="aapm-ai-suggestion-card aapm-chat-suggestion"
+                        data-hue={["green","blue","orange","violet"][index % 4]}
                       >
-                        <span className="flex min-w-0 items-start gap-2.5">
-                          <AapmIcon
-                            name="solar:stars-minimalistic-bold-duotone"
-                            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                          />
-                          <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-                            <span className="block font-semibold text-foreground">
-                              {suggestion.label}
-                            </span>
-                            <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
-                              {suggestion.detail}
-                            </span>
-                          </span>
+                        <span className="aapm-icon-tile" data-size="sm" data-shape="circle" data-variant="badge" data-hue={["green","blue","orange","violet"][index % 4]}><AapmIcon name="ai" /></span>
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-foreground">{suggestion.label}</span>
+                          <span className="block text-caption text-muted-foreground">{suggestion.detail}</span>
                         </span>
                       </button>
                     ))}

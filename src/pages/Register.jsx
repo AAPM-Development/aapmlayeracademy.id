@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
-import { Button, Input, Label } from "@/components/primitives";
+import { Button, Alert, Field, InputGroup } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
-import AapmIcon from "@/components/icons/AapmIcon";
 import PasswordField from "@/components/PasswordField";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
@@ -49,38 +48,28 @@ export default function Register() {
           Sudah punya akun?{" "}
           <Link
             to={"/login" + (safeReturnTo() !== "/" ? "?returnTo=" + encodeURIComponent(safeReturnTo()) : "")}
-            className="text-primary font-medium hover:underline"
+            className="aapm-auth__link"
           >
             Masuk
           </Link>
         </>
       }
     >
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          <AapmIcon name="alert" className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <Alert tone="danger" description={error} className="mb-5" />}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email" className="text-xs font-semibold text-foreground">Alamat email</Label>
-          <div className="aapm-field aapm-token-control relative rounded-xl">
-            <AapmIcon name="mail" className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-foreground/55" />
-            <Input
-              id="email"
+        <Field id="email" label="Alamat email">
+            <InputGroup
+              leadingIcon="mail"
               type="email"
               autoComplete="email"
               autoFocus
               placeholder="nama@perusahaan.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-12 rounded-xl border-border/80 bg-surface-subtle pl-10 shadow-none placeholder:text-muted-foreground/60 focus:bg-card"
               required
             />
-          </div>
-        </div>
+          </Field>
         <PasswordField
           id="password"
            label="Kata sandi"
@@ -98,28 +87,18 @@ export default function Register() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           minLength={8}
         />
-        <Button type="submit" className="h-12 w-full shadow-[var(--card-shadow)]" disabled={loading}>
-          {loading ? (
-            <>
-              <AapmIcon name="loading" className="mr-2 h-4 w-4 animate-spin" />
-              Membuat akun…
-            </>
-          ) : (
-            "Buat akun"
-          )}
+        <Button type="submit" size="lg" block loading={loading}>
+          {loading ? "Membuat akun…" : "Buat akun"}
         </Button>
       </form>
       {googleAvailable && (
         <>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            <span>atau</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
+          <div className="aapm-auth__divider my-6">atau</div>
           <Button
             type="button"
-            variant="outline"
-            className="h-12 w-full rounded-xl bg-surface-subtle font-medium shadow-none hover:bg-surface-hover"
+            variant="secondary"
+            size="lg"
+            block
             onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(safeReturnTo())}`; }}
           >
             <GoogleIcon />
