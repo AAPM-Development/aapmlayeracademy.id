@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import AppBrand from "@/components/AppBrand";
-import AssessmentFocusShell from "@/components/layout/AssessmentFocusShell";
-import { AssessmentProgress, AssessmentResult, QuestionNavigator, QuizQuestion } from "@/components/academy/AssessmentComponents";
-import { Button, Skeleton } from "@/components/primitives";
-import { useQuizQuestions, useIssueCertificate, useSaveProgress } from "@/lib/useCourseData";
-import { useToast } from "@/components/ui/use-toast";
+import { Button, ConfirmDialog, Skeleton, StateView, useToast } from "@/design-system";
+import { FocusShell, Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { AnswerReview, AssessmentBar, AssessmentResult, QuestionNavigator, QuizQuestion } from "@/components/academy/AssessmentComponents";
+import { useIssueCertificate, useQuizQuestions, useSaveProgress } from "@/lib/useCourseData";
 
 const FINAL_PASSING_GRADE = 80;
 
+/**
+ * Final exam in exam mode: no per-question feedback, a question navigator,
+ * review flags and an explicit submit confirmation.
+ */
 export default function FinalExam() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -22,39 +24,134 @@ export default function FinalExam() {
   const [answers, setAnswers] = useState({});
   const [flagged, setFlagged] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const question = questions[current];
   const answeredCount = Object.keys(answers).length;
-  const score = useMemo(() => submitted ? questions.filter((item, index) => answers[index] === item.correctIndex).length : 0, [answers, questions, submitted]);
+  const flaggedCount = Object.values(flagged).filter(Boolean).length;
+  const score = useMemo(() => questions.filter((item, index) => answers[index] === item.correctIndex).length, [answers, questions]);
   const percent = questions.length ? Math.round((score / questions.length) * 100) : 0;
   const passed = percent >= FINAL_PASSING_GRADE;
 
   const submit = async () => {
-    const correct = questions.filter((item, index) => answers[index] === item.correctIndex).length;
-    const resultPercent = questions.length ? Math.round((correct / questions.length) * 100) : 0;
-    const resultPassed = resultPercent >= FINAL_PASSING_GRADE;
+    setConfirmOpen(false);
     setSubmitted(true);
-    await save({ moduleNumber: 0, data: { moduleNumber: 0, completed: resultPassed, quizScore: correct, quizTotal: questions.length } });
-    if (resultPassed) {
-      await issueCertificate({ levelNumber: 6, levelName: "Layer Poultry Farm Expert", score: resultPercent, examType: "final", holderName: "Peserta Layer Farm Academy" });
-      toast({ title: "Ujian akhir lulus", description: "Sertifikat Expert telah diterbitkan." });
-    } else {
-      toast({ title: "Belum lulus", description: "Review learning path lalu coba lagi.", variant: "destructive" });
+    try {
+      await save({ moduleNumber: 0, data: { moduleNumber: 0, completed: passed, quizScore: score, quizTotal: questions.length } });
+      if (passed) {
+        await issueCertificate({ levelNumber: 6, levelName: "Layer Poultry Farm Expert", score: percent, examType: "final", holderName: "Peserta Layer Farm Academy" });
+        toast({ title: "Ujian akhir lulus", description: "Sertifikat Expert telah diterbitkan." });
+      } else {
+        toast({ title: "Belum lulus", description: "Tinjau jalur belajar lalu coba lagi.", variant: "warning" });
+      }
+    } catch {
+      toast({ title: "Hasil belum tersimpan", description: "Periksa koneksi lalu kirim ulang ujian.", variant: "destructive" });
     }
   };
 
   const reset = () => { setSubmitted(false); setAnswers({}); setFlagged({}); setCurrent(0); };
+  const exit = () => navigate("/certification");
 
-  if (isLoading) return <div className="mx-auto max-w-5xl space-y-4 px-4 py-8 sm:px-6 lg:px-8"><Skeleton className="h-8 w-2/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-64 w-full" /></div>;
-  if (!questions.length) return <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-warning/15 text-warning"><AapmIcon name="alertCircle" className="h-6 w-6" /></div><h1 className="text-xl font-semibold">Ujian akhir belum tersedia</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Belum ada soal ujian akhir pada data Academy.</p><Button asChild variant="outline" className="mt-5"><Link to="/modules"><AapmIcon name="arrowLeft" /> Kembali ke jalur belajar</Link></Button></div>;
+  if (isLoading) return <Page width="narrow"><Skeleton className="h-3 w-full" /><Skeleton className="h-10 w-3/4" /><Skeleton className="h-64 w-full" /></Page>;
+  if (!questions.length) {
+    return (
+      <Page width="narrow" className="min-h-[60vh] justify-center">
+        <StateView kind="empty" icon="exam" title="Ujian akhir belum tersedia" description="Belum ada soal ujian akhir pada data Academy." action={<Button asChild variant="secondary"><Link to="/modules"><AapmIcon name="arrowLeft" />Kembali ke jalur belajar</Link></Button>} />
+      </Page>
+    );
+  }
 
-  const header = <div className="overflow-hidden rounded-[var(--card-radius)] border border-brand-green/30 bg-brand-green text-white"><div className="h-1 bg-brand-lime" /><div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6"><div className="flex items-start gap-3"><AppBrand product="academy" variant="icon" mode="dark" className="h-9 w-9 shrink-0" /><div><div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-lime">Mode fokus evaluasi</div><h1 className="mt-2 text-xl font-semibold sm:text-2xl">Ujian akhir · Progres profesional</h1><p className="mt-2 text-sm leading-6 text-white/70">{questions.length} soal dari data Academy saat ini · Nilai lulus {FINAL_PASSING_GRADE}%</p></div></div><div className="flex items-center gap-2 text-xs text-white/70"><AapmIcon name="graduation" className="h-4 w-4 text-brand-lime" /> Tingkat 6</div></div></div>;
+  if (submitted) {
+    return (
+      <FocusShell resetKey="result" label="Hasil ujian akhir" bar={<AssessmentBar onExit={exit} total={questions.length} current={questions.length - 1} states={questions.map((item, index) => (answers[index] === item.correctIndex ? "done" : "wrong"))} label="Hasil ujian" />}>
+        <AssessmentResult
+          passed={passed}
+          score={score}
+          total={questions.length}
+          passingGrade={FINAL_PASSING_GRADE}
+          title={passed ? "Anda lulus ujian akhir!" : "Ujian akhir belum lulus"}
+          description={passed ? "Sertifikat Layer Poultry Farm Expert diterbitkan ke akun Anda." : "Gunakan hasil ini untuk memilih materi yang perlu diulang."}
+        >
+          <div className="aapm-result-actions">
+            {passed ? (
+              <Button asChild variant="learn" size="lg"><Link to="/certification"><AapmIcon name="certificate" />Lihat sertifikat</Link></Button>
+            ) : (
+              <Button variant="learn" size="lg" leadingIcon="refresh" onClick={reset}>Ulangi ujian</Button>
+            )}
+            <Button asChild variant="secondary" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Jalur belajar</Link></Button>
+          </div>
+          <AnswerReview questions={questions} answers={answers} />
+        </AssessmentResult>
+      </FocusShell>
+    );
+  }
 
-  if (submitted) return <AssessmentFocusShell header={header}><AssessmentResult passed={passed} score={score} total={questions.length} passingGrade={FINAL_PASSING_GRADE} title={passed ? "Anda lulus ujian akhir." : "Ujian akhir belum lulus."}><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{passed ? "Progress tingkat ahli tersimpan dan sertifikat diterbitkan melalui proses yang sama." : "Gunakan hasil ini untuk memilih materi yang perlu Anda ulangi."}</p><div className="mt-6 flex flex-wrap justify-center gap-2">{passed && <Button asChild><Link to="/certification"><AapmIcon name="award" /> Lihat sertifikasi</Link></Button>}<Button type="button" variant="outline" onClick={reset}><AapmIcon name="refresh" /> Ulangi ujian</Button><Button type="button" variant="outline" onClick={() => navigate("/modules")}>Jalur belajar <AapmIcon name="arrowRight" /></Button></div></AssessmentResult></AssessmentFocusShell>;
+  const isLast = current === questions.length - 1;
+  const navigator = (
+    <QuestionNavigator total={questions.length} current={current} answers={answers} flagged={flagged} onSelect={setCurrent} />
+  );
 
-  return <AssessmentFocusShell header={<><Link to="/certification" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"><AapmIcon name="arrowLeft" className="h-3.5 w-3.5" /> Sertifikasi</Link>{header}</>} sidebar={<QuestionNavigator total={questions.length} current={current} answers={answers} flagged={flagged} onSelect={setCurrent} onToggleFlag={(index) => setFlagged((value) => ({ ...value, [index]: !value[index] }))} />}>
-    <AssessmentProgress current={current} total={questions.length} label="Progress ujian akhir" />
-    <div className="mt-5"><QuizQuestion question={question} number={current + 1} total={questions.length} answer={answers[current]} onAnswer={(answer) => setAnswers((value) => ({ ...value, [current]: answer }))} /></div>
-    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Button type="button" variant="outline" onClick={() => setCurrent((value) => Math.max(0, value - 1))} disabled={current === 0}><AapmIcon name="arrowLeft" /> Sebelumnya</Button>{current < questions.length - 1 ? <Button type="button" onClick={() => setCurrent((value) => value + 1)} disabled={answers[current] === undefined}>Simpan & lanjut <AapmIcon name="arrowRight" /></Button> : <Button type="button" onClick={submit} disabled={answeredCount < questions.length || saveProgress.isPending || issue.isPending}><AapmIcon name="checkRead" /> Periksa & kirim</Button>}</div>
-    <div className="mt-4 text-center text-xs leading-5 text-muted-foreground">Semua jawaban harus terisi sebelum dikirim. Jumlah soal mengikuti data terbaru dari Academy.</div>
-  </AssessmentFocusShell>;
+  return (
+    <FocusShell
+      resetKey={current}
+      label="Ujian akhir"
+      outline={navigator}
+      bar={(
+        <AssessmentBar
+          onExit={exit}
+          total={questions.length}
+          current={current}
+          states={questions.map((_, index) => (answers[index] !== undefined ? "done" : undefined))}
+          label="Progress ujian akhir"
+        />
+      )}
+      footer={(
+        <>
+          <div className="aapm-focus__footer-group">
+            <Button variant="ghost" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))} data-hide-label-mobile="">
+              <AapmIcon name="arrowLeft" /><span>Sebelumnya</span>
+            </Button>
+            <Button
+              variant="ghost"
+              aria-pressed={Boolean(flagged[current])}
+              onClick={() => setFlagged((value) => ({ ...value, [current]: !value[current] }))}
+              data-hide-label-mobile=""
+            >
+              <AapmIcon name="flag" /><span>{flagged[current] ? "Batal tandai" : "Tandai"}</span>
+            </Button>
+          </div>
+          <p className="aapm-focus__footer-center">{answeredCount}/{questions.length} terjawab · nilai lulus {FINAL_PASSING_GRADE}%</p>
+          <div className="aapm-focus__footer-group">
+            {isLast ? (
+              <Button variant="learn" size="lg" loading={saveProgress.isPending || issue.isPending} onClick={() => setConfirmOpen(true)}>Kirim ujian</Button>
+            ) : (
+              <Button variant="learn" size="lg" onClick={() => setCurrent((value) => value + 1)}>Berikutnya<AapmIcon name="arrowRight" /></Button>
+            )}
+          </div>
+        </>
+      )}
+    >
+      <QuizQuestion
+        question={question}
+        number={current + 1}
+        total={questions.length}
+        answer={answers[current]}
+        onAnswer={(answer) => setAnswers((value) => ({ ...value, [current]: answer }))}
+        meta={<span className="aapm-chip" data-tone="attention">Ujian akhir · Tingkat 6</span>}
+      />
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        icon="exam"
+        title={answeredCount < questions.length ? `${questions.length - answeredCount} soal belum dijawab` : "Kirim ujian akhir?"}
+        description={answeredCount < questions.length
+          ? "Semua soal harus dijawab sebelum ujian dapat dikirim. Gunakan daftar soal untuk menemukan yang masih kosong."
+          : flaggedCount ? `${flaggedCount} soal masih ditandai untuk ditinjau. Jawaban tidak dapat diubah setelah dikirim.` : "Jawaban tidak dapat diubah setelah dikirim."}
+        confirmLabel={answeredCount < questions.length ? "Mengerti" : "Kirim sekarang"}
+        cancelLabel="Tinjau lagi"
+        onConfirm={answeredCount < questions.length
+          ? () => { setConfirmOpen(false); setCurrent(questions.findIndex((_, index) => answers[index] === undefined)); }
+          : submit}
+      />
+    </FocusShell>
+  );
 }

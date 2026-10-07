@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { LineChart as T7LineChart } from "@/design-system/charts";
 import {
   Badge,
   Button,
@@ -21,13 +22,12 @@ import {
   Input,
   KPICluster,
   Label,
-  T7LineChart,
   Sparkline,
   Textarea,
   TrendIndicator,
 } from "@/components/primitives";
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/primitives";
 import {
   aggregateWismanByDate,
   WISMAN_FIXTURE_META,
@@ -35,9 +35,9 @@ import {
 } from "@/lib/wismanFixture";
 import { cn } from "@/lib/utils";
 
-/** @typedef {import("@ten4seven/ui").KPIItem} KPIItem */
-/** @typedef {import("@ten4seven/ui").DataTableColumn<any>} DataTableColumn */
-/** @typedef {import("@ten4seven/ui").DataTableSort} DataTableSort */
+/** @typedef {{label: string, value: any, [key: string]: any}} KPIItem */
+/** @typedef {{key: string, header: string, [key: string]: any}} DataTableColumn */
+/** @typedef {{key: string, direction: "asc" | "desc"}} DataTableSort */
 
 function emptyForm() {
   return {

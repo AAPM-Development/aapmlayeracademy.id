@@ -53,6 +53,13 @@ import {
 } from "../src/lib/aiEditorialRewrite.js";
 
 const readWorkspaceFile = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+// The stylesheet entry only imports layers; assertions read the bundle in order.
+const readStyles = () => {
+  const entry = readWorkspaceFile("../src/index.css");
+  return [...entry.matchAll(/@import "\.\/([^"]+)";/g)]
+    .map(([, path]) => readWorkspaceFile(`../src/${path}`))
+    .join("\n");
+};
 
 test("editorial blocks preserve legacy Markdown and normalize a rich-text block", () => {
   const legacy = parseEditorialDocument(JSON.stringify({
@@ -523,14 +530,14 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   const editorial = readWorkspaceFile("../src/components/admin/EditorialComposer.jsx");
   const auth = readWorkspaceFile("../src/lib/AuthContext.jsx");
   const client = readWorkspaceFile("../src/api/nativeClient.js");
-  const sidebarProfile = readWorkspaceFile("../src/components/layout/SidebarUserCard.jsx");
+  const shell = readWorkspaceFile("../src/design-system/patterns/AppShell.jsx");
   const moduleEditor = readWorkspaceFile("../src/pages/admin/AdminModuleEditor.jsx");
   const lessonWorkspace = readWorkspaceFile("../src/components/academy/LessonWorkspace.jsx");
   const learnerContent = readWorkspaceFile("../src/components/academy/EditorialContent.jsx");
   const richEditor = readWorkspaceFile("../src/components/admin/RichTextEditor.jsx");
   const uploadProgress = readWorkspaceFile("../src/components/admin/UploadProgress.jsx");
-  const iconBridge = readWorkspaceFile("../src/components/icons/AapmIcon.jsx");
-  const styles = readWorkspaceFile("../src/index.css");
+  const iconBridge = readWorkspaceFile("../src/design-system/icons/iconData.js");
+  const styles = readStyles();
 
   assert.match(aiPage, /aapm-ai-workspace--full-mobile/);
   assert.match(aiPage, /AiHistoryBulkBar/);
@@ -540,20 +547,19 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.match(chatProvider, /bulkArchiveConversations/);
   assert.match(chatProvider, /bulkDeleteConversations/);
   assert.doesNotMatch(aiPage, /100dvh-8\.6rem/);
+  // Learner dashboard and shells use the AAPM design-system patterns.
+  assert.match(dashboard, /aapm-hero/);
+  assert.match(dashboard, /aapm-progress-tile/);
+  assert.match(shell, /aapm-bottom-nav/);
+  assert.match(shell, /function NavigationSheet/);
+  assert.match(shell, /export const FocusShell/);
+  assert.match(styles, /\.aapm-bottom-nav__item\[aria-current="page"\]/);
+  assert.match(styles, /html\[data-shell="focus"\] \.aapm-ai-launcher/);
   assert.match(aiComposer, /Menyiapkan foto/);
-  assert.match(dashboard, /aapm-dashboard-welcome__stats/);
-  assert.match(dashboard, /aapm-dashboard-tools-card/);
-  assert.match(dashboard, /aapm-dashboard-tool-row/);
-  assert.match(styles, /\.t7-mobile-sidebar > \.t7-drawer-body > div:has\(> \.aapm-academy-sidebar\)/);
-  assert.match(styles, /\.aapm-dashboard-welcome__hero > \.pointer-events-none/);
-  assert.match(styles, /\.aapm-dashboard-tools-list > \.aapm-dashboard-tool-row/);
-  assert.match(styles, /\.aapm-dashboard-kpi[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /--aapm-shell-border-alpha: 0\.46/);
   assert.match(styles, /\.aapm-ai-frame[\s\S]*box-shadow: var\(--aapm-shell-shadow, none\)/);
   assert.match(styles, /\.aapm-ai-conversation-sidebar,[\s\S]*background-image: none/);
   assert.match(styles, /\.aapm-ai-card--interactive:hover[\s\S]*box-shadow: none/);
-  assert.match(sidebarProfile, /aapm-sidebar-profile-row/);
-  assert.doesNotMatch(sidebarProfile, /aapm-sidebar-user-card/);
   assert.match(moduleEditor, /aapm-editor-point-row grid/);
   assert.match(moduleEditor, /aapm-editor-point-action/);
   assert.match(lessonWorkspace, /aapm-lesson-insight-item grid/);
@@ -582,7 +588,6 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.match(styles, /\[data-resize-container\]:has\(img\[data-image-align="center"\]\)/);
   assert.doesNotMatch(learnerContent, /rounded-xl border border-border object-contain/);
   assert.match(styles, /\.aapm-ai-workspace__main,[\s\S]*min-height: 0/);
-  assert.match(styles, /\.aapm-sidebar-profile-row \{[\s\S]*background: transparent/);
   assert.doesNotMatch(editorial, /File presentasi baru akan menggantikan/);
   assert.match(editorial, /Siap mengganti sumber slide/);
   assert.match(editorial, /aria-busy=\{uploadState\.status === "loading"\}/);
@@ -605,7 +610,7 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
 test("editorial document players keep a shared reading-stage contract", () => {
   const pptx = readWorkspaceFile("../src/components/academy/PptxCarousel.jsx");
   const presentation = readWorkspaceFile("../src/components/academy/EditorialPresentation.jsx");
-  const styles = readWorkspaceFile("../src/index.css");
+  const styles = readStyles();
 
   assert.match(pptx, /aapm-presentation-shell/);
   assert.match(pptx, /onProgress:/);
@@ -649,7 +654,7 @@ test("native cPanel APPI companion stays provider-backed and preview-first", () 
 
 test("PDF player has a recovery path when embedded cPanel rendering fails", () => {
   const viewer = readWorkspaceFile("../src/components/academy/EditorialPresentation.jsx");
-  const styles = readWorkspaceFile("../src/index.css");
+  const styles = readStyles();
   const packageJson = readWorkspaceFile("../package.json");
   const htaccess = readWorkspaceFile("../public/.htaccess");
   assert.match(packageJson, /pdfjs-dist/);
@@ -663,4 +668,15 @@ test("PDF player has a recovery path when embedded cPanel rendering fails", () =
   assert.match(styles, /\.aapm-pdf-reader-controls/);
   assert.match(htaccess, /AddType application\/javascript \.mjs/);
   assert.match(htaccess, /AddType application\/pdf \.pdf/);
+});
+
+test("AAPM design tokens stay generated from the JSON authority", async () => {
+  const { buildTokenCss } = await import("../scripts/build-aapm-tokens.mjs");
+  const tokens = JSON.parse(readWorkspaceFile("../src/design-system/tokens/aapm-academy.tokens.json"));
+  const generated = readWorkspaceFile("../src/design-system/aapm-tokens.css").replace(/\r\n/g, "\n");
+  assert.equal(generated, buildTokenCss(tokens));
+  assert.match(generated, /--aapm-semantic-primary: var\(--aapm-primitive-green\)/);
+  const icons = readWorkspaceFile("../src/design-system/icons/iconData.js");
+  assert.match(icons, /@iconify-icons\/solar\/home-angle-bold-duotone\.js/);
+  assert.doesNotMatch(readWorkspaceFile("../package.json"), /@ten4seven\/ui/);
 });

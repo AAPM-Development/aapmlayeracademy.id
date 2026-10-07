@@ -1,63 +1,152 @@
-import React from "react";
-import ContentContainer from "@/components/layout/ContentContainer";
-import PageHeader from "@/components/layout/PageHeader";
-import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge, IconTile, Surface } from "@/components/primitives";
-import LearningRoadmap from "@/components/academy/LearningRoadmap";
+import React, { useMemo, useState } from "react";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import {
+  Badge,
+  PageHeader,
+  ProgressRing,
+  SearchInput,
+  SectionHeader,
+  SegmentedControl,
+  StateView,
+  Button,
+} from "@/design-system";
+import { Page } from "@/design-system/patterns/AppShell";
+import { ContinueCard, CourseCard, LevelSection } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useUserProgress } from "@/lib/useCourseData";
 import { getNextModule, getProgressSummary } from "@/lib/academyData";
+import { buildCurriculum } from "@/lib/academyVisuals";
+
+const VIEW_KEY = "aapm-modules-view";
+
+function readView() {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "catalog" ? "catalog" : "path";
+  } catch {
+    return "path";
+  }
+}
 
 export default function Modules() {
-  const {
-    data: modules = [],
-    isLoading: modulesLoading,
-    isError: modulesError,
-    refetch: refetchModules,
-  } = useModules();
-  const {
-    data: progress = [],
-    isLoading: progressLoading,
-    isError: progressError,
-    refetch: refetchProgress,
-  } = useUserProgress();
+  const { data: modules = [], isLoading: modulesLoading, isError: modulesError, refetch: refetchModules } = useModules();
+  const { data: progress = [], isLoading: progressLoading, isError: progressError, refetch: refetchProgress } = useUserProgress();
+  const [view, setView] = useState(readView);
+  const [query, setQuery] = useState("");
+  const [levelFilter, setLevelFilter] = useState("all");
   const isLoading = modulesLoading || progressLoading;
   const isError = modulesError || progressError;
-  const { completed: completedCount, percent: completion } = getProgressSummary(modules, progress);
-  const nextModule = getNextModule(modules, progress);
 
-  const retryLearningData = () => {
-    refetchModules();
-    refetchProgress();
+  const summary = getProgressSummary(modules, progress);
+  const nextModule = getNextModule(modules, progress);
+  const curriculum = useMemo(() => buildCurriculum(modules, progress), [modules, progress]);
+  const levelsDone = curriculum.filter((level) => level.percent === 100).length;
+  const openLevel = curriculum.find((level) => level.hasCurrent) || curriculum[0];
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const catalog = useMemo(() => curriculum
+    .filter((level) => levelFilter === "all" || String(level.number) === levelFilter)
+    .flatMap((level) => level.modules)
+    .filter((module) => !normalizedQuery || [module.title, module.summary, module.category, module.levelName]
+      .some((value) => String(value || "").toLowerCase().includes(normalizedQuery))), [curriculum, levelFilter, normalizedQuery]);
+
+  const changeView = (next) => {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Optional preference.
+    }
   };
 
   return (
-    <ContentContainer>
-      <PageHeader eyebrow="Jalur belajar" title="Jalur pembelajaran" description="Kuasai keputusan farm secara bertahap—dari fondasi flock sampai kepemimpinan operasional." actions={<div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 text-xs text-muted-foreground"><AapmIcon name="modules" className="h-3.5 w-3.5 text-brand-orange" /> 22 modul · 14 level</div>} />
+    <Page>
+      <PageHeader
+        eyebrow="Jalur belajar"
+        title="Layer Farm Academy"
+        description="Kuasai keputusan farm bertahap — dari fondasi flock sampai kepemimpinan operasional."
+        actions={<Badge size="lg" icon="modules">{modules.length || 22} modul · {curriculum.length || 14} level</Badge>}
+      />
+
       {isError ? (
         <LearningErrorState
           title="Jalur belajar belum dapat dimuat"
-          description="Roadmap atau progress Anda belum berhasil diambil. Coba lagi untuk melihat status lesson terbaru."
-          onRetry={retryLearningData}
+          description="Roadmap atau progress Anda belum berhasil diambil. Coba lagi untuk melihat status terbaru."
+          onRetry={() => { refetchModules(); refetchProgress(); }}
         />
       ) : isLoading ? (
         <LearningLoading label="Memuat jalur belajar…" lines={4} />
       ) : !modules.length ? (
-        <LearningEmptyState
-          title="Jalur belajar sedang disiapkan"
-          description="Belum ada modul yang tersedia untuk akun ini. Roadmap akan tampil saat materi sudah dipublikasikan."
-          actionLabel={null}
-          actionTo={null}
-        />
+        <LearningEmptyState title="Jalur belajar sedang disiapkan" description="Roadmap akan tampil saat materi sudah dipublikasikan." actionLabel={null} actionTo={null} />
       ) : (
         <>
-          <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
-            <Surface tone="orange" className="relative overflow-hidden p-5 sm:p-6"><div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border-[14px] border-brand-orange/10" /><div className="relative"><Badge variant="soft" className="bg-background/80 text-[10px] uppercase tracking-[0.14em] text-tint-orange-foreground">Jalur belajar</Badge><div className="mt-4 flex items-end gap-3"><div className="text-4xl font-semibold tracking-[-0.06em]">{completion}%</div><div className="pb-1 text-xs text-muted-foreground">{completedCount}/{modules.length} modul</div></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-foreground/10"><div className="h-full rounded-full bg-brand-orange transition-[width] duration-500" style={{ width: `${completion}%` }} /></div><p className="mt-3 text-xs leading-5 text-muted-foreground">Progress dihitung dari modul yang tersimpan selesai di akun Anda.</p></div></Surface>
-            <Surface className="flex min-w-0 flex-col justify-between p-5 sm:p-6"><div className="flex min-w-0 items-start gap-3"><IconTile icon="play" tone="orange" size="lg" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-orange">Berikutnya untuk Anda</p><p className="mt-1 truncate text-lg font-semibold">{nextModule?.title || "Semua modul telah diselesaikan"}</p><p className="mt-1 text-sm leading-5 text-muted-foreground">{nextModule ? `Modul ${nextModule.moduleNumber} · ${nextModule.category}` : "Lanjutkan ke evaluasi dan sertifikasi."}</p></div></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-xs"><span className="text-muted-foreground">Roadmap tertata per level</span></div></Surface>
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]" aria-label="Ringkasan belajar">
+            {nextModule ? (
+              <ContinueCard module={nextModule} completedModules={summary.completed} totalModules={summary.total} />
+            ) : (
+              <StateView kind="success" framed compact title="Semua modul selesai" description="Lanjutkan ke ujian akhir dan klaim sertifikat Anda." />
+            )}
+            <div className="aapm-card justify-center gap-4 p-4">
+              <div className="flex items-center gap-4">
+                <ProgressRing value={summary.percent} size={64} stroke={7} label={`Progress course ${summary.percent}%`} />
+                <div className="grid min-w-0 gap-0.5">
+                  <p className="aapm-text-overline m-0">Progress course</p>
+                  <p className="aapm-text-section m-0 aapm-numeric">{summary.completed}/{summary.total} modul</p>
+                </div>
+              </div>
+              <dl className="aapm-description-list">
+                <div><dt>Level tuntas</dt><dd className="aapm-numeric">{levelsDone} dari {curriculum.length}</dd></div>
+                <div><dt>Sisa modul</dt><dd className="aapm-numeric">{summary.total - summary.completed}</dd></div>
+              </dl>
+            </div>
           </section>
-          <LearningRoadmap modules={modules} progress={progress} />
+
+          <section aria-labelledby="curriculum-title">
+            <SectionHeader
+              id="curriculum-title"
+              title={view === "path" ? "Kurikulum per level" : "Katalog modul"}
+              description={view === "path" ? "Buka level untuk melihat modulnya. Level aktif ditandai." : "Cari dan saring modul berdasarkan level."}
+              actions={(
+                <SegmentedControl
+                  label="Tampilan kurikulum"
+                  value={view}
+                  onChange={changeView}
+                  options={[
+                    { value: "path", label: "Path", icon: "roadmap" },
+                    { value: "catalog", label: "Katalog", icon: "widget" },
+                  ]}
+                />
+              )}
+            />
+
+            {view === "path" ? (
+              <AccordionPrimitive.Root type="multiple" defaultValue={openLevel ? [`level-${openLevel.number}`] : []} className="grid gap-3">
+                {curriculum.map((level) => <LevelSection key={level.number} level={level} />)}
+              </AccordionPrimitive.Root>
+            ) : (
+              <div className="grid gap-4">
+                <div className="aapm-toolbar">
+                  <SearchInput className="max-w-sm" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari modul…" aria-label="Cari modul" />
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter level">
+                    <Button size="sm" variant={levelFilter === "all" ? "soft" : "ghost"} aria-pressed={levelFilter === "all"} onClick={() => setLevelFilter("all")}>Semua</Button>
+                    {curriculum.map((level) => (
+                      <Button key={level.number} size="sm" variant={levelFilter === String(level.number) ? "soft" : "ghost"} aria-pressed={levelFilter === String(level.number)} onClick={() => setLevelFilter(String(level.number))}>
+                        L{level.number}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                {catalog.length ? (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {catalog.map((module) => <CourseCard key={module.moduleNumber} module={module} state={module.state} />)}
+                  </div>
+                ) : (
+                  <StateView kind="empty" icon="search" title="Modul tidak ditemukan" description="Coba kata kunci lain atau tampilkan semua level." action={<Button variant="secondary" onClick={() => { setQuery(""); setLevelFilter("all"); }}>Reset filter</Button>} />
+                )}
+              </div>
+            )}
+          </section>
         </>
       )}
-    </ContentContainer>
+    </Page>
   );
 }

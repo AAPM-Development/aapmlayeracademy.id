@@ -4,12 +4,6 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import {
   Badge,
   Button,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
   ConfirmDialog,
   Input,
   IconTile,
@@ -37,7 +31,8 @@ import {
   useSaveAdminAiSettings,
   useTestAdminAiSettings,
 } from "@/lib/useAdminData";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/primitives";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/design-system/command";
 
 const fallbackPresets = [
   { type: "openrouter", label: "OpenRouter", description: "Gateway multi-model dengan model gratis dan berbayar.", adapter: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "nvidia/nemotron-3.5-lightning:free", keyRequired: true, supportsLocal: false, supportsStreaming: true, supportsVision: true, authMode: "bearer" },
