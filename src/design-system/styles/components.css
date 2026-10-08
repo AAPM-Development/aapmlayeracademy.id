@@ -1517,3 +1517,10 @@ a.aapm-surface { text-decoration: none; }
  * relative wrappers) are composed onto the same element. */
 .aapm-dialog[role],
 .aapm-sheet[role] { position: fixed; }
+
+/* Phones: the back link and inline row titles reach a 40px target; the negative
+ * margin keeps the layout where it was. */
+@media (max-width: 639px) {
+  .aapm-page-header__back { min-height: var(--aapm-component-action-height); }
+  .aapm-lesson-row__title { padding-block: 9px; margin-block: -9px; }
+}
