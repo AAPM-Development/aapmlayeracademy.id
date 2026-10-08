@@ -783,6 +783,23 @@ function MobileConversationSheet({
   );
 }
 
+function StreamAnnouncer({ isStreaming }) {
+  const [text, setText] = useState("");
+  const wasStreaming = useRef(false);
+  useEffect(() => {
+    if (isStreaming) {
+      wasStreaming.current = true;
+      setText("APPI sedang menjawab.");
+      return;
+    }
+    if (wasStreaming.current) {
+      wasStreaming.current = false;
+      setText("APPI selesai menjawab.");
+    }
+  }, [isStreaming]);
+  return <div className="aapm-visually-hidden" role="status" aria-live="polite">{text}</div>;
+}
+
 export default function AiAssistant() {
   const { toast } = useToast();
   const [includeFarm, setIncludeFarm] = useState(true);
@@ -1108,8 +1125,12 @@ export default function AiAssistant() {
           </div>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+          <StreamAnnouncer isStreaming={isStreaming} />
           <ScrollArea
             viewportRef={chatViewportRef}
+            role="log"
+            aria-live="off"
+            aria-busy={isStreaming}
             aria-label="Transkrip percakapan APPI"
             className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
           >
@@ -1179,7 +1200,7 @@ export default function AiAssistant() {
                         key={message.id}
                         message={{ ...message, streamStatus, streamSteps }}
                         retryPrompt={
-                          message.fallback ? messages[index - 1]?.content : ""
+                          message.fallback || message.error ? messages[index - 1]?.content : ""
                         }
                         onRetry={submit}
                         onQuickAction={submit}
