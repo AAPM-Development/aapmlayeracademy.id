@@ -82,7 +82,7 @@ export default function AcademyShell() {
       brandLabel="Beranda Academy"
       context={<SidebarProgress modules={modules} progress={progress} onNavigate={inSheet ? () => setSheetOpen(false) : undefined} />}
       footer={isAdmin ? (
-        <Link to="/admin" className="aapm-nav-item" onClick={inSheet ? () => setSheetOpen(false) : undefined}>
+        <Link to="/admin" className="aapm-nav-item" aria-label={collapsed ? "Panel admin" : undefined} onClick={inSheet ? () => setSheetOpen(false) : undefined}>
           <AapmIcon name="admin" />
           <span className="aapm-nav-item__label">Panel admin</span>
         </Link>

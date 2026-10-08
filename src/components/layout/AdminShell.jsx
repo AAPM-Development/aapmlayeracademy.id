@@ -63,7 +63,7 @@ export default function AdminShell() {
         onToggle={inSheet || isEditor ? null : toggleCollapsed}
         context={<div className="aapm-sidebar__context"><Badge tone="attention" dot>Ruang admin</Badge></div>}
         footer={(
-          <Link to="/" className="aapm-nav-item" onClick={close}>
+          <Link to="/" className="aapm-nav-item" aria-label={collapsed ? "Kembali ke Academy" : undefined} onClick={close}>
             <AapmIcon name="arrowLeft" />
             <span className="aapm-nav-item__label">Kembali ke Academy</span>
           </Link>

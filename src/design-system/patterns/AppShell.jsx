@@ -81,6 +81,7 @@ export function SidebarNav({ groups = [], collapsed = false, onNavigate, onPrelo
                 className="aapm-nav-item"
                 aria-current={active ? "page" : undefined}
                 data-accent={item.accent}
+                aria-label={collapsed ? item.label : undefined}
                 onClick={onNavigate}
                 onMouseEnter={() => onPreload?.(item.to)}
                 onFocus={() => onPreload?.(item.to)}

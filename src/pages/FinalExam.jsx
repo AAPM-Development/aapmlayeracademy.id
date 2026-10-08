@@ -107,12 +107,13 @@ export default function FinalExam() {
       footer={(
         <>
           <div className="aapm-focus__footer-group">
-            <Button variant="ghost" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))} data-hide-label-mobile="">
+            <Button variant="ghost" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))} data-hide-label-mobile="" aria-label="Soal sebelumnya">
               <AapmIcon name="arrowLeft" /><span>Sebelumnya</span>
             </Button>
             <Button
               variant="ghost"
               aria-pressed={Boolean(flagged[current])}
+              aria-label={flagged[current] ? "Batal tandai soal" : "Tandai soal untuk ditinjau"}
               onClick={() => setFlagged((value) => ({ ...value, [current]: !value[current] }))}
               data-hide-label-mobile=""
             >
