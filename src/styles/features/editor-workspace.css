@@ -52,6 +52,7 @@
 .aapm-editor-save-status[data-status="dirty"] { color: var(--aapm-semantic-attention-soft-text); }
 .aapm-editor-save-status[data-status="dirty"] .aapm-chip__dot,
 .aapm-editor-save-status[data-status="saving"] .aapm-chip__dot { color: var(--aapm-semantic-attention); animation: aapm-pulse 1.2s ease-in-out infinite; }
+.aapm-editor-save-status__label { display: inline; }
 .aapm-editor-kbd { margin-inline-start: var(--aapm-primitive-space-1); border-color: color-mix(in srgb, currentColor 35%, transparent); background: transparent; color: inherit; opacity: .75; }
 
 .aapm-editor-canvas { display: grid; gap: var(--aapm-primitive-space-4); min-width: 0; }
@@ -117,4 +118,22 @@
 @media (max-width: 639px) {
   .aapm-editor-save-status, .aapm-editor-kbd { display: none; }
   .aapm-editor-panel { padding: var(--aapm-primitive-space-4); }
+}
+
+/* Phones: the sticky bar stacks into two short rows instead of wrapping into four. */
+@media (max-width: 639px) {
+  .aapm-editor-command-bar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 6px; }
+  .aapm-editor-section-nav { width: 100%; }
+  .aapm-editor-command-actions { flex-wrap: nowrap; justify-content: space-between; gap: 4px; }
+  .aapm-editor-command-actions .aapm-button { padding-inline: 10px; }
+  .aapm-editor-command-actions .aapm-editor-kbd { display: none; }
+  .aapm-editor-save-status { padding-inline: 0; }
+  .aapm-editor-save-status__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }

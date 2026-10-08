@@ -80,7 +80,7 @@ export default function EditorQuickNav({
       <div className="aapm-editor-command-actions">
         <span className="aapm-editor-save-status" data-status={status} role="status" aria-live="polite">
           <span className="aapm-chip__dot" aria-hidden="true" />
-          {status === "saving" ? "Menyimpan…" : status === "dirty" ? "Belum disimpan" : "Tersimpan"}
+          <span className="aapm-editor-save-status__label">{status === "saving" ? "Menyimpan…" : status === "dirty" ? "Belum disimpan" : "Tersimpan"}</span>
         </span>
         <AddElementMenu items={elementItems} onAddElement={onAddElement} />
         {onPreview ? (

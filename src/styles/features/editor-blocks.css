@@ -42,8 +42,8 @@
 .aapm-editorial-quality li .aapm-icon { width: 14px; height: 14px; flex: none; }
 
 /* Block flow. */
-.aapm-editorial-composer { display: grid; gap: var(--aapm-primitive-space-3); }
-.aapm-block-flow { display: grid; }
+.aapm-editorial-composer { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--aapm-primitive-space-3); }
+.aapm-block-flow { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .aapm-block {
   position: relative;
   border: 1px solid transparent;
