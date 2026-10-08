@@ -41,7 +41,9 @@ export default function CertificationPath({ modules = [], progress = [], certifi
               <span>{state.completed}/{tier.modules.length} modul</span>
               {state.status === "eligible" ? (
                 <Button size="sm" variant="learn" loading={claiming} onClick={() => onClaim(tier)}>Klaim</Button>
-              ) : state.status === "in-progress" || state.status === "locked" ? (
+              ) : state.status === "locked" ? (
+                <span className="aapm-text-caption">Terbuka setelah Tingkat {tier.number - 1} selesai</span>
+              ) : state.status === "in-progress" ? (
                 <Link to="/modules" className="aapm-link">Lanjutkan<AapmIcon name="chevronRight" /></Link>
               ) : (
                 <span>{percent}%</span>
