@@ -4,6 +4,7 @@ import { isConversationArchived } from "@/lib/aiHistoryState";
 import {
   Button,
   Checkbox,
+  SegmentedControl,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -273,55 +274,35 @@ export function AiHistoryToolbar({
 }) {
   return (
     <div className={`min-w-0 max-w-full ${compact ? "space-y-2" : "space-y-2.5"}`}>
-      <div className="aapm-ai-segmented">
-        <button
-          type="button"
-          onClick={() => onViewChange("chats")}
-          className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-          data-active={view === "chats"}
-          aria-pressed={view === "chats"}
-        >
-          Chat <span className="ml-0.5 tabular-nums opacity-65">{totalConversationCount}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onViewChange("activity")}
-          className="aapm-ai-segmented__item min-w-0 px-2 py-1.5 text-[10px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-          data-active={view === "activity"}
-          aria-pressed={view === "activity"}
-        >
-          Aktivitas <span className="ml-0.5 tabular-nums opacity-65">{activityCount}</span>
-        </button>
-      </div>
+      <SegmentedControl
+        label="Jenis riwayat"
+        block
+        size="sm"
+        value={view}
+        onChange={onViewChange}
+        options={[
+          { value: "chats", label: "Chat", count: totalConversationCount },
+          { value: "activity", label: "Aktivitas", count: activityCount },
+        ]}
+      />
 
       {view === "chats" ? (
         <>
           {onScopeChange && (
-            <div className="aapm-ai-history-scope" role="tablist" aria-label="Status percakapan">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={scope === "active"}
-                onClick={() => onScopeChange("active")}
-                className="aapm-ai-history-scope__item"
-                data-active={scope === "active"}
-              >
-                Aktif <span>{activeCount}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={scope === "archived"}
-                onClick={() => onScopeChange("archived")}
-                className="aapm-ai-history-scope__item"
-                data-active={scope === "archived"}
-              >
-                Arsip <span>{archivedCount}</span>
-              </button>
-            </div>
+            <SegmentedControl
+              label="Status percakapan"
+              block
+              size="sm"
+              value={scope}
+              onChange={onScopeChange}
+              options={[
+                { value: "active", label: "Aktif", count: activeCount },
+                { value: "archived", label: "Arsip", count: archivedCount },
+              ]}
+            />
           )}
           <div className="flex min-w-0 flex-col gap-1.5">
-            <label className="aapm-ai-search-control flex min-h-[2.15rem] min-w-0 w-full items-center gap-2 px-2.5 py-2 transition-colors">
+            <label className="aapm-ai-search-control flex min-h-9 min-w-0 w-full items-center gap-2 px-2.5 py-2 transition-colors">
               <AapmIcon
                 name="solar:magnifer-bold-duotone"
                 className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -330,7 +311,7 @@ export function AiHistoryToolbar({
                 value={query}
                 onChange={(event) => onQueryChange(event.target.value)}
                 placeholder="Cari riwayat percakapan"
-                className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
                 aria-label="Cari riwayat percakapan"
               />
               {query && (
@@ -346,11 +327,11 @@ export function AiHistoryToolbar({
                 </Button>
               )}
             </label>
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.15rem_auto] gap-1.5">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_auto] gap-1.5">
               <Select value={sort} onValueChange={onSortChange}>
                 <SelectTrigger
                   aria-label="Urutkan riwayat percakapan"
-                  className="h-[2.15rem] min-w-0 w-full gap-1 px-2 text-[10px]"
+                  className="h-9 min-w-0 w-full gap-1 px-2 text-xs"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -369,7 +350,7 @@ export function AiHistoryToolbar({
                   size="icon"
                   onClick={onRefresh}
                   disabled={isRefreshing}
-                  className="h-[2.15rem] w-[2.15rem] shrink-0 text-muted-foreground hover:text-brand-orange"
+                  className="h-9 w-9 shrink-0 text-muted-foreground hover:text-brand-orange"
                   aria-label="Muat ulang riwayat chat"
                   title="Muat ulang riwayat"
                 >
@@ -385,7 +366,7 @@ export function AiHistoryToolbar({
                   variant={selectionMode ? "soft" : "ghost"}
                   size="sm"
                   onClick={onToggleSelectionMode}
-                  className="h-[2.15rem] min-w-[4.5rem] shrink-0 justify-center gap-1.5 px-2 text-[10px]"
+                  className="h-9 min-w-[5rem] shrink-0 justify-center gap-1.5 px-2 text-xs"
                   aria-pressed={selectionMode}
                   aria-label={selectionMode ? "Selesai memilih percakapan" : "Pilih percakapan"}
                 >
@@ -397,7 +378,7 @@ export function AiHistoryToolbar({
           </div>
         </>
       ) : (
-        <p className="px-0.5 text-[10px] text-muted-foreground">
+        <p className="px-0.5 text-xs text-muted-foreground">
           Jejak pertanyaan dan respons APPI di akun ini.
         </p>
       )}
