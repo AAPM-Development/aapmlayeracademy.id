@@ -23,6 +23,7 @@ import {
   ChartPanel,
   DataTable,
   FormGrid,
+  Field,
   FormSection,
   IconTile,
   Input,
@@ -64,15 +65,15 @@ function emptyForm() {
 const numberFields = [
   { key: "week", label: "Umur (minggu)", required: true },
   { key: "henDayProduction", label: "HDP (%)" },
-  { key: "feedIntake", label: "Feed intake (g)" },
-  { key: "eggWeight", label: "Egg weight (g)" },
+  { key: "feedIntake", label: "Asupan pakan (g)" },
+  { key: "eggWeight", label: "Berat telur (g)" },
   { key: "fcr", label: "FCR" },
-  { key: "mortality", label: "Mortality (%)" },
-  { key: "waterIntake", label: "Water (ml)" },
+  { key: "mortality", label: "Mortalitas (%)" },
+  { key: "waterIntake", label: "Air minum (ml)" },
   { key: "temperature", label: "Suhu (°C)" },
-  { key: "humidity", label: "Humidity (%)" },
-  { key: "revenue", label: "Revenue (Rp)" },
-  { key: "cost", label: "Cost (Rp)" },
+  { key: "humidity", label: "Kelembapan (%)" },
+  { key: "revenue", label: "Pendapatan (Rp)" },
+  { key: "cost", label: "Biaya (Rp)" },
 ];
 
 const primaryFields = numberFields.slice(0, 5);
@@ -88,6 +89,7 @@ export default function KpiDashboard() {
   const [editing, setEditing] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  const [fieldErrors, setFieldErrors] = useState({});
   // Keep the Wisman fixture available for explicit local QA without exposing
   // synthetic data or audit metadata in the learner-facing build.
   const devFixtureTools = import.meta.env.DEV;
@@ -127,7 +129,7 @@ export default function KpiDashboard() {
     if (previewWisman) {
       const mortality = completeSeries(activeRows, "mortality");
       if (mortality.length) {
-        series.push({ id: "mortality", label: "Mortality (%)", values: mortality });
+        series.push({ id: "mortality", label: "Mortalitas (%)", values: mortality });
       }
     }
     return series;
@@ -139,7 +141,7 @@ export default function KpiDashboard() {
   );
 
   const eggWeightSeries = useMemo(
-    () => (previewWisman ? [] : chartSeries(activeRows, "eggWeight", "Egg weight (g)")),
+    () => (previewWisman ? [] : chartSeries(activeRows, "eggWeight", "Berat telur (g)")),
     [activeRows, previewWisman],
   );
 
@@ -149,8 +151,8 @@ export default function KpiDashboard() {
     const cost = completeSeries(activeRows, "cost");
     if (!revenue.length || !cost.length) return [];
     return [
-      { id: "revenue", label: "Revenue (jt)", values: revenue.map((value) => value / 1e6) },
-      { id: "cost", label: "Cost (jt)", values: cost.map((value) => value / 1e6) },
+      { id: "revenue", label: "Pendapatan (jt)", values: revenue.map((value) => value / 1e6) },
+      { id: "cost", label: "Biaya (jt)", values: cost.map((value) => value / 1e6) },
     ];
   }, [activeRows, previewWisman]);
 
@@ -161,6 +163,12 @@ export default function KpiDashboard() {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!String(form.week ?? "").trim()) {
+      setFieldErrors({ week: "Isi umur flock dalam minggu, misalnya 12." });
+      document.getElementById("farm-week")?.focus();
+      return;
+    }
+    setFieldErrors({});
     const data = Object.fromEntries(
       Object.entries(form).map(([key, value]) => [
         key,
@@ -395,7 +403,7 @@ export default function KpiDashboard() {
               />
               <ChartPanel
                 className="min-w-0"
-                title="Egg weight trend"
+                title="Tren berat telur"
                 description={
                   previewWisman
                     ? "Berat telur belum tersedia pada Daily Flock Report preview."
@@ -417,7 +425,7 @@ export default function KpiDashboard() {
               />
               <ChartPanel
                 className="min-w-0 lg:col-span-2"
-                title="Revenue vs cost"
+                title="Pendapatan vs biaya"
                 description={
                   previewWisman
                     ? "Data biaya tidak ada di Daily Flock Report preview."
@@ -472,7 +480,7 @@ export default function KpiDashboard() {
             <SheetDescription>{editing ? "Perbarui angka lalu simpan perubahan." : "Isi yang Anda punya; field lain boleh kosong."}</SheetDescription>
           </SheetHeader>
           <div className="aapm-form-sheet__body">
-        <form id="farm-data-form" onSubmit={submit} className="grid gap-5">
+        <form id="farm-data-form" noValidate onSubmit={submit} className="grid gap-5">
           <FormSection
             title="Produksi & efisiensi"
             description="Field inti untuk membaca performa flock."
@@ -486,6 +494,7 @@ export default function KpiDashboard() {
                   label={field.label}
                   value={form[field.key]}
                   required={field.required}
+                  error={fieldErrors[field.key]}
                   onChange={(value) =>
                     setForm((current) => ({ ...current, [field.key]: value }))
                   }
@@ -507,6 +516,7 @@ export default function KpiDashboard() {
                   label={field.label}
                   value={form[field.key]}
                   required={field.required}
+                  error={fieldErrors[field.key]}
                   onChange={(value) =>
                     setForm((current) => ({ ...current, [field.key]: value }))
                   }
@@ -564,22 +574,17 @@ export default function KpiDashboard() {
   );
 }
 
-function MetricInput({ fieldKey, label, value, required = false, onChange }) {
+function MetricInput({ fieldKey, label, value, required = false, error, onChange }) {
   const id = fieldKey === "week" ? "farm-week" : `farm-${fieldKey}`;
   return (
-    <div className="min-w-0 space-y-1.5">
-      <Label htmlFor={id} className="text-[11px] text-muted-foreground">
-        {label}
-      </Label>
+    <Field id={id} label={label} required={required} error={error}>
       <Input
-        id={id}
         type="number"
         inputMode="decimal"
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
-        required={required}
       />
-    </div>
+    </Field>
   );
 }
 
@@ -599,7 +604,7 @@ function buildStats(rows, { preview = false } = {}) {
     return [
       {
         icon: "chart",
-        label: "Avg HDP",
+        label: "Rata-rata HDP",
         value: metricValue(average(hdp), "%", 1),
         note: `${rows.length} tanggal · baris siap rekonsiliasi`,
         tone: "warning",
@@ -630,13 +635,13 @@ function buildStats(rows, { preview = false } = {}) {
       },
       {
         icon: "warning",
-        label: "Avg mortality",
+        label: "Rata-rata mortalitas",
         value: metricValue(average(mortality), "%", 2),
         note: "Decrease ÷ end · indikatif",
         tone: "danger",
         colorway: 5,
         emphasis: "solid",
-        chart: chartFor(mortalitySeries, "Mortality preview", 5, "danger"),
+        chart: chartFor(mortalitySeries, "Preview mortalitas", 5, "danger"),
         trend: trendFor(mortalitySeries, { lowerIsBetter: true }),
       },
     ];
@@ -667,7 +672,7 @@ function buildStats(rows, { preview = false } = {}) {
   return [
     {
       icon: "chart",
-      label: "Avg HDP",
+      label: "Rata-rata HDP",
       value: metricValue(average(hdp), "%", 1),
       note: `${rows.length} minggu · Hen day production`,
       tone: "warning",
@@ -678,7 +683,7 @@ function buildStats(rows, { preview = false } = {}) {
     },
       {
         icon: "progress",
-      label: "Avg FCR",
+      label: "Rata-rata FCR",
       value: metricValue(average(fcr), "", 2),
       note: "Feed conversion · data aktual",
       tone: "success",
@@ -689,7 +694,7 @@ function buildStats(rows, { preview = false } = {}) {
     },
     {
       icon: "finance",
-      label: "Total profit",
+      label: "Total laba",
       value: profit.length ? formatMillion(totalProfit) : "—",
       note: profit.length
         ? totalProfit >= 0
@@ -704,13 +709,13 @@ function buildStats(rows, { preview = false } = {}) {
     },
     {
       icon: "package",
-      label: "Avg egg weight",
+      label: "Rata-rata berat telur",
       value: metricValue(average(eggWeight), " g", 1),
       note: "Berat telur · data aktual",
       tone: "accent",
       colorway: 4,
       emphasis: "solid",
-      chart: chartFor(eggWeightSeries, "Egg weight", 4, "chart"),
+      chart: chartFor(eggWeightSeries, "Berat telur", 4, "chart"),
       trend: trendFor(eggWeightSeries),
     },
   ];
