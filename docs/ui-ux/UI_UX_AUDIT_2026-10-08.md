@@ -173,3 +173,17 @@ What is strong: the quiz feedback and result screens, the final-exam navigator, 
 - P2-9 Editor: the duplicated back link is removed. The three navigation layers are not yet merged.
 
 **Still open:** P3 polish, and merging the editor's navigation layers.
+
+---
+
+## Status update: APPI chat rework
+
+**Fixed**
+- Floating APPI panel was see-through: the panel and launcher used token classes with no CSS. They now use DS surfaces and a scrim (`98dcfc6`).
+- Focus: the panel opens in the question box, returns focus to the launcher on close, and Tab stays inside the dialog (`98dcfc6`).
+- Copy: "Tanya APPI tentang Farm KPI"; the close control is named "Tutup APPI" (`98dcfc6`).
+- Chat room: the transcript is a labelled log with live updates off. A separate status line announces when APPI starts and finishes an answer, so tokens do not stream into screen readers (`2efba53`).
+- A failed answer offers "Kirim ulang", which resends the question in place (`2efba53`).
+- One user bubble style on the page and in the floating panel; the compact composer hides the duplicate context chip (`98dcfc6`).
+
+**Not verified in the browser:** the streaming announcement and the "Kirim ulang" path need a provider reply or a failing request. The floating launcher is hidden on phones that have a bottom bar, so it was checked on desktop only.
