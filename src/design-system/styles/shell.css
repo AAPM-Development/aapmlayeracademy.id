@@ -284,6 +284,16 @@
   backdrop-filter: saturate(1.4) blur(12px);
 }
 .aapm-topbar__title { display: grid; min-width: 0; flex: 1; }
+/* The location line above a title: the same size and weight as the breadcrumb trail. */
+.aapm-topbar__context {
+  overflow: hidden;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-support-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  line-height: var(--aapm-component-type-support-line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .aapm-topbar__title-text {
   margin: 0;
   overflow: hidden;
@@ -411,28 +421,14 @@
   background: var(--aapm-semantic-background);
   color: var(--aapm-semantic-foreground);
 }
-.aapm-focus__bar {
-  display: flex;
-  align-items: center;
-  gap: var(--aapm-primitive-space-3);
-  min-height: var(--aapm-component-lesson-topbar-height);
-  padding: var(--aapm-primitive-space-2) var(--aapm-primitive-space-4);
-  border-bottom: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
-  background: var(--aapm-semantic-surface);
-}
-.aapm-focus__title { display: grid; min-width: 0; flex: 1; }
-.aapm-focus__title strong {
-  overflow: hidden;
-  font-size: var(--aapm-component-type-body-size);
-  line-height: var(--aapm-component-type-body-line);
-  font-weight: var(--aapm-primitive-weight-heading);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.aapm-focus__title span { overflow: hidden; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); line-height: var(--aapm-component-type-caption-line); text-overflow: ellipsis; white-space: nowrap; }
+/* Focus bar: the academy topbar with a learning context. It reuses the topbar's
+ * class, so height, inset, border, surface, title and action rhythm are the same;
+ * only the progress readout is specific to learning. */
+.aapm-focus__bar { flex: none; }
 .aapm-focus__progress { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); width: min(220px, 26vw); }
 .aapm-focus__progress .aapm-progress { flex: 1; }
 .aapm-focus__progress span { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aapm-focus__segments { width: min(240px, 30vw); min-width: 96px; }
 .aapm-focus__body {
   display: grid;
   grid-template-columns: var(--aapm-component-lesson-outline-width) minmax(0, 1fr);
@@ -476,7 +472,7 @@
   .aapm-focus__outline { display: none; }
 }
 @media (max-width: 639px) {
-  .aapm-focus__bar { padding-inline: var(--aapm-primitive-space-2); gap: var(--aapm-primitive-space-2); }
+  .aapm-focus__segments { width: 96px; }
   .aapm-focus__progress { display: none; }
   .aapm-focus__footer { padding-inline: var(--aapm-primitive-space-3); }
   .aapm-focus__footer-center { display: none; }
