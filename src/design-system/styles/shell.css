@@ -15,8 +15,13 @@
   color: var(--aapm-semantic-primary);
   text-align: center;
 }
-.aapm-boot-screen__mark { width: 48px; height: 48px; animation: aapm-pulse 1.6s ease-in-out infinite; }
-.aapm-boot-screen--error { color: var(--aapm-semantic-danger); font-size: var(--aapm-component-type-body-size); }
+.aapm-boot-screen__mark {
+  width: var(--aapm-component-state-icon-frame);
+  height: var(--aapm-component-state-icon-frame);
+  animation: aapm-pulse var(--aapm-primitive-motion-pulse) var(--aapm-primitive-motion-ease-in-out) infinite;
+}
+/* Visible label: the state is not carried by motion alone. */
+.aapm-boot-screen__label { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
 
 .aapm-route-loading {
   display: flex;
@@ -28,6 +33,37 @@
   font-size: var(--aapm-component-type-support-size);
 }
 .aapm-route-loading .aapm-spinner { color: var(--aapm-semantic-primary); }
+
+/* In-app navigation to a lazy route runs in a transition, so the old page
+ * stays up until the chunk lands: a thin bar says the click registered. It
+ * fades in after motion-base, so cached routes never flash it. */
+.aapm-app__canvas { position: relative; }
+.aapm-route-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: var(--aapm-primitive-layer-floating);
+  height: var(--aapm-component-progress-height-sm);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-route-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--aapm-semantic-primary);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.aapm-route-progress[data-active="true"] { opacity: 1; transition-delay: var(--aapm-primitive-motion-base); }
+.aapm-route-progress[data-active="true"]::before {
+  animation: aapm-route-progress calc(var(--aapm-primitive-motion-chart) * 4) var(--aapm-primitive-motion-ease) var(--aapm-primitive-motion-base) forwards;
+}
+@keyframes aapm-route-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(.9); }
+}
 
 /* Standalone status page (StatusPage): brand at system size over one state. */
 .aapm-status-page {

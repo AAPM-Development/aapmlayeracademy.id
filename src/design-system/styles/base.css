@@ -301,4 +301,6 @@ body {
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
+  /* A still spinner reads as a "C"; show a full faint ring with an accent arc. */
+  .aapm-spinner { border-right-color: color-mix(in srgb, currentColor 25%, transparent); }
 }

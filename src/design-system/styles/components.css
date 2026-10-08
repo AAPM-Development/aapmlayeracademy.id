@@ -239,7 +239,7 @@
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: aapm-spin .7s linear infinite;
+  animation: aapm-spin var(--aapm-primitive-motion-spin) linear infinite;
 }
 .aapm-spinner[data-size="lg"] {
   width: var(--aapm-primitive-icon-xl);

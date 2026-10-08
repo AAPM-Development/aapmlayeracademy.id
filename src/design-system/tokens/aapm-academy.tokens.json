@@ -164,6 +164,8 @@
     "motionEntrance": "380ms",
     "motionChart": "700ms",
     "motionStagger": "45ms",
+    "motionSpin": "700ms",
+    "motionPulse": "1600ms",
     "motionDistance": "8px",
     "motionEase": "cubic-bezier(.2,.8,.2,1)",
     "motionEaseIn": "cubic-bezier(.4,0,1,1)",

@@ -164,6 +164,8 @@
   --aapm-primitive-motion-entrance: 380ms;
   --aapm-primitive-motion-chart: 700ms;
   --aapm-primitive-motion-stagger: 45ms;
+  --aapm-primitive-motion-spin: 700ms;
+  --aapm-primitive-motion-pulse: 1600ms;
   --aapm-primitive-motion-distance: 8px;
   --aapm-primitive-motion-ease: cubic-bezier(.2,.8,.2,1);
   --aapm-primitive-motion-ease-in: cubic-bezier(.4,0,1,1);
