@@ -13,7 +13,7 @@ export default function AdminCourses() {
 
   return (
     <AdminPageFrame
-      title="Manajemen course"
+      title="Course"
       description="Kelola kurikulum, konten modul, dan bank soal Academy."
     >
       {isLoading ? <AdminLoading label="Memuat katalog course…" /> : error ? <AdminError error={error} onRetry={refetch} /> : !courses.length ? (

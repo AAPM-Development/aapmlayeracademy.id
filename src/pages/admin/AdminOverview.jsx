@@ -7,12 +7,14 @@ import { useAdminOverview } from "@/lib/useAdminData";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
 
-const metricAppearance = {
-  learners: { tone: "success", icon: "users", colorway: 1 },
-  active: { tone: "info", icon: "analytics", colorway: 2 },
-  courses: { tone: "warning", icon: "book", colorway: 3 },
-  completion: { tone: "success", icon: "approve", colorway: 4 },
-  analytics: { tone: "neutral", icon: "analytics", colorway: 5 },
+// Admin areas stay neutral: every metric sits on the same surface, and the
+// single accent (the default green icon) carries the eye to the numbers.
+const metricIcon = {
+  learners: "users",
+  active: "analytics",
+  courses: "book",
+  completion: "approve",
+  analytics: "analytics",
 };
 
 function PanelHead({ icon, hue, title, description }) {
@@ -32,7 +34,7 @@ export default function AdminOverview() {
 
   return (
     <AdminPageFrame
-      title="Ringkasan Academy"
+      title="Ringkasan"
       description="Pantau pembelajaran dari data native. Halaman ini hanya membaca dan tidak mengubah data produksi."
     >
       {isLoading ? (
@@ -47,15 +49,11 @@ export default function AdminOverview() {
             columns={4}
             variant="cards"
             items={(data?.metrics || []).map((metric) => {
-              const appearance = metricAppearance[metric.key] || metricAppearance.analytics;
               return {
-                icon: appearance.icon,
+                icon: metricIcon[metric.key] || "analytics",
                 label: metric.label,
                 note: metric.detail || "Data langsung",
                 value: `${metric.value ?? "—"}${metric.suffix || ""}`,
-                tone: appearance.tone,
-                colorway: appearance.colorway,
-                emphasis: "solid",
               };
             })}
           />
@@ -108,7 +106,7 @@ export default function AdminOverview() {
             </Surface>
 
             <Surface className="aapm-admin-panel">
-              <PanelHead icon="modules" hue="orange" title="Penyelesaian terbaru" description="Modul yang ditandai selesai oleh learner." />
+              <PanelHead icon="modules" hue="green" title="Penyelesaian terbaru" description="Modul yang ditandai selesai oleh learner." />
               {data?.recentCompletions?.length ? (
                 <DataTable
                   caption="Penyelesaian modul terbaru"

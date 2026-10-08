@@ -1,10 +1,10 @@
 // @ts-nocheck
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, DataTable, Progress, SearchInput, Surface } from "@/components/primitives";
+import { Badge, Button, DataTable, Progress, SearchInput, StateView, Surface } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { useAdminLearners } from "@/lib/useAdminData";
-import { AdminError, AdminLoading, AdminPageFrame, AdminUnavailable } from "@/components/admin/AdminPage";
+import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
 
 function initialOf(learner) {
@@ -43,9 +43,13 @@ export default function AdminLearners() {
       ) : error ? (
         <AdminError error={error} onRetry={refetch} />
       ) : !learners.length ? (
-        <AdminUnavailable
-          title="Tidak ada learner ditemukan"
-          description={search ? "Coba gunakan kata kunci lain." : "Belum ada data akun yang dapat ditampilkan."}
+        <StateView
+          kind="empty"
+          icon="users"
+          compact
+          title={search ? "Tidak ada hasil" : "Belum ada peserta"}
+          description={search ? "Coba kata kunci lain, atau hapus pencarian." : "Peserta muncul setelah akun learner dibuat dari menu Pengguna."}
+          action={search ? null : <Button asChild variant="secondary" size="sm"><Link to="/admin/users">Buka Pengguna</Link></Button>}
         />
       ) : (
         <Surface className="p-0">

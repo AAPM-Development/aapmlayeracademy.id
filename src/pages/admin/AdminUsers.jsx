@@ -280,7 +280,7 @@ export default function AdminUsers() {
 
   return (
     <AdminPageFrame
-      title="Pengguna & akses"
+      title="Pengguna"
       description="Kelola akses akun, role, password, dan reset progress dari satu tempat."
       actions={
         <Button onClick={() => setSheetUser(null)}>

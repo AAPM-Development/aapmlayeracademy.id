@@ -371,8 +371,8 @@ export default function AdminAiSettings() {
     } catch (exception) { toast({ variant: "destructive", title: "Provider belum dihapus", description: exception.message }); }
   };
 
-  if (isLoading) return <AdminPageFrame title="Pengaturan AI" description="Menyiapkan registry provider APPI."><AdminLoading label="Memuat provider AI…" /></AdminPageFrame>;
-  if (error) return <AdminPageFrame title="Pengaturan AI" description="Kelola koneksi AI global dan kompatibilitas local."><AdminError error={error} onRetry={refetch} /></AdminPageFrame>;
+  if (isLoading) return <AdminPageFrame title="Pengaturan APPI" description="Menyiapkan registry provider APPI."><AdminLoading label="Memuat provider AI…" /></AdminPageFrame>;
+  if (error) return <AdminPageFrame title="Pengaturan APPI" description="Kelola koneksi AI global dan kompatibilitas local."><AdminError error={error} onRetry={refetch} /></AdminPageFrame>;
 
   const isSaving = save.isPending;
   const isTesting = test.isPending;
@@ -382,7 +382,7 @@ export default function AdminAiSettings() {
 
   return (
     <AdminPageFrame
-      title="Provider AI & koneksi"
+      title="Pengaturan APPI"
       description="Satu kontrak untuk hosted API, gateway internal, jaringan privat, dan local AI. Provider aktif menjadi default global APPI."
       actions={(
         <Button type="button" variant="outline" onClick={() => createProvider()} disabled={isLocked}>
