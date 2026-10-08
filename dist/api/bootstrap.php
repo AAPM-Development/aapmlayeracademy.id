@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/security.php';
+
 /**
  * Shared native API bootstrap.
  *
@@ -276,6 +278,7 @@ function db(): PDO
             }
             $connection = new PDO('sqlite:' . $path);
             $connection->exec('PRAGMA foreign_keys = ON');
+            $connection->exec('PRAGMA busy_timeout = 5000');
         } else {
             $dsn = sprintf(
                 'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
@@ -302,6 +305,7 @@ function db(): PDO
 
     if (!$schemaReady) {
         ensure_schema($connection, $driver);
+        aapm_ensure_auth_security_schema($connection, $driver);
         $schemaReady = true;
     }
 
@@ -1080,16 +1084,39 @@ function current_user(): ?array
         return null;
     }
 
-    $stmt = db()->prepare('SELECT u.id, u.email, u.full_name, u.role, u.created_at, COALESCE(p.avatar_data, \'\') AS avatar_data FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
+    $stmt = db()->prepare('SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version, COALESCE(p.avatar_data, \'\') AS avatar_data FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
     $stmt->execute([(int) $_SESSION['user_id']]);
     $user = $stmt->fetch();
-    return $user ? present_authenticated_user($user) : null;
+    if (!$user) {
+        return null;
+    }
+
+    // A session from before the account's current authorization version is
+    // revoked. The flag lets require_user() return the stable session_revoked code.
+    if (!isset($_SESSION['auth_version']) || (int) $_SESSION['auth_version'] !== (int) $user['auth_version']) {
+        if (empty($GLOBALS['aapm_session_revoked'])) {
+            $GLOBALS['aapm_session_revoked'] = true;
+            aapm_audit('auth.session_revoked', 'revoked', null, (int) $user['id'], ['reason' => 'authorization_changed']);
+        }
+        return null;
+    }
+
+    // A pending new account never holds an application session.
+    if (aapm_verification_status($user) === 'pending') {
+        unset($_SESSION['user_id']);
+        return null;
+    }
+
+    return present_authenticated_user($user);
 }
 
 function require_user(): array
 {
     $user = current_user();
     if (!$user) {
+        if (!empty($GLOBALS['aapm_session_revoked'])) {
+            error_response('Sesi Anda telah berakhir. Silakan masuk kembali.', 401, 'session_revoked');
+        }
         error_response('Silakan login terlebih dahulu.', 401, 'auth_required');
     }
     return $user;
@@ -1100,31 +1127,44 @@ function require_user(): array
  * exposes only the bounded learner/admin role contract while preserving every
  * existing account and schema value.
  */
-function configured_admin_emails(): array
+/**
+ * Diagnostics only. Configured emails are listed for the provisioning
+ * preflight as migration candidates and never grant any privilege.
+ */
+function legacy_config_admin_emails(): array
 {
     $value = (string) (app_config()['admin_emails'] ?? '');
     $emails = array_filter(array_map('normalize_email', explode(',', $value)));
     return array_values(array_unique($emails));
 }
 
+/**
+ * Administrator capability requires the stored admin role AND a verified
+ * identity. Configuration, email matching, and request data never grant it.
+ */
 function effective_user_role(array $user): string
 {
-    if (strtolower(trim((string) ($user['role'] ?? ''))) === 'admin') {
+    $storedRole = strtolower(trim((string) ($user['role'] ?? '')));
+    if ($storedRole === 'admin' && aapm_verification_status($user) === 'verified') {
         return 'admin';
     }
 
-    return in_array(normalize_email($user['email'] ?? ''), configured_admin_emails(), true)
-        ? 'admin'
-        : 'learner';
+    return 'learner';
 }
 
 function present_authenticated_user(array $user): array
 {
+    $role = effective_user_role($user);
+    $status = aapm_verification_status($user);
+
     return [
         'id' => (int) ($user['id'] ?? 0),
         'email' => (string) ($user['email'] ?? ''),
         'full_name' => (string) ($user['full_name'] ?? ''),
-        'role' => effective_user_role($user),
+        'role' => $role,
+        'emailVerified' => $status === 'verified',
+        'emailVerificationStatus' => $status,
+        'canAccessAdmin' => $role === 'admin',
         'avatar' => (string) ($user['avatar_data'] ?? $user['avatar'] ?? ''),
         'created_at' => $user['created_at'] ?? null,
     ];
@@ -1601,7 +1641,7 @@ function admin_progress_summary(int $userId, ?int $totalModules = null): array
 
 function admin_learner_metric_rows(): array
 {
-    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at,
+    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version,
         COALESCE(p.progress_entries, 0) AS progress_entries,
         COALESCE(p.completed_modules, 0) AS completed_modules,
         p.last_activity
@@ -1661,7 +1701,7 @@ function admin_overview_data(): array
     // learner population, not only users who have already started.
     $averageCompletion = $totalLearners ? (int) round($completionTotal / $totalLearners) : 0;
 
-    $registrationCandidates = db()->query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC, id DESC LIMIT 25')->fetchAll();
+    $registrationCandidates = db()->query('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users ORDER BY created_at DESC, id DESC LIMIT 25')->fetchAll();
     $recentRegistrations = [];
     foreach ($registrationCandidates as $candidate) {
         if (effective_user_role($candidate) === 'admin') {
@@ -1747,7 +1787,7 @@ function admin_learner_list(string $search = ''): array
 function admin_account_list(string $search = ''): array
 {
     $search = trim($search);
-    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at,
+    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version,
         COALESCE(p.progress_entries, 0) AS progress_entries,
         COALESCE(p.completed_modules, 0) AS completed_modules,
         p.last_activity,
@@ -1781,7 +1821,7 @@ function admin_account_list(string $search = ''): array
 
 function admin_learner_detail(int $learnerId): ?array
 {
-    $statement = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $statement = db()->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $statement->execute([$learnerId]);
     $row = $statement->fetch();
     if (!$row) {
@@ -1952,7 +1992,7 @@ function update_profile_data(array $user, array $input): array
 
 function hall_of_fame_data(): array
 {
-    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
+    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
     $entries = [];
     foreach ($rows as $row) {
         $user = present_authenticated_user($row);
@@ -1992,13 +2032,10 @@ function admin_user_list(string $search = ''): array
 
 function admin_effective_admin_count(): int
 {
-    $rows = db()->query('SELECT id, email, full_name, role, created_at FROM users')->fetchAll();
-    return count(array_filter($rows, static function (array $row): bool {
-        return effective_user_role($row) === 'admin';
-    }));
+    return aapm_verified_admin_count(db());
 }
 
-function admin_create_user(array $input): array
+function admin_create_user(array $actor, array $input): array
 {
     $email = normalize_email($input['email'] ?? '');
     $password = (string) ($input['password'] ?? '');
@@ -2022,59 +2059,115 @@ function admin_create_user(array $input): array
     if ($existing->fetch()) {
         error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
     }
-    db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)')->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user']);
-    $id = (int) db()->lastInsertId();
-    $created = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+
+    // An admin role on a new account stays inert until identity verification completes.
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)')
+            ->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user', aapm_utc_now()]);
+        $id = (int) $pdo->lastInsertId();
+        $token = aapm_issue_verification_token($pdo, $id);
+        aapm_audit('admin.user_created', 'ok', (int) $actor['id'], $id, ['role_to' => $requestedRole === 'admin' ? 'admin' : 'learner']);
+        aapm_tx_commit($pdo);
+    } catch (PDOException $exception) {
+        aapm_tx_rollback($pdo);
+        if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
+            error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+        }
+        throw $exception;
+    }
+    aapm_audit('auth.verification_sent', aapm_send_verification_email($email, $token) ? 'sent' : 'delivery_failed', null, $id, ['channel' => 'email']);
+
+    $created = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $created->execute([$id]);
     return present_authenticated_user($created->fetch() ?: []);
 }
 
 function admin_update_user(array $actor, int $userId, array $input): array
 {
-    $statement = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
-    $statement->execute([$userId]);
-    $target = $statement->fetch();
-    if (!$target) {
-        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        aapm_lock_admin_rows($pdo);
+        $statement = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
+        $statement->execute([$userId]);
+        $target = $statement->fetch();
+        if (!$target) {
+            aapm_tx_rollback($pdo);
+            error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+        }
+        $fullName = array_key_exists('fullName', $input) || array_key_exists('full_name', $input)
+            ? profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160)
+            : (string) $target['full_name'];
+        if ($fullName === '') {
+            aapm_tx_rollback($pdo);
+            error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
+        }
+
+        $storedBefore = strtolower(trim((string) $target['role'])) === 'admin' ? 'admin' : 'user';
+        $storedAfter = $storedBefore;
+        if (array_key_exists('role', $input)) {
+            $requested = strtolower(trim((string) $input['role']));
+            if (!in_array($requested, ['learner', 'admin'], true)) {
+                aapm_tx_rollback($pdo);
+                error_response('Role pengguna tidak valid.', 422, 'validation_error');
+            }
+            $storedAfter = $requested === 'admin' ? 'admin' : 'user';
+            if ((int) $actor['id'] === $userId && $storedAfter !== 'admin') {
+                aapm_tx_rollback($pdo);
+                error_response('Anda tidak dapat menurunkan role admin pada akun sendiri.', 422, 'self_demotion');
+            }
+            if (effective_user_role($target) === 'admin' && $storedAfter !== 'admin' && aapm_verified_admin_count($pdo) <= 1) {
+                aapm_tx_rollback($pdo);
+                error_response('Minimal satu admin terverifikasi harus tetap tersedia.', 422, 'last_admin');
+            }
+        }
+
+        $pdo->prepare('UPDATE users SET full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            ->execute([$fullName, $storedAfter, $userId]);
+        if ($storedAfter !== $storedBefore) {
+            aapm_bump_auth_version($pdo, $userId);
+            aapm_audit('admin.role_changed', 'ok', (int) $actor['id'], $userId, [
+                'role_from' => $storedBefore === 'admin' ? 'admin' : 'learner',
+                'role_to' => $storedAfter === 'admin' ? 'admin' : 'learner',
+            ]);
+        }
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
     }
-    $fullName = array_key_exists('fullName', $input) || array_key_exists('full_name', $input) ? profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160) : (string) $target['full_name'];
-    if ($fullName === '') {
-        error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
-    }
-    $newRole = effective_user_role($target);
-    if (array_key_exists('role', $input)) {
-        $newRole = strtolower(trim((string) $input['role']));
-        if (!in_array($newRole, ['learner', 'admin'], true)) {
-            error_response('Role pengguna tidak valid.', 422, 'validation_error');
-        }
-        if ($newRole !== 'admin' && in_array(normalize_email($target['email']), configured_admin_emails(), true)) {
-            error_response('Role admin untuk email ini diatur melalui konfigurasi server.', 422, 'role_managed_by_config');
-        }
-        if ($newRole !== 'admin' && effective_user_role($target) === 'admin' && admin_effective_admin_count() <= 1) {
-            error_response('Minimal satu admin harus tetap tersedia.', 422, 'last_admin');
-        }
-        if ((int) $actor['id'] === $userId && $newRole !== 'admin') {
-            error_response('Anda tidak dapat menurunkan role admin pada akun sendiri.', 422, 'self_demotion');
-        }
-    }
-    db()->prepare('UPDATE users SET full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$fullName, $newRole === 'admin' ? 'admin' : 'user', $userId]);
-    $fresh = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+
+    $fresh = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $fresh->execute([$userId]);
     return present_authenticated_user($fresh->fetch() ?: []);
 }
 
-function admin_reset_user_password(int $userId, string $password): void
+function admin_reset_user_password(array $actor, int $userId, string $password): void
 {
     $passwordError = password_validation_error($password);
     if ($passwordError !== '') {
         error_response($passwordError, 422, 'validation_error');
     }
-    $exists = db()->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
-    $exists->execute([$userId]);
-    if (!$exists->fetch()) {
-        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        $exists = $pdo->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
+        $exists->execute([$userId]);
+        if (!$exists->fetch()) {
+            aapm_tx_rollback($pdo);
+            error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+        }
+        $pdo->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            ->execute([app_password_hash($password), $userId]);
+        aapm_audit('admin.password_reset', 'ok', (int) $actor['id'], $userId, []);
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
     }
-    db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), $userId]);
 }
 
 function admin_reset_user_progress(int $userId): array
