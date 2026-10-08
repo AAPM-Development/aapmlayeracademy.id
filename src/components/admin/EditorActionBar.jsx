@@ -48,6 +48,8 @@ export default function EditorActionBar({
   onAddElement = null,
   onSave = () => {},
   onRetry = () => {},
+  onOpenOutline = () => {},
+  onOpenInspector = () => {},
   isSaving = false,
   isDirty = false,
   saveError = "",
@@ -72,6 +74,10 @@ export default function EditorActionBar({
         <Button type="button" size="sm" variant="secondary" onClick={onRetry}>Coba lagi</Button>
       ) : null}
       <div className="aapm-editor-actionbar__actions">
+        {/* Drawer triggers: Susun below 1200px; Blok and Modul below 640px, where the inspector is a sheet. */}
+        <Button type="button" size="sm" variant="ghost" data-drawer="outline" onClick={onOpenOutline}><AapmIcon name="lesson" />Susun</Button>
+        <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("block")}><AapmIcon name="widget" />Blok</Button>
+        <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("module")}><AapmIcon name="settings" />Modul</Button>
         <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
         <Button type="button" size="sm" loading={isSaving} onClick={onSave} title="Simpan modul (Ctrl/⌘ S)">
           {!isSaving ? <AapmIcon name="check" /> : null}Simpan

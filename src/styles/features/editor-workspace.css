@@ -199,34 +199,76 @@
   .aapm-editor-outline { grid-row: span 2; }
   .aapm-editor-inspector { grid-column: 2; position: static; max-height: none; overflow: visible; }
 }
+/* Drawers: below the desktop grid the outline is a bottom sheet, opened from the action
+ * bar. Phones also get the inspector as a sheet. Escape, the scrim, and the close
+ * control all dismiss a sheet, and focus returns to the control that opened it. */
+.aapm-editor-actionbar [data-drawer] { display: none; }
+.aapm-editor-drawer-close { display: none; }
+.aapm-editor-inspector__head { display: none; }
+.aapm-editor-outline__head { display: flex; align-items: center; justify-content: space-between; gap: var(--aapm-primitive-space-2); }
+.aapm-editor-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--aapm-primitive-layer-overlay) - 1);
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--aapm-semantic-foreground) 28%, transparent);
+  cursor: default;
+}
 @media (max-width: 1199px) {
   .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); }
   .aapm-editor-inspector { position: static; max-height: none; overflow: visible; }
-  .aapm-editor-outline { position: static; max-height: none; overflow: visible; }
-  /* Below the desktop grid the outline keeps its section jumps; the block list
-   * returns as a sheet in the responsive phase. */
-  .aapm-editor-outline__blocks { display: none; }
+  .aapm-editor-outline {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--aapm-primitive-layer-overlay);
+    max-height: min(72svh, 36rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4) calc(var(--aapm-primitive-space-4) + env(safe-area-inset-bottom));
+    border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0;
+    background: var(--aapm-semantic-surface);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
+    transform: translateY(100%);
+    visibility: hidden;
+    transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), visibility var(--aapm-primitive-motion-base);
+  }
+  .aapm-editor-outline[data-drawer-open="true"] { transform: none; visibility: visible; }
+  .aapm-editor-outline .aapm-editor-drawer-close { display: inline-flex; }
+  .aapm-editor-actionbar [data-drawer="outline"] { display: inline-flex; }
 }
 @media (max-width: 639px) {
-  .aapm-editor-save-status:not([data-status="error"]), .aapm-editor-kbd { display: none; }
+  .aapm-editor-kbd { display: none; }
   .aapm-editor-panel { padding: var(--aapm-primitive-space-4); }
+  .aapm-editor-inspector {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--aapm-primitive-layer-overlay);
+    max-height: min(78svh, 40rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4) calc(var(--aapm-primitive-space-4) + env(safe-area-inset-bottom));
+    border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0;
+    background: var(--aapm-semantic-surface);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
+    transform: translateY(100%);
+    visibility: hidden;
+    transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), visibility var(--aapm-primitive-motion-base);
+  }
+  .aapm-editor-inspector[data-drawer-open="true"] { transform: none; visibility: visible; }
+  .aapm-editor-inspector__head { display: flex; justify-content: flex-end; }
+  .aapm-editor-inspector .aapm-editor-drawer-close { display: inline-flex; }
+  .aapm-editor-actionbar [data-drawer="inspector"] { display: inline-flex; }
   /* A failed save stays visible on phones, because its retry is the next step. */
   .aapm-editor-save-status[data-status="error"] .aapm-editor-save-status__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 }
 
 /* Phones: the action bar keeps one row and the keyboard hint goes. */
 @media (max-width: 639px) {
-  .aapm-editor-actionbar { flex-wrap: nowrap; gap: 4px; padding: 6px 0; }
-  .aapm-editor-actionbar__actions { flex-wrap: nowrap; justify-content: space-between; gap: 4px; }
-  .aapm-editor-actionbar__actions .aapm-button { padding-inline: 10px; }
+  .aapm-editor-actionbar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); }
+  .aapm-editor-actionbar__actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .aapm-editor-actionbar__actions .aapm-button { width: 100%; padding-inline: 6px; }
+  .aapm-editor-actionbar__actions [data-editor-add-menu],
   .aapm-editor-actionbar__actions .aapm-editor-kbd { display: none; }
   .aapm-editor-save-status { padding-inline: 0; }
-  .aapm-editor-save-status__label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 }

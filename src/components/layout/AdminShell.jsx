@@ -130,7 +130,8 @@ export default function AdminShell() {
             )}
           />
         )}
-        bottomNav={(
+        // The module editor brings its own bottom bar, so the shell's bar is off there.
+        bottomNav={isEditor ? null : (
           <BottomNav
             label="Navigasi admin cepat"
             items={[...adminBottomNavigation, { label: "Menu", icon: "menu", onClick: () => setSheetOpen(true) }]}

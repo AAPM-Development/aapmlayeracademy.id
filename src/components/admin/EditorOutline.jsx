@@ -1,6 +1,7 @@
 import React from "react";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { IconButton } from "@/components/primitives";
 import { AddElementMenu } from "@/components/admin/EditorActionBar";
 
 /**
@@ -69,10 +70,16 @@ export default function EditorOutline({
   blockSlotRef = null,
   addGroups = [],
   onAddElement = null,
+  asideRef = null,
+  drawerOpen = false,
+  onClose = () => {},
 }) {
   return (
-    <aside className="aapm-editor-outline" aria-label="Susun modul" data-editor-outline>
-      <h2 className="aapm-text-overline m-0">Susun</h2>
+    <aside ref={asideRef} className="aapm-editor-outline" aria-label="Susun modul" data-editor-outline data-drawer-open={drawerOpen ? "true" : undefined}>
+      <div className="aapm-editor-outline__head">
+        <h2 className="aapm-text-overline m-0">Susun</h2>
+        <IconButton className="aapm-editor-drawer-close" label="Tutup Susun" icon="close" size="sm" onClick={onClose} />
+      </div>
       <nav className="aapm-editor-outline__nav" aria-label="Bagian editor">
         {sections.map((section) => (
           <div key={section.id} className="aapm-editor-outline__group">

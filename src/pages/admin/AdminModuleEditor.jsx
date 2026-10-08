@@ -10,6 +10,7 @@ import EditorialComposer, { editorialInsertGroups } from "@/components/admin/Edi
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import EditorOutline from "@/components/admin/EditorOutline";
 import EditorActionBar from "@/components/admin/EditorActionBar";
+import useModalFocus from "@/components/ai/useModalFocus";
 import { levelVisual } from "@/lib/academyVisuals";
 import {
   Badge,
@@ -32,6 +33,7 @@ import {
   Alert,
   Field,
   IconTile,
+  IconButton,
   OverflowMenu,
 } from "@/components/primitives";
 import {
@@ -973,17 +975,41 @@ export default function AdminModuleEditor() {
   const [outlineSlot, setOutlineSlot] = useState(null);
   const [saveError, setSaveError] = useState("");
   const [savedAt, setSavedAt] = useState(null);
+  // Which bottom sheet is open on small screens: the outline or the inspector.
+  const [drawer, setDrawer] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const handleBlockSelection = React.useCallback((selection) => {
     setSelectedBlock(selection);
     if (selection) setInspectorTab("block");
   }, []);
+  const closeDrawer = () => setDrawer(null);
+  // Below 640px the inspector is a bottom sheet. From 640px to 1199px it sits under
+  // the canvas, so it is scrolled to instead.
   const openInspector = (tab) => {
     setInspectorTab(tab);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1199px)").matches) {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(max-width: 639px)").matches) {
+      setDrawer("inspector");
+      return;
+    }
+    if (window.matchMedia("(max-width: 1199px)").matches) {
       window.requestAnimationFrame(() => document.querySelector(".aapm-editor-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
   };
+  const outlineDrawerRef = useModalFocus({ open: drawer === "outline", onClose: closeDrawer });
+  const inspectorDrawerRef = useModalFocus({ open: drawer === "inspector", onClose: closeDrawer });
+
+  // A sheet only applies within its breakpoint. Widening past it closes the sheet,
+  // so the scrim never covers a layout where the panel is inline.
+  useEffect(() => {
+    if (!drawer || typeof window === "undefined") return undefined;
+    const handleResize = () => {
+      if (drawer === "inspector" && !window.matchMedia("(max-width: 639px)").matches) setDrawer(null);
+      if (drawer === "outline" && !window.matchMedia("(max-width: 1199px)").matches) setDrawer(null);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [drawer]);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
   const serverFormSnapshotRef = useRef(moduleFormSnapshot(emptyModule));
   const editorContextRef = useRef("");
@@ -1470,6 +1496,9 @@ export default function AdminModuleEditor() {
         <TabsContent value="content" className="aapm-editor-content">
           <form id="module-editor-form" onSubmit={save} className="aapm-editor-form aapm-editor-workspace">
             <EditorOutline
+              asideRef={outlineDrawerRef}
+              drawerOpen={drawer === "outline"}
+              onClose={closeDrawer}
               sections={EDITOR_SECTIONS}
               activeSection={activeSection}
               onNavigate={scrollToEditorSection}
@@ -1588,7 +1617,10 @@ export default function AdminModuleEditor() {
               </section>
             </div>
 
-            <aside className="aapm-editor-inspector" aria-label="Inspektor editor">
+            <aside ref={inspectorDrawerRef} className="aapm-editor-inspector" aria-label="Inspektor editor" data-drawer-open={drawer === "inspector" ? "true" : undefined}>
+              <div className="aapm-editor-inspector__head">
+                <IconButton className="aapm-editor-drawer-close" label="Tutup inspektor" icon="close" size="sm" onClick={closeDrawer} />
+              </div>
               <div className="aapm-segmented aapm-inspector-tabs" role="tablist" aria-label="Panel inspektor">
                 {INSPECTOR_TABS.map((tab) => (
                   <button
@@ -1666,8 +1698,11 @@ export default function AdminModuleEditor() {
               </section>
             </aside>
           </form>
+          {drawer ? <button type="button" className="aapm-editor-drawer-scrim" tabIndex={-1} aria-label="Tutup panel" onClick={closeDrawer} /> : null}
           <EditorActionBar
             elementGroups={editorialInsertGroups}
+            onOpenOutline={() => setDrawer("outline")}
+            onOpenInspector={openInspector}
             onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             onSave={submitEditorForm}
             onRetry={submitEditorForm}
