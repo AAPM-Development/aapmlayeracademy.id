@@ -70,7 +70,7 @@ Jika surface tidak cocok dengan tabel, pilih archetype yang paling dekat, lalu t
 - **Sidebar** 256px. Grup: *Belajar*, *Alat farm*, *Prestasi*. Ada progress chip dan account row.
 - **Topbar** 60px. Breadcrumb, actions, trigger profil, toggle tema.
 - **Canvas**: satu scroll. `Page` width `wide` / `narrow` / `full`.
-- **Mobile** (< 860px): sidebar hilang. Bottom nav lima item: Beranda, Belajar, APPI, KPI, Menu. Menu membuka `NavigationSheet`.
+- **Mobile** (< 860px): sidebar hilang. Bottom bar lima item: Beranda, Belajar, APPI, KPI, Menu. Menu membuka `NavigationSheet`. Aturan bar ada di §5 *Bottom bar*.
 
 ### FocusShell
 - Untuk lesson dan assessment. Mengeset `html[data-shell="focus"]`.
@@ -124,6 +124,13 @@ Jika surface tidak cocok dengan tabel, pilih archetype yang paling dekat, lalu t
 - `Tabs` variant `underline` untuk section di dalam halaman.
 - `SegmentedControl` untuk filter yang saling eksklusif. `block` untuk lebar penuh, `count` untuk jumlah.
 - `Breadcrumbs` di topbar. `PageHeader back` untuk halaman detail.
+
+### Bottom bar (mobile)
+- Satu bahasa untuk semua shell. Navigasi (Academy dan Admin) dan footer fokus (materi, kuis) memakai permukaan `--aapm-semantic-surface`, border atas, shadow `--aapm-semantic-shadow-rest`, dan tinggi `--aapm-component-bottom-nav-height` (64px).
+- Item aktif hanya punya satu pill tint (`primary-soft`) di belakang ikon. Tidak ada bar indikator di atas.
+- APPI adalah item biasa dengan warna AI pada ikon. Tidak ada tombol oranye mengambang di atas bar.
+- Maksimal lima item termasuk Menu. Label selalu terlihat (12px).
+- Konten di `aapm-app__main` mendapat padding bawah sebesar tinggi bar. Chat APPI mengurangi tinggi workspace dengan tinggi bar agar composer tidak tertutup.
 
 ### Progres & kartu
 - `Progress` (bar linear), `ProgressRing` (level, target), `Segments` (langkah).
@@ -180,7 +187,7 @@ Jika surface tidak cocok dengan tabel, pilih archetype yang paling dekat, lalu t
 | Hover | Background dan border 140ms. Affordance kecil (chevron geser 2px). |
 | Tekan (press) | Tombol, choice, module row, kartu interaktif: scale 0.97–0.99 saat `:active`. |
 | Indikator tab | Garis underline tumbuh dari tengah (`scaleX`) pada tab aktif. |
-| Bottom nav | Bar indikator di atas tab aktif meluncur masuk. Ikon menekan ke 0.9 saat disentuh. |
+| Bottom bar | Pill aktif tumbuh di belakang ikon (`aapm-pill-in`). Ikon menekan ke 0.9 saat disentuh. |
 | Chat APPI | Turn dan bubble naik 8px sambil fade. Welcome dan starter bertahap. Tombol "Ke pesan terbaru" fade-in dari bawah. |
 | Status & empty | Alert dan StateView fade-up (`aapm-page-in`). |
 
@@ -222,6 +229,8 @@ Jika surface tidak cocok dengan tabel, pilih archetype yang paling dekat, lalu t
 - `!important` Tailwind (`!p-0` dan sejenisnya) untuk menimpa komponen DS. Ubah CSS komponennya.
 - Nested scroll, kecuali editor.
 - Menu mati atau tombol palsu untuk endpoint yang belum ada. Tampilkan di "Memerlukan endpoint baru".
+- Tombol APPI mengambang oranye di atas bottom bar. APPI adalah item biasa.
+- Dua gaya bar berbeda dalam satu aplikasi (satu untuk navigasi, satu untuk footer fokus).
 - Warna, radius, atau durasi literal di komponen.
 
 ---

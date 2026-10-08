@@ -151,27 +151,10 @@ a.aapm-module-row:hover .aapm-module-row__action { transform: translateX(2px); }
 }
 .aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger[data-state="active"]::after { transform: scaleX(1); }
 
-/* ------------------------------------------------ Bottom nav: indicator
- * A short bar slides in above the active tab; the icon presses in on tap. */
-.aapm-bottom-nav__item {
-  position: relative;
-  transition: color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
-}
-.aapm-bottom-nav__item::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 28px;
-  height: 3px;
-  margin-left: -14px;
-  border-radius: 0 0 3px 3px;
-  background: var(--aapm-semantic-primary);
-  transform: scaleX(0);
-  transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
-}
-.aapm-bottom-nav__item[aria-current="page"]::before { transform: scaleX(1); }
-.aapm-bottom-nav__item[data-accent="ai"]::before { background: var(--aapm-semantic-ai); }
+/* ------------------------------------------------ Bottom bar: motion
+ * The active pill grows in behind the icon (see aapm-pill-in above); the icon
+ * presses in on tap. No separate indicator bar. */
+.aapm-bottom-nav__item { transition: color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
 .aapm-bottom-nav__icon {
   transition: background-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
 }

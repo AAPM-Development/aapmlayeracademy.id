@@ -284,7 +284,11 @@
 .aapm-profile-identity strong { display: block; font-size: var(--aapm-component-type-body-size); }
 .aapm-profile-identity span { display: block; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
 
-/* ----------------------------------------------------------- Bottom nav */
+/* ------------------------------------------------------- Bottom bar
+ * One mobile bottom language for every shell. The navigation (academy and admin)
+ * and the focus footer (lesson, quiz) share the surface, border, shadow and
+ * height. The active state is one tinted pill. APPI is an item with its own
+ * colour, not a floating control. */
 .aapm-bottom-nav {
   position: fixed;
   inset-inline: 0;
@@ -297,8 +301,8 @@
   height: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom));
   padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-2) env(safe-area-inset-bottom);
   border-top: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
-  background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
-  backdrop-filter: saturate(1.4) blur(14px);
+  background: var(--aapm-semantic-surface);
+  box-shadow: var(--aapm-semantic-shadow-rest);
 }
 .aapm-bottom-nav__item {
   display: flex;
@@ -313,11 +317,12 @@
   background: transparent;
   color: var(--aapm-semantic-muted);
   font: inherit;
-  font-size: var(--aapm-component-type-overline-size);
-  line-height: var(--aapm-component-type-overline-line);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.2;
   font-weight: var(--aapm-primitive-weight-label);
   text-decoration: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .aapm-bottom-nav__icon {
   display: grid;
@@ -325,13 +330,13 @@
   width: 52px;
   height: 30px;
   border-radius: var(--aapm-primitive-radius-pill);
-  transition: background-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
 }
 .aapm-bottom-nav__icon .aapm-icon { width: var(--aapm-primitive-icon-lg); height: var(--aapm-primitive-icon-lg); }
-.aapm-bottom-nav__item[aria-current="page"] { color: var(--aapm-semantic-primary-soft-text); }
+.aapm-bottom-nav__item[aria-current="page"] { color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
 .aapm-bottom-nav__item[aria-current="page"] .aapm-bottom-nav__icon { background: var(--aapm-semantic-primary-soft); color: var(--aapm-semantic-primary); }
-.aapm-bottom-nav__item[data-accent="ai"] .aapm-bottom-nav__icon { background: var(--aapm-semantic-ai); color: var(--aapm-semantic-attention-foreground); box-shadow: 0 6px 16px -8px var(--aapm-semantic-ai); }
-.aapm-bottom-nav__item[data-accent="ai"][aria-current="page"] { color: var(--aapm-semantic-ai-soft-text); }
+/* APPI keeps its colour at rest so it is recognisable; when open it takes the same pill. */
+.aapm-bottom-nav__item[data-accent="ai"] .aapm-bottom-nav__icon { color: var(--aapm-semantic-ai); }
+.aapm-bottom-nav__item[data-accent="ai"][aria-current="page"] .aapm-bottom-nav__icon { background: var(--aapm-semantic-ai-soft); color: var(--aapm-semantic-ai-soft-text); }
 .aapm-bottom-nav__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ------------------------------------------------------ Navigation sheet */
@@ -422,7 +427,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--aapm-primitive-space-3);
-  min-height: var(--aapm-component-lesson-footer-height);
+  min-height: var(--aapm-component-bottom-nav-height);
+  box-shadow: var(--aapm-semantic-shadow-rest);
   padding: var(--aapm-primitive-space-2) var(--aapm-primitive-space-4) calc(var(--aapm-primitive-space-2) + env(safe-area-inset-bottom));
   border-top: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
   background: var(--aapm-semantic-surface);
