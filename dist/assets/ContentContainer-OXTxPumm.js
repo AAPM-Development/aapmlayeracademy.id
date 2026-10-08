@@ -1,1 +1,0 @@
-import{j as e}from"./index-Bh6-UEdi.js";import{P as s}from"./AppShell-dCvbicLe.js";function m({children:t=null,width:n,className:o="",...r}={}){return e.jsx(s,{width:n,className:o,...r,children:t})}export{m as C};
