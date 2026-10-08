@@ -1046,13 +1046,10 @@ export default function AiAssistant() {
               state={isStreaming ? streamPhase : "idle"}
             />
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold tracking-[-0.015em]">
-                APPI
+              <h1 className="aapm-chat-header__title">
+                {conversations.find((item) => item.id === activeConversationId)?.title?.trim() || (messages.length ? "Percakapan" : "Percakapan baru")}
               </h1>
-              <p className="hidden text-[11px] text-muted-foreground sm:block">
-                AAPM Predictive & Personal Intelligence · riwayat tersimpan di
-                akun Anda.
-              </p>
+              <p className="aapm-chat-header__meta">APPI · riwayat tersimpan di akun Anda</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -1134,19 +1131,19 @@ export default function AiAssistant() {
                   <span className="aapm-chat-welcome__mark"><AapmIcon name="ai" /></span>
                   <h2 className="aapm-chat-welcome__title">Halo! Apa yang terjadi di farm hari ini?</h2>
                   <p className="aapm-chat-welcome__text">{welcomeMessage}</p>
-                  <div className="aapm-ai-suggestion-grid aapm-chat-suggestions">
+                  <div className="aapm-chat-suggestions">
                     {suggestions.map((suggestion, index) => (
                       <button
                         key={suggestion.id}
                         type="button"
                         onClick={() => submit(suggestion.prompt)}
-                        className="aapm-ai-suggestion-card aapm-chat-suggestion"
+                        className="aapm-chat-suggestion"
                         data-hue={["green","blue","orange","violet"][index % 4]}
                       >
                         <span className="aapm-icon-tile" data-size="sm" data-shape="circle" data-variant="badge" data-hue={["green","blue","orange","violet"][index % 4]}><AapmIcon name="ai" /></span>
                         <span className="min-w-0">
-                          <span className="block font-semibold text-foreground">{suggestion.label}</span>
-                          <span className="block text-caption text-muted-foreground">{suggestion.detail}</span>
+                          <span className="aapm-chat-suggestion__title">{suggestion.label}</span>
+                          <span className="aapm-chat-suggestion__detail">{suggestion.detail}</span>
                         </span>
                       </button>
                     ))}

@@ -119,7 +119,7 @@ export default function AiComposer({
               title="Lampirkan foto farm"
             >
               <AapmIcon name="solar:gallery-add-bold-duotone" className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-4 w-4"} />
-              {compact && <span className="text-[11px] font-semibold">Foto</span>}
+              <span className="text-xs font-semibold">Foto</span>
             </Button>
             <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[11px] text-muted-foreground sm:inline-flex">
               <AapmIcon name="solar:map-point-bold-duotone" className="mr-1 h-3.5 w-3.5 shrink-0 text-brand-orange" />

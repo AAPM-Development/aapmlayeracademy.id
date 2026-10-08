@@ -38,7 +38,10 @@ export default function useChatScrollFollow({
   const scrollToLatest = useCallback((behavior = "auto") => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const top = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+    // An empty chat opens at the top; only a conversation follows its latest message.
+    const top = hasContentRef.current
+      ? Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+      : 0;
     if (typeof viewport.scrollTo === "function") {
       viewport.scrollTo({ top, behavior });
     } else {

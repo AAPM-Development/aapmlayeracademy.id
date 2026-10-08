@@ -293,6 +293,7 @@ export function AiHistoryToolbar({
               label="Status percakapan"
               block
               size="sm"
+              className="aapm-history-scope"
               value={scope}
               onChange={onScopeChange}
               options={[
@@ -552,7 +553,7 @@ export function AiConversationHistoryResults({
   hasMore = false,
   onLoadMore,
   isLoadingMore = false,
-  emptyMessage = "Belum ada percakapan.",
+  emptyMessage = "Belum ada percakapan. Pertanyaan pertama Anda akan tersimpan di sini.",
   noResultsMessage = "Tidak ada percakapan yang cocok.",
   filtered = false,
 }) {

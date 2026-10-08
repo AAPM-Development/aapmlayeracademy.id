@@ -114,3 +114,115 @@
 .aapm-chat-suggestion:nth-child(3) { animation-delay: 260ms; }
 .aapm-chat-suggestion:nth-child(4) { animation-delay: 300ms; }
 .aapm-chat-suggestion:nth-child(n + 5) { animation-delay: 340ms; }
+
+/* ------------------------------------------------------------- Header */
+.aapm-chat-header__title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-component-type-body-size);
+  line-height: var(--aapm-component-type-body-line);
+  font-weight: var(--aapm-primitive-weight-heading);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aapm-chat-header__meta {
+  margin: 0;
+  overflow: hidden;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------- Empty state & starters */
+.aapm-chat-welcome {
+  gap: var(--aapm-primitive-space-2);
+  padding: var(--aapm-primitive-space-4) 0 var(--aapm-primitive-space-2);
+}
+.aapm-chat-welcome__mark {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--aapm-primitive-space-1);
+}
+.aapm-chat-welcome__mark .aapm-icon { width: 24px; height: 24px; }
+.aapm-chat-welcome__title { max-width: 30ch; }
+.aapm-chat-suggestions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--aapm-primitive-space-2);
+  max-width: 40rem;
+  margin-top: var(--aapm-primitive-space-5);
+}
+/* An odd starter spans the row instead of leaving a hole in the grid. */
+.aapm-chat-suggestions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+.aapm-chat-suggestion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--aapm-primitive-space-3);
+  min-width: 0;
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--hue-tint);
+  color: var(--aapm-semantic-foreground);
+  text-align: start;
+  cursor: pointer;
+  box-shadow: none;
+  transition: box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-chat-suggestion:hover { box-shadow: var(--aapm-semantic-shadow-card); }
+.aapm-chat-suggestion:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-chat-suggestion .aapm-icon-tile {
+  background: var(--aapm-semantic-surface);
+  color: var(--hue);
+  box-shadow: var(--aapm-semantic-shadow-rest);
+}
+.aapm-chat-suggestion__title {
+  display: block;
+  font-size: var(--aapm-component-type-body-size);
+  font-weight: var(--aapm-primitive-weight-strong);
+  line-height: 1.35;
+}
+.aapm-chat-suggestion__detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.45;
+}
+@media (max-width: 639px) {
+  .aapm-chat-suggestions { grid-template-columns: minmax(0, 1fr); }
+  .aapm-chat-suggestions > :last-child:nth-child(odd) { grid-column: auto; }
+}
+
+/* ------------------------------------------------ Sidebar: scope as tabs */
+.aapm-segmented.aapm-history-scope {
+  padding: 0;
+  gap: var(--aapm-primitive-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--aapm-semantic-border);
+  border-radius: 0;
+  background: transparent;
+}
+.aapm-history-scope > .aapm-tabs-trigger {
+  flex: 1 1 0;
+  justify-content: center;
+  padding: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-2);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--aapm-semantic-muted);
+}
+.aapm-history-scope > .aapm-tabs-trigger[aria-checked="true"] {
+  background: transparent;
+  color: var(--aapm-semantic-foreground);
+  box-shadow: inset 0 -2px 0 var(--aapm-semantic-ai);
+}
+
+/* Header: one row on phones; the title truncates instead of pushing actions down. */
+header.aapm-ai-workspace__header { flex-wrap: nowrap; }
+.aapm-ai-workspace__header > div:first-child { flex: 1 1 auto; min-width: 0; }
+.aapm-ai-workspace__header > div:last-child { flex: none; }
