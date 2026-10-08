@@ -205,7 +205,7 @@
 .aapm-sidebar-progress .aapm-ring__track { stroke: color-mix(in srgb, var(--aapm-semantic-surface) 75%, transparent); }
 .aapm-sidebar-progress__title { margin: 0; font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); font-weight: var(--aapm-primitive-weight-heading); }
 .aapm-sidebar-progress__meta { margin: 0; overflow: hidden; color: color-mix(in srgb, var(--aapm-semantic-foreground) 68%, transparent); font-size: var(--aapm-component-type-caption-size); line-height: var(--aapm-component-type-caption-line); text-overflow: ellipsis; white-space: nowrap; }
-.aapm-app[data-collapsed="true"] .aapm-sidebar-progress { grid-template-columns: auto; justify-content: center; margin-inline: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-2); background: transparent; }
+.aapm-app[data-collapsed="true"] .aapm-sidebar-progress { grid-template-columns: auto; justify-content: center; margin-inline: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-2); }
 .aapm-app[data-collapsed="true"] .aapm-sidebar-progress > :last-child { display: none; }
 
 /* Account row in the sidebar footer. */
