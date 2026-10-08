@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { preloadRoute } from "@/lib/routePreloaders";
-import { Badge, Breadcrumbs, Button, IconButton } from "@/design-system";
+import { Breadcrumbs, Button, IconButton } from "@/design-system";
 import {
   AccountMenu,
   AppShell,
@@ -24,6 +24,19 @@ function readCollapsed() {
   } catch {
     return false;
   }
+}
+
+/** Workspace identity in the sidebar: the admin twin of the learner progress card. */
+function AdminWorkspaceCard() {
+  return (
+    <Link to="/admin" className="aapm-sidebar-card" aria-label="Ruang admin, ringkasan">
+      <span className="aapm-sidebar-card__icon" aria-hidden="true"><AapmIcon name="admin" /></span>
+      <span className="min-w-0">
+        <span className="aapm-sidebar-card__title">Ruang admin</span>
+        <span className="aapm-sidebar-card__meta">Kelola data native</span>
+      </span>
+    </Link>
+  );
 }
 
 /**
@@ -61,7 +74,7 @@ export default function AdminShell() {
         brandLabel="Ringkasan admin"
         collapsed={inSheet ? false : collapsed}
         onToggle={inSheet || isEditor ? null : toggleCollapsed}
-        context={<div className="aapm-sidebar__context"><Badge tone="attention" dot>Ruang admin</Badge></div>}
+        context={<AdminWorkspaceCard />}
         footer={(
           <Link to="/" className="aapm-nav-item" aria-label={collapsed ? "Kembali ke Academy" : undefined} onClick={close}>
             <AapmIcon name="arrowLeft" />

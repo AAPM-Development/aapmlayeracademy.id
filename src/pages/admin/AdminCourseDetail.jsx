@@ -163,7 +163,6 @@ export default function AdminCourseDetail() {
 
   return (
     <AdminPageFrame
-      eyebrow="Course"
       back={{ to: "/admin/courses", label: "Semua course" }}
       title={course?.title || "Kurikulum Academy"}
       description="Susun chapter dan modul, kelola konten, lalu pratinjau seperti yang dilihat learner."

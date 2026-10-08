@@ -2,8 +2,12 @@ import React from "react";
 import { Button, PageHeader, StateView } from "@/design-system";
 import { Page } from "@/design-system/patterns/AppShell";
 
-/** Admin route frame: one header anatomy and page width for every admin view. */
-export function AdminPageFrame({ eyebrow = "Administrasi", title, description, actions, back, children, wide = false, editor = false }) {
+/**
+ * Admin route frame: one header anatomy and page width for every admin view.
+ * The topbar breadcrumb names the nav group, so the eyebrow is opt-in and only
+ * used where a view adds context the breadcrumb cannot show (for example a chapter).
+ */
+export function AdminPageFrame({ eyebrow, title, description, actions, back, children, wide = false, editor = false }) {
   return (
     <Page width={editor || wide ? "wide" : undefined}>
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} back={back} size="compact" />

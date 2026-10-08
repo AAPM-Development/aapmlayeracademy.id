@@ -382,7 +382,6 @@ export default function AdminAiSettings() {
 
   return (
     <AdminPageFrame
-      eyebrow="Administrasi · APPI"
       title="Provider AI & koneksi"
       description="Satu kontrak untuk hosted API, gateway internal, jaringan privat, dan local AI. Provider aktif menjadi default global APPI."
       actions={(

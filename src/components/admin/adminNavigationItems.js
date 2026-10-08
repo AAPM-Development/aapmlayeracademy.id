@@ -3,9 +3,9 @@ export const adminNavigationGroups = [
     label: "Administrasi",
     items: [
       { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
-      { to: "/admin/courses", label: "Manajemen course", icon: "course" },
+      { to: "/admin/courses", label: "Course", icon: "course" },
       { to: "/admin/learners", label: "Peserta", icon: "graduation" },
-      { to: "/admin/users", label: "Pengguna & akses", icon: "users" },
+      { to: "/admin/users", label: "Pengguna", icon: "users" },
     ],
   },
   {
@@ -20,12 +20,9 @@ export const adminNavigationGroups = [
 export const adminPrimaryNavigation = adminNavigationGroups[0].items;
 export const adminSecondaryNavigation = adminNavigationGroups[1].items;
 
-export const adminBottomNavigation = [
-  { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
-  { to: "/admin/courses", label: "Course", icon: "course" },
-  { to: "/admin/learners", label: "Peserta", icon: "graduation" },
-  { to: "/admin/users", label: "Pengguna", icon: "users" },
-];
+// The bottom bar shows the primary group under the same names as the sidebar,
+// so a phone user meets one vocabulary, not two.
+export const adminBottomNavigation = adminPrimaryNavigation;
 
 export const adminPlannedCapabilities = [
   {
@@ -46,16 +43,21 @@ export const adminPlannedCapabilities = [
 ];
 
 export function getAdminNavigationMeta(pathname = "/admin") {
-  const items = adminNavigationGroups.flatMap((group) => group.items);
-  const item = items.find((entry) => (entry.end ? pathname === entry.to : pathname.startsWith(entry.to)));
-  return item || { label: "Ringkasan", icon: "dashboard", to: "/admin" };
+  for (const group of adminNavigationGroups) {
+    const item = group.items.find((entry) => (entry.end ? pathname === entry.to : pathname.startsWith(entry.to)));
+    if (item) return { ...item, group: group.label };
+  }
+  return { label: "Ringkasan", icon: "dashboard", to: "/admin", group: "Administrasi" };
 }
 
-/** Route-derived breadcrumb trail for the admin topbar. */
+/**
+ * Route-derived breadcrumb trail for the admin topbar: the navigation group,
+ * the page, then the record. Mirrors the academy topbar (group › page).
+ */
 export function getAdminBreadcrumbs(pathname = "/admin") {
   const meta = getAdminNavigationMeta(pathname);
-  const trail = [{ label: "Admin", to: "/admin" }];
-  if (meta.to !== "/admin") trail.push({ label: meta.label, to: meta.to });
+  const isOverview = meta.to === "/admin";
+  const trail = [{ label: meta.group }, isOverview ? { label: meta.label } : { label: meta.label, to: meta.to }];
 
   const course = pathname.match(/^\/admin\/courses\/([^/]+)(?:\/modules\/([^/]+))?/);
   if (course) {
@@ -63,6 +65,5 @@ export function getAdminBreadcrumbs(pathname = "/admin") {
     if (course[2]) trail.push({ label: course[2] === "new" ? "Modul baru" : "Editor modul" });
   }
   if (/^\/admin\/learners\/[^/]+/.test(pathname)) trail.push({ label: "Detail peserta" });
-  if (pathname === "/admin") trail[0] = { label: "Admin" };
   return trail;
 }

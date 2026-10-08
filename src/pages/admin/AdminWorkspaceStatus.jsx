@@ -39,7 +39,6 @@ const activeAreas = [
 export default function AdminWorkspaceStatus() {
   return (
     <AdminPageFrame
-      eyebrow="Ruang admin"
       title="Status ruang kerja"
       description="Peta kemampuan admin berdasarkan endpoint native yang tersedia saat ini. Menu tidak berpura-pura dapat melakukan aksi yang belum didukung server."
     >
