@@ -40,7 +40,7 @@ export default function Quiz() {
   const submit = async () => {
     setSubmitted(true);
     try {
-      await save({ moduleNumber: number, data: { moduleNumber: number, completed: true, quizScore: score, quizTotal: questions.length } });
+      await save({ moduleNumber: number, data: { moduleNumber: number, completed: passed || Boolean(previousProgress?.completed), quizScore: score, quizTotal: questions.length } });
       toast(percent >= PASSING_GRADE
         ? { title: "Kuis lulus", description: `Skor ${percent}% tersimpan.` }
         : { title: "Tinjau materi sebelum mencoba lagi", description: `Skor ${percent}%. Nilai lulus ${PASSING_GRADE}%.`, variant: "warning" });
@@ -97,7 +97,7 @@ export default function Quiz() {
       footer={(
         <>
           <div className="aapm-focus__footer-group">
-            <Button variant="ghost" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))} data-hide-label-mobile="">
+            <Button variant="ghost" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))} data-hide-label-mobile="" aria-label="Soal sebelumnya">
               <AapmIcon name="arrowLeft" /><span>Sebelumnya</span>
             </Button>
           </div>

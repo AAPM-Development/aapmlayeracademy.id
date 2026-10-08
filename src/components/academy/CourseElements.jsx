@@ -161,9 +161,9 @@ export function StatTile({ icon, hue = "green", label, value, className }) {
  */
 export function ModuleFlow({ flow, active = "content", onSelect, quizTo }) {
   const steps = [
-    { id: "content", label: "Materi", icon: "lesson", state: active === "content" ? "current" : "done" },
-    ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", state: active === "practice" ? "current" : active === "content" ? undefined : "done" }] : []),
-    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", state: flow.quizPassed ? "done" : active === "quiz" ? "current" : undefined, to: quizTo }] : []),
+    { id: "content", label: "Materi", icon: "lesson", state: flow.completed || active !== "content" ? "done" : "current" },
+    ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", state: flow.completed || flow.quizAttempted ? "done" : active === "practice" ? "current" : undefined }] : []),
+    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", state: flow.completed || flow.quizPassed ? "done" : active === "quiz" ? "current" : undefined, to: quizTo }] : []),
     { id: "done", label: "Selesai", icon: "check", state: flow.completed ? "done" : undefined },
   ];
   return (

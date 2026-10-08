@@ -135,16 +135,22 @@ export default function ModuleDetail() {
     />
   );
 
-  // Primary next step for the bounded module flow.
+  // Primary next step follows the bounded flow: Materi → Praktik → Kuis → Selesai.
+  // A quiz module is complete only when the quiz is passed, so no shortcut button here.
+  const onPracticeSection = activeSection === "practical";
+  const continueToPractice = !flow.completed && flow.hasPractice && !flow.quizAttempted && !onPracticeSection;
   let primaryAction;
-  if (!flow.completed && flow.hasQuiz) {
-    primaryAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>Kerjakan kuis<AapmIcon name="arrowRight" /></Link></Button>;
-  } else if (!flow.completed) {
-    primaryAction = <Button variant="learn" loading={saveProgress.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
-  } else if (next) {
-    primaryAction = <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`}>Modul berikutnya<AapmIcon name="arrowRight" /></Link></Button>;
+  if (flow.completed) {
+    primaryAction = next
+      ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`}>Modul berikutnya<AapmIcon name="arrowRight" /></Link></Button>
+      : <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
+  } else if (continueToPractice) {
+    primaryAction = <Button variant="learn" onClick={() => jumpToSection("practical")}>Lanjut ke praktik<AapmIcon name="arrowRight" /></Button>;
+  } else if (flow.hasQuiz) {
+    const quizLabel = flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Kerjakan kuis";
+    primaryAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
   } else {
-    primaryAction = <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
+    primaryAction = <Button variant="learn" loading={saveProgress.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
   }
 
   return (
@@ -182,9 +188,6 @@ export default function ModuleDetail() {
             Bagian {sectionIndex + 1} dari {learnerSections.length} · {learnerSections[sectionIndex]?.label}
           </p>
           <div className="aapm-focus__footer-group">
-            {!flow.completed && flow.hasQuiz ? (
-              <Button variant="ghost" className="hidden sm:inline-flex" loading={saveProgress.isPending} onClick={markComplete}>Tandai selesai</Button>
-            ) : null}
             {primaryAction}
           </div>
         </>

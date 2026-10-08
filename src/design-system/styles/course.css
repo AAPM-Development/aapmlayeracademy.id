@@ -377,9 +377,8 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
 .aapm-flow__step[data-state="current"] { background: var(--aapm-semantic-surface); color: var(--aapm-semantic-foreground); box-shadow: var(--aapm-semantic-shadow-rest); }
 .aapm-flow__step[data-state="current"] .aapm-flow__dot { border-color: var(--aapm-semantic-attention); color: var(--aapm-semantic-attention); }
 @media (max-width: 479px) {
-  .aapm-flow__text { display: none; }
-  .aapm-flow__step { justify-content: center; }
-  .aapm-flow__step[data-state="current"] .aapm-flow__text { display: inline; }
+  .aapm-flow__step { justify-content: center; gap: 4px; }
+  .aapm-flow__text { font-size: 11px; }
 }
 
 /* ------------------------------------------------------------ Lesson */
