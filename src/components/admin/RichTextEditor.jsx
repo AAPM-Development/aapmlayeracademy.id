@@ -170,7 +170,7 @@ function TextIcon({ children, className }) {
 function ListGlyph({ ordered = false }) {
   return (
     <span aria-hidden="true" className="inline-flex h-4 w-[1.1rem] items-start gap-1">
-      <span className="w-2.5 text-right text-[9px] font-semibold leading-4">{ordered ? "1." : "•"}</span>
+      <span className="w-2.5 text-right text-[11px] font-semibold leading-4">{ordered ? "1." : "•"}</span>
       <span className="flex flex-1 flex-col gap-[3px] pt-[4px]">
         <span className="h-px w-full rounded-full bg-current" />
         <span className="h-px w-full rounded-full bg-current" />
@@ -721,7 +721,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
               autoFocus
               className="h-9 text-xs"
             />
-            {linkError && <p className="mt-1 text-[10px] text-danger" role="alert">{linkError}</p>}
+            {linkError && <p className="mt-1 text-[11px] text-danger" role="alert">{linkError}</p>}
           </div>
           <div className="flex shrink-0 gap-1.5">
             <Button type="button" size="sm" onClick={applyLink} className="h-9 bg-brand-orange px-3 text-xs text-white hover:bg-brand-orange/90">Terapkan</Button>
@@ -789,10 +789,10 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
               <AapmIcon name={imageUploadState.status === "loading" ? "loading" : "fileCheck"} className={cn("h-3.5 w-3.5", imageUploadState.status === "loading" && "animate-spin")} />{imageUploadState.status === "loading" ? "Mengunggah…" : "Unggah gambar"}
             </Button>
             <Button type="button" size="sm" variant="ghost" className="h-9 px-3 text-xs" onClick={() => { imageUploadControllerRef.current?.abort(); setImageOpen(false); }}>Batal</Button>
-            <span className="text-[10px] leading-4 text-muted-foreground">JPG, PNG, GIF, WebP, AVIF · maks. 20 MB</span>
+            <span className="text-[11px] leading-4 text-muted-foreground">JPG, PNG, GIF, WebP, AVIF · maks. 20 MB</span>
           </div>
           {imageUploadState.status === "loading" && <UploadProgress progress={imageUploadState.progress} label={imageUploadState.message} onCancel={() => imageUploadControllerRef.current?.abort()} />}
-          {(imageError || (imageUploadState.status !== "idle" && imageUploadState.status !== "loading")) && <p className={cn("inline-flex items-center gap-1.5 text-[10px] leading-4", imageError || imageUploadState.status === "error" ? "text-danger" : imageUploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={imageError || imageUploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={imageError || imageUploadState.status === "error" ? "danger" : imageUploadState.status === "success" ? "approve" : "info"} className="h-3.5 w-3.5 shrink-0" />{imageError || imageUploadState.message}</p>}
+          {(imageError || (imageUploadState.status !== "idle" && imageUploadState.status !== "loading")) && <p className={cn("inline-flex items-center gap-1.5 text-[11px] leading-4", imageError || imageUploadState.status === "error" ? "text-danger" : imageUploadState.status === "success" ? "text-brand-green" : "text-muted-foreground")} role={imageError || imageUploadState.status === "error" ? "alert" : "status"} aria-live="polite"><AapmIcon name={imageError || imageUploadState.status === "error" ? "danger" : imageUploadState.status === "success" ? "approve" : "info"} className="h-3.5 w-3.5 shrink-0" />{imageError || imageUploadState.message}</p>}
         </div>
       )}
       {selectedImageNode && !imageOpen && (
@@ -801,7 +801,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-tint-green text-brand-green" aria-hidden="true"><AapmIcon name="image" className="h-4 w-4" /></span>
             <div className="min-w-0 leading-4">
               <p className="text-[11px] font-semibold text-foreground">Gambar</p>
-              <p className="truncate text-[10px] text-muted-foreground">Seret sudut gambar untuk ukuran bebas.</p>
+              <p className="truncate text-[11px] text-muted-foreground">Seret sudut gambar untuk ukuran bebas.</p>
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -816,7 +816,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
                 aria-label="Lebar gambar, dalam persen dari lebar editor"
                 className="w-24 sm:w-32"
               />
-              <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground" aria-live="polite">{selectedImageWidthPercent()}%</span>
+              <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground" aria-live="polite">{selectedImageWidthPercent()}%</span>
             </div>
             <div className="flex items-center gap-0.5 rounded-[var(--radius-sm)] bg-background/55 p-0.5" role="group" aria-label="Preset ukuran gambar">
               <Button
@@ -877,7 +877,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
                 aria-pressed={selectedImageSize() === option.value}
                 aria-label={`Ukuran ${option.label.toLowerCase()}`}
                 title={`Ukuran ${option.label.toLowerCase()}`}
-                className={cn("h-7 px-2 text-[10px]", selectedImageSize() === option.value && "bg-tint-green text-brand-green")}
+                className={cn("h-7 px-2 text-[11px]", selectedImageSize() === option.value && "bg-tint-green text-brand-green")}
                 onPointerDown={(event) => event.preventDefault()}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => setSelectedImageSize(option)}
@@ -890,7 +890,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
         </div>
       )}
       <EditorContent editor={editor} />
-      <p className="border-t border-border/70 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
+      <p className="border-t border-border/70 px-3 py-2 text-[11px] leading-4 text-muted-foreground">
         Konten tidak aman disaring sebelum diterbitkan.
       </p>
     </div>

@@ -391,14 +391,14 @@ function AiModuleDraft({ form, onApply, toast }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold">Bantu isi dengan APPI</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Buat draf tujuan, insight, tugas, checklist, atau rewrite teks materi tanpa menimpa isi sebelum Anda menyetujuinya.</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Buat draf tujuan, insight, tugas, checklist, atau rewrite teks materi tanpa menimpa isi sebelum Anda menyetujuinya.</p>
         </div>
         <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-          <Badge variant="soft" className={`max-w-full truncate text-[10px] ${providerStatus.className}`}>
+          <Badge variant="soft" className={`max-w-full truncate text-[11px] ${providerStatus.className}`}>
             <AapmIcon name={providerStatus.icon} className={`h-3 w-3 ${providerStatus.icon === "refresh" ? "animate-spin" : ""}`} />
             {providerStatus.label}
           </Badge>
-          {providerReady === false && <Link to="/admin/ai-settings" className="text-[10px] font-semibold text-brand-orange hover:underline">Buka Pengaturan AI</Link>}
+          {providerReady === false && <Link to="/admin/ai-settings" className="text-[11px] font-semibold text-brand-orange hover:underline">Buka Pengaturan AI</Link>}
         </div>
         <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 px-2.5 text-[11px]" onClick={() => setOpen((current) => !current)}>
           <AapmIcon name={open ? "chevronUp" : "ai"} className="h-3.5 w-3.5" />
@@ -422,7 +422,7 @@ function AiModuleDraft({ form, onApply, toast }) {
               className="h-9 min-w-0 flex-1 text-xs"
               disabled={isGenerating || isRewriting}
             />
-            <label className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-background/70 px-2.5 text-[10px] leading-4 text-muted-foreground sm:max-w-[15rem]">
+            <label className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-background/70 px-2.5 text-[11px] leading-4 text-muted-foreground sm:max-w-[15rem]">
               <input
                 type="checkbox"
                 checked={includeMaterial}
@@ -446,7 +446,7 @@ function AiModuleDraft({ form, onApply, toast }) {
             <div className="mt-3 rounded-[var(--radius-control)] border border-border bg-background p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold">Pratinjau draf</p>
-                <Badge variant="soft" className="text-[10px]">Belum diterapkan</Badge>
+                <Badge variant="soft" className="text-[11px]">Belum diterapkan</Badge>
               </div>
               <div className="grid gap-2 text-[11px] sm:grid-cols-2">
                 {[
@@ -473,8 +473,8 @@ function AiModuleDraft({ form, onApply, toast }) {
           {rewriteDraft && (
             <div className="mt-3 rounded-[var(--radius-control)] border border-brand-orange/35 bg-background p-3">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div><p className="text-xs font-semibold">Pratinjau rewrite copywriting</p><p className="mt-0.5 text-[10px] text-muted-foreground">Hasil ini hanya usulan sampai Anda mengonfirmasi penggantian isi.</p></div>
-                <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground text-[10px]">Konfirmasi diperlukan</Badge>
+                <div><p className="text-xs font-semibold">Pratinjau rewrite copywriting</p><p className="mt-0.5 text-[11px] text-muted-foreground">Hasil ini hanya usulan sampai Anda mengonfirmasi penggantian isi.</p></div>
+                <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground text-[11px]">Konfirmasi diperlukan</Badge>
               </div>
               <div className="grid gap-2 text-[11px] sm:grid-cols-2">
                 {[['Judul', rewriteDraft.title], ['Ringkasan', rewriteDraft.summary]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><p className="mt-1 text-muted-foreground">{value}</p></div>)}
@@ -486,14 +486,14 @@ function AiModuleDraft({ form, onApply, toast }) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-[11px] font-semibold text-foreground">Materi teks</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{rewriteDraft.materialBlocks.length} blok dipratinjau · Markdown, gambar, dan tautan tetap dikunci.</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{rewriteDraft.materialBlocks.length} blok dipratinjau · Markdown, gambar, dan tautan tetap dikunci.</p>
                     </div>
-                    <Badge variant="soft" className="text-[10px]">Format dipertahankan</Badge>
+                    <Badge variant="soft" className="text-[11px]">Format dipertahankan</Badge>
                   </div>
                   <div className="mt-2 space-y-2">
                     {rewriteDraft.materialBlocks.map((block, index) => (
                       <article key={block.id || index} className="overflow-hidden rounded-lg border border-border bg-background p-2.5">
-                        <div className="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <div className="mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                           <span className="font-semibold text-foreground">{aiEditorialMaterialLabel(block.type)}</span>
                           <span aria-hidden="true">·</span>
                           <span>Blok {index + 1}</span>
@@ -1662,7 +1662,7 @@ export default function AdminModuleEditor() {
                 <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
                 {!editorialVideoIsPresent && form.videoUrl.trim() && (
                   <div className="mt-7 border-t border-border pt-7">
-                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video materi</p>
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video materi</p>
                     <LessonMedia module={{ title: form.title || "Video", videoUrl: form.videoUrl }} />
                     {form.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{form.videoScript}</p>}
                   </div>
