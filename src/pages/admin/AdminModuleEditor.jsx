@@ -747,14 +747,13 @@ function QuestionEditor({ moduleId }) {
     setForm((current) => ({ ...current, [key]: value }));
   return (
     <>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)]">
-      <Surface className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold">Bank soal</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pilihan ganda untuk modul ini.
-            </p>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)] xl:items-start">
+      <section className="aapm-editor-panel" aria-labelledby="question-list-title">
+        <header className="aapm-editor-panel__head">
+          <IconTile icon="quiz" hue="orange" size="sm" shape="circle" />
+          <div className="min-w-0 flex-1">
+            <h2 id="question-list-title" className="aapm-editor-panel__title">Bank soal</h2>
+            <p className="aapm-editor-panel__description">Pilihan ganda untuk modul ini.</p>
           </div>
           <Badge
             variant="soft"
@@ -762,7 +761,7 @@ function QuestionEditor({ moduleId }) {
           >
             {questions.length} soal
           </Badge>
-        </div>
+        </header>
         <div className="divide-y divide-border">
           {isLoading ? (
             <div className="p-5 text-sm text-muted-foreground">
@@ -807,12 +806,15 @@ function QuestionEditor({ moduleId }) {
             </div>
           )}
         </div>
-      </Surface>
-      <Surface className="p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">
-            {selected ? "Edit soal" : "Tambah soal"}
-          </h2>
+      </section>
+      <section className="aapm-editor-panel" aria-labelledby="question-form-title">
+        <header className="aapm-editor-panel__head">
+          <IconTile icon={selected ? "edit" : "add"} hue="green" size="sm" shape="circle" />
+          <div className="min-w-0 flex-1">
+            <h2 id="question-form-title" className="aapm-editor-panel__title">
+              {selected ? "Edit soal" : "Tambah soal"}
+            </h2>
+          </div>
           {selected && (
             <Button
               size="sm"
@@ -825,8 +827,8 @@ function QuestionEditor({ moduleId }) {
               Batal
             </Button>
           )}
-        </div>
-        <form onSubmit={save} className="mt-4 space-y-3">
+        </header>
+        <form onSubmit={save} className="grid gap-3">
           <div className="space-y-1.5">
             <Label>Pertanyaan</Label>
             <Textarea
@@ -914,7 +916,7 @@ function QuestionEditor({ moduleId }) {
                 : "Tambah soal"}
           </Button>
         </form>
-      </Surface>
+      </section>
       </div>
       <ConfirmDialog
         open={Boolean(pendingQuestionDelete)}
