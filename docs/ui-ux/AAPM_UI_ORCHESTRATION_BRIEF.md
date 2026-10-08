@@ -78,8 +78,11 @@ Jika surface tidak cocok dengan tabel, pilih archetype yang paling dekat, lalu t
 - Tombol APPI floating digeser (lihat `shell.css`).
 
 ### AdminShell
-- Sidebar grup *Administrasi* dan *Ruang kerja*. Chip "Ruang admin". Tombol "Kembali ke Academy".
-- Topbar dengan breadcrumb `Admin › …`. `PageHeader size="compact"`.
+- Sidebar grup *Administrasi* dan *Ruang kerja*. Kartu "Ruang admin" di atas navigasi memakai anatomi kartu progres Academy (`aapm-sidebar-card`) pada permukaan netral. Footer: "Kembali ke Academy".
+- Satu kosakata menu: sidebar, bottom bar, dan judul halaman memakai nama yang sama (Ringkasan, Course, Peserta, Pengguna, Pengaturan APPI, Status ruang kerja).
+- Topbar: breadcrumb `grup › halaman › rekaman`, sama seperti Academy (`Belajar › Beranda`). Di HP hanya dua crumb terakhir yang tampil.
+- `PageHeader size="compact"` tanpa eyebrow. Eyebrow hanya bila view menambah konteks yang tidak ada di breadcrumb (mis. chapter di editor).
+- Metrik admin netral: satu permukaan, satu aksen (ikon hijau). Tidak ada tint per metrik.
 - Editor memakai canvas lebar (`AdminPageFrame wide`).
 
 ### Auth shell
