@@ -62,7 +62,7 @@ export default function FinalExam() {
 
   if (submitted) {
     return (
-      <FocusShell resetKey="result" label="Hasil ujian akhir" bar={<AssessmentBar onExit={exit} total={questions.length} current={questions.length - 1} states={questions.map((item, index) => (answers[index] === item.correctIndex ? "done" : "wrong"))} label="Hasil ujian" />}>
+      <FocusShell resetKey="result" label="Hasil ujian akhir" bar={<AssessmentBar onExit={exit} title="Ujian akhir" total={questions.length} current={questions.length - 1} states={questions.map((item, index) => (answers[index] === item.correctIndex ? "done" : "wrong"))} label="Hasil ujian" />}>
         <AssessmentResult
           passed={passed}
           score={score}
@@ -97,6 +97,7 @@ export default function FinalExam() {
       outline={navigator}
       bar={(
         <AssessmentBar
+          title="Ujian akhir"
           onExit={exit}
           total={questions.length}
           current={current}

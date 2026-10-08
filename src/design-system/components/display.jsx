@@ -286,6 +286,7 @@ function StateView({
   icon,
   hue,
   title,
+  titleAs: TitleTag = "h2",
   description,
   action,
   secondaryAction,
@@ -315,7 +316,7 @@ function StateView({
       ) : (
         <IconTile icon={icon || defaults.icon} hue={hue || defaults.hue} size="lg" shape="circle" />
       )}
-      {title ? <h2 className="aapm-state__title">{title}</h2> : null}
+      {title ? <TitleTag className="aapm-state__title">{title}</TitleTag> : null}
       {description ? <p className="aapm-state__description">{description}</p> : null}
       {children}
       {action || secondaryAction ? (

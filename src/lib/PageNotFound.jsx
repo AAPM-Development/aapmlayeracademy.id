@@ -13,6 +13,7 @@ export default function PageNotFound() {
         <AppBrand className="h-10 w-auto" />
         <StateView
           kind="empty"
+          titleAs="h1"
           icon="map"
           hue="orange"
           title="Halaman tidak ditemukan"

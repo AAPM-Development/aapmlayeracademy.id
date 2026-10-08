@@ -6,10 +6,11 @@ import { StatTile } from "@/components/academy/CourseElements";
 const KEYS = ["A", "B", "C", "D", "E", "F"];
 
 /** Slim assessment bar: exit, segmented progress, counter. */
-export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", children }) {
+export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title, children }) {
   return (
     <div className="aapm-focus__bar">
       <IconButton label="Keluar" icon="close" onClick={onExit} />
+      {title ? <h1 className="aapm-visually-hidden">{title}</h1> : null}
       <div className="min-w-0 flex-1">
         <Segments total={total} current={current} states={states} label={label} />
       </div>
