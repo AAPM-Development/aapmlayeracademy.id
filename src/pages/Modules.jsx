@@ -101,14 +101,14 @@ export default function Modules() {
             <SectionHeader
               id="curriculum-title"
               title={view === "path" ? "Jalur belajar" : "Katalog modul"}
-              description={view === "path" ? "Ikuti jalur dari atas. Penanda Mulai menunjukkan modul Anda berikutnya." : "Cari dan saring modul berdasarkan level."}
+              description={view === "path" ? "Modul tersusun per level. Baris yang disorot adalah langkah Anda berikutnya." : "Cari dan saring modul berdasarkan level."}
               actions={(
                 <SegmentedControl
                   label="Tampilan kurikulum"
                   value={view}
                   onChange={changeView}
                   options={[
-                    { value: "path", label: "Path", icon: "roadmap" },
+                    { value: "path", label: "Jalur", icon: "roadmap" },
                     { value: "catalog", label: "Katalog", icon: "widget" },
                   ]}
                 />

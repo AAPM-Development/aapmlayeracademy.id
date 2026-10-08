@@ -35,7 +35,7 @@ import {
   getNextModule,
   getProgressSummary,
 } from "../src/lib/academyData.js";
-import { correctRun, formatDuration, pathOffset } from "../src/lib/learningPath.js";
+import { correctRun, formatDuration } from "../src/lib/learningPath.js";
 import {
   EDITORIAL_PRESENTATION_MAX_BYTES,
   EDITORIAL_PRESENTATION_MAX_SLIDES,
@@ -433,13 +433,7 @@ test("progress metrics count only active catalog modules", () => {
   assert.equal(getNextModule(modules, progress)?.moduleNumber, 2);
 });
 
-test("learning path winds from the centre and quiz readouts stay honest", () => {
-  assert.equal(pathOffset(0), 0);
-  assert.ok(pathOffset(2) > 0);
-  assert.ok(pathOffset(6) < 0);
-  assert.equal(pathOffset(8), pathOffset(0));
-  assert.ok([...Array(24).keys()].every((index) => Math.abs(pathOffset(index)) <= 1));
-
+test("quiz readouts stay honest", () => {
   assert.equal(correctRun([true, true, false, true, true, true], 5), 3);
   assert.equal(correctRun([true, undefined, true], 2), 1);
   assert.equal(correctRun([true, true, true], 1), 2);
@@ -474,9 +468,10 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(celebrate, /prefers-reduced-motion: reduce/);
   assert.match(theme, /aapm-theme-switching/);
   assert.match(styles, /\.aapm-theme-switching \*/);
-  // The winding offset uses `translate`, so the arrival animation's
-  // transform never overrides it.
-  assert.match(styles, /translate: calc\(var\(--path-offset, 0\) \* var\(--path-swing\)\) 0/);
+  // The learning track sits on the page grid: a level band over a rail of
+  // modules that fills behind finished ones; card height follows the modules.
+  assert.match(styles, /\.aapm-track__unit \{[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) minmax\(9rem, 13rem\)/);
+  assert.match(styles, /\.aapm-track__item\[data-state="completed"\] \+ \.aapm-track__item::before \{ background: var\(--aapm-semantic-primary\); \}/);
   assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 

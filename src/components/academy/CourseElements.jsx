@@ -1,9 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge, Button, ProgressRing, Segments } from "@/design-system";
+import { Badge, Button, IconTile, Progress, Segments } from "@/design-system";
 import { estimateMinutes, levelVisual, moduleVisual } from "@/lib/academyVisuals";
-import { pathOffset } from "@/lib/learningPath";
 import { cn } from "@/lib/utils";
 
 const stateLabel = {
@@ -83,82 +82,82 @@ export function ModuleRow({ module, state = "available", hue }) {
   );
 }
 
-/** Inline style carrying the node's horizontal offset on the winding path. */
-const pathOffsetStyle = (offset) => /** @type {React.CSSProperties} */ ({ "--path-offset": offset });
+const trackNodeIcon = { completed: "glyphCheck", locked: "lock" };
 
-const pathNodeIcon = {
-  completed: "glyphCheck",
-  current: "star",
-  available: "play",
-  locked: "lock",
-};
-
-/** One module on the learning path: a round, tactile node with its title. */
-function PathNode({ module, offset }) {
+/** One module on a level's track: state node on the rail, title, meta. */
+function TrackModule({ module }) {
   const state = module.state || "available";
   const quizPercent = module.progress?.quizTotal
     ? Math.round(((module.progress.quizScore || 0) / module.progress.quizTotal) * 100)
     : null;
   return (
-    <li>
+    <li className="aapm-track__item" data-state={state}>
       <Link
         to={`/modules/${module.moduleNumber}`}
-        className="aapm-path-node"
-        data-state={state}
-        style={pathOffsetStyle(offset)}
+        className="aapm-track__row"
         aria-label={`Modul ${module.moduleNumber}: ${module.title}. ${stateLabel[state] || ""}`}
         aria-current={state === "current" ? "step" : undefined}
       >
-        {state === "current" ? <span className="aapm-path-node__callout" aria-hidden="true">{module.progress ? "Lanjutkan" : "Mulai"}</span> : null}
-        <span className="aapm-path-node__disc" aria-hidden="true"><AapmIcon name={pathNodeIcon[state] || "play"} /></span>
-        <span className="aapm-path-node__label" aria-hidden="true">
-          <span className="aapm-text-overline aapm-path-node__eyebrow">Modul {module.moduleNumber}</span>
-          <span className="aapm-path-node__title">{module.title}</span>
-          <span className="aapm-meta">
-            {quizPercent !== null ? <><AapmIcon name="quiz" />Kuis {quizPercent}%</> : <><AapmIcon name="clock" />±{estimateMinutes(module)} mnt</>}
-          </span>
+        <span className="aapm-track__node" aria-hidden="true">
+          {trackNodeIcon[state] ? <AapmIcon name={trackNodeIcon[state]} /> : module.moduleNumber}
         </span>
+        <span className="aapm-track__body" aria-hidden="true">
+          <span className="aapm-track__eyebrow">
+            Modul {module.moduleNumber}
+            {state === "current" ? <span className="aapm-track__now">{module.progress ? "Lanjutkan di sini" : "Mulai di sini"}</span> : null}
+          </span>
+          <span className="aapm-track__title">{module.title}</span>
+        </span>
+        <span className="aapm-track__meta aapm-meta-row" aria-hidden="true">
+          <span className="aapm-meta"><AapmIcon name="clock" />±{estimateMinutes(module)} mnt</span>
+          {quizPercent !== null ? <span className="aapm-meta"><AapmIcon name="quiz" />Kuis {quizPercent}%</span> : null}
+          {module.progress?.practicalDone ? <span className="aapm-meta"><AapmIcon name="practice" />Praktik</span> : null}
+        </span>
+        <AapmIcon name="chevronRight" className="aapm-track__chevron" />
       </Link>
     </li>
   );
 }
 
-/** A level on the learning path: unit banner, module nodes, level goal. */
-function PathUnit({ level }) {
-  const titleId = `path-level-${level.number}`;
+/** A level card: a tinted unit band (level, name, progress) over its modules. */
+function LevelTrack({ level }) {
+  const titleId = `track-level-${level.number}`;
   const done = level.percent === 100;
   return (
-    <section id={`level-${level.number}`} className="aapm-path-unit" data-hue={level.hue} data-current={level.hasCurrent ? "true" : undefined} aria-labelledby={titleId}>
-      <header className="aapm-path-unit__banner">
-        <div className="min-w-0">
-          <p className="aapm-text-overline aapm-path-unit__eyebrow">Level {level.number} · {level.completed}/{level.total} modul</p>
-          <h3 id={titleId} className="aapm-path-unit__title">{level.name}</h3>
-          {level.description ? <p className="aapm-path-unit__description">{level.description}</p> : null}
+    <section id={`level-${level.number}`} className="aapm-track" data-hue={level.hue} data-current={level.hasCurrent ? "true" : undefined} aria-labelledby={titleId}>
+      <header className="aapm-track__unit">
+        <IconTile className="aapm-track__icon" icon={level.icon} hue={level.hue} size="md" shape="circle" variant="badge" />
+        <div className="aapm-track__unit-copy">
+          <p className="aapm-text-overline aapm-track__level">
+            Level {level.number}
+            {level.hasCurrent ? <Badge tone="attention" dot>Aktif</Badge> : done ? <Badge tone="success" icon="check">Tuntas</Badge> : null}
+          </p>
+          <h3 id={titleId} className="aapm-track__unit-title">{level.name}</h3>
+          {level.description ? <p className="aapm-track__unit-text">{level.description}</p> : null}
         </div>
-        <ProgressRing value={level.percent} size={52} stroke={5} hue={level.hue} label={`Level ${level.number} ${level.percent}%`}>
-          <AapmIcon name={done ? "glyphCheck" : level.icon} />
-        </ProgressRing>
+        <div className="aapm-track__unit-progress">
+          <span className="aapm-numeric">{level.completed}/{level.total} modul</span>
+          <Progress value={level.percent} label={`Progress ${level.name}`} />
+        </div>
       </header>
-      <ol className="aapm-path-unit__track">
-        {level.modules.map((module, index) => <PathNode key={module.moduleNumber} module={module} offset={pathOffset(index)} />)}
-        <li className="aapm-path-goal" data-done={done ? "true" : undefined} style={pathOffsetStyle(pathOffset(level.modules.length))}>
-          <span className="aapm-path-goal__icon" aria-hidden="true"><AapmIcon name="exam" /></span>
-          <span>{done ? "Level tuntas" : `Tuntaskan ${level.total - level.completed} modul lagi`}</span>
-        </li>
+      <ol className="aapm-track__list">
+        {level.modules.map((module) => <TrackModule key={module.moduleNumber} module={module} />)}
       </ol>
     </section>
   );
 }
 
 /**
- * Duolingo-style learning path: every level as a unit banner followed by its
- * modules as round nodes on a winding track. The current module carries the
- * start callout; node colour follows the learning state.
+ * Learning track: every level as a card with a tinted unit band over a
+ * vertical rail of its modules. The journey cues of a learning path (nodes on
+ * a rail, the rail filling behind finished modules, the current step
+ * highlighted) laid out on the page grid so the whole curriculum stays
+ * scannable on desktop and phones.
  */
 export function LearningPath({ curriculum = [] }) {
   return (
-    <div className="aapm-path">
-      {curriculum.map((level) => <PathUnit key={level.number} level={level} />)}
+    <div className="aapm-tracks">
+      {curriculum.map((level) => <LevelTrack key={level.number} level={level} />)}
     </div>
   );
 }
