@@ -457,7 +457,7 @@ export default function KpiDashboard() {
           rows={visibleWeeklyRows}
           rowKey={(row) => String(row.id)}
           density="compact"
-          responsive="scroll"
+          responsive="stacked"
           loading={isLoading}
           emptyMessage="Belum ada data mingguan. Isi form di samping untuk memulai."
           sort={tableSort}

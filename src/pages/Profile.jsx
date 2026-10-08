@@ -1,26 +1,38 @@
 import React, { useEffect, useRef, useState } from "react";
+import ContentContainer from "@/components/layout/ContentContainer";
+import PageHeader from "@/components/layout/PageHeader";
 import AapmIcon from "@/components/icons/AapmIcon";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import {
   Badge,
   Button,
-  Input,
+  Field,
+  FormActions,
+  FormGrid,
+  FormSection,
   IconTile,
+  Input,
   KPICluster,
   Label,
+  Progress,
+  ProgressRing,
+  SectionHeader,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Surface,
   StateView,
-  Switch,
+  Surface,
+  SwitchField,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Textarea,
   useToast,
 } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
-import { Page } from "@/design-system/patterns/AppShell";
 import {
   useHallOfFame,
   useLearningProfile,
@@ -66,8 +78,19 @@ function resizeProfileImage(file) {
   });
 }
 
+/* Label + control for controls that cannot take Field's id cloning (Radix Select roots). */
+function ControlField({ id, label, hint, children }) {
+  return (
+    <div className="aapm-field">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {hint ? <p className="aapm-field-hint">{hint}</p> : null}
+    </div>
+  );
+}
+
 function AiAccountPreferences() {
-  const { data, isLoading, error } = useAiAccountSettings();
+  const { data, isLoading, error, refetch } = useAiAccountSettings();
   const save = useSaveAiAccountSettings();
   const { toast } = useToast();
   const [mode, setMode] = useState("global");
@@ -113,17 +136,89 @@ function AiAccountPreferences() {
     }
   };
 
-  if (isLoading) return <Surface variant="muted" className="min-h-40 animate-pulse" />;
-  if (error) return <Surface tone="orange" className="p-5"><h2 className="text-sm font-semibold">Preferensi APPI belum tersedia</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{error.message}</p></Surface>;
+  if (isLoading) return <Surface variant="muted" className="min-h-40 animate-pulse" aria-busy="true" />;
+  if (error) {
+    return (
+      <StateView
+        kind="error"
+        title="Preferensi APPI belum tersedia"
+        description={error.message}
+        action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>}
+      />
+    );
+  }
 
   return (
-    <Surface className="p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><IconTile icon="ai" tone="orange" size="sm" /><div><h2 className="text-base font-semibold">Preferensi APPI</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Pilih provider global Academy atau gunakan koneksi AI milik Anda sendiri.</p></div></div><Badge variant="soft" className="shrink-0 bg-tint-green text-tint-green-foreground">Per akun</Badge></div>
-      <div className="mt-5 space-y-4"><div className="space-y-2"><Label htmlFor="account-ai-mode">Sumber provider</Label><Select value={mode} onValueChange={(value) => { setMode(value); if (value === "global") { setProviderId(data?.globalProviderId || ""); setModel(""); } }}><SelectTrigger id="account-ai-mode" className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="global">Global AAPM Provider · default</SelectItem><SelectItem value="provider">Pilih provider global lain</SelectItem><SelectItem value="custom">Provider saya sendiri · BYOK</SelectItem></SelectContent></Select><p className="text-[11px] leading-5 text-muted-foreground">{data?.note}</p></div>
-        {mode === "provider" && <div className="space-y-2"><Label htmlFor="account-ai-provider">Provider global</Label><Select value={providerId} onValueChange={setProviderId}><SelectTrigger id="account-ai-provider" className="h-11"><SelectValue placeholder="Pilih provider" /></SelectTrigger><SelectContent>{(data?.globalProviders || []).map((provider) => <SelectItem key={provider.id} value={provider.id}>{provider.label} · {provider.model}</SelectItem>)}</SelectContent></Select></div>}
-        {(mode === "global" || mode === "provider") && <div className="space-y-2"><Label htmlFor="account-ai-model">Model override <span className="font-normal text-muted-foreground">(opsional)</span></Label><Input id="account-ai-model" value={model} onChange={(event) => setModel(event.target.value)} placeholder={selectedProvider?.model || data?.globalModel || "Biarkan memakai model global"} className="h-11" /><p className="text-[11px] leading-5 text-muted-foreground">Kosongkan agar mengikuti model yang dipilih admin. Isi ID model hanya jika provider tersebut mendukungnya.</p></div>}
-        {mode === "custom" && <div className="space-y-4 rounded-xl border border-border bg-surface-subtle p-4"><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2 sm:col-span-2"><Label htmlFor="account-ai-base-url">Base URL provider Anda</Label><Input id="account-ai-base-url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://gateway.example.com/v1" className="h-11" /></div><div className="space-y-2"><Label htmlFor="account-ai-custom-model">Model ID</Label><Input id="account-ai-custom-model" value={model} onChange={(event) => setModel(event.target.value)} placeholder="llama3.2 atau model provider" className="h-11" /></div><div className="space-y-2"><Label htmlFor="account-ai-auth">Autentikasi</Label><Select value={authMode} onValueChange={setAuthMode}><SelectTrigger id="account-ai-auth" className="h-11"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bearer">Bearer</SelectItem><SelectItem value="x-api-key">X-API-Key</SelectItem><SelectItem value="none">Tanpa key / local</SelectItem></SelectContent></Select></div><div className="space-y-2 sm:col-span-2"><Label htmlFor="account-ai-key">API key Anda <span className="font-normal text-muted-foreground">(opsional untuk local)</span></Label><Input id="account-ai-key" type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={data?.apiKeyConfigured ? "Kosongkan untuk mempertahankan key" : "Key hanya tersimpan di akun Anda"} className="h-11" /></div></div><div className="grid gap-3 sm:grid-cols-2"><label className="flex items-start gap-3 rounded-xl border border-border bg-background p-3 text-xs"><Switch checked={allowLocal} onCheckedChange={setAllowLocal} /><span><span className="block font-medium">Endpoint privat / local</span><span className="mt-0.5 block leading-5 text-muted-foreground">Izinkan HTTP loopback atau LAN privat.</span></span></label><label className="flex items-start gap-3 rounded-xl border border-border bg-background p-3 text-xs"><Switch checked={supportsVision} onCheckedChange={setSupportsVision} /><span><span className="block font-medium">Input gambar</span><span className="mt-0.5 block leading-5 text-muted-foreground">Aktifkan jika model Anda mendukung vision.</span></span></label></div></div>}
-        <label className="flex items-start gap-3 rounded-xl border border-border bg-surface-subtle p-3 text-xs"><Switch checked={enabled} onCheckedChange={setEnabled} /><span><span className="block font-medium">Izinkan APPI pada akun ini</span><span className="mt-0.5 block leading-5 text-muted-foreground">Jika dimatikan, APPI menggunakan fallback lokal saat dipanggil.</span></span></label><Button type="button" className="w-full bg-brand-orange text-white hover:bg-brand-orange/90" onClick={savePreferences} disabled={save.isPending}>{save.isPending ? "Menyimpan…" : "Simpan preferensi APPI"}</Button></div>
+    <Surface className="aapm-profile-panel p-5 sm:p-6">
+      <SectionHeader
+        title="Preferensi APPI"
+        description="Pilih provider global Academy atau gunakan koneksi AI milik Anda sendiri."
+        actions={<Badge variant="soft" hue="green">Per akun</Badge>}
+      />
+      <div className="aapm-profile-panel__body">
+        <ControlField id="account-ai-mode" label="Sumber provider" hint={data?.note}>
+          <Select value={mode} onValueChange={(value) => { setMode(value); if (value === "global") { setProviderId(data?.globalProviderId || ""); setModel(""); } }}>
+            <SelectTrigger id="account-ai-mode"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="global">Global AAPM Provider · default</SelectItem>
+              <SelectItem value="provider">Pilih provider global lain</SelectItem>
+              <SelectItem value="custom">Provider saya sendiri · BYOK</SelectItem>
+            </SelectContent>
+          </Select>
+        </ControlField>
+
+        {mode === "provider" ? (
+          <ControlField id="account-ai-provider" label="Provider global">
+            <Select value={providerId} onValueChange={setProviderId}>
+              <SelectTrigger id="account-ai-provider"><SelectValue placeholder="Pilih provider" /></SelectTrigger>
+              <SelectContent>
+                {(data?.globalProviders || []).map((provider) => <SelectItem key={provider.id} value={provider.id}>{provider.label} · {provider.model}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </ControlField>
+        ) : null}
+
+        {mode === "global" || mode === "provider" ? (
+          <Field id="account-ai-model" label="Model override" hint="Kosongkan agar mengikuti model yang dipilih admin. Isi ID model hanya jika provider mendukungnya.">
+            <Input value={model} onChange={(event) => setModel(event.target.value)} placeholder={selectedProvider?.model || data?.globalModel || "Biarkan memakai model global"} />
+          </Field>
+        ) : null}
+
+        {mode === "custom" ? (
+          <FormSection title="Koneksi BYOK" description="Endpoint dan key disimpan hanya untuk akun ini.">
+            <FormGrid columns={2}>
+              <Field id="account-ai-base-url" label="Base URL provider Anda" className="sm:col-span-2">
+                <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://gateway.example.com/v1" />
+              </Field>
+              <Field id="account-ai-custom-model" label="Model ID">
+                <Input value={model} onChange={(event) => setModel(event.target.value)} placeholder="llama3.2 atau model provider" />
+              </Field>
+              <ControlField id="account-ai-auth" label="Autentikasi">
+                <Select value={authMode} onValueChange={setAuthMode}>
+                  <SelectTrigger id="account-ai-auth"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bearer">Bearer</SelectItem>
+                    <SelectItem value="x-api-key">X-API-Key</SelectItem>
+                    <SelectItem value="none">Tanpa key / local</SelectItem>
+                  </SelectContent>
+                </Select>
+              </ControlField>
+              <Field id="account-ai-key" label="API key Anda" hint={data?.apiKeyConfigured ? "Kosongkan untuk mempertahankan key yang tersimpan." : "Opsional untuk endpoint lokal. Key hanya tersimpan di akun Anda."} className="sm:col-span-2">
+                <Input type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={data?.apiKeyConfigured ? "Tersimpan · isi untuk mengganti" : "Tempel API key"} />
+              </Field>
+            </FormGrid>
+            <FormGrid columns={2}>
+              <SwitchField id="account-ai-local" label="Endpoint privat / local" description="Izinkan HTTP loopback atau LAN privat." checked={allowLocal} onCheckedChange={setAllowLocal} />
+              <SwitchField id="account-ai-vision" label="Input gambar" description="Aktifkan jika model Anda mendukung vision." checked={supportsVision} onCheckedChange={setSupportsVision} />
+            </FormGrid>
+          </FormSection>
+        ) : null}
+
+        <SwitchField id="account-ai-enabled" label="Izinkan APPI pada akun ini" description="Jika dimatikan, APPI memakai fallback lokal saat dipanggil." checked={enabled} onCheckedChange={setEnabled} />
+      </div>
+      <FormActions className="aapm-profile-panel__actions">
+        <Button type="button" variant="ai" onClick={savePreferences} loading={save.isPending}>Simpan preferensi APPI</Button>
+      </FormActions>
     </Surface>
   );
 }
@@ -140,24 +235,28 @@ function PwaInstallShortcut() {
   };
 
   return (
-    <Surface className="aapm-pwa-install-card p-4 sm:p-5">
-      <div className="flex items-start gap-3">
-        <IconTile icon="download" tone="green" size="sm" />
-        <div className="min-w-0 flex-1">
+    <Surface className="aapm-pwa-install-card p-5 sm:p-6">
+      <div className="aapm-profile-device">
+        <IconTile icon="download" hue="green" size="lg" />
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold">Pasang AAPM di perangkat</h2>
-            {isInstalled && <Badge variant="soft" className="bg-tint-green text-tint-green-foreground">Sudah terpasang</Badge>}
+            <h2 className="text-base font-semibold">Pasang AAPM di perangkat</h2>
+            {isInstalled ? <Badge variant="soft" hue="green">Sudah terpasang</Badge> : null}
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {isInstalled
               ? "AAPM Academy sudah tersedia sebagai aplikasi mandiri di perangkat ini."
               : canInstall
                 ? "Tambahkan shortcut ke layar utama agar belajar dan membuka APPI lebih cepat."
                 : "Buka menu browser lalu pilih Install app / Tambahkan ke layar utama jika tombol belum tersedia."}
           </p>
+          {!isInstalled ? (
+            <Button type="button" className="mt-4" leadingIcon="download" onClick={handleInstall} disabled={!canInstall}>
+              {canInstall ? "Install sekarang" : "Menunggu dukungan browser"}
+            </Button>
+          ) : null}
         </div>
       </div>
-      {!isInstalled && <Button type="button" size="sm" className="mt-3 w-full" onClick={handleInstall} disabled={!canInstall}><AapmIcon name="download" />{canInstall ? "Install sekarang" : "Menunggu dukungan browser"}</Button>}
     </Surface>
   );
 }
@@ -210,10 +309,20 @@ export default function Profile() {
   };
 
   if (isLoading) {
-    return <Page><StateView kind="loading" title="Memuat profil…" framed={false} /></Page>;
+    return (
+      <ContentContainer>
+        <PageHeader eyebrow="Prestasi" title="Profil & prestasi" />
+        <StateView kind="loading" title="Memuat profil…" framed={false} />
+      </ContentContainer>
+    );
   }
   if (error) {
-    return <Page><StateView kind="error" title="Profil belum dapat dimuat" description={error.message} action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>} /></Page>;
+    return (
+      <ContentContainer>
+        <PageHeader eyebrow="Prestasi" title="Profil & prestasi" />
+        <StateView kind="error" title="Profil belum dapat dimuat" description={error.message} action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>} />
+      </ContentContainer>
+    );
   }
 
   const learning = data?.learning || {};
@@ -222,21 +331,35 @@ export default function Profile() {
   const nextLevelProgress = learning.nextLevelAt
     ? Math.min(100, Math.round((learning.points / learning.nextLevelAt) * 100))
     : 100;
+  const achievements = learning.achievements || [];
+  const unlockedCount = achievements.filter((item) => item.unlocked).length;
+  const isDirty = name !== (data?.user?.full_name || "")
+    || bio !== (data?.profile?.bio || "")
+    || optIn !== Boolean(data?.profile?.hallOfFameOptIn)
+    || avatarData !== (data?.profile?.avatar || data?.user?.avatar || "");
 
   return (
-    <Page>
-      <section className="aapm-card overflow-hidden">
-        <div className="relative border-b border-border bg-surface-subtle px-5 py-7 sm:px-7 sm:py-9">
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <ProfileAvatar user={profileUser} name={profileName} className="h-16 w-16 rounded-2xl border border-brand-green/20 shadow-sm" fallbackClassName="rounded-2xl bg-tint-green text-xl text-brand-green" />
-              <div className="min-w-0"><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Profil belajar</div><h1 className="mt-1 truncate text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">{profileName}</h1><p className="mt-1 text-sm text-muted-foreground">{data?.user?.email}</p></div>
-            </div>
-            <div className="rounded-xl border border-border bg-background px-4 py-3"><div className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">Level saat ini</div><div className="mt-1 flex items-center gap-2 text-sm font-semibold"><AapmIcon name="award" className="h-4 w-4 text-brand-orange" />{learning.level}</div></div>
-          </div>
+    <ContentContainer>
+      <PageHeader
+        eyebrow="Prestasi"
+        title="Profil & prestasi"
+        description="Identitas belajar, pencapaian, dan preferensi akun Anda."
+      />
+
+      <Surface tone="green" className="aapm-profile-hero">
+        <ProfileAvatar user={profileUser} name={profileName} className="aapm-profile-hero__avatar" fallbackClassName="bg-background text-xl text-brand-green" />
+        <div className="min-w-0">
+          <Badge variant="soft" hue="green" icon="award">{learning.level || "Level belajar"}</Badge>
+          <h2 className="aapm-profile-hero__name">{profileName}</h2>
+          <p className="aapm-profile-hero__email">{data?.user?.email}</p>
         </div>
-        <div className="grid gap-px bg-border sm:grid-cols-3"><div className="bg-background px-5 py-4"><div className="text-xs text-muted-foreground">Poin pembelajaran</div><div className="mt-1 text-xl font-semibold">{learning.points || 0}</div></div><div className="bg-background px-5 py-4"><div className="text-xs text-muted-foreground">Progress kurikulum</div><div className="mt-1 text-xl font-semibold">{learning.completedModules || 0}<span className="text-sm text-muted-foreground">/{learning.moduleTotal || 0} modul</span></div></div><div className="bg-background px-5 py-4"><div className="text-xs text-muted-foreground">Ke level berikutnya</div><div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-brand-orange transition-[width]" style={{ width: `${nextLevelProgress}%` }} /></div></div></div>
-      </section>
+        <div className="aapm-profile-hero__progress">
+          <ProgressRing value={nextLevelProgress} size={76} stroke={7} hue="orange" label="Menuju level berikutnya" />
+          <p className="aapm-profile-hero__progress-text">
+            {learning.nextLevelAt ? `${learning.points || 0} / ${learning.nextLevelAt} poin` : "Level tertinggi tercapai"}
+          </p>
+        </div>
+      </Surface>
 
       <KPICluster
         className="aapm-profile-kpi"
@@ -283,11 +406,121 @@ export default function Profile() {
         ]}
       />
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)]">
-        <Surface className="p-5 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Apresiasi berbasis aktivitas</div><h2 className="mt-1 text-lg font-semibold">Pencapaian Anda</h2><p className="mt-1 text-sm text-muted-foreground">{data?.achievementNote}</p></div><Badge variant="soft" className="bg-tint-green text-tint-green-foreground">{(learning.achievements || []).filter((item) => item.unlocked).length}/{(learning.achievements || []).length} terbuka</Badge></div><div className="mt-5 grid gap-3 sm:grid-cols-2">{(learning.achievements || []).map((achievement) => <div key={achievement.id} className={`rounded-xl border p-4 ${achievement.unlocked ? "border-tint-green-border bg-tint-green" : "border-border bg-surface-subtle"}`}><div className="flex items-start gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${achievement.unlocked ? "bg-background text-brand-green" : "bg-muted text-muted-foreground"}`}><AapmIcon name={achievement.icon} className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h3 className="text-sm font-semibold">{achievement.title}</h3>{achievement.unlocked && <AapmIcon name="check" className="h-4 w-4 text-brand-green" />}</div><p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.description}</p><p className="mt-2 text-[11px] font-medium text-muted-foreground">{Math.min(achievement.current, achievement.target)}/{achievement.target}</p></div></div></div>)}</div></Surface>
-        <div className="space-y-5"><Surface className="p-5"><div className="flex items-center gap-2"><AapmIcon name="award" className="h-5 w-5 text-brand-orange" /><h2 className="text-base font-semibold">Hall of Fame</h2></div><p className="mt-2 text-xs leading-5 text-muted-foreground">{hall?.criteria}</p><div className="mt-4 space-y-2">{hall?.entries?.length ? hall.entries.slice(0, 5).map((entry) => <div key={entry.userId} className="flex items-center gap-3 rounded-xl border border-border bg-surface-subtle px-3 py-2.5"><span className="w-5 text-center text-xs font-semibold text-brand-orange">{entry.rank}</span><span className="flex h-8 w-8 items-center justify-center rounded-full bg-tint-green text-xs font-semibold text-brand-green">{entry.name.slice(0, 1).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold">{entry.name}</span><span className="block text-[10px] text-muted-foreground">{entry.level}</span></span><span className="text-xs font-semibold tabular-nums">{entry.points}</span></div>) : <p className="rounded-xl border border-dashed border-border p-3 text-xs leading-5 text-muted-foreground">Belum ada peserta yang memilih tampil di Hall of Fame.</p>}</div></Surface>
-          <Surface className="p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="text-base font-semibold">Pengaturan profil</h2><p className="mt-1 text-xs text-muted-foreground">Atur identitas yang tampil di ruang belajar.</p></div><AapmIcon name="settings" className="h-5 w-5 text-brand-orange" /></div><div className="mt-4 space-y-4"><div className="rounded-xl border border-border bg-surface-subtle p-3"><input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Pilih foto profil" onChange={handleAvatarSelection} className="sr-only" /><div className="flex items-center gap-3"><ProfileAvatar user={profileUser} name={profileName} className="h-14 w-14" fallbackClassName="bg-tint-green text-lg text-brand-green" /><div className="min-w-0 flex-1"><div className="text-xs font-semibold">Foto profil</div><p className="mt-1 text-[11px] leading-4 text-muted-foreground">Foto dipotong persegi dan disimpan aman di akun Anda.</p><div className="mt-2 flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}><AapmIcon name="solar:camera-bold-duotone" />{avatarData ? "Ganti foto" : "Tambah foto"}</Button>{avatarData && <Button type="button" variant="ghost" size="sm" onClick={() => { setAvatarData(""); setAvatarError(""); }}>Hapus</Button>}</div></div></div>{avatarError && <p className="mt-2 text-[11px] font-medium text-danger">{avatarError}</p>}</div><div className="space-y-2"><Label htmlFor="profile-name">Nama tampil</Label><Input id="profile-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={160} /></div><div className="space-y-2"><Label htmlFor="profile-bio">Tentang saya <span className="font-normal text-muted-foreground">(opsional)</span></Label><Textarea id="profile-bio" value={bio} onChange={(event) => setBio(event.target.value)} maxLength={600} rows={3} placeholder="Fokus belajar atau konteks farm yang ingin Anda bagikan." /></div><div className="flex items-start gap-3 rounded-xl border border-border bg-surface-subtle p-3"><Switch checked={optIn} onCheckedChange={setOptIn} aria-label="Tampilkan profil di Hall of Fame" /><div><div className="text-xs font-semibold">Tampilkan di Hall of Fame</div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">Hanya nama, level, dan poin pembelajaran yang ditampilkan. Email tidak pernah ditampilkan.</p></div></div><Button className="w-full" onClick={save} disabled={saveProfile.isPending}>{saveProfile.isPending ? "Menyimpan…" : "Simpan profil"}</Button></div></Surface><PwaInstallShortcut /><AiAccountPreferences /></div>
-      </section>
-    </Page>
+      <Tabs defaultValue="summary" className="aapm-profile-tabs">
+        <TabsList variant="underline" aria-label="Bagian profil">
+          <TabsTrigger value="summary" icon="award">Ringkasan</TabsTrigger>
+          <TabsTrigger value="profile" icon="user">Profil</TabsTrigger>
+          <TabsTrigger value="appi" icon="ai">APPI</TabsTrigger>
+          <TabsTrigger value="device" icon="smartphone">Perangkat</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="summary" className="aapm-profile-summary">
+          <Surface className="p-5 sm:p-6">
+            <SectionHeader
+              title="Pencapaian Anda"
+              description={data?.achievementNote}
+              actions={<Badge variant="soft" hue="green">{unlockedCount}/{achievements.length} terbuka</Badge>}
+            />
+            {achievements.length ? (
+              <div className="aapm-achievement-grid">
+                {achievements.map((achievement) => {
+                  const percent = achievement.target ? Math.min(100, Math.round((Math.min(achievement.current, achievement.target) / achievement.target) * 100)) : 0;
+                  return (
+                    <article key={achievement.id} className="aapm-achievement" data-unlocked={achievement.unlocked ? "true" : "false"}>
+                      <IconTile icon={achievement.icon} hue={achievement.unlocked ? "green" : "neutral"} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold">{achievement.title}</h3>
+                          {achievement.unlocked ? <AapmIcon name="check" className="h-4 w-4 text-brand-green" /> : null}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.description}</p>
+                        <Progress className="mt-3" value={percent} size="sm" hue={achievement.unlocked ? "green" : "neutral"} label={`${achievement.title} ${percent}%`} />
+                        <p className="mt-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">{Math.min(achievement.current, achievement.target)}/{achievement.target}</p>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <StateView kind="empty" icon="award" title="Pencapaian belum tersedia" description="Pencapaian akan muncul setelah aktivitas belajar tercatat." framed={false} />
+            )}
+          </Surface>
+
+          <Surface className="p-5 sm:p-6">
+            <SectionHeader
+              title="Hall of Fame"
+              description={hall?.criteria}
+            />
+            <div className="aapm-hof-list">
+              {hall?.entries?.length ? hall.entries.slice(0, 5).map((entry) => (
+                <div key={entry.userId} className="aapm-hof-row">
+                  <span className="aapm-hof-row__rank">{entry.rank}</span>
+                  <span className="aapm-hof-row__avatar" aria-hidden="true">{entry.name.slice(0, 1).toUpperCase()}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{entry.name}</span>
+                    <span className="block text-xs text-muted-foreground">{entry.level}</span>
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums">{entry.points}</span>
+                </div>
+              )) : (
+                <p className="aapm-hof-empty">Belum ada peserta yang memilih tampil di Hall of Fame.</p>
+              )}
+            </div>
+          </Surface>
+        </TabsContent>
+
+        <TabsContent value="profile">
+          <Surface className="aapm-profile-panel p-5 sm:p-6">
+            <FormSection title="Foto profil" description="Foto dipotong persegi dan disimpan aman di akun Anda.">
+              <div className="aapm-profile-avatar-row">
+                <ProfileAvatar user={profileUser} name={profileName} className="h-16 w-16" fallbackClassName="bg-tint-green text-lg text-brand-green" />
+                <div className="aapm-profile-avatar-row__actions">
+                  <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Pilih foto profil" onChange={handleAvatarSelection} className="sr-only" />
+                  <Button type="button" variant="outline" size="sm" leadingIcon="camera" onClick={() => avatarInputRef.current?.click()}>
+                    {avatarData ? "Ganti foto" : "Tambah foto"}
+                  </Button>
+                  {avatarData ? <Button type="button" variant="ghost" size="sm" onClick={() => { setAvatarData(""); setAvatarError(""); }}>Hapus</Button> : null}
+                </div>
+              </div>
+              {avatarError ? <p className="aapm-field-error" role="alert">{avatarError}</p> : null}
+            </FormSection>
+
+            <FormSection title="Identitas" description="Nama dan tentang saya tampil di ruang belajar.">
+              <FormGrid columns={1}>
+                <Field id="profile-name" label="Nama tampil">
+                  <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={160} />
+                </Field>
+                <Field id="profile-bio" label="Tentang saya" hint="Opsional. Fokus belajar atau konteks farm yang ingin Anda bagikan.">
+                  <Textarea value={bio} onChange={(event) => setBio(event.target.value)} maxLength={600} rows={3} placeholder="Ceritakan fokus belajar atau farm Anda." />
+                </Field>
+              </FormGrid>
+            </FormSection>
+
+            <FormSection title="Privasi" description="Kendalikan apa yang terlihat oleh peserta lain.">
+              <SwitchField
+                id="profile-hall-of-fame"
+                label="Tampilkan di Hall of Fame"
+                description="Hanya nama, level, dan poin pembelajaran yang ditampilkan. Email tidak pernah ditampilkan."
+                checked={optIn}
+                onCheckedChange={setOptIn}
+              />
+            </FormSection>
+
+            <FormActions className="aapm-profile-panel__actions">
+              <span className="aapm-profile-panel__status" aria-live="polite">{isDirty ? "Ada perubahan belum disimpan" : "Semua perubahan tersimpan"}</span>
+              <Button type="button" onClick={save} loading={saveProfile.isPending} disabled={!isDirty}>Simpan profil</Button>
+            </FormActions>
+          </Surface>
+        </TabsContent>
+
+        <TabsContent value="appi">
+          <AiAccountPreferences />
+        </TabsContent>
+
+        <TabsContent value="device">
+          <PwaInstallShortcut />
+        </TabsContent>
+      </Tabs>
+    </ContentContainer>
   );
 }
