@@ -680,7 +680,7 @@ a.aapm-surface { text-decoration: none; }
 .aapm-segments > span[data-state="wrong"] { background: var(--aapm-semantic-danger); }
 
 .aapm-ring { position: relative; display: inline-grid; place-items: center; flex: none; }
-.aapm-ring svg { transform: rotate(-90deg); }
+.aapm-ring > svg { transform: rotate(-90deg); }
 .aapm-ring__track { stroke: color-mix(in srgb, var(--aapm-semantic-foreground) 9%, transparent); }
 .aapm-ring__value { stroke: var(--ring-color, var(--aapm-semantic-primary)); stroke-linecap: round; transition: stroke-dashoffset var(--aapm-primitive-motion-chart) var(--aapm-primitive-motion-ease); }
 .aapm-ring[data-hue] { --ring-color: var(--hue); }
