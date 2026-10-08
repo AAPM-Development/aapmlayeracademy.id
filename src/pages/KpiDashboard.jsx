@@ -5,7 +5,6 @@ import PageHeader from "@/components/layout/PageHeader";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { LineChart as T7LineChart } from "@/design-system/charts";
 import {
-  Alert,
   ConfirmDialog,
   SectionHeader,
   Sheet,
@@ -35,11 +34,6 @@ import {
 } from "@/components/primitives";
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
 import { useToast } from "@/components/primitives";
-import {
-  aggregateWismanByDate,
-  WISMAN_FIXTURE_META,
-  WISMAN_FIXTURE_ROWS,
-} from "@/lib/wismanFixture";
 
 /** @typedef {{label: string, value: any, [key: string]: any}} KPIItem */
 /** @typedef {{key: string, header: string, [key: string]: any}} DataTableColumn */
@@ -90,71 +84,37 @@ export default function KpiDashboard() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [fieldErrors, setFieldErrors] = useState({});
-  // Keep the Wisman fixture available for explicit local QA without exposing
-  // synthetic data or audit metadata in the learner-facing build.
-  const devFixtureTools = import.meta.env.DEV;
-  const [previewWisman, setPreviewWisman] = useState(() => {
-    if (!devFixtureTools || typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("fixture") === "wisman";
-  });
   const [tableSort, setTableSort] = useState(/** @type {DataTableSort} */ ({ key: "week", direction: "asc" }));
 
   const sorted = useMemo(
     () => [...rows].sort((a, b) => toNumber(a.week) - toNumber(b.week)),
     [rows],
   );
-  const wismanRows = useMemo(() => aggregateWismanByDate(), []);
-  const activeRows = previewWisman ? wismanRows : sorted;
-  const activeSourceLabel = previewWisman
-    ? "Wisman Farm · preview lokal"
-    : "Farm API · data tersimpan";
+  const activeSourceLabel = "Farm API · data tersimpan";
 
-  const activeLabels = useMemo(
-    () =>
-      activeRows.map((row) =>
-        previewWisman ? formatDateLabel(row.date) : `M${row.week}`,
-      ),
-    [activeRows, previewWisman],
-  );
+  const activeLabels = useMemo(() => sorted.map((row) => `M${row.week}`), [sorted]);
 
-  const activeStats = useMemo(
-    () => buildStats(activeRows, { preview: previewWisman }),
-    [activeRows, previewWisman],
-  );
+  const activeStats = useMemo(() => buildStats(sorted), [sorted]);
 
   const productionSeries = useMemo(() => {
-    const hdp = completeSeries(activeRows, "henDayProduction");
+    const hdp = completeSeries(sorted, "henDayProduction");
     if (!hdp.length) return [];
-    const series = [{ id: "hdp", label: "HDP (%)", values: hdp }];
-    if (previewWisman) {
-      const mortality = completeSeries(activeRows, "mortality");
-      if (mortality.length) {
-        series.push({ id: "mortality", label: "Mortalitas (%)", values: mortality });
-      }
-    }
-    return series;
-  }, [activeRows, previewWisman]);
+    return [{ id: "hdp", label: "HDP (%)", values: hdp }];
+  }, [sorted]);
 
-  const fcrSeries = useMemo(
-    () => (previewWisman ? [] : chartSeries(activeRows, "fcr", "FCR")),
-    [activeRows, previewWisman],
-  );
+  const fcrSeries = useMemo(() => chartSeries(sorted, "fcr", "FCR"), [sorted]);
 
-  const eggWeightSeries = useMemo(
-    () => (previewWisman ? [] : chartSeries(activeRows, "eggWeight", "Berat telur (g)")),
-    [activeRows, previewWisman],
-  );
+  const eggWeightSeries = useMemo(() => chartSeries(sorted, "eggWeight", "Berat telur (g)"), [sorted]);
 
   const financeSeries = useMemo(() => {
-    if (previewWisman) return [];
-    const revenue = completeSeries(activeRows, "revenue");
-    const cost = completeSeries(activeRows, "cost");
+    const revenue = completeSeries(sorted, "revenue");
+    const cost = completeSeries(sorted, "cost");
     if (!revenue.length || !cost.length) return [];
     return [
       { id: "revenue", label: "Pendapatan (jt)", values: revenue.map((value) => value / 1e6) },
       { id: "cost", label: "Biaya (jt)", values: cost.map((value) => value / 1e6) },
     ];
-  }, [activeRows, previewWisman]);
+  }, [sorted]);
 
   const visibleWeeklyRows = useMemo(
     () => sortRows(sorted, tableSort),
@@ -317,27 +277,18 @@ export default function KpiDashboard() {
         description="Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya."
         actions={(
           <>
-            {devFixtureTools ? (
-              <Button type="button" size="sm" variant="ghost" onClick={() => setPreviewWisman((current) => !current)}>
-                <AapmIcon name={previewWisman ? "close" : "analytics"} />
-                {previewWisman ? "Kembali ke data API" : "Preview Wisman"}
-              </Button>
-            ) : null}
             <Button asChild variant="ai"><Link to="/ai-assistant"><AapmIcon name="ai" />Analisis dengan APPI</Link></Button>
             <Button type="button" onClick={openNewEntry}><AapmIcon name="plus" />Catat minggu ini</Button>
           </>
         )}
       />
 
-      {previewWisman ? (
-        <Alert tone="warning" title="Preview lokal · tidak disimpan" description={`${WISMAN_FIXTURE_META.coverage}; KPI hanya menghitung baris siap rekonsiliasi.`} />
-      ) : null}
 
       <KPICluster label={`${activeSourceLabel} · ringkasan KPI`} columns={4} items={activeStats} />
 
       {isLoading ? (
         <EmptyKpiState loading />
-      ) : activeRows.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <StateView
           kind="empty"
           icon="kpi"
@@ -350,17 +301,15 @@ export default function KpiDashboard() {
         <section className="grid gap-4" aria-label="Grafik tren">
         {isLoading ? (
           <EmptyKpiState loading />
-        ) : activeRows.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <EmptyKpiState />
         ) : (
           <>
             <ChartPanel
               className="min-w-0"
-              title={previewWisman ? "HDP & mortality" : "HDP trend"}
+              title={"HDP trend"}
               description={
-                previewWisman
-                  ? "Preview hanya memakai baris Wisman yang siap direkonsiliasi."
-                  : "Hen day production berdasarkan umur flock; seri tanpa data tidak dibuat."
+                "Hen day production berdasarkan umur flock; seri tanpa data tidak dibuat."
               }
               chart={
                 productionSeries.length ? (
@@ -382,9 +331,7 @@ export default function KpiDashboard() {
                 className="min-w-0"
                 title="FCR trend"
                 description={
-                  previewWisman
-                    ? "FCR belum tersedia pada grain daily fixture."
-                    : "Efisiensi pakan dari minggu ke minggu."
+                  "Efisiensi pakan dari minggu ke minggu."
                 }
                 chart={
                   fcrSeries.length ? (
@@ -404,9 +351,7 @@ export default function KpiDashboard() {
                 className="min-w-0"
                 title="Tren berat telur"
                 description={
-                  previewWisman
-                    ? "Berat telur belum tersedia pada Daily Flock Report preview."
-                    : "Berat telur rata-rata berdasarkan umur flock."
+                  "Berat telur rata-rata berdasarkan umur flock."
                 }
                 chart={
                   eggWeightSeries.length ? (
@@ -426,9 +371,7 @@ export default function KpiDashboard() {
                 className="min-w-0 lg:col-span-2"
                 title="Pendapatan vs biaya"
                 description={
-                  previewWisman
-                    ? "Data biaya tidak ada di Daily Flock Report preview."
-                    : "Nilai ditampilkan dalam juta rupiah."
+                  "Nilai ditampilkan dalam juta rupiah."
                 }
                 chart={
                   financeSeries.length ? (
@@ -553,9 +496,6 @@ export default function KpiDashboard() {
         </SheetContent>
       </Sheet>
 
-      {devFixtureTools && previewWisman && (
-        <WismanPreviewSection rows={WISMAN_FIXTURE_ROWS} />
-      )}
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => !open && setPendingDelete(null)}
@@ -588,63 +528,7 @@ function MetricInput({ fieldKey, label, value, required = false, error, onChange
 }
 
 /** @returns {KPIItem[]} */
-function buildStats(rows, { preview = false } = {}) {
-  if (preview) {
-    const hdp = numericValues(rows, "henDayProduction");
-    const mortality = numericValues(rows, "mortality");
-    const hdpSeries = completeSeries(rows, "henDayProduction");
-    const mortalitySeries = completeSeries(rows, "mortality");
-    // Population and egg count are snapshots, not additive measures across
-    // dates. Use the latest available date so a two-date preview cannot look
-    // like a single farm with double-counted inventory.
-    const latestSnapshot = rows[rows.length - 1];
-    const populationEnd = latestSnapshot?.populationEnd;
-    const eggCount = latestSnapshot?.eggCount;
-    return [
-      {
-        icon: "chart",
-        label: "Rata-rata HDP",
-        value: metricValue(average(hdp), "%", 1),
-        note: `${rows.length} tanggal · baris siap rekonsiliasi`,
-        tone: "warning",
-        colorway: 3,
-        emphasis: "solid",
-        chart: chartFor(hdpSeries, "HDP preview", 3, "warning"),
-        trend: trendFor(hdpSeries),
-      },
-      {
-        icon: "users",
-        label: "Populasi akhir",
-        value: populationEnd ? formatInteger(populationEnd) : "—",
-        note: latestSnapshot ? `Snapshot ${formatDateLabel(latestSnapshot.date)}` : "Snapshot terakhir",
-        tone: "info",
-        colorway: 2,
-        emphasis: "solid",
-        chart: chartFor(completeSeries(rows, "populationEnd"), "Populasi akhir", 2, "info"),
-      },
-      {
-        icon: "package",
-        label: "Total telur",
-        value: eggCount ? formatInteger(eggCount) : "—",
-        note: latestSnapshot ? `Produksi harian · ${formatDateLabel(latestSnapshot.date)}` : "Telur TB + TR + TP",
-        tone: "accent",
-        colorway: 4,
-        emphasis: "solid",
-        chart: chartFor(completeSeries(rows, "eggCount"), "Total telur", 4, "chart"),
-      },
-      {
-        icon: "warning",
-        label: "Rata-rata mortalitas",
-        value: metricValue(average(mortality), "%", 2),
-        note: "Decrease ÷ end · indikatif",
-        tone: "danger",
-        colorway: 5,
-        emphasis: "solid",
-        chart: chartFor(mortalitySeries, "Preview mortalitas", 5, "danger"),
-        trend: trendFor(mortalitySeries, { lowerIsBetter: true }),
-      },
-    ];
-  }
+function buildStats(rows) {
 
   const hdp = numericValues(rows, "henDayProduction");
   const fcr = numericValues(rows, "fcr");
@@ -797,123 +681,6 @@ function sortRows(rows, sort) {
   });
 }
 
-function WismanPreviewSection({ rows }) {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const filteredRows =
-    statusFilter === "all"
-      ? rows
-      : rows.filter((row) => row.reviewStatus === statusFilter);
-  /** @type {DataTableColumn[]} */
-  const columns = [
-    { key: "date", header: "Tanggal", required: true, sortable: true, overflow: "nowrap" },
-    { key: "cage", header: "Kandang", required: true, overflow: "nowrap" },
-    { key: "employee", header: "Pelapor", overflow: "nowrap" },
-    {
-      key: "ageWeeks",
-      header: "Umur",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => `${row.ageWeeks} mgg`,
-    },
-    {
-      key: "end",
-      header: "Pop. akhir",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => formatInteger(row.end),
-    },
-    {
-      key: "totalEgg",
-      header: "Total telur",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => formatInteger(row.totalEgg),
-    },
-    {
-      key: "productionPct",
-      header: "HDP",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => `${row.productionPct.toFixed(2)}%`,
-    },
-    {
-      key: "intake",
-      header: "Intake",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => `${row.intake} g`,
-    },
-    {
-      key: "reviewStatus",
-      header: "Status",
-      required: true,
-      overflow: "nowrap",
-      render: (row) => (
-        <Badge
-          variant={
-            row.reviewStatus === "SIAP_DIREKONSILIASI" ? "success" : "warning"
-          }
-        >
-          {row.reviewStatus === "SIAP_DIREKONSILIASI" ? "Siap" : "Review"}
-        </Badge>
-      ),
-    },
-  ];
-
-  return (
-    <section className="mt-8 space-y-3" aria-labelledby="wisman-preview-title">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="aapm-eyebrow text-brand-orange">Fixture audit</p>
-          <h2 id="wisman-preview-title" className="text-lg font-semibold tracking-[-0.02em]">
-            Wisman Farm · daily cage preview
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            {WISMAN_FIXTURE_META.source}. Baris OCR yang perlu review tetap terlihat untuk audit,
-            tetapi tidak ikut menghitung KPI di atas.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">
-            {filteredRows.length}/{rows.length} baris
-          </Badge>
-          <Button
-            type="button"
-            size="sm"
-            variant={statusFilter === "all" ? "outline" : "soft"}
-            onClick={() =>
-              setStatusFilter(
-                statusFilter === "all" ? "SIAP_DIREKONSILIASI" : "all",
-              )
-            }
-          >
-            {statusFilter === "all" ? "Tampilkan siap saja" : "Tampilkan semua"}
-          </Button>
-        </div>
-      </div>
-      <DataTable
-        className="aapm-token-table"
-        caption="Preview data Wisman Farm pada grain harian per kandang"
-        columns={columns}
-        rows={filteredRows}
-        rowKey={(row) => row.id}
-        density="compact"
-        responsive="scroll"
-        emptyMessage="Tidak ada baris pada filter ini."
-      />
-      <p className="text-xs leading-5 text-muted-foreground">
-        Preview-only · tidak memanggil endpoint simpan dan tidak mengubah tenant/DB. Cocok untuk
-        menguji density, status, responsive table, dan warna chart sebelum kontrak daily input
-        diputuskan.
-      </p>
-    </section>
-  );
-}
 
 function ChartEmpty({ message }) {
   return (
@@ -964,18 +731,7 @@ function formatMillion(value) {
   return Number.isFinite(value) ? `Rp ${(value / 1000000).toFixed(1)} jt` : "—";
 }
 
-function formatInteger(value) {
-  return Number.isFinite(toNumber(value))
-    ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(toNumber(value))
-    : "—";
-}
 
-function formatDateLabel(value) {
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short" }).format(date);
-}
 
 function formatValue(value, suffix = "") {
   return value === null || value === undefined || value === "" ? "—" : `${value}${suffix}`;
