@@ -279,6 +279,11 @@ body {
 .aapm-motion-stack > :nth-child(5) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 4); }
 .aapm-motion-stack > :nth-child(n + 6) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 5); }
 
+/* Tactile depth (path nodes, verdict and send buttons): the bottom edge mixes
+ * the face colour toward this shade, so it reads darker in both themes. */
+:root { --aapm-depth-shade: var(--aapm-semantic-foreground); }
+.dark { --aapm-depth-shade: var(--aapm-semantic-background); }
+
 /* Theme change lands in one frame (see applyTheme in useThemeMode.js). */
 .aapm-theme-switching *,
 .aapm-theme-switching *::before,

@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
@@ -19,15 +17,14 @@ import {
   useConversationManagement,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
-import { Button, ConfirmDialog, ScrollArea, Table, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
+import AiMarkdown from "@/components/ai/AiMarkdown";
+import AiCopyButton from "@/components/ai/AiCopyButton";
+import AiAvatar from "@/components/ai/AiAvatar";
 import { useAuth } from "@/lib/AuthContext";
 import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
-
-const MermaidDiagram = React.lazy(
-  () => import("@/components/ai/MermaidDiagram"),
-);
 
 const welcomeMessage =
   "Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.";
@@ -165,80 +162,6 @@ function personalizedSuggestions({ farm = [], progress = [], modules = [], user,
   return suggestions.slice(0, 4);
 }
 
-function MarkdownAnswer({ content }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h1: ({ children }) => (
-          <h2 className="mt-5 text-base font-semibold tracking-[-0.02em] first:mt-0">
-            {children}
-          </h2>
-        ),
-        h2: ({ children }) => (
-          <h3 className="mt-5 text-sm font-semibold first:mt-0">{children}</h3>
-        ),
-        h3: ({ children }) => (
-          <h4 className="mt-4 text-sm font-semibold first:mt-0">{children}</h4>
-        ),
-        p: ({ children }) => <p className="mt-3 first:mt-0">{children}</p>,
-        ul: ({ children }) => (
-          <ul className="mt-3 list-disc space-y-1.5 pl-5 marker:text-brand-orange">
-            {children}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="mt-3 list-decimal space-y-1.5 pl-5 marker:font-semibold marker:text-brand-orange">
-            {children}
-          </ol>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-foreground">{children}</strong>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="mt-4 border-l-2 border-brand-orange pl-3 text-muted-foreground">
-            {children}
-          </blockquote>
-        ),
-        table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
-        th: ({ children }) => <th>{children}</th>,
-        td: ({ children }) => <td>{children}</td>,
-        code: ({ className, children, ...props }) => {
-          const language = /language-(\w+)/.exec(className || "")?.[1];
-          const source = String(children).replace(/\n$/, "");
-          if (language === "mermaid")
-            return (
-              <React.Suspense
-                fallback={
-                  <div className="aapm-ai-mermaid-loading">
-                    Menyiapkan diagram…
-                  </div>
-                }
-              >
-                <MermaidDiagram chart={source} />
-              </React.Suspense>
-            );
-          if (language)
-            return (
-              <pre className="aapm-ai-code-block">
-                <code className={className} {...props}>
-                  {source}
-                </code>
-              </pre>
-            );
-          return (
-            <code className="aapm-ai-inline-code" {...props}>
-              {children}
-            </code>
-          );
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
-}
-
 function AssistantMessage({
   message,
   retryPrompt,
@@ -256,7 +179,7 @@ function AssistantMessage({
   const canCollapse = !message.streaming && message.content.length > 1150;
   return (
     <article
-      className="aapm-ai-message w-full min-w-0 max-w-2xl overflow-hidden"
+      className="aapm-ai-message w-full min-w-0 overflow-hidden"
       aria-label="Jawaban APPI"
     >
       {showAssistantLabel && (
@@ -278,21 +201,23 @@ function AssistantMessage({
       {message.content && (
         <>
           <div
-            className={`aapm-ai-response aapm-ai-answer-card ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-sm leading-6 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
+            className={`aapm-ai-response aapm-ai-answer-card ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
           >
-            <MarkdownAnswer content={message.content} />
+            <AiMarkdown content={message.content} />
             {canCollapse && collapsed && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
             )}
           </div>
-          {canCollapse && (
-            <button
-              type="button"
-              onClick={() => setCollapsed((value) => !value)}
-              className="mt-3 text-xs font-semibold text-brand-orange transition-colors hover:text-brand-orange/75"
-            >
-              {collapsed ? "Tampilkan jawaban lengkap" : "Ringkas jawaban"}
-            </button>
+          {!message.streaming && !message.error && (
+            <div className="aapm-ai-answer-actions">
+              <AiCopyButton text={message.content} label="Salin jawaban" />
+              {canCollapse && (
+                <button type="button" className="aapm-ai-copy" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
+                  <AapmIcon name={collapsed ? "chevronDown" : "chevronUp"} />
+                  <span>{collapsed ? "Tampilkan lengkap" : "Ringkas"}</span>
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
@@ -1085,7 +1010,7 @@ export default function AiAssistant() {
                 </p>
               ) : messages.length === 0 ? (
                 <div className="aapm-chat-welcome">
-                  <span className="aapm-chat-welcome__mark"><AapmIcon name="ai" /></span>
+                  <span className="aapm-chat-welcome__mark aapm-chat-welcome__mark--mascot"><AiAvatar size="lg" state="idle" decorative /></span>
                   <h2 className="aapm-chat-welcome__title">Halo! Apa yang terjadi di farm hari ini?</h2>
                   <p className="aapm-chat-welcome__text">{welcomeMessage}</p>
                   <div className="aapm-chat-suggestions">
@@ -1130,6 +1055,8 @@ export default function AiAssistant() {
                             label=""
                             state={message.streaming ? (message.content ? "responding" : "thinking") : "idle"}
                           />
+                          {/* Phones put the name beside the mark and give the answer the full width. */}
+                          <span className="aapm-chat-turn__name">APPI</span>
                         </span>
                         <div className="aapm-chat-turn__body">
                       <AssistantMessage

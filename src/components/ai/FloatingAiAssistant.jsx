@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
@@ -20,15 +18,13 @@ import AiComposer from "@/components/ai/AiComposer";
 import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
 import useModalFocus from "@/components/ai/useModalFocus";
 import AiQuickActions from "@/components/ai/AiQuickActions";
-import { Button, ConfirmDialog, IconButton, Table, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, IconButton, useToast } from "@/components/primitives";
+import AiMarkdown from "@/components/ai/AiMarkdown";
+import AiCopyButton from "@/components/ai/AiCopyButton";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
 import { useAiChat } from "@/components/ai/AiChatProvider";
-
-const MermaidDiagram = React.lazy(
-  () => import("@/components/ai/MermaidDiagram"),
-);
 
 const quickActions = [
   {
@@ -86,73 +82,6 @@ function pageContextLabel(pathname) {
     dashboard: "Dashboard Academy",
   };
   return labels[pageContextForPath(pathname)] || "Academy";
-}
-
-function BubbleAnswer({ content }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        p: ({ children }) => <p className="mt-2 first:mt-0">{children}</p>,
-        h1: ({ children }) => (
-          <h3 className="mt-4 text-sm font-semibold first:mt-0">{children}</h3>
-        ),
-        h2: ({ children }) => (
-          <h3 className="mt-4 text-sm font-semibold first:mt-0">{children}</h3>
-        ),
-        h3: ({ children }) => (
-          <h4 className="mt-3 text-xs font-semibold first:mt-0">{children}</h4>
-        ),
-        ul: ({ children }) => (
-          <ul className="mt-2 list-disc space-y-1 pl-4 marker:text-brand-orange">
-            {children}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="mt-2 list-decimal space-y-1 pl-4 marker:text-brand-orange">
-            {children}
-          </ol>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-foreground">{children}</strong>
-        ),
-        table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
-        th: ({ children }) => <th>{children}</th>,
-        td: ({ children }) => <td>{children}</td>,
-        code: ({ className, children, ...props }) => {
-          const language = /language-(\w+)/.exec(className || "")?.[1];
-          const source = String(children).replace(/\n$/, "");
-          if (language === "mermaid")
-            return (
-              <React.Suspense
-                fallback={
-                  <div className="aapm-ai-mermaid-loading">
-                    Menyiapkan diagram…
-                  </div>
-                }
-              >
-                <MermaidDiagram chart={source} />
-              </React.Suspense>
-            );
-          if (language)
-            return (
-              <pre className="aapm-ai-code-block">
-                <code className={className} {...props}>
-                  {source}
-                </code>
-              </pre>
-            );
-          return (
-            <code className="aapm-ai-inline-code" {...props}>
-              {children}
-            </code>
-          );
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
 }
 
 export default function FloatingAiAssistant() {
@@ -631,7 +560,12 @@ export default function FloatingAiAssistant() {
                         <div
                           className={`aapm-ai-response aapm-ai-answer-card aapm-ai-answer-card--compact ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
                         >
-                          <BubbleAnswer content={message.content} />
+                          <AiMarkdown content={message.content} compact />
+                        </div>
+                      )}
+                      {message.content && !message.streaming && !message.error && (
+                        <div className="aapm-ai-answer-actions" data-density="compact">
+                          <AiCopyButton text={message.content} label="Salin" />
                         </div>
                       )}
                       <AiMessageMeta

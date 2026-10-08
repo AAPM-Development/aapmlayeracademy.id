@@ -253,14 +253,12 @@ a.aapm-progress-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 28p
  * uses `translate` so the arrival animation's transform never fights it. */
 .aapm-path {
   --path-swing: 72px;
-  --depth-shade: var(--aapm-semantic-foreground);
   display: grid;
   gap: var(--aapm-primitive-space-10);
   width: 100%;
   max-width: 42rem;
   margin-inline: auto;
 }
-.dark .aapm-path { --depth-shade: var(--aapm-semantic-background); }
 .aapm-path-unit { display: grid; gap: var(--aapm-primitive-space-6); scroll-margin-top: var(--aapm-primitive-space-6); }
 .aapm-path-unit__banner {
   display: grid;
@@ -333,7 +331,7 @@ a.aapm-progress-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 28p
   --node-size: 72px;
   --node-face: var(--hue);
   --node-ink: var(--aapm-semantic-surface);
-  --node-edge: color-mix(in srgb, var(--hue) 70%, var(--depth-shade));
+  --node-edge: color-mix(in srgb, var(--hue) 70%, var(--aapm-depth-shade));
 }
 .aapm-path-node[data-state="current"] .aapm-path-node__disc::before {
   content: "";

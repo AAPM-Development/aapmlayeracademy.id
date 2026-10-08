@@ -27,7 +27,7 @@ export default function AiComposer({
   onAllowWebSearchChange = () => {},
   contextLabel = "",
   farmAvailable = true,
-  placeholder = "Tanyakan situasi yang sedang terjadi di farm…",
+  placeholder = "Tanya APPI tentang farm Anda…",
   compact = false,
   showFarmToggle = true,
   showPrivacy = false,
@@ -211,7 +211,9 @@ export default function AiComposer({
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] leading-4 text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <AapmIcon name="solar:medical-kit-bold" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
-            Untuk diagnosis penyakit atau dosis obat, konsultasikan dengan dokter hewan.
+            {/* Phones keep the safety line to one row so the transcript keeps its height. */}
+            <span className="hidden sm:inline">Untuk diagnosis penyakit atau dosis obat, konsultasikan dengan dokter hewan.</span>
+            <span className="sm:hidden">Penyakit atau dosis obat? Tanyakan dokter hewan.</span>
           </span>
           <span className="hidden sm:inline">Enter kirim · Shift+Enter baris baru</span>
         </div>

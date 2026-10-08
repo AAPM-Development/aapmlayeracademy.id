@@ -392,3 +392,162 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
   .aapm-ai-composer-frame .aapm-ai-attachment-control { flex: 0 0 auto; width: var(--aapm-component-action-height); padding-inline: 0; justify-content: center; }
   .aapm-ai-composer-frame .aapm-ai-composer-toggle { flex: 0 0 auto; }
 }
+
+/* ==================================================== Chat room, 2026-10
+ * One reading size for answers, one Markdown frame for the workspace and the
+ * floating panel (AiMarkdown.jsx), a copy row under each answer, the mascot
+ * in the empty state, a tactile send button, and a phone layout where the
+ * answer takes the full width under a small "APPI" line. */
+
+/* ------------------------------------------------------- Answer Markdown */
+.aapm-ai-markdown {
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-primitive-text-md);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.aapm-ai-markdown[data-density="compact"] { font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-primitive-line-relaxed); }
+.aapm-ai-markdown > * + *,
+.aapm-ai-markdown li > * + * { margin-top: 0.75em; }
+.aapm-ai-markdown > :first-child { margin-top: 0; }
+.aapm-ai-markdown :is(h2, h3, h4) {
+  margin: 1.4em 0 0;
+  color: var(--aapm-semantic-foreground);
+  font-weight: var(--aapm-primitive-weight-heading);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.aapm-ai-markdown h2 { font-size: 1.15em; }
+.aapm-ai-markdown h3 { font-size: 1.05em; }
+.aapm-ai-markdown h4 { font-size: 1em; }
+.aapm-ai-markdown :is(ul, ol) { margin-bottom: 0; padding-inline-start: 1.35em; }
+.aapm-ai-markdown ul { list-style: disc; }
+.aapm-ai-markdown ol { list-style: decimal; }
+.aapm-ai-markdown li + li { margin-top: 0.4em; }
+.aapm-ai-markdown li::marker { color: var(--aapm-semantic-ai); }
+.aapm-ai-markdown ol > li::marker { font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-ai-markdown strong { color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-heading); }
+/* Links were indistinguishable from text; they now carry colour and a line. */
+.aapm-ai-markdown a {
+  color: var(--aapm-semantic-ai-soft-text);
+  font-weight: var(--aapm-primitive-weight-label);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.aapm-ai-markdown a:hover { text-decoration-thickness: 2px; }
+.aapm-ai-markdown a:focus-visible { border-radius: 2px; outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-ai-markdown blockquote {
+  margin: 0.9em 0 0;
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border-left: 3px solid var(--aapm-semantic-ai);
+  border-radius: 0 var(--aapm-primitive-radius-panel) var(--aapm-primitive-radius-panel) 0;
+  background: var(--aapm-semantic-ai-soft);
+  color: var(--aapm-semantic-foreground);
+}
+.aapm-ai-markdown hr { margin: 1.4em 0 0; border: 0; border-top: 1px solid var(--aapm-semantic-border); }
+.aapm-ai-markdown .aapm-table-wrap { border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-panel); }
+.aapm-ai-markdown .aapm-ai-markdown-table { min-width: 26rem; font-size: 0.875em; }
+.aapm-ai-markdown .aapm-ai-inline-code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--aapm-primitive-radius-xs);
+  background: var(--aapm-semantic-surface-secondary);
+  color: var(--aapm-semantic-foreground);
+  font-size: 0.86em;
+}
+
+/* Fenced code: language label and copy on a bar above the code. */
+.aapm-ai-code {
+  /* Dark in both themes: the inverse surface in light, a raised surface in dark. */
+  --code-surface: var(--aapm-semantic-surface-inverse);
+  --code-text: var(--aapm-semantic-surface-inverse-text);
+  margin: 0.9em 0 0;
+  overflow: hidden;
+  border-radius: var(--aapm-primitive-radius-panel);
+  background: var(--code-surface);
+  color: var(--code-text);
+}
+.dark .aapm-ai-code {
+  --code-surface: var(--aapm-semantic-surface-secondary);
+  --code-text: var(--aapm-semantic-foreground);
+  border: 1px solid var(--aapm-semantic-border);
+}
+.aapm-ai-code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aapm-primitive-space-2);
+  padding: 4px 4px 4px var(--aapm-primitive-space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--code-text) 14%, transparent);
+  color: color-mix(in srgb, var(--code-text) 72%, transparent);
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-label);
+}
+.aapm-ai-code .aapm-ai-code-block { margin: 0; border-radius: 0; background: transparent; color: inherit; font-size: 0.85em; }
+
+/* ------------------------------------------------- Copy and answer actions */
+.aapm-ai-answer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aapm-primitive-space-1);
+  margin: var(--aapm-primitive-space-2) 0 0 calc(var(--aapm-primitive-space-2) * -1);
+}
+.aapm-ai-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  cursor: pointer;
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-copy .aapm-icon { width: 16px; height: 16px; }
+.aapm-ai-copy:hover { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); }
+.aapm-ai-copy:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-ai-copy[data-state="copied"] { color: var(--aapm-semantic-success); }
+.aapm-ai-copy[data-state="copied"] .aapm-icon { animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) both; }
+.aapm-ai-copy[data-state="failed"] { color: var(--aapm-semantic-danger); }
+.aapm-ai-copy[data-tone="inverse"] { color: inherit; }
+.aapm-ai-copy[data-tone="inverse"]:hover,
+.aapm-ai-copy[data-tone="inverse"][data-state="copied"] { background: color-mix(in srgb, var(--code-text, currentColor) 12%, transparent); color: var(--code-text, inherit); }
+
+/* --------------------------------------------------- Turns: reading width */
+.aapm-chat-turn--user .aapm-ai-user-bubble { font-size: var(--aapm-primitive-text-md); line-height: 1.6; }
+.aapm-chat-turn__name { display: none; }
+
+/* ------------------------------------------------- Empty state: the mascot */
+.aapm-chat-welcome__mark.aapm-chat-welcome__mark--mascot {
+  width: 88px;
+  height: 88px;
+  margin-bottom: var(--aapm-primitive-space-2);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--aapm-semantic-ai) 8%, transparent);
+  animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) both;
+}
+
+/* ------------------------------------------------- Composer: tactile send */
+.aapm-ai-composer-frame .aapm-ai-send-control:not(:disabled) {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--aapm-semantic-ai) 68%, var(--aapm-depth-shade));
+}
+.aapm-ai-composer-frame .aapm-ai-send-control:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--aapm-semantic-ai) 68%, var(--aapm-depth-shade));
+}
+/* Waiting to type reads as unavailable, not as an outlined green pill. */
+.aapm-ai-composer-frame .aapm-ai-send-control:disabled { border-color: transparent; }
+
+/* ---------------------------------------------- Phones: full-width answers */
+@media (max-width: 639px) {
+  .aapm-chat-turn:not(.aapm-chat-turn--user) { flex-direction: column; gap: var(--aapm-primitive-space-1); }
+  .aapm-chat-turn:not(.aapm-chat-turn--user) .aapm-chat-turn__avatar { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-2); margin-top: 0; }
+  .aapm-chat-turn__name { display: inline; color: var(--aapm-semantic-foreground); font-size: var(--aapm-component-type-support-size); font-weight: var(--aapm-primitive-weight-heading); }
+  .aapm-chat-turn:not(.aapm-chat-turn--user) .aapm-chat-turn__body { width: 100%; }
+  .aapm-ai-copy { min-height: var(--aapm-component-action-height); }
+  .aapm-chat-welcome__mark.aapm-chat-welcome__mark--mascot { width: 76px; height: 76px; }
+}
