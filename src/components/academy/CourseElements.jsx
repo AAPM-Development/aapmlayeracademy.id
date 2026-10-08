@@ -210,7 +210,9 @@ export function ModuleFlow({ flow, active = "content", onSelect, quizTo }) {
   const steps = [
     { id: "content", label: "Materi", icon: "lesson", state: flow.completed || active !== "content" ? "done" : "current" },
     ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", state: flow.completed || flow.quizAttempted ? "done" : active === "practice" ? "current" : undefined }] : []),
-    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", state: flow.completed || flow.quizPassed ? "done" : active === "quiz" ? "current" : undefined, to: quizTo }] : []),
+    // A passed quiz shows its tick; the score only matters while a retake is due
+    // (a done "Kuis 100%" also truncated to "Kuis 10…" on phones).
+    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted && !flow.quizPassed && !flow.completed ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", state: flow.completed || flow.quizPassed ? "done" : active === "quiz" ? "current" : undefined, to: quizTo }] : []),
     { id: "done", label: "Selesai", icon: "check", state: flow.completed ? "done" : undefined },
   ];
   return (

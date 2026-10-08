@@ -187,3 +187,19 @@ What is strong: the quiz feedback and result screens, the final-exam navigator, 
 - One user bubble style on the page and in the floating panel; the compact composer hides the duplicate context chip (`98dcfc6`).
 
 **Not verified in the browser:** the streaming announcement and the "Kirim ulang" path need a provider reply or a failing request. The floating launcher is hidden on phones that have a bottom bar, so it was checked on desktop only.
+
+---
+
+## Status update: Duolingo-style pass
+
+**Fixed**
+- P2-9 Editor navigation layers: confirmed resolved by the editor revamp (modes in the header, Susun rail, one save bar). No three stacked layers at 375px or 1280px.
+- P3-3 Three APPI entry points: the topbar "Tanya APPI" button is removed; the sidebar item and the floating pill remain.
+- P3-4 "Tinjau jawaban" has a chevron, hover and focus ring.
+- P3-5 Disabled "Periksa" is grey instead of a faded green.
+- Design note, theme switch: entrance animations were not replaying; ~90 colour transitions with different durations repainted the page in pieces. The switch now lands in one frame.
+- Also found: two `h1` on quiz and exam result screens; a toast covering the assessment bar on phones; the third result tile alone on a second row on phones; stepper "Kuis 100%" truncated to "Kuis 10…"; the phone topbar brand link at 30px.
+
+**Still open:** P3-1 small type is covered by the 11px floor (`1454efc`); P3-2 course naming needs a decision; P3-6 the pre-login 401 in the console.
+
+The 30-aspect review and the Duolingo pattern map are in `UX_REVIEW_30_ASPECTS_2026-10-08.md`.

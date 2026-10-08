@@ -168,6 +168,8 @@ a.aapm-progress-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 28p
 .aapm-hero__title { margin: 0; max-width: 24ch; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; }
 .aapm-hero__text { margin: var(--aapm-primitive-space-2) 0 0; max-width: 56ch; color: color-mix(in srgb, var(--aapm-semantic-foreground) 72%, transparent); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); }
 .aapm-hero__actions { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); margin-top: var(--aapm-primitive-space-5); }
+/* Phones: the next step is a full-width, thumb-height button. */
+@media (max-width: 639px) { .aapm-hero__actions > .aapm-button { flex: 1 1 100%; } }
 .aapm-hero__art {
   position: relative;
   display: grid;

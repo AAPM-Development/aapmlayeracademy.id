@@ -13,7 +13,7 @@ colourful course app. Ten4Seven is no longer used.
 | Base / reset | `src/design-system/styles/base.css` | Inter, typography roles (`aapm-text-*`), focus, motion keyframes, reduced motion |
 | Components | `src/design-system/styles/components.css` + `components/*.jsx` | Button, Field, Select, Checkbox, Switch, Badge, Card, Surface, IconTile, Progress, Tabs, Dialog, Sheet, Menu, Tooltip, Toast, Table, Metric, StateView, PageHeader |
 | Shells | `src/design-system/styles/shell.css` + `patterns/AppShell.jsx` | AppShell, Sidebar, SidebarNav, Topbar, AccountMenu, BottomNav, NavigationSheet, FocusShell, auth |
-| Course patterns | `src/design-system/styles/course.css`, `src/components/academy/CourseElements.jsx` | covers, course cards, level path, outline, module flow stepper, lesson reading, quiz choices, result, curriculum builder, calculators |
+| Course patterns | `src/design-system/styles/course.css`, `src/components/academy/CourseElements.jsx` | covers, course cards, learning path (unit banners + winding nodes, `pathOffset()` in `src/lib/learningPath.js`), outline, module flow stepper, lesson reading, quiz choices and check bar, result, curriculum builder, calculators |
 | Icons | `src/design-system/icons/iconData.js`, `AapmIcon` | Solar Bold Duotone (product/state) + Solar Linear (control glyphs), AAPM egg/hen/feed/cage; bundled offline |
 
 Charts (`@/design-system/charts`) and the command list (`@/design-system/command`)
@@ -34,6 +34,11 @@ are separate entries so Recharts and cmdk only load on routes that use them.
   contextual row actions use an inline secondary action + `OverflowMenu`;
   destructive actions live in the overflow menu and always confirm.
 - Every data view handles loading / empty / error with `StateView`.
+- Motion uses the token durations and two easings: `motion-ease` for arrival
+  and `motion-ease-spring` for learning moments (right answer, verdict icon,
+  result badge, current path node). Everything collapses under reduced motion.
+- Tactile edges (learn button, path nodes, verdict and send buttons) mix the
+  face colour toward `--aapm-depth-shade`, so they read darker in both themes.
 
 ## Shells
 
@@ -42,7 +47,8 @@ are separate entries so Recharts and cmdk only load on routes that use them.
   (Beranda · Belajar · APPI · KPI · Menu) and a navigation sheet.
 - **Focus** (`FocusShell`): lesson player and assessments. Course bar, outline,
   one scrolling stage, persistent action bar. Bounded module flow:
-  Materi → Praktik → Kuis → Selesai → next module.
+  Materi → Praktik → Kuis → Selesai → next module. In a quiz the action bar
+  becomes the verdict after Periksa (`footerTone`).
 - **Admin** (`AdminShell`): same anatomy with a "Ruang admin" context and
   breadcrumbs by depth (Admin › Manajemen course › Kurikulum › Editor modul).
 - **Auth** (`AuthLayout`): form column + brand media panel for every auth route.
