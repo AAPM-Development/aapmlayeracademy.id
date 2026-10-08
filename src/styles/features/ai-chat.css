@@ -80,7 +80,10 @@
   .aapm-chat-turn { gap: var(--aapm-primitive-space-2); }
   /* One row on phones: tools scroll sideways, send is icon-only (aria-label stays). */
   .aapm-ai-composer-frame__footer { flex-wrap: nowrap; }
-  .aapm-ai-composer-frame .aapm-ai-composer-tools { flex-wrap: nowrap; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  /* Tools wrap onto a second line instead of scrolling, so no switch is ever clipped. */
+  .aapm-ai-composer-frame .aapm-ai-composer-tools { flex-wrap: wrap; gap: 2px; min-width: 0; }
+  /* The attach control is an icon on phones; its label stays in aria-label and the tooltip. */
+  .aapm-ai-composer-frame .aapm-ai-attachment-control > span { display: none; }
   .aapm-ai-composer-frame .aapm-ai-send-control { min-width: 2.75rem; padding-inline: 0; }
   .aapm-ai-composer-frame .aapm-ai-send-control > span { display: none; }
 }
@@ -373,3 +376,19 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 
 /* Compact status lines were 10px; they now sit on the caption size. */
 .aapm-ai-status-line--compact { font-size: var(--aapm-component-type-caption-size); }
+
+/* Under the bottom bar the chat fills the space between the top bar and the bar:
+ * the composer must never sit behind it. */
+@media (max-width: 859px) {
+  html:has(.aapm-app[data-bottom-nav="true"]) .aapm-ai-workspace--full-mobile {
+    height: calc(100dvh - 3.75rem - var(--aapm-component-bottom-nav-height) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 3.75rem - var(--aapm-component-bottom-nav-height) - env(safe-area-inset-bottom));
+  }
+}
+
+/* Phones: the composer toolbar fits one row (attach, KPI, web, send). */
+@media (max-width: 639px) {
+  .aapm-ai-composer-frame .aapm-ai-composer-toggle { padding-inline: 0; gap: var(--aapm-primitive-space-1); }
+  .aapm-ai-composer-frame .aapm-ai-attachment-control { flex: 0 0 auto; width: var(--aapm-component-action-height); padding-inline: 0; justify-content: center; }
+  .aapm-ai-composer-frame .aapm-ai-composer-toggle { flex: 0 0 auto; }
+}
