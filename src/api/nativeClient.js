@@ -437,6 +437,11 @@ export const nativeApi = {
           method: "PUT",
           body: JSON.stringify({ items }),
         }),
+      renameChapter: (levelNumber, levelName) =>
+        request(`/admin/chapters/${encodeURIComponent(levelNumber)}`, {
+          method: "PUT",
+          body: JSON.stringify({ levelName }),
+        }),
       questions: (moduleId) =>
         request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`),
       createQuestion: (moduleId, data) =>

@@ -7,7 +7,16 @@ import {
   Badge,
   Button,
   ConfirmDialog,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  IconButton,
   IconTile,
+  Input,
   KPICluster,
   OverflowMenu,
   SearchInput,
@@ -22,7 +31,7 @@ import {
 import AapmIcon from "@/components/icons/AapmIcon";
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import { ModuleCover } from "@/components/academy/CourseElements";
-import { useAdminCourse, useDeleteAdminModule, useReorderAdminModules } from "@/lib/useAdminData";
+import { useAdminCourse, useDeleteAdminModule, useRenameAdminChapter, useReorderAdminModules } from "@/lib/useAdminData";
 import { levelVisual } from "@/lib/academyVisuals";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
 
@@ -44,6 +53,8 @@ export default function AdminCourseDetail() {
   const { courseId } = useParams();
   const { data: course, isLoading, error, refetch } = useAdminCourse(courseId);
   const reorderModules = useReorderAdminModules();
+  const renameChapter = useRenameAdminChapter();
+  const [renamingLevel, setRenamingLevel] = useState(null);
   const deleteModule = useDeleteAdminModule();
   const { toast } = useToast();
   const [view, setView] = useState("list");
@@ -79,6 +90,16 @@ export default function AdminCourseDetail() {
     } catch (reorderError) {
       setBoardLevels(previousLevels);
       toast({ variant: "destructive", title: "Urutan belum disimpan", description: reorderError.message });
+    }
+  };
+
+  const saveChapterName = async (level, levelName) => {
+    try {
+      await renameChapter.mutateAsync({ levelNumber: level.levelNumber, levelName });
+      setRenamingLevel(null);
+      toast({ title: "Nama chapter disimpan", description: `Chapter ${level.levelNumber} sekarang bernama ${levelName}.` });
+    } catch (renameError) {
+      toast({ variant: "destructive", title: "Nama chapter belum disimpan", description: renameError.message });
     }
   };
 
@@ -222,9 +243,9 @@ export default function AdminCourseDetail() {
               {visibleLevels.length === 0 ? (
                 <StateView kind="empty" icon="search" title="Tidak ada modul yang cocok" description="Ubah kata kunci pencarian untuk melihat modul lain." action={<Button variant="secondary" onClick={() => setQuery("")}>Hapus pencarian</Button>} />
               ) : view === "board" ? (
-                <CurriculumBoard levels={visibleLevels} courseId={courseId} onDragEnd={handleDragEnd} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
+                <CurriculumBoard levels={visibleLevels} courseId={courseId} onRenameLevel={setRenamingLevel} onDragEnd={handleDragEnd} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
               ) : (
-                <CurriculumList levels={visibleLevels} courseId={courseId} onDragEnd={handleDragEnd} moveModule={moveModule} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
+                <CurriculumList levels={visibleLevels} courseId={courseId} onRenameLevel={setRenamingLevel} onDragEnd={handleDragEnd} moveModule={moveModule} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
               )}
               <p className="aapm-text-caption m-0">Seret <AapmIcon name="grip" /> untuk mengubah urutan di dalam chapter. Pindah chapter dilakukan dari editor modul agar nama dan metadata ikut berubah.</p>
             </TabsContent>
@@ -254,6 +275,7 @@ export default function AdminCourseDetail() {
           </Tabs>
         </>
       )}
+      <ChapterRenameDialog level={renamingLevel} saving={renameChapter.isPending} onClose={() => setRenamingLevel(null)} onSave={saveChapterName} />
       <ConfirmDialog
         open={Boolean(pendingModuleDelete)}
         onOpenChange={(open) => !open && setPendingModuleDelete(null)}
@@ -286,14 +308,47 @@ export default function AdminCourseDetail() {
   );
 }
 
-function ChapterHeader({ level }) {
+/** Rename a chapter. The name is stored on every module in it, so one edit covers them all. */
+function ChapterRenameDialog({ level, saving, onClose, onSave }) {
+  const [name, setName] = useState("");
+  useEffect(() => {
+    setName(level?.levelName || "");
+  }, [level]);
+  const trimmed = name.trim();
+  return (
+    <Dialog open={Boolean(level)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
+      <DialogContent>
+        <form onSubmit={(event) => { event.preventDefault(); if (trimmed && level) onSave(level, trimmed); }}>
+          <DialogHeader>
+            <DialogTitle>Ubah nama chapter {level?.levelNumber}</DialogTitle>
+            <DialogDescription>Nama baru berlaku untuk semua modul di chapter ini.</DialogDescription>
+          </DialogHeader>
+          <Field id="chapter-rename-name" label="Nama chapter" required>
+            <Input value={name} maxLength={120} autoFocus onChange={(event) => setName(event.target.value)} />
+          </Field>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>Batal</Button>
+            <Button type="submit" loading={saving} disabled={!trimmed}>Simpan nama</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ChapterHeader({ level, onRename }) {
   const visual = levelVisual(level.levelNumber);
   return (
     <>
       <IconTile icon={visual.icon} hue={visual.hue} size="md" shape="circle" />
       <div className="min-w-0">
         <p className="aapm-text-overline m-0">Chapter {level.levelNumber}</p>
-        <h3 className="aapm-chapter__title truncate">{level.levelName}</h3>
+        <div className="flex min-w-0 items-center gap-1">
+          <h3 className="aapm-chapter__title truncate">{level.levelName}</h3>
+          {onRename ? (
+            <IconButton label={`Ubah nama chapter ${level.levelNumber}`} icon="edit" size="sm" onClick={() => onRename(level)} />
+          ) : null}
+        </div>
       </div>
       <Badge hue={visual.hue}>{level.modules?.length || 0} modul</Badge>
     </>
@@ -321,7 +376,7 @@ function ModuleActions({ module, courseId, onDelete, onMove, index, total, savin
   );
 }
 
-function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete, saving, dragDisabled }) {
+function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete, saving, dragDisabled, onRenameLevel }) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="aapm-curriculum">
@@ -329,7 +384,7 @@ function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete
           const visual = levelVisual(level.levelNumber);
           return (
             <section key={level.levelNumber} className="aapm-chapter" data-hue={visual.hue} aria-label={`Chapter ${level.levelNumber}: ${level.levelName}`}>
-              <div className="aapm-chapter__head"><ChapterHeader level={level} /></div>
+              <div className="aapm-chapter__head"><ChapterHeader level={level} onRename={onRenameLevel} /></div>
               <Droppable droppableId={`level-${level.levelNumber}`} isDropDisabled={saving || dragDisabled}>
                 {({ innerRef, droppableProps, placeholder }) => (
                   <ol ref={innerRef} {...droppableProps} className="aapm-chapter__list">
@@ -364,7 +419,7 @@ function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete
   );
 }
 
-function CurriculumBoard({ levels = [], courseId, onDragEnd, onDelete, saving, dragDisabled }) {
+function CurriculumBoard({ levels = [], courseId, onDragEnd, onDelete, saving, dragDisabled, onRenameLevel }) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -372,7 +427,7 @@ function CurriculumBoard({ levels = [], courseId, onDragEnd, onDelete, saving, d
           const visual = levelVisual(level.levelNumber);
           return (
             <section key={level.levelNumber} className="aapm-chapter self-start" data-hue={visual.hue}>
-              <div className="aapm-chapter__head"><ChapterHeader level={level} /></div>
+              <div className="aapm-chapter__head"><ChapterHeader level={level} onRename={onRenameLevel} /></div>
               <Droppable droppableId={`level-${level.levelNumber}`} isDropDisabled={saving || dragDisabled}>
                 {({ innerRef, droppableProps, placeholder }) => (
                   <div ref={innerRef} {...droppableProps} className="grid gap-2 p-2">

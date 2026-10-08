@@ -386,6 +386,13 @@ try {
         json_response(['course' => admin_reorder_modules($input['items'] ?? [])]);
     }
 
+    if (preg_match('#^admin/chapters/(\\d+)$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['course' => admin_rename_chapter((int) $matches[1], (string) ($input['levelName'] ?? ''))]);
+    }
+
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'GET') {
         require_admin();
         $module = admin_module_from_id((int) $matches[1]);

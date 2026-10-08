@@ -158,6 +158,14 @@ export function useReorderAdminModules() {
   });
 }
 
+export function useRenameAdminChapter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ levelNumber, levelName }) => nativeApi.admin.modules.renameChapter(levelNumber, levelName),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
 export function useSaveAdminQuestion() {
   const queryClient = useQueryClient();
   return useMutation({
