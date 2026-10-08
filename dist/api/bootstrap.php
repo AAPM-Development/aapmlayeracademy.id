@@ -8,17 +8,63 @@ declare(strict_types=1);
  * the React UI can run on cPanel without a hosted application platform.
  */
 
-function app_config(): array
-{
-    static $config = null;
+const AAPM_ENVIRONMENTS = ['production', 'staging', 'local', 'test'];
+const AAPM_DEPLOYED_ENVIRONMENTS = ['production', 'staging'];
+const AAPM_LOCAL_ENVIRONMENTS = ['local', 'test'];
+const AAPM_RELEASE_MANIFEST_SCHEMA = 'aapm-release-manifest/1';
 
-    if ($config !== null) {
-        return $config;
+/**
+ * A configuration problem with a fixed, non-sensitive code. Messages name the
+ * rule or key that failed, never a filesystem path, DSN, or credential.
+ */
+final class AppConfigException extends RuntimeException
+{
+    private $safeCode;
+
+    public function __construct(string $safeCode, string $message)
+    {
+        parent::__construct($message);
+        $this->safeCode = $safeCode;
     }
 
-    $config = [
-        'app_env' => getenv('AAPLAYERACADEMY_ENV') ?: 'local',
-        'db_driver' => getenv('AAPLAYERACADEMY_DB_DRIVER') ?: 'sqlite',
+    public function safeCode(): string
+    {
+        return $this->safeCode;
+    }
+}
+
+function aapm_environment_is_deployed(string $environment): bool
+{
+    return in_array($environment, AAPM_DEPLOYED_ENVIRONMENTS, true);
+}
+
+function aapm_is_absolute_path(string $path): bool
+{
+    return (bool) preg_match('#^([A-Za-z]:[\\\\/]|/)#', $path);
+}
+
+function aapm_path_key(string $path): string
+{
+    $real = realpath($path);
+    $value = str_replace('\\', '/', $real !== false ? $real : $path);
+
+    return DIRECTORY_SEPARATOR === '\\' ? strtolower($value) : $value;
+}
+
+function aapm_path_is_within(string $path, string $root): bool
+{
+    $child = rtrim(aapm_path_key($path), '/') . '/';
+    $parent = rtrim(aapm_path_key($root), '/') . '/';
+
+    return strncmp($child, $parent, strlen($parent)) === 0;
+}
+
+/** Environment-variable defaults. Trusted server configuration, never request data. */
+function aapm_default_config_values(): array
+{
+    return [
+        'environment' => '',
+        'db_driver' => (string) (getenv('AAPLAYERACADEMY_DB_DRIVER') ?: ''),
         'db_host' => getenv('AAPLAYERACADEMY_DB_HOST') ?: '127.0.0.1',
         'db_port' => getenv('AAPLAYERACADEMY_DB_PORT') ?: '3306',
         'db_name' => getenv('AAPLAYERACADEMY_DB_NAME') ?: '',
@@ -42,62 +88,171 @@ function app_config(): array
         'ai_allow_local' => getenv('AAPLAYERACADEMY_AI_ALLOW_LOCAL') ?: '',
         'ai_settings_encryption_key' => getenv('AAPLAYERACADEMY_AI_SETTINGS_ENCRYPTION_KEY') ?: '',
         'expose_dev_reset_token' => false,
+        'environment_marker_required' => false,
     ];
+}
 
-    $configuredPath = getenv('AAPLAYERACADEMY_CONFIG');
-    // cPanel deploys main to the account root's public_html and staging one
-    // directory deeper. Resolve the shared private file from both layouts
-    // before checking domain-local fallbacks; otherwise production can silently
-    // fall back to SQLite while staging reads MySQL.
-    $sharedConfigRoots = array_values(array_unique([
-        dirname(__DIR__, 3),
-        dirname(__DIR__, 2),
-        dirname(__DIR__, 1),
-        dirname(__DIR__, 4),
-    ]));
-    $sharedConfigPaths = array_map(
-        static fn (string $root): string => $root . '/aapmlayeracademy-config.php',
-        $sharedConfigRoots
-    );
-    $candidatePaths = array_filter(array_merge(
-        [$configuredPath ?: null],
-        $sharedConfigPaths,
-        [
-            dirname(__DIR__, 2) . '/config.php',
-            dirname(__DIR__, 2) . '/config.local.php',
-            dirname(__DIR__, 1) . '/config.php',
-            dirname(__DIR__, 1) . '/config.local.php',
-        ]
-    ));
+/**
+ * Deployment selector written by scripts/deploy/cpanel-deploy.php into each
+ * target's api directory. It only names the environment and the private file.
+ * Direct web requests receive a 404 because the constant is set here only.
+ *
+ * @return array{environment:string,config_path:string}
+ */
+function aapm_load_deployment_selector(string $file): array
+{
+    if (!defined('AAPM_DEPLOYMENT_SELECTOR_LOADING')) {
+        define('AAPM_DEPLOYMENT_SELECTOR_LOADING', true);
+    }
+    $selector = (static function (string $__file) {
+        return require $__file;
+    })($file);
 
-    foreach ($candidatePaths as $path) {
-        if (!is_file($path)) {
-            continue;
-        }
-
-        $fileConfig = require $path;
-        if (is_array($fileConfig)) {
-            $config = array_merge($config, $fileConfig);
-        }
-        break;
+    if (
+        !is_array($selector)
+        || !isset($selector['environment'], $selector['config_path'])
+        || !is_string($selector['environment'])
+        || !is_string($selector['config_path'])
+        || !in_array($selector['environment'], AAPM_ENVIRONMENTS, true)
+        || !aapm_is_absolute_path($selector['config_path'])
+    ) {
+        throw new AppConfigException('selector_invalid', 'Penanda deployment tidak valid.');
     }
 
-    // The same private config intentionally serves both public hosts. Keep
-    // the runtime label host-aware so production does not inherit a staging
-    // label from the shared file while both environments still use one DB.
-    $requestHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
-    $requestHost = (string) preg_replace('/:\\d+$/', '', $requestHost);
-    if (in_array($requestHost, ['aapmlayeracademy.id', 'www.aapmlayeracademy.id'], true)) {
-        $config['app_env'] = 'production';
-    } elseif ($requestHost === 'staging.aapmlayeracademy.id') {
-        $config['app_env'] = 'staging';
+    return ['environment' => $selector['environment'], 'config_path' => $selector['config_path']];
+}
+
+/**
+ * Chooses the private config file. Order: explicit server variable, then the
+ * deployment selector, then local-development files beside the repository.
+ * The request host is never consulted.
+ *
+ * @return array{path:string,source:string,selector:?array}
+ */
+function aapm_resolve_config_source(): array
+{
+    $explicit = trim((string) getenv('AAPLAYERACADEMY_CONFIG'));
+    if ($explicit !== '') {
+        return ['path' => $explicit, 'source' => 'environment_variable', 'selector' => null];
     }
 
-    if ($config['db_driver'] === 'sqlite' && !$config['db_path']) {
+    $selectorFile = __DIR__ . '/deployment.php';
+    if (is_file($selectorFile)) {
+        $selector = aapm_load_deployment_selector($selectorFile);
+
+        return ['path' => $selector['config_path'], 'source' => 'deployment_selector', 'selector' => $selector];
+    }
+
+    foreach ([dirname(__DIR__, 2) . '/config.php', dirname(__DIR__, 2) . '/config.local.php'] as $candidate) {
+        if (is_file($candidate)) {
+            return ['path' => $candidate, 'source' => 'local_development', 'selector' => null];
+        }
+    }
+
+    throw new AppConfigException('config_missing', 'Konfigurasi privat untuk lingkungan ini belum tersedia.');
+}
+
+function aapm_load_private_config(string $file): array
+{
+    $loaded = (static function (string $__file) {
+        return require $__file;
+    })($file);
+
+    if (!is_array($loaded)) {
+        throw new AppConfigException('config_invalid', 'Format konfigurasi privat tidak valid.');
+    }
+
+    return $loaded;
+}
+
+function app_config(): array
+{
+    static $config = null;
+
+    if ($config !== null) {
+        return $config;
+    }
+
+    $source = aapm_resolve_config_source();
+    $configPath = (string) $source['path'];
+    if (!aapm_is_absolute_path($configPath) || !is_file($configPath)) {
+        throw new AppConfigException('config_missing', 'Konfigurasi privat untuk lingkungan ini belum tersedia.');
+    }
+    if (aapm_path_is_within($configPath, dirname(__DIR__))) {
+        throw new AppConfigException('config_inside_docroot', 'Konfigurasi privat tidak boleh berada di dalam document root.');
+    }
+
+    $fileConfig = aapm_load_private_config($configPath);
+    $environment = strtolower(trim((string) ($fileConfig['environment'] ?? '')));
+    if (!in_array($environment, AAPM_ENVIRONMENTS, true)) {
+        throw new AppConfigException('environment_invalid', 'Kunci environment wajib diisi dengan production, staging, local, atau test.');
+    }
+
+    $environmentVariable = strtolower(trim((string) (getenv('AAPLAYERACADEMY_ENV') ?: '')));
+    if ($environmentVariable !== '' && $environmentVariable !== $environment) {
+        throw new AppConfigException('environment_conflict', 'Variabel lingkungan tidak cocok dengan konfigurasi privat.');
+    }
+    if ($source['selector'] !== null && $source['selector']['environment'] !== $environment) {
+        throw new AppConfigException('environment_conflict', 'Penanda deployment tidak cocok dengan konfigurasi privat.');
+    }
+    if ($source['source'] === 'local_development' && !in_array($environment, AAPM_LOCAL_ENVIRONMENTS, true)) {
+        throw new AppConfigException('local_config_not_allowed', 'Konfigurasi lokal hanya boleh untuk lingkungan local atau test.');
+    }
+
+    $deployed = aapm_environment_is_deployed($environment);
+    $config = array_merge(aapm_default_config_values(), $fileConfig);
+    $config['environment'] = $environment;
+    $config['db_driver'] = strtolower(trim((string) $config['db_driver']));
+    if (!in_array($config['db_driver'], ['mysql', 'sqlite'], true)) {
+        throw new AppConfigException('db_driver_invalid', 'Kunci db_driver wajib diisi dengan mysql atau sqlite.');
+    }
+
+    if ($deployed) {
+        foreach ($fileConfig as $key => $value) {
+            if (is_string($value) && strpos(trim($value), 'REPLACE_') === 0) {
+                throw new AppConfigException('placeholder_value', "Kunci {$key} masih berisi nilai contoh.");
+            }
+        }
+    }
+
+    if ($deployed) {
+        if ($config['db_driver'] !== 'mysql') {
+            throw new AppConfigException('sqlite_not_allowed', 'Lingkungan deployment wajib memakai MySQL/MariaDB, bukan SQLite.');
+        }
+        foreach (['db_name', 'db_user', 'app_url'] as $key) {
+            if (trim((string) ($config[$key] ?? '')) === '') {
+                throw new AppConfigException('required_key_missing', "Kunci {$key} wajib diisi untuk lingkungan deployment.");
+            }
+        }
+        $appUrl = rtrim(trim((string) $config['app_url']), '/');
+        if (!preg_match('#^https://[a-z0-9.-]+(?::[0-9]{1,5})?(?:/[^\s]*)?$#i', $appUrl)) {
+            throw new AppConfigException('app_url_invalid', 'Kunci app_url wajib berupa URL https untuk lingkungan deployment.');
+        }
+        $config['expose_dev_reset_token'] = false;
+    } elseif ($config['db_driver'] === 'sqlite' && trim((string) $config['db_path']) === '') {
         $config['db_path'] = dirname(__DIR__, 2) . '/storage/aapmlayeracademy.sqlite';
     }
 
+    $config['environment_marker_required'] = $deployed || !empty($fileConfig['environment_marker_required']);
+
     return $config;
+}
+
+/** Read-only check of the database's environment marker. Runs before any schema statement. */
+function aapm_verify_environment_marker(PDO $connection, string $environment): void
+{
+    try {
+        $rows = $connection->query('SELECT environment FROM aapm_environment_marker WHERE id = 1')->fetchAll();
+    } catch (PDOException $exception) {
+        throw new AppConfigException('environment_marker_missing', 'Penanda lingkungan database belum dibuat.');
+    }
+
+    if (count($rows) !== 1) {
+        throw new AppConfigException('environment_marker_missing', 'Penanda lingkungan database belum dibuat.');
+    }
+    if (strtolower(trim((string) $rows[0]['environment'])) !== $environment) {
+        throw new AppConfigException('environment_marker_mismatch', 'Database tidak cocok dengan lingkungan konfigurasi.');
+    }
 }
 
 function db(): PDO
@@ -110,35 +265,154 @@ function db(): PDO
     }
 
     $config = app_config();
-    $driver = strtolower((string) $config['db_driver']);
+    $driver = (string) $config['db_driver'];
 
-    if ($driver === 'sqlite') {
-        $path = (string) $config['db_path'];
-        $directory = dirname($path);
-        if (!is_dir($directory)) {
-            @mkdir($directory, 0775, true);
+    try {
+        if ($driver === 'sqlite') {
+            $path = (string) $config['db_path'];
+            $directory = dirname($path);
+            if (!is_dir($directory)) {
+                @mkdir($directory, 0775, true);
+            }
+            $connection = new PDO('sqlite:' . $path);
+            $connection->exec('PRAGMA foreign_keys = ON');
+        } else {
+            $dsn = sprintf(
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                $config['db_host'],
+                $config['db_port'],
+                $config['db_name']
+            );
+            $connection = new PDO($dsn, (string) $config['db_user'], (string) $config['db_password']);
         }
-        $pdo = new PDO('sqlite:' . $path);
-        $pdo->exec('PRAGMA foreign_keys = ON');
-    } else {
-        $dsn = sprintf(
-            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
-            $config['db_host'],
-            $config['db_port'],
-            $config['db_name']
-        );
-        $pdo = new PDO($dsn, (string) $config['db_user'], (string) $config['db_password']);
+    } catch (PDOException $exception) {
+        // The driver message can contain the host or path; it is never returned.
+        error_log('[aapm-native-api] database connection failed (' . $driver . ')');
+        throw new AppConfigException('database_unavailable', 'Database tidak dapat dijangkau.');
     }
 
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+    // Verify identity before any schema statement, so a misdirected config
+    // cannot change another environment's database.
+    if (!empty($config['environment_marker_required'])) {
+        aapm_verify_environment_marker($connection, (string) $config['environment']);
+    }
 
     if (!$schemaReady) {
-        ensure_schema($pdo, $driver);
+        ensure_schema($connection, $driver);
         $schemaReady = true;
     }
 
+    $pdo = $connection;
+
     return $pdo;
+}
+
+/**
+ * Build identity written by scripts/release/build-artifact.mjs. Only public
+ * fields are returned; a missing file is reported as unversioned, not as ok.
+ *
+ * @return array<string,string>
+ */
+function aapm_build_identity(): array
+{
+    static $identity = null;
+
+    if ($identity !== null) {
+        return $identity;
+    }
+
+    $file = dirname(__DIR__) . '/build-manifest.json';
+    if (!is_file($file)) {
+        return $identity = ['status' => 'unversioned'];
+    }
+
+    $decoded = json_decode((string) file_get_contents($file), true);
+    if (!is_array($decoded) || ($decoded['schema'] ?? null) !== AAPM_RELEASE_MANIFEST_SCHEMA) {
+        return $identity = ['status' => 'invalid'];
+    }
+
+    foreach (['channel', 'artifactId', 'sourceCommit', 'sourceTreeFingerprint', 'builtAt'] as $key) {
+        if (!isset($decoded[$key]) || !is_string($decoded[$key])) {
+            return $identity = ['status' => 'invalid'];
+        }
+    }
+
+    return $identity = [
+        'status' => 'ok',
+        'channel' => $decoded['channel'],
+        'artifactId' => $decoded['artifactId'],
+        'sourceCommit' => $decoded['sourceCommit'],
+        'sourceTreeFingerprint' => $decoded['sourceTreeFingerprint'],
+        'builtAt' => $decoded['builtAt'],
+    ];
+}
+
+function aapm_assert_runtime_identity(array $config): void
+{
+    if (!aapm_environment_is_deployed((string) $config['environment'])) {
+        return;
+    }
+
+    $identity = aapm_build_identity();
+    if ($identity['status'] !== 'ok' || $identity['channel'] !== $config['environment']) {
+        throw new AppConfigException('build_identity_mismatch', 'Artefak build tidak cocok dengan lingkungan ini.');
+    }
+}
+
+function aapm_schema_status(PDO $connection): array
+{
+    try {
+        $row = $connection->query('SELECT migration_key FROM schema_migrations ORDER BY applied_at DESC, migration_key DESC LIMIT 1')->fetch();
+    } catch (PDOException $exception) {
+        return ['status' => 'not_recorded'];
+    }
+
+    if (!is_array($row) || !isset($row['migration_key'])) {
+        return ['status' => 'not_recorded'];
+    }
+
+    return ['status' => 'recorded', 'latestMigration' => (string) $row['migration_key']];
+}
+
+/** Health endpoint. Reports accurately; any configuration or identity problem is a 503. */
+function aapm_health_response(): void
+{
+    $body = [
+        'ok' => false,
+        'app' => 'aapm-layer-academy-native',
+        'environment' => null,
+        'build' => ['status' => 'unknown'],
+        'schema' => ['status' => 'unknown'],
+        'environmentMarker' => ['status' => 'unknown'],
+    ];
+    $status = 200;
+
+    try {
+        $config = app_config();
+        $body['environment'] = $config['environment'];
+        $body['build'] = aapm_build_identity();
+        aapm_assert_runtime_identity($config);
+        $connection = db();
+        $body['environmentMarker'] = ['status' => $config['environment_marker_required'] ? 'verified' : 'not_required'];
+        $body['schema'] = aapm_schema_status($connection);
+        $body['ok'] = true;
+    } catch (AppConfigException $exception) {
+        $status = 503;
+        $body['error'] = ['code' => $exception->safeCode()];
+    } catch (Throwable $exception) {
+        error_log('[aapm-native-api] health check failed: ' . get_class($exception));
+        $status = 503;
+        $body['error'] = ['code' => 'database_unavailable'];
+    }
+
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 function ensure_schema(PDO $pdo, string $driver): void
@@ -887,13 +1161,13 @@ function app_password_hash(string $password): string
 function password_validation_error(string $password): string
 {
     if (strlen($password) < 8) {
-        return 'Password minimal 8 karakter.';
+        return 'Kata sandi minimal 8 karakter.';
     }
     if (strlen($password) > 128) {
-        return 'Password maksimal 128 karakter.';
+        return 'Kata sandi maksimal 128 karakter.';
     }
     if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
-        return 'Password harus memuat minimal satu huruf dan satu angka.';
+        return 'Kata sandi harus memuat minimal satu huruf dan satu angka.';
     }
 
     return '';
@@ -963,11 +1237,18 @@ function rate_limit_clear(string $scope, string $identity = ''): void
 
 function app_base_url(): string
 {
-    $configured = rtrim(trim((string) (app_config()['app_url'] ?? '')), '/');
+    $config = app_config();
+    $configured = rtrim(trim((string) ($config['app_url'] ?? '')), '/');
     if ($configured !== '') {
         return $configured;
     }
 
+    if (aapm_environment_is_deployed((string) $config['environment'])) {
+        // Reset and OAuth links must never be built from a request header.
+        throw new AppConfigException('app_url_missing', 'URL aplikasi belum dikonfigurasi.');
+    }
+
+    // Local and test environments only: convenience fallback for the dev server.
     $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
     if (!preg_match('/\A[a-z0-9.-]+(?::[0-9]+)?\z/i', $host)) {
         return '';
@@ -1005,8 +1286,8 @@ function send_password_reset_email(string $email, string $token): bool
         return false;
     }
 
-    $subject = 'Reset password AAPM Layer Academy';
-    $body = "Halo,\n\nKami menerima permintaan untuk mengganti password akun AAPM Layer Academy Anda.\n\nBuka link berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
+    $subject = 'Atur ulang kata sandi AAPM Layer Academy';
+    $body = "Halo,\n\nKami menerima permintaan untuk mengganti kata sandi akun AAPM Layer Academy Anda.\n\nBuka tautan berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
     $headers = implode("\r\n", [
         'From: ' . $from,
         'Reply-To: ' . $from,

@@ -5,8 +5,6 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/editorialMedia.php';
 require_once __DIR__ . '/openrouter.php';
 
-apply_security_headers();
-start_app_session();
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $rawPath = isset($_GET['path']) ? (string) $_GET['path'] : (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
 $path = trim($rawPath, '/');
@@ -14,12 +12,24 @@ $path = preg_replace('#^api/?#', '', $path);
 $path = preg_replace('#^index\.php/?#', '', $path);
 $path = trim((string) $path, '/');
 
-try {
-    if ($path === 'health' && $method === 'GET') {
-        db();
-        json_response(['ok' => true, 'app' => 'aapm-layer-academy-native', 'environment' => app_config()['app_env']]);
-    }
+// Health reports its own state, including configuration problems, as 503.
+if ($path === 'health' && $method === 'GET') {
+    aapm_health_response();
+}
 
+// Configuration is validated before the session, security headers, or any
+// database work. A missing or invalid environment fails closed.
+try {
+    aapm_assert_runtime_identity(app_config());
+} catch (AppConfigException $exception) {
+    error_log('[aapm-native-api] configuration unavailable: ' . $exception->safeCode());
+    error_response('Konfigurasi server belum siap.', 503, 'configuration_unavailable');
+}
+
+apply_security_headers();
+start_app_session();
+
+try {
     if ($path === 'auth/csrf' && $method === 'GET') {
         json_response(['csrfToken' => csrf_token()]);
     }
@@ -126,7 +136,7 @@ try {
         $email = normalize_email($input['email'] ?? '');
         $password = (string) ($input['password'] ?? '');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
-            error_response('Email dan password wajib diisi.', 422, 'validation_error');
+            error_response('Email dan kata sandi wajib diisi.', 422, 'validation_error');
         }
         require_csrf();
         rate_limit_guard('login-ip', '', 60, 900, 900);
@@ -138,7 +148,7 @@ try {
         if (!$user || !password_verify($password, $user['password_hash'])) {
             rate_limit_failure('login-ip', '', 60, 900, 900);
             rate_limit_failure('login-user', $email, 8, 900, 900);
-            error_response('Email atau password tidak sesuai.', 401, 'invalid_credentials');
+            error_response('Email atau kata sandi tidak sesuai.', 401, 'invalid_credentials');
         }
 
         rate_limit_clear('login-ip');
@@ -215,7 +225,7 @@ try {
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             rate_limit_guard('forgot-user', $email, 3, 3600, 3600);
         }
-        $result = ['message' => 'Jika akun tersebut ada, instruksi reset password telah dibuat.'];
+        $result = ['message' => 'Jika akun tersebut ada, instruksi reset kata sandi telah dibuat.'];
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
             $stmt->execute([$email]);
@@ -226,7 +236,7 @@ try {
                 $update = db()->prepare('UPDATE users SET reset_token_hash = ?, reset_token_expires_at = ? WHERE id = ?');
                 $update->execute([hash('sha256', $token), $expires, (int) $user['id']]);
                 send_password_reset_email($email, $token);
-                if (app_config()['app_env'] === 'local' && app_config()['expose_dev_reset_token']) {
+                if (app_config()['environment'] === 'local' && app_config()['expose_dev_reset_token']) {
                     $result['devResetToken'] = $token;
                 }
             }
@@ -254,7 +264,7 @@ try {
         $user = $stmt->fetch();
         if (!$user) {
             rate_limit_failure('reset-ip', '', 10, 3600, 3600);
-            error_response('Link reset password sudah tidak berlaku.', 400, 'invalid_reset_token');
+            error_response('Tautan reset kata sandi sudah tidak berlaku.', 400, 'invalid_reset_token');
         }
         $update = db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL WHERE id = ?');
         $update->execute([app_password_hash($password), (int) $user['id']]);
@@ -541,16 +551,31 @@ try {
             error_response('Nomor modul tidak valid.', 422, 'validation_error');
         }
 
-        $values = [
-            'completed' => bool_value($input['completed'] ?? false),
-            'quiz_score' => array_key_exists('quizScore', $input) && $input['quizScore'] !== null ? (int) $input['quizScore'] : null,
-            'quiz_total' => array_key_exists('quizTotal', $input) && $input['quizTotal'] !== null ? (int) $input['quizTotal'] : null,
-            'practical_done' => bool_value($input['practicalDone'] ?? false),
-            'time_spent_minutes' => array_key_exists('timeSpentMinutes', $input) && $input['timeSpentMinutes'] !== null ? (int) $input['timeSpentMinutes'] : null,
-        ];
-        $existing = db()->prepare('SELECT id FROM user_progress WHERE user_id = ? AND module_number = ? LIMIT 1');
+        $existing = db()->prepare('SELECT * FROM user_progress WHERE user_id = ? AND module_number = ? LIMIT 1');
         $existing->execute([(int) $user['id'], $moduleNumber]);
         $row = $existing->fetch();
+
+        // Partial update: a field the client did not send keeps its stored
+        // value, so "mark complete" no longer clears a quiz score and a quiz
+        // submit no longer clears a finished practice. timeSpentDeltaMinutes
+        // adds study time (one save counts at most 4 hours).
+        $values = [
+            'completed' => array_key_exists('completed', $input) ? bool_value($input['completed']) : (int) ($row['completed'] ?? 0),
+            'quiz_score' => array_key_exists('quizScore', $input)
+                ? ($input['quizScore'] !== null ? (int) $input['quizScore'] : null)
+                : ($row && $row['quiz_score'] !== null ? (int) $row['quiz_score'] : null),
+            'quiz_total' => array_key_exists('quizTotal', $input)
+                ? ($input['quizTotal'] !== null ? (int) $input['quizTotal'] : null)
+                : ($row && $row['quiz_total'] !== null ? (int) $row['quiz_total'] : null),
+            'practical_done' => array_key_exists('practicalDone', $input) ? bool_value($input['practicalDone']) : (int) ($row['practical_done'] ?? 0),
+            'time_spent_minutes' => array_key_exists('timeSpentMinutes', $input)
+                ? ($input['timeSpentMinutes'] !== null ? max(0, (int) $input['timeSpentMinutes']) : null)
+                : ($row && $row['time_spent_minutes'] !== null ? (int) $row['time_spent_minutes'] : null),
+        ];
+        if (array_key_exists('timeSpentDeltaMinutes', $input)) {
+            $delta = min(240, max(0, (int) $input['timeSpentDeltaMinutes']));
+            $values['time_spent_minutes'] = (int) ($values['time_spent_minutes'] ?? 0) + $delta;
+        }
         if ($row) {
             $update = db()->prepare('UPDATE user_progress SET completed = ?, quiz_score = ?, quiz_total = ?, practical_done = ?, time_spent_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
             $update->execute([$values['completed'], $values['quiz_score'], $values['quiz_total'], $values['practical_done'], $values['time_spent_minutes'], (int) $row['id']]);
@@ -1020,6 +1045,9 @@ try {
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');
 } catch (AiConfigurationException $exception) {
     error_response($exception->getMessage(), 503, 'ai_configuration_missing');
+} catch (AppConfigException $exception) {
+    error_log('[aapm-native-api] configuration unavailable: ' . $exception->safeCode());
+    error_response('Konfigurasi server belum siap.', 503, 'configuration_unavailable');
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');
