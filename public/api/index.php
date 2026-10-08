@@ -99,8 +99,8 @@ try {
                 $fullName = ucfirst((string) strtok($email, '@'));
             }
             try {
-                $insert = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
-                $insert->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $fullName, 'user']);
+                $insert = db()->prepare('INSERT INTO users (email, password_hash, full_name, role, email_verified_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)');
+                $insert->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $fullName, 'user', aapm_utc_now()]);
                 $userId = (int) db()->lastInsertId();
             } catch (PDOException $exception) {
                 if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
@@ -117,17 +117,22 @@ try {
         if ($userId < 1) {
             redirect_response($baseUrl . '/login?oauth=error');
         }
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = $userId;
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        // Google verified this address, so it is trusted evidence for the account.
+        $verifyStatement = db()->prepare('UPDATE users SET email_verified_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND email_verified_at IS NULL');
+        $verifyStatement->execute([aapm_utc_now(), $userId]);
+        if ($verifyStatement->rowCount() === 1) {
+            aapm_audit('auth.email_verified', 'ok', $userId, $userId, ['channel' => 'google']);
+        }
+        $sessionRow = db()->prepare('SELECT id, auth_version FROM users WHERE id = ? LIMIT 1');
+        $sessionRow->execute([$userId]);
+        aapm_establish_session($sessionRow->fetch() ?: ['id' => $userId, 'auth_version' => 1]);
+        aapm_audit('auth.login_success', 'ok', $userId, $userId, ['source' => 'google']);
         redirect_response($baseUrl . $returnTo);
     }
 
     if ($path === 'auth/me' && $method === 'GET') {
-        $user = current_user();
-        if (!$user) {
-            error_response('Silakan login terlebih dahulu.', 401, 'auth_required');
-        }
+        // Same guard as every protected route, so revoked sessions get session_revoked.
+        $user = require_user();
         json_response(['user' => $user, 'csrfToken' => csrf_token()]);
     }
 
@@ -142,12 +147,13 @@ try {
         rate_limit_guard('login-ip', '', 60, 900, 900);
         rate_limit_guard('login-user', $email, 8, 900, 900);
 
-        $stmt = db()->prepare('SELECT id, email, password_hash, full_name, role, created_at FROM users WHERE email = ? LIMIT 1');
+        $stmt = db()->prepare('SELECT id, email, password_hash, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password_hash'])) {
             rate_limit_failure('login-ip', '', 60, 900, 900);
             rate_limit_failure('login-user', $email, 8, 900, 900);
+            aapm_audit('auth.login_failure', 'invalid_credentials', null, $user ? (int) $user['id'] : null, ['identity' => aapm_identity_digest($email)]);
             error_response('Email atau kata sandi tidak sesuai.', 401, 'invalid_credentials');
         }
 
@@ -157,9 +163,14 @@ try {
             db()->prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), (int) $user['id']]);
         }
 
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = (int) $user['id'];
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        // A new account gets no application session until its email is verified.
+        if (aapm_verification_status($user) === 'pending') {
+            aapm_audit('auth.login_failure', 'verification_required', null, (int) $user['id'], ['identity' => aapm_identity_digest($email)]);
+            error_response('Verifikasi email Anda terlebih dahulu. Periksa kotak masuk email Anda.', 403, 'email_verification_required');
+        }
+
+        aapm_establish_session($user);
+        aapm_audit('auth.login_success', 'ok', (int) $user['id'], (int) $user['id'], ['source' => 'password']);
         json_response(['user' => current_user() ?? present_authenticated_user($user), 'csrfToken' => csrf_token()]);
     }
 
@@ -182,28 +193,84 @@ try {
         }
         $fullName = substr(preg_replace('/[\x00-\x1F\x7F]/', '', $fullName), 0, 160);
 
+        // Existing and new addresses get the same acknowledgment. Only a new
+        // address creates a pending account, and it never receives a session.
         $existing = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
         $existing->execute([$email]);
-        if ($existing->fetch()) {
-            error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+        $devPayload = [];
+        if (!$existing->fetch()) {
+            $pdo = db();
+            $userId = 0;
+            $token = null;
+            aapm_tx_begin($pdo);
+            try {
+                $insert = $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)');
+                $insert->execute([$email, app_password_hash($password), $fullName, 'user', aapm_utc_now()]);
+                $userId = (int) $pdo->lastInsertId();
+                $token = aapm_issue_verification_token($pdo, $userId);
+                aapm_tx_commit($pdo);
+            } catch (PDOException $exception) {
+                aapm_tx_rollback($pdo);
+                if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
+                    throw $exception;
+                }
+                $token = null;
+            }
+            if ($token !== null) {
+                rate_limit_clear('register-ip');
+                aapm_audit('auth.verification_sent', aapm_send_verification_email($email, $token) ? 'sent' : 'delivery_failed', null, $userId, ['channel' => 'email']);
+                $devPayload = aapm_dev_token_payload($token);
+            }
+        }
+        json_response(array_merge(['message' => 'Jika alamat email dapat digunakan, instruksi verifikasi akan dikirim.', 'status' => 'accepted'], $devPayload), 202);
+    }
+
+    if ($path === 'auth/resend-verification' && $method === 'POST') {
+        $input = request_json();
+        require_csrf();
+        rate_limit_guard('resend-ip', '', 20, 3600, 3600);
+        $signedIn = current_user();
+        if ($signedIn && ($signedIn['emailVerificationStatus'] ?? '') === 'legacy_pending') {
+            rate_limit_guard('resend-user', (string) $signedIn['id'], 3, 3600, 3600);
+            $fresh = aapm_send_fresh_verification((int) $signedIn['id'], (string) $signedIn['email'], 'auth.verification_resend');
+            json_response(array_merge(['message' => 'Jika akun ini belum terverifikasi, instruksi verifikasi baru telah dikirim.', 'status' => 'accepted'], aapm_dev_token_payload($fresh['token'])), 202);
         }
 
-        try {
-            $stmt = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$email, app_password_hash($password), $fullName, 'user']);
-        } catch (PDOException $exception) {
-            if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
-                error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+        // A pending registrant proves knowledge of the password, without a session.
+        $email = normalize_email($input['email'] ?? '');
+        $password = (string) ($input['password'] ?? '');
+        $devPayload = [];
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) && $password !== '') {
+            rate_limit_guard('resend-user', $email, 3, 3600, 3600);
+            $stmt = db()->prepare('SELECT id, email, password_hash, email_verified_at, verification_required_at FROM users WHERE email = ? LIMIT 1');
+            $stmt->execute([$email]);
+            $account = $stmt->fetch();
+            rate_limit_failure('resend-user', $email, 3, 3600, 3600);
+            if ($account && password_verify($password, $account['password_hash']) && aapm_verification_status($account) === 'pending') {
+                $fresh = aapm_send_fresh_verification((int) $account['id'], (string) $account['email'], 'auth.verification_resend');
+                $devPayload = aapm_dev_token_payload($fresh['token']);
             }
-            throw $exception;
         }
-        rate_limit_clear('register-ip');
-        $userId = (int) db()->lastInsertId();
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = $userId;
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        $user = current_user();
-        json_response(['user' => $user, 'csrfToken' => csrf_token()], 201);
+        json_response(array_merge(['message' => 'Jika akun tersebut menunggu verifikasi, instruksi baru akan dikirim.', 'status' => 'accepted'], $devPayload), 202);
+    }
+
+    if ($path === 'auth/verify-email' && $method === 'POST') {
+        $input = request_json();
+        $token = trim((string) ($input['token'] ?? ''));
+        require_csrf();
+        rate_limit_guard('verify-ip', '', 30, 900, 900);
+        $userId = aapm_consume_verification_token($token);
+        if ($userId === null) {
+            rate_limit_failure('verify-ip', '', 30, 900, 900);
+            error_response('Tautan verifikasi tidak valid atau sudah kedaluwarsa.', 400, 'invalid_verification_token');
+        }
+        rate_limit_clear('verify-ip');
+        $row = db()->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
+        $row->execute([$userId]);
+        $account = $row->fetch();
+        aapm_establish_session($account);
+        aapm_audit('auth.email_verified', 'ok', $userId, $userId, ['channel' => 'email']);
+        json_response(['user' => present_authenticated_user($account), 'csrfToken' => csrf_token()]);
     }
 
     if ($path === 'auth/logout' && $method === 'POST') {
@@ -266,8 +333,20 @@ try {
             rate_limit_failure('reset-ip', '', 10, 3600, 3600);
             error_response('Tautan reset kata sandi sudah tidak berlaku.', 400, 'invalid_reset_token');
         }
-        $update = db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL WHERE id = ?');
-        $update->execute([app_password_hash($password), (int) $user['id']]);
+        $resetPdo = db();
+        aapm_tx_begin($resetPdo);
+        try {
+            $resetNow = aapm_utc_now();
+            $resetPdo->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, email_verified_at = COALESCE(email_verified_at, ?), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                ->execute([app_password_hash($password), $resetNow, (int) $user['id']]);
+            $resetPdo->prepare('UPDATE email_verification_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
+                ->execute([$resetNow, (int) $user['id']]);
+            aapm_audit('auth.password_reset', 'ok', (int) $user['id'], (int) $user['id'], ['channel' => 'email']);
+            aapm_tx_commit($resetPdo);
+        } catch (Throwable $exception) {
+            aapm_tx_rollback($resetPdo);
+            throw $exception;
+        }
         rate_limit_clear('reset-ip');
         unset($_SESSION['user_id']);
         session_regenerate_id(true);
@@ -320,6 +399,11 @@ try {
         json_response(admin_course_detail_data());
     }
 
+    if ($path === 'admin/security-audit' && $method === 'GET') {
+        require_admin();
+        json_response(aapm_security_audit_page((int) ($_GET['limit'] ?? 50), (int) ($_GET['offset'] ?? 0)));
+    }
+
     if ($path === 'admin/learners' && $method === 'GET') {
         require_admin();
         json_response(['learners' => admin_learner_list((string) ($_GET['search'] ?? ''))]);
@@ -340,9 +424,9 @@ try {
     }
 
     if ($path === 'admin/users' && $method === 'POST') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['user' => admin_create_user(request_json())], 201);
+        json_response(['user' => admin_create_user($actor, request_json())], 201);
     }
 
     if (preg_match('#^admin/users/(\\d+)$#', $path, $matches) && $method === 'PUT') {
@@ -352,10 +436,10 @@ try {
     }
 
     if (preg_match('#^admin/users/(\\d+)/password$#', $path, $matches) && $method === 'PUT') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
         $input = request_json();
-        admin_reset_user_password((int) $matches[1], (string) ($input['password'] ?? ''));
+        admin_reset_user_password($actor, (int) $matches[1], (string) ($input['password'] ?? ''));
         json_response(['ok' => true]);
     }
 

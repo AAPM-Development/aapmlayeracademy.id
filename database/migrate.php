@@ -185,11 +185,15 @@ try {
             $pdo->exec("CREATE INDEX {$name} ON {$table} ({$columns})");
         }
         migration_record($pdo, $driver, AAPM_SCHEMA_MIGRATION_KEY, $checksum);
+        // Q02 adds its own recorded key; the Q01 key above is never repurposed.
+        aapm_ensure_auth_security_schema($pdo, $driver);
+        migration_record($pdo, $driver, AAPM_AUTH_SCHEMA_KEY, hash('sha256', AAPM_AUTH_SCHEMA_KEY . ':users+tokens+audit'));
         $result['applied'] = true;
         $result['columns'] = migration_column_plan($pdo, $driver, $expectedColumns);
         $result['indexes'] = migration_index_plan($pdo, $driver, $expectedIndexes);
     }
 
+    $result['authSchema'] = aapm_auth_schema_status($pdo);
     if ($verify) {
         $result['health'] = migration_health_checks($pdo, $driver);
     }
@@ -631,6 +635,9 @@ function migration_output(array $result, bool $jsonOutput): void
     if (isset($result['environmentMarker'])) {
         echo "Environment marker: {$result['environmentMarker']}\n";
     }
+    if (isset($result['authSchema'])) {
+        echo 'Auth schema: ' . (in_array(false, $result['authSchema'], true) ? 'missing' : 'present') . "\n";
+    }
     echo "Migration: {$result['migration']}\n";
     if ($result['missingTables']) {
         echo 'Missing tables: ' . implode(', ', $result['missingTables']) . "\n";
@@ -674,6 +681,7 @@ function migration_output(array $result, bool $jsonOutput): void
 /** @param array<string,mixed> $result */
 function migration_exit_code(array $result): int
 {
+    if (isset($result['authSchema']) && in_array(false, $result['authSchema'], true)) return 1;
     if (!empty($result['markerRequired']) && ($result['environmentMarker'] ?? '') !== 'verified') return 1;
     if (!empty($result['missingTables'])) return 1;
     foreach ($result['columns'] as $column) {

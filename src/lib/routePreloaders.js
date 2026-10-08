@@ -15,6 +15,7 @@ const routeLoaders = {
   register: () => import("@/pages/Register"),
   forgotPassword: () => import("@/pages/ForgotPassword"),
   resetPassword: () => import("@/pages/ResetPassword"),
+  verifyEmail: () => import("@/pages/VerifyEmail"),
   adminOverview: () => import("@/pages/admin/AdminOverview"),
   adminCourses: () => import("@/pages/admin/AdminCourses"),
   adminCourseDetail: () => import("@/pages/admin/AdminCourseDetail"),
@@ -57,6 +58,7 @@ export function preloadRoute(pathname) {
   else if (path === "/register") moduleName = "register";
   else if (path === "/forgot-password") moduleName = "forgotPassword";
   else if (path === "/reset-password") moduleName = "resetPassword";
+  else if (path === "/verify-email") moduleName = "verifyEmail";
   else if (path === "/admin") moduleName = "adminOverview";
   else if (path === "/admin/courses") moduleName = "adminCourses";
   else if (path.startsWith("/admin/courses/") && path.includes("/modules/")) {

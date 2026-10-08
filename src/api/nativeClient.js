@@ -22,6 +22,8 @@ const sessionExpiryExcludedPaths = new Set([
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/logout",
+  "/auth/verify-email",
+  "/auth/resend-verification",
 ]);
 
 function notifySessionExpired(path, status) {
@@ -286,6 +288,12 @@ export const nativeApi = {
     async login(email, password) {
       await this.csrf();
       return request("/auth/login", json({ email, password }));
+    },
+    async verifyEmail(token) {
+      return request("/auth/verify-email", json({ token }));
+    },
+    async resendVerification(payload = {}) {
+      return request("/auth/resend-verification", json(payload));
     },
     async register(data) {
       await this.csrf();

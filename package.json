@@ -8,7 +8,7 @@
     "build": "node scripts/release/build-artifact.mjs --channel=local",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "test": "node --test --test-concurrency=1 tests/academy-hardening.test.mjs tests/q01-environment-artifact.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/academy-hardening.test.mjs tests/q01-environment-artifact.test.mjs tests/q02-authz.test.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "tokens": "node scripts/build-aapm-tokens.mjs",
