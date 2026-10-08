@@ -628,3 +628,23 @@
   .aapm-profile-tabs .aapm-tabs-trigger { padding-inline: var(--aapm-primitive-space-2); }
   .aapm-profile-tabs .aapm-tabs-trigger > .aapm-icon { display: none; }
 }
+
+/* Phones: controls keep a 40px touch target (the skill's 44px rule holds for primary actions). */
+@media (max-width: 639px) {
+  .aapm-button[data-size="sm"] { min-height: var(--aapm-component-action-height); }
+  .aapm-button[data-size="icon-sm"] { width: var(--aapm-component-action-height); min-height: var(--aapm-component-action-height); }
+  .aapm-tabs-trigger { min-height: var(--aapm-component-action-height); }
+  .aapm-auth .aapm-link { display: inline-flex; align-items: center; min-height: var(--aapm-component-action-height); }
+}
+
+/* Phones: the floating APPI pill steps aside where a bottom bar or a focus footer already holds the space. */
+@media (max-width: 859px) {
+  html[data-shell="focus"] .aapm-ai-launcher,
+  html:has(.aapm-app[data-bottom-nav="true"]) .aapm-ai-launcher { display: none; }
+}
+@media (max-width: 639px) {
+  .aapm-tabs-trigger { min-width: var(--aapm-component-action-height); }
+}
+@media (max-width: 639px) {
+  .aapm-flow__step { min-height: var(--aapm-component-action-height); }
+}

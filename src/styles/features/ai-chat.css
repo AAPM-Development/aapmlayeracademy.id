@@ -226,3 +226,16 @@
 header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 .aapm-ai-workspace__header > div:first-child { flex: 1 1 auto; min-width: 0; }
 .aapm-ai-workspace__header > div:last-child { flex: none; }
+
+/* Phones: header actions reach a 40px target (overrides the compact h-8 utility). */
+@media (max-width: 639px) {
+  .aapm-ai-workspace__header .aapm-button { height: auto; min-height: var(--aapm-component-action-height); }
+}
+@media (max-width: 639px) {
+  /* The composer switches: the whole label is the target on phones. */
+  .aapm-ai-composer-toggle { min-height: var(--aapm-component-action-height); }
+}
+@media (max-width: 639px) {
+  /* Extend the switch hit area without changing its drawn size. */
+  .aapm-ai-composer-toggle .aapm-switch::before { content: ""; position: absolute; inset: -10px -8px; }
+}
