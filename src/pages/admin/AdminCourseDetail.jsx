@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import {
@@ -34,6 +34,8 @@ import { ModuleCover } from "@/components/academy/CourseElements";
 import { useAdminCourse, useDeleteAdminModule, useRenameAdminChapter, useReorderAdminModules } from "@/lib/useAdminData";
 import { levelVisual } from "@/lib/academyVisuals";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
+import { filterCurriculum, nextChapterNumber } from "@/lib/curriculumState";
+import { companionOrderPayload } from "@/lib/adminCompanion";
 
 const cloneLevels = (levels = []) => levels.map((level) => ({
   ...level,
@@ -60,13 +62,12 @@ export default function AdminCourseDetail() {
   const [view, setView] = useState("list");
   const [query, setQuery] = useState("");
   const [boardLevels, setBoardLevels] = useState([]);
+  const [failedOrder, setFailedOrder] = useState(null);
+  const orderInFlightRef = useRef(false);
   const [pendingModuleDelete, setPendingModuleDelete] = useState(null);
   const [pendingModuleDeleteWithProgress, setPendingModuleDeleteWithProgress] = useState(null);
   const modules = useMemo(() => (course?.curriculum || []).flatMap((level) => level.modules || []), [course]);
-  const nextLevelNumber = useMemo(() => {
-    const highest = Math.max(0, ...(course?.curriculum || []).map((level) => Number(level.levelNumber) || 0));
-    return highest < 20 ? highest + 1 : null;
-  }, [course]);
+  const nextLevelNumber = useMemo(() => nextChapterNumber(course?.curriculum), [course]);
   const newModulePath = moduleEditorPath(courseId);
   const newChapterPath = nextLevelNumber
     ? moduleEditorPath(courseId, { newChapter: 1, levelNumber: nextLevelNumber })
@@ -79,21 +80,30 @@ export default function AdminCourseDetail() {
 
   useEffect(() => {
     if (course?.curriculum && !reorderModules.isPending) setBoardLevels(cloneLevels(course.curriculum));
-  }, [course]);
+  }, [course, reorderModules.isPending]);
 
   const persistOrder = async (nextLevels, previousLevels, title = "Urutan kurikulum disimpan") => {
-    if (reorderModules.isPending) return;
+    if (orderInFlightRef.current || deleteModule.isPending || renameChapter.isPending) return false;
+    orderInFlightRef.current = true;
+    setFailedOrder(null);
     setBoardLevels(nextLevels);
     try {
-      await reorderModules.mutateAsync(nextLevels.flatMap((level) => level.modules || []).map((module) => module.id));
+      const result = await reorderModules.mutateAsync(nextLevels.flatMap((level) => level.modules || []).map((module) => module.id));
+      if (result?.course?.curriculum) setBoardLevels(cloneLevels(result.course.curriculum));
       toast({ title });
+      return true;
     } catch (reorderError) {
       setBoardLevels(previousLevels);
+      setFailedOrder({ nextLevels, previousLevels, title, message: reorderError.message });
       toast({ variant: "destructive", title: "Urutan belum disimpan", description: reorderError.message });
+      return false;
+    } finally {
+      orderInFlightRef.current = false;
     }
   };
 
   const saveChapterName = async (level, levelName) => {
+    if (renameChapter.isPending || orderInFlightRef.current || deleteModule.isPending) return;
     try {
       await renameChapter.mutateAsync({ levelNumber: level.levelNumber, levelName });
       setRenamingLevel(null);
@@ -135,7 +145,7 @@ export default function AdminCourseDetail() {
   };
 
   const removeModule = async (module, { purgeProgress = false } = {}) => {
-    if (!module || deleteModule.isPending) return;
+    if (!module || deleteModule.isPending || orderInFlightRef.current || renameChapter.isPending) return;
     try {
       const result = await deleteModule.mutateAsync({ moduleId: module.id, purgeProgress });
       toast({
@@ -154,14 +164,15 @@ export default function AdminCourseDetail() {
   };
 
   const applyCompanionOrder = async (ids) => {
-    if (!Array.isArray(ids) || reorderModules.isPending) return;
+    if (!Array.isArray(ids) || orderInFlightRef.current) return false;
     const previousLevels = cloneLevels(boardLevels);
     const byId = new Map(boardLevels.flatMap((level) => level.modules || []).map((module) => [String(module.id), module]));
-    const orderedModules = ids.map((id) => byId.get(String(id))).filter(Boolean);
-    if (orderedModules.length !== byId.size) {
+    const safeIds = companionOrderPayload({ moduleIds: ids }, [...byId.values()]);
+    if (!safeIds) {
       toast({ variant: "destructive", title: "Urutan APPI tidak lengkap", description: "Semua modul aktif harus tetap ada sebelum urutan disimpan." });
-      return;
+      return false;
     }
+    const orderedModules = safeIds.map((id) => byId.get(id));
     // The API stores one global sort_order. Keep each chapter's visual grouping
     // intact while following the proposed global sequence within that chapter.
     const rank = new Map(orderedModules.map((module, index) => [String(module.id), index]));
@@ -169,18 +180,16 @@ export default function AdminCourseDetail() {
       ...level,
       modules: [...(level.modules || [])].sort((left, right) => (rank.get(String(left.id)) ?? 0) - (rank.get(String(right.id)) ?? 0)),
     }));
-    await persistOrder(nextLevels, previousLevels, "Urutan APPI disimpan");
+    return persistOrder(nextLevels, previousLevels, "Urutan APPI disimpan");
   };
 
 
   const chapterCount = boardLevels.length;
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleLevels = normalizedQuery
-    ? boardLevels
-      .map((level) => ({ ...level, modules: (level.modules || []).filter((module) => [module.title, module.category, module.summary].some((value) => String(value || "").toLowerCase().includes(normalizedQuery))) }))
-      .filter((level) => level.modules.length)
-    : boardLevels;
-  const saving = reorderModules.isPending || deleteModule.isPending;
+  const visibleLevels = useMemo(() => filterCurriculum(boardLevels, query), [boardLevels, query]);
+  const visibleModuleCount = visibleLevels.reduce((count, level) => count + (level.modules?.length || 0), 0);
+  const saving = reorderModules.isPending || deleteModule.isPending || renameChapter.isPending;
+  const savingLabel = deleteModule.isPending ? "Menghapus modul…" : renameChapter.isPending ? "Menyimpan nama chapter…" : "Menyimpan urutan…";
 
   return (
     <AdminPageFrame
@@ -221,7 +230,7 @@ export default function AdminCourseDetail() {
 
             <TabsContent value="curriculum" className="grid gap-4">
               <div className="aapm-toolbar">
-                <SearchInput className="max-w-xs" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari modul…" aria-label="Cari modul di kurikulum" />
+                <SearchInput className="max-w-xs" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari chapter atau modul…" aria-label="Cari chapter atau modul di kurikulum" />
                 <SegmentedControl
                   label="Tampilan kurikulum"
                   value={view}
@@ -229,9 +238,11 @@ export default function AdminCourseDetail() {
                   options={[{ value: "list", label: "Daftar", icon: "list" }, { value: "board", label: "Board", icon: "widget" }]}
                 />
                 <span className="aapm-toolbar__spacer" />
-                {saving ? <span className="aapm-meta"><span className="aapm-spinner" aria-hidden="true" />Menyimpan urutan…</span> : <span className="aapm-meta"><AapmIcon name="check" />Tersimpan otomatis</span>}
+                <span className="aapm-meta" role="status" aria-live="polite">{saving ? <><span className="aapm-spinner" aria-hidden="true" />{savingLabel}</> : failedOrder ? <><AapmIcon name="alert" />Urutan belum disimpan</> : <><AapmIcon name="check" />Tersimpan otomatis</>}</span>
                 {addChapterAction()}
               </div>
+              {failedOrder && <Alert tone="danger" title="Urutan belum disimpan" description={failedOrder.message} action={<Button variant="secondary" disabled={saving} onClick={() => persistOrder(failedOrder.nextLevels, cloneLevels(boardLevels), failedOrder.title)}>Coba lagi</Button>} />}
+              {normalizedQuery && <div className="flex flex-wrap items-center justify-between gap-2"><p className="aapm-text-caption m-0" role="status">{visibleModuleCount} dari {modules.length} modul. Hapus pencarian untuk mengubah urutan.</p><Button variant="ghost" size="sm" onClick={() => setQuery("")}>Hapus pencarian</Button></div>}
 
               <AdminModuleCompanion
                 scope="course"
@@ -240,10 +251,12 @@ export default function AdminCourseDetail() {
                 onApplyOrder={applyCompanionOrder}
               />
 
-              {visibleLevels.length === 0 ? (
+              {boardLevels.length === 0 ? (
+                <StateView kind="empty" icon="lesson" title="Kurikulum belum memiliki modul" description="Mulai dengan modul pertama untuk membentuk chapter dan materi belajar." action={<Button asChild><Link to={newModulePath}>Tambah modul pertama</Link></Button>} />
+              ) : visibleLevels.length === 0 ? (
                 <StateView kind="empty" icon="search" title="Tidak ada modul yang cocok" description="Ubah kata kunci pencarian untuk melihat modul lain." action={<Button variant="secondary" onClick={() => setQuery("")}>Hapus pencarian</Button>} />
               ) : view === "board" ? (
-                <CurriculumBoard levels={visibleLevels} courseId={courseId} onRenameLevel={setRenamingLevel} onDragEnd={handleDragEnd} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
+                <CurriculumBoard levels={visibleLevels} courseId={courseId} onRenameLevel={setRenamingLevel} onDragEnd={handleDragEnd} moveModule={moveModule} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
               ) : (
                 <CurriculumList levels={visibleLevels} courseId={courseId} onRenameLevel={setRenamingLevel} onDragEnd={handleDragEnd} moveModule={moveModule} onDelete={setPendingModuleDelete} saving={saving} dragDisabled={Boolean(normalizedQuery)} />
               )}
@@ -318,7 +331,7 @@ function ChapterRenameDialog({ level, saving, onClose, onSave }) {
   return (
     <Dialog open={Boolean(level)} onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
       <DialogContent>
-        <form onSubmit={(event) => { event.preventDefault(); if (trimmed && level) onSave(level, trimmed); }}>
+        <form onSubmit={(event) => { event.preventDefault(); if (trimmed && level && !saving) onSave(level, trimmed); }}>
           <DialogHeader>
             <DialogTitle>Ubah nama chapter {level?.levelNumber}</DialogTitle>
             <DialogDescription>Nama baru berlaku untuk semua modul di chapter ini.</DialogDescription>
@@ -336,7 +349,7 @@ function ChapterRenameDialog({ level, saving, onClose, onSave }) {
   );
 }
 
-function ChapterHeader({ level, onRename }) {
+function ChapterHeader({ level, onRename, saving }) {
   const visual = levelVisual(level.levelNumber);
   return (
     <>
@@ -346,7 +359,7 @@ function ChapterHeader({ level, onRename }) {
         <div className="flex min-w-0 items-center gap-1">
           <h3 className="aapm-chapter__title truncate">{level.levelName}</h3>
           {onRename ? (
-            <IconButton label={`Ubah nama chapter ${level.levelNumber}`} icon="edit" size="sm" onClick={() => onRename(level)} />
+            <IconButton label={`Ubah nama chapter ${level.levelNumber}`} icon="edit" size="sm" disabled={saving} onClick={() => onRename(level)} />
           ) : null}
         </div>
       </div>
@@ -384,7 +397,7 @@ function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete
           const visual = levelVisual(level.levelNumber);
           return (
             <section key={level.levelNumber} className="aapm-chapter" data-hue={visual.hue} aria-label={`Chapter ${level.levelNumber}: ${level.levelName}`}>
-              <div className="aapm-chapter__head"><ChapterHeader level={level} onRename={onRenameLevel} /></div>
+              <div className="aapm-chapter__head"><ChapterHeader level={level} onRename={onRenameLevel} saving={saving} /></div>
               <Droppable droppableId={`level-${level.levelNumber}`} isDropDisabled={saving || dragDisabled}>
                 {({ innerRef, droppableProps, placeholder }) => (
                   <ol ref={innerRef} {...droppableProps} className="aapm-chapter__list">
@@ -399,7 +412,7 @@ function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete
                               <span className="aapm-meta truncate">{module.category || module.summary || "Tanpa kategori"}</span>
                             </div>
                             <span data-hide-mobile="" />
-                            <ModuleActions module={module} courseId={courseId} onDelete={onDelete} onMove={(direction) => moveModule(module.id, direction, level.levelNumber)} index={index} total={level.modules.length} saving={saving} />
+                            <ModuleActions module={module} courseId={courseId} onDelete={onDelete} onMove={dragDisabled ? null : (direction) => moveModule(module.id, direction, level.levelNumber)} index={index} total={level.modules.length} saving={saving} />
                           </li>
                         )}
                       </Draggable>
@@ -419,7 +432,7 @@ function CurriculumList({ levels = [], courseId, onDragEnd, moveModule, onDelete
   );
 }
 
-function CurriculumBoard({ levels = [], courseId, onDragEnd, onDelete, saving, dragDisabled, onRenameLevel }) {
+function CurriculumBoard({ levels = [], courseId, onDragEnd, moveModule, onDelete, saving, dragDisabled, onRenameLevel }) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -427,17 +440,18 @@ function CurriculumBoard({ levels = [], courseId, onDragEnd, onDelete, saving, d
           const visual = levelVisual(level.levelNumber);
           return (
             <section key={level.levelNumber} className="aapm-chapter self-start" data-hue={visual.hue}>
-              <div className="aapm-chapter__head"><ChapterHeader level={level} onRename={onRenameLevel} /></div>
+              <div className="aapm-chapter__head"><ChapterHeader level={level} onRename={onRenameLevel} saving={saving} /></div>
               <Droppable droppableId={`level-${level.levelNumber}`} isDropDisabled={saving || dragDisabled}>
                 {({ innerRef, droppableProps, placeholder }) => (
                   <div ref={innerRef} {...droppableProps} className="grid gap-2 p-2">
                     {(level.modules || []).map((module, index) => (
                       <Draggable key={String(module.id)} draggableId={String(module.id)} index={index} isDragDisabled={saving || dragDisabled}>
                         {({ innerRef: itemRef, draggableProps, dragHandleProps }, snapshot) => (
-                          <article ref={itemRef} {...draggableProps} {...dragHandleProps} className="aapm-card gap-1 p-3" data-variant={snapshot.isDragging ? "raised" : undefined}>
+                          <article ref={itemRef} {...draggableProps} className="aapm-card gap-1 p-3" data-variant={snapshot.isDragging ? "raised" : undefined}>
                             <div className="flex items-center justify-between gap-2">
+                              <span className="aapm-lesson-row__grip" {...dragHandleProps} aria-label={`Geser ${module.title}`}><AapmIcon name="grip" /></span>
                               <span className="aapm-text-overline">Modul {module.moduleNumber}</span>
-                              <ModuleActions module={module} courseId={courseId} onDelete={onDelete} saving={saving} />
+                              <ModuleActions module={module} courseId={courseId} onDelete={onDelete} onMove={dragDisabled ? null : (direction) => moveModule(module.id, direction, level.levelNumber)} index={index} total={level.modules.length} saving={saving} />
                             </div>
                             <Link to={`/admin/courses/${courseId}/modules/${module.id}`} className="text-body font-medium text-foreground hover:text-primary">{module.title}</Link>
                             {module.category ? <span className="aapm-meta">{module.category}</span> : null}

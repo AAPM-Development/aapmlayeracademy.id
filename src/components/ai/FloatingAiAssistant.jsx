@@ -198,6 +198,7 @@ export default function FloatingAiAssistant() {
     activity,
     activityLoading,
     messages,
+    isLoadingConversation,
     isStreaming,
     streamStatus,
     streamSteps,
@@ -353,7 +354,7 @@ export default function FloatingAiAssistant() {
       (imageAttachment
         ? "Tolong analisis foto farm ini dan sebutkan observasi yang perlu saya verifikasi di lapangan."
         : "");
-    if (!message || isStreaming) return;
+    if (!message || isStreaming || isLoadingConversation || imageLoading) return;
     const image = imageAttachment;
     const result = await send(message, {
       includeFarm: true,
@@ -541,7 +542,7 @@ export default function FloatingAiAssistant() {
             </div>
           </header>
           <div className="aapm-ai-floating-panel__body relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
-            <StreamAnnouncer isStreaming={isStreaming} />
+            <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} />
             <div
               ref={chatViewportRef}
               role="log"
@@ -788,6 +789,7 @@ export default function FloatingAiAssistant() {
               setInput={setPromptDraft}
               onSubmit={() => submit()}
               isStreaming={isStreaming}
+              disabled={isLoadingConversation}
               imageInputRef={imageInputRef}
               onImageSelection={handleImageSelection}
               imageLoading={imageLoading}

@@ -621,6 +621,14 @@ a.aapm-lesson-row__title:hover { color: var(--aapm-semantic-primary); }
 @media (max-width: 639px) {
   .aapm-lesson-row { grid-template-columns: auto auto minmax(0, 1fr) auto; }
   .aapm-lesson-row > [data-hide-mobile] { display: none; }
+  .aapm-lesson-row__title { white-space: normal; overflow-wrap: anywhere; }
+  .aapm-chapter__head { gap: var(--aapm-primitive-space-2); padding-inline: var(--aapm-primitive-space-3); }
+  .aapm-chapter__title { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (hover: none), (pointer: coarse) {
+  .aapm-lesson-row__grip { width: 44px; height: 44px; }
+  .aapm-lesson-row__actions .aapm-button[data-size],
+  .aapm-chapter__head .aapm-button[data-size] { min-width: 44px; min-height: 44px; }
 }
 .aapm-level__header .aapm-ring__label .aapm-icon { width: 20px; height: 20px; color: var(--hue); }
 .aapm-module-row__hint { color: var(--hue-ink); font-weight: var(--aapm-primitive-weight-label); }

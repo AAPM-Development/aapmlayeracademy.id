@@ -891,7 +891,7 @@ export default function RichTextEditor({ id, value = "", onChange = () => {}, on
       )}
       <EditorContent editor={editor} />
       <p className="border-t border-border/70 px-3 py-2 text-[11px] leading-4 text-muted-foreground">
-        Konten tidak aman disaring sebelum diterbitkan.
+        Pilih teks untuk memformatnya, atau tempel materi ke editor.
       </p>
     </div>
   );

@@ -975,7 +975,7 @@ function EditorialQualityPanel({ signals, onNavigate, blockCount = 0, textLength
 
 const isEditableTarget = (target) => target instanceof Element && Boolean(target.closest("input, textarea, select, [contenteditable='true'], .ProseMirror"));
 
-const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange, settingsContainer = null, outlineContainer = null, onSelectionChange }, ref) {
+const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange, settingsContainer = null, outlineContainer = null, onSelectionChange, onOutlineSelect }, ref) {
   const blocks = editorialComposerBlocks(value, fallback, legacyVideoUrl);
   const textLength = editorialTextLength(blocks);
   const qualitySignals = React.useMemo(() => getEditorialQualitySignals(blocks), [blocks]);
@@ -1135,7 +1135,7 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
         <EditorialOutlineList
           items={outlineItems}
           selectedId={selectedId}
-          onSelect={(id) => selectBlock(id, { scroll: true })}
+          onSelect={(id) => { selectBlock(id, { scroll: true }); onOutlineSelect?.(); }}
           onMove={moveContentBlock}
         />,
         outlineContainer,

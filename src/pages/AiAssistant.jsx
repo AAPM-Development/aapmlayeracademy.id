@@ -979,7 +979,7 @@ export default function AiAssistant() {
 
   const submit = async (text = promptDraft) => {
     const content = text.trim();
-    if ((!content && !imageAttachment) || isStreaming) return;
+    if ((!content && !imageAttachment) || isStreaming || isLoadingConversation || imageLoading) return;
     const image = imageAttachment;
     const message =
       content ||
@@ -1061,7 +1061,7 @@ export default function AiAssistant() {
           </div>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-          <StreamAnnouncer isStreaming={isStreaming} />
+          <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} />
           <ScrollArea
             viewportRef={chatViewportRef}
             role="log"
@@ -1175,6 +1175,7 @@ export default function AiAssistant() {
               setInput={setPromptDraft}
               onSubmit={() => submit()}
               isStreaming={isStreaming}
+              disabled={isLoadingConversation}
               imageInputRef={imageInputRef}
               onImageSelection={handleImageSelection}
               imageLoading={imageLoading}

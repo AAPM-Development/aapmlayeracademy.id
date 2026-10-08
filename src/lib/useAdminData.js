@@ -154,7 +154,10 @@ export function useReorderAdminModules() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (items) => nativeApi.admin.modules.reorder(items),
-    onSuccess: () => invalidateCourseData(queryClient),
+    onSuccess: (result) => {
+      if (result?.course?.id) queryClient.setQueryData(["admin", "courses", result.course.id], result.course);
+      invalidateCourseData(queryClient);
+    },
   });
 }
 

@@ -6,11 +6,17 @@ const FOCUSABLE =
 // Radix layers (menus, confirm dialogs) render outside the surface and own
 // Escape and Tab while they are open, so the surface must stand aside.
 function hasNestedLayer(surface) {
-  return [
-    ...document.querySelectorAll(
+  return Array.from(document.querySelectorAll(
       '[data-state="open"][role="menu"], [data-state="open"][role="listbox"], [data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]',
-    ),
-  ].some((layer) => layer !== surface && !surface.contains(layer));
+    )).some((layer) => layer !== surface && !surface.contains(layer));
+}
+
+function focusableItems(surface) {
+  return Array.from(surface.querySelectorAll(FOCUSABLE)).filter((item) =>
+    item instanceof HTMLElement && item.tabIndex >= 0 && item.getClientRects().length > 0 &&
+    !item.closest('[hidden], [inert], [aria-hidden="true"]') &&
+    getComputedStyle(item).visibility !== "hidden",
+  );
 }
 
 /**
@@ -32,7 +38,7 @@ export default function useModalFocus({ open, onClose }) {
     const focusSurface = () => {
       const surface = surfaceRef.current;
       if (!surface) return false;
-      (surface.querySelector(FOCUSABLE) || surface).focus({ preventScroll: true });
+      (focusableItems(surface)[0] || surface).focus({ preventScroll: true });
       return surface.contains(document.activeElement);
     };
     // Focus lands at once when the surface is already rendered. The timer is a fallback
@@ -52,7 +58,7 @@ export default function useModalFocus({ open, onClose }) {
       }
       if (event.key !== "Tab") return;
 
-      const items = [...surface.querySelectorAll(FOCUSABLE)];
+      const items = focusableItems(surface);
       if (!items.length) {
         event.preventDefault();
         surface.focus();
@@ -74,7 +80,7 @@ export default function useModalFocus({ open, onClose }) {
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("keydown", handleKeyDown);
-      if (opener?.focus && document.contains(opener)) {
+      if (opener instanceof HTMLElement && document.contains(opener)) {
         opener.focus({ preventScroll: true });
       }
     };

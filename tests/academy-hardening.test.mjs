@@ -40,6 +40,9 @@ import {
   EDITORIAL_PRESENTATION_MAX_SLIDES,
 } from "../src/lib/editorialLimits.js";
 import { normaliseSvgBlipMarkup } from "../src/lib/pptxCompatibility.js";
+import { nativeApi } from "../src/api/nativeClient.js";
+import { reconcileSavedModule } from "../src/lib/editorSaveState.js";
+import { filterCurriculum, nextChapterNumber } from "../src/lib/curriculumState.js";
 import {
   EDITORIAL_PRESENTATION_ACCEPT,
   getEditorialPresentationFormatFromName,
@@ -679,4 +682,77 @@ test("AAPM design tokens stay generated from the JSON authority", async () => {
   const icons = readWorkspaceFile("../src/design-system/icons/iconData.js");
   assert.match(icons, /@iconify-icons\/solar\/home-angle-bold-duotone\.js/);
   assert.doesNotMatch(readWorkspaceFile("../package.json"), /@ten4seven\/ui/);
+});
+
+test("a module save preserves newer edits and adopts normalization only for unchanged fields", () => {
+  const submitted = { title: "Before", summary: "old summary", levelNumber: "1", editorialContent: { blocks: [{ id: "a", text: "sent" }] } };
+  const current = { ...submitted, title: "Typed while saving", editorialContent: { blocks: [{ id: "a", text: "newer" }] } };
+  const saved = { ...submitted, title: "Before normalized", levelNumber: 1, summary: "normalized summary" };
+  const result = reconcileSavedModule(submitted, current, saved);
+  assert.equal(result.title, "Typed while saving");
+  assert.deepEqual(result.editorialContent, current.editorialContent);
+  assert.equal(result.levelNumber, 1);
+  assert.equal(result.summary, "normalized summary");
+  assert.equal(submitted.title, "Before");
+  assert.deepEqual(reconcileSavedModule(submitted, submitted, saved), saved);
+});
+
+test("curriculum search includes chapter names and module numbers without changing their order", () => {
+  const levels = [
+    { levelNumber: 1, levelName: "Foundation", modules: [{ id: 1, moduleNumber: 7, title: "Biosecurity", category: "Hygiene" }, { id: 2, moduleNumber: 8, title: "Kandang" }] },
+    { levelNumber: 20, levelName: "Review", modules: [{ id: 3, moduleNumber: 80, title: "Evaluasi" }] },
+  ];
+  assert.equal(filterCurriculum(levels, "   "), levels);
+  assert.deepEqual(filterCurriculum(levels, "FOUNDATION")[0].modules.map(m => m.id), [1, 2]);
+  assert.deepEqual(filterCurriculum(levels, "Chapter 20")[0].modules.map(m => m.id), [3]);
+  assert.deepEqual(filterCurriculum(levels, "Modul 8")[0].modules.map(m => m.id), [2]);
+  assert.deepEqual(filterCurriculum(levels, "hygiene")[0].modules.map(m => m.id), [1]);
+  assert.deepEqual(filterCurriculum(levels, "missing"), []);
+  assert.equal(levels[0].modules.length, 2);
+  assert.equal(nextChapterNumber(levels), 2);
+  assert.equal(nextChapterNumber(Array.from({ length: 20 }, (_, i) => ({ levelNumber: i + 1 }))), null);
+  assert.equal(nextChapterNumber([]), 1);
+});
+
+test("APPI transport handles split UTF-8/CRLF and surfaces incomplete or failed streams", async (t) => {
+  let body = "";
+  let closeAtEnd = false;
+  let cancelled = false;
+  let requestSignal;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    if (url.endsWith("/auth/csrf")) return Response.json({ data: { csrfToken: "test-token" } });
+    requestSignal = options.signal;
+    return new Response(new ReadableStream({
+      start(controller) {
+        for (const byte of new TextEncoder().encode(body)) controller.enqueue(new Uint8Array([byte]));
+        if (closeAtEnd) controller.close();
+      },
+      cancel() { cancelled = true; },
+    }), { headers: { "Content-Type": "text/event-stream" } });
+  });
+  const run = (nextBody, onEvent = () => {}, signal) => {
+    body = nextBody;
+    closeAtEnd = !nextBody.includes("event: done") && !nextBody.includes("event: error") && !nextBody.includes("invalid-json");
+    cancelled = false;
+    return nativeApi.ai.stream({ message: "QA", onEvent, signal });
+  };
+  await t.test("split CRLF and multibyte text complete on done without waiting for EOF", async () => {
+    const events = [];
+    const controller = new AbortController();
+    await run('event: delta\r\ndata: {"text":"Ayam 🐔"}\r\n\r\nevent: done\r\ndata: {"persisted":true}\r\n\r\n', event => events.push(event), controller.signal);
+    assert.equal(events[0].data.text, "Ayam 🐔");
+    assert.equal(events.at(-1).event, "done");
+    assert.equal(requestSignal, controller.signal);
+    assert.equal(cancelled, true);
+  });
+  await t.test("EOF before done is a recoverable interruption", async () => {
+    await assert.rejects(run('event: delta\ndata: {"text":"partial"}\n\n'), { code: "stream_interrupted" });
+  });
+  await t.test("provider error events propagate their message", async () => {
+    await assert.rejects(run('event: error\ndata: {"message":"Provider unavailable","code":"upstream_error"}\n\n'), { code: "upstream_error", message: "Provider unavailable" });
+  });
+  await t.test("invalid JSON is surfaced and callback failures are not swallowed", async () => {
+    await assert.rejects(run('event: delta\ndata: invalid-json\n\n'), { code: "invalid_stream" });
+    await assert.rejects(run('event: done\ndata: {}\n\n', () => { throw new Error("render failed"); }), { message: "render failed" });
+  });
 });

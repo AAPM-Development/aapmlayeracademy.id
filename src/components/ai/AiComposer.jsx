@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Button, Surface, Switch } from "@/components/primitives";
 
@@ -11,9 +11,10 @@ const ComposerSurface = /** @type {any} */ (Surface);
  */
 export default function AiComposer({
   input = "",
-  setInput = () => {},
+  setInput = (_value) => {},
   onSubmit = () => {},
   isStreaming = false,
+  disabled = false,
   imageInputRef,
   onImageSelection = () => {},
   imageLoading = false,
@@ -34,22 +35,45 @@ export default function AiComposer({
 }) {
   const textareaRef = useRef(null);
   const hasContent = Boolean(input.trim() || imageAttachment);
+  const cannotSend = disabled || isStreaming || imageLoading;
 
   // After a tap on Kirim the focus would fall to the disabled button. Put it back
   // in the question so the next one can be typed straight away; phones skip this
   // so the keyboard does not reopen after every send.
   const handleSendClick = () => {
-    onSubmit();
+    if (hasContent && !cannotSend) onSubmit();
     if (window.matchMedia?.("(pointer: fine)").matches) textareaRef.current?.focus();
   };
 
-  useEffect(() => {
+  const resizeInput = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "0px";
     const maxHeight = compact ? 112 : 168;
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
-  }, [compact, input]);
+  }, [compact]);
+  useEffect(resizeInput, [disabled, input, placeholder, resizeInput]);
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || typeof ResizeObserver === "undefined") return undefined;
+    let previousWidth = 0;
+    let resizeFrame = null;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width === previousWidth) return;
+      previousWidth = entry.contentRect.width;
+      // Measure after responsive styles and placeholder wrapping have settled.
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        resizeInput();
+      });
+    });
+    observer.observe(textarea);
+    return () => {
+      observer.disconnect();
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+    };
+  }, [resizeInput]);
 
   return (
     <div className={`aapm-ai-composer min-w-0 w-full ${compact ? "aapm-ai-composer--compact text-xs" : "text-sm"}`}>
@@ -60,6 +84,7 @@ export default function AiComposer({
         accept="image/jpeg,image/png,image/webp"
         aria-label="Pilih foto farm untuk dianalisis"
         onChange={onImageSelection}
+        disabled={cannotSend}
         className="sr-only"
       />
 
@@ -101,13 +126,15 @@ export default function AiComposer({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
               event.preventDefault();
-              if (!isStreaming) onSubmit();
+              if (hasContent && !cannotSend) onSubmit();
             }
           }}
           rows={1}
-          placeholder={placeholder}
+          maxLength={3000}
+          readOnly={disabled}
+          placeholder={disabled ? "Memuat percakapan…" : placeholder}
           aria-label="Pertanyaan untuk APPI"
           className={`block max-h-[10.5rem] min-h-[2.75rem] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 leading-5 outline-none placeholder:text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}
         />
@@ -119,7 +146,7 @@ export default function AiComposer({
               variant="ghost"
               size="sm"
               onClick={() => imageInputRef?.current?.click()}
-              disabled={isStreaming || imageLoading}
+              disabled={cannotSend}
               className="aapm-ai-attachment-control h-10 shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange sm:h-8"
               aria-label="Lampirkan foto farm"
               aria-busy={imageLoading}
@@ -144,7 +171,7 @@ export default function AiComposer({
                   checked={farmAvailable && includeFarm}
                   onCheckedChange={onIncludeFarmChange}
                   aria-label="Sertakan data KPI sebagai konteks"
-                  disabled={isStreaming || !farmAvailable}
+                  disabled={cannotSend || !farmAvailable}
                   className="aapm-ai-composer-switch"
                 />
                 {farmAvailable ? "Pakai KPI" : "KPI kosong"}
@@ -155,7 +182,7 @@ export default function AiComposer({
                 checked={allowWebSearch}
                 onCheckedChange={onAllowWebSearchChange}
                 aria-label="Izinkan APPI mencari referensi web"
-                disabled={isStreaming}
+                disabled={cannotSend}
                 className="aapm-ai-composer-switch"
               />
               <AapmIcon name="solar:global-bold-duotone" className="h-3.5 w-3.5 text-brand-orange" />
@@ -166,7 +193,7 @@ export default function AiComposer({
           <Button
             type="button"
             onClick={handleSendClick}
-            disabled={!hasContent || isStreaming}
+            disabled={!hasContent || cannotSend}
             className="aapm-ai-send-control h-9 min-w-[4.75rem] shrink-0 gap-1.5 bg-brand-orange px-3 text-white hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
             aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim pertanyaan"}
             title="Kirim pertanyaan"

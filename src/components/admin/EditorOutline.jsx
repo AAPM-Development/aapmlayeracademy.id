@@ -75,7 +75,7 @@ export default function EditorOutline({
   onClose = () => {},
 }) {
   return (
-    <aside ref={asideRef} className="aapm-editor-outline" aria-label="Susun modul" data-editor-outline data-drawer-open={drawerOpen ? "true" : undefined}>
+    <aside ref={asideRef} className="aapm-editor-outline" aria-label="Susun modul" role={drawerOpen ? "dialog" : undefined} aria-modal={drawerOpen ? true : undefined} tabIndex={drawerOpen ? -1 : undefined} data-editor-outline data-drawer-open={drawerOpen ? "true" : undefined}>
       <div className="aapm-editor-outline__head">
         <h2 className="aapm-text-overline m-0">Susun</h2>
         <IconButton className="aapm-editor-drawer-close" label="Tutup Susun" tooltip={false} icon="close" size="sm" onClick={onClose} />

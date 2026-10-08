@@ -86,7 +86,7 @@ async function request(path, options = /** @type {any} */ ({})) {
   return data;
 }
 
-async function stream(path, body, onEvent) {
+async function stream(path, body, onEvent, { signal } = /** @type {{ signal?: AbortSignal }} */ ({})) {
   if (!csrfToken) {
     await request("/auth/csrf");
   }
@@ -100,6 +100,7 @@ async function stream(path, body, onEvent) {
       ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -128,8 +129,9 @@ async function stream(path, body, onEvent) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let completed = false;
   const dispatch = (block) => {
-    const lines = block.split("\n");
+    const lines = block.split(/\r?\n/);
     const event =
       lines
         .find((line) => line.startsWith("event:"))
@@ -137,30 +139,41 @@ async function stream(path, body, onEvent) {
         .trim() || "message";
     const data = lines
       .filter((line) => line.startsWith("data:"))
-      .map((line) => line.slice(5).trim())
+      .map((line) => line.slice(5).replace(/^ /, ""))
       .join("\n");
     if (!data) return;
-    try {
-      onEvent?.({ event, data: JSON.parse(data) });
-    } catch {
-      /* ignore malformed stream events */
+    let parsed;
+    try { parsed = JSON.parse(data); }
+    catch { throw new ApiError("Respons APPI tidak dapat dibaca. Coba kirim ulang.", 0, "invalid_stream"); }
+    if (event === "error") {
+      throw new ApiError(parsed.message || "APPI belum dapat menjawab. Coba lagi.", 0, parsed.code || "stream_error");
     }
+    // Let callback failures propagate; swallowing them leaves the UI stuck in a false success state.
+    onEvent?.({ event, data: parsed });
+    if (event === "done") completed = true;
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += decoder
-      .decode(value || new Uint8Array(), { stream: !done })
-      .replace(/\r\n/g, "\n");
-    let boundary = buffer.indexOf("\n\n");
-    while (boundary >= 0) {
-      dispatch(buffer.slice(0, boundary));
-      buffer = buffer.slice(boundary + 2);
-      boundary = buffer.indexOf("\n\n");
+  try {
+    while (!completed) {
+      const { done, value } = await reader.read();
+      // Keep CRLF intact until a complete event arrives. CR and LF can be in separate chunks.
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      let boundary = /\r?\n\r?\n/.exec(buffer);
+      while (boundary && !completed) {
+        dispatch(buffer.slice(0, boundary.index));
+        buffer = buffer.slice(boundary.index + boundary[0].length);
+        boundary = /\r?\n\r?\n/.exec(buffer);
+      }
+      if (done) {
+        if (buffer.trim() && !completed) dispatch(buffer);
+        break;
+      }
     }
-    if (done) break;
+    if (!completed) throw new ApiError("Koneksi APPI terputus sebelum jawaban selesai. Coba kirim ulang.", 0, "stream_interrupted");
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
-  if (buffer.trim()) dispatch(buffer);
 }
 
 function createAbortError() {
@@ -332,8 +345,8 @@ export const nativeApi = {
       request("/admin/ai/rewrite-editorial", json({ message })),
     moduleCompanion: ({ action = "chat", message = "", module = {}, modules = [] } = {}) =>
       request("/admin/ai/module-companion", json({ action, message, module, modules })),
-    stream: ({ message, farmContext, includeFarmContext = true, onEvent }) =>
-      stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent),
+    stream: ({ message, farmContext, includeFarmContext = true, onEvent, signal }) =>
+      stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent, { signal }),
     conversations: {
       list: async ({ cursor = "", limit = 40 } = {}) => {
         const safeLimit = Math.max(10, Math.min(80, Number(limit) || 40));
@@ -371,11 +384,13 @@ export const nativeApi = {
         pageContext = "",
         includeFarmContext = true,
         onEvent,
+        signal,
       }) =>
         stream(
           `/ai/conversations/${encodeURIComponent(id)}/stream`,
           { message, farmContext, includeFarmContext, allowWebSearch, imageDataUrl, pageContext },
           onEvent,
+          { signal },
         ),
     },
     activity: {

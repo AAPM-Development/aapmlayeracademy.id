@@ -68,6 +68,7 @@ export default function AdminModuleCompanion({ module = {}, modules = [], scope 
   const [response, setResponse] = useState(null);
   const [pendingApply, setPendingApply] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const moduleContext = useMemo(() => companionModuleContext(module), [module]);
   const courseModules = useMemo(() => companionCourseModules(modules), [modules]);
   const materialSource = useMemo(() => companionMaterialSource(module), [module]);
@@ -114,12 +115,23 @@ export default function AdminModuleCompanion({ module = {}, modules = [], scope 
     setPendingApply({ type: "module", draft, suggestion });
   };
 
-  const confirmApply = () => {
-    if (!pendingApply) return;
-    if (pendingApply.type === "module") onApplyModule?.(pendingApply.draft);
-    if (pendingApply.type === "order") onApplyOrder?.(pendingApply.ids);
-    notify({ title: "Saran APPI diterapkan", description: pendingApply.type === "order" ? "Urutan dikirim untuk disimpan ke kurikulum." : "Perubahan masih berupa draft lokal. Tinjau lalu simpan modul." });
-    setPendingApply(null);
+  const confirmApply = async (event) => {
+    event?.preventDefault();
+    if (!pendingApply || isApplying) return;
+    setIsApplying(true);
+    try {
+      if (pendingApply.type === "order") {
+        if (await onApplyOrder?.(pendingApply.ids) === false) return;
+      } else {
+        await onApplyModule?.(pendingApply.draft);
+        notify({ title: "Saran APPI diterapkan", description: "Perubahan masih berupa draft lokal. Tinjau lalu simpan modul." });
+      }
+      setPendingApply(null);
+    } catch (error) {
+      notify({ variant: "destructive", title: "Saran belum diterapkan", description: error.message || "Coba lagi." });
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   return <>
@@ -138,6 +150,6 @@ export default function AdminModuleCompanion({ module = {}, modules = [], scope 
         {response && <div className="mt-3 space-y-2" role="status" aria-live="polite"><div className="rounded-[var(--radius-control)] bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">{response.reply}{response.notice && <div className="mt-1 text-[11px] text-brand-orange">{response.notice}</div>}</div>{response.suggestions?.length ? response.suggestions.map((suggestion) => <article key={suggestion.id} className="rounded-[var(--radius-control)] border border-border bg-background p-3"><div className="flex flex-wrap items-start gap-2"><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><AapmIcon name={suggestion.kind === "review" ? "checkRead" : suggestion.kind === "order" ? "reorder" : "edit"} className="h-3.5 w-3.5 text-brand-orange" /><h4 className="text-xs font-semibold">{suggestion.title || "Saran APPI"}</h4></div>{suggestion.reason && <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{suggestion.reason}</p>}</div>{suggestion.kind !== "review" && <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2 text-[11px]" onClick={() => prepareApply(suggestion)}>{suggestion.kind === "order" ? "Gunakan urutan" : "Pratinjau penerapan"}</Button>}</div><SuggestionPreview suggestion={suggestion} modules={courseModules} /></article>) : <div className="rounded-[var(--radius-control)] bg-surface-subtle px-3 py-2 text-[11px] text-muted-foreground">Belum ada saran terstruktur. Coba instruksi yang lebih spesifik.</div>}</div>}
       </div>}
     </Surface>
-    <ConfirmDialog open={Boolean(pendingApply)} onOpenChange={(openValue) => !openValue && setPendingApply(null)} title={pendingApply?.type === "order" ? "Terapkan susunan kurikulum APPI?" : "Masukkan saran APPI ke editor?"} description={pendingApply?.type === "order" ? "Urutan ini akan dikirim ke penyimpanan kurikulum. Tidak ada modul yang dihapus; Anda masih dapat mengubahnya lagi dari board." : "Field yang dipilih akan menggantikan draft lokal di editor. Isi server belum berubah sampai Anda meninjau dan memilih Simpan modul."} confirmLabel={pendingApply?.type === "order" ? "Terapkan urutan" : "Masukkan ke editor"} cancelLabel="Kembali ke preview" icon="solar:stars-minimalistic-bold-duotone" onConfirm={confirmApply} />
+    <ConfirmDialog open={Boolean(pendingApply)} onOpenChange={(openValue) => !openValue && !isApplying && setPendingApply(null)} loading={isApplying} title={pendingApply?.type === "order" ? "Terapkan susunan kurikulum APPI?" : "Masukkan saran APPI ke editor?"} description={pendingApply?.type === "order" ? "Urutan ini akan dikirim ke penyimpanan kurikulum. Tidak ada modul yang dihapus; Anda masih dapat mengubahnya lagi dari board." : "Field yang dipilih akan menggantikan draft lokal di editor. Isi server belum berubah sampai Anda meninjau dan memilih Simpan modul."} confirmLabel={pendingApply?.type === "order" ? "Terapkan urutan" : "Masukkan ke editor"} cancelLabel="Kembali ke preview" icon="solar:stars-minimalistic-bold-duotone" onConfirm={confirmApply} />
   </>;
 }

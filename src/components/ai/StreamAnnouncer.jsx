@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
  * The one live region for an answer in progress. Streaming tokens are never
  * announced; screen readers hear only that APPI started and finished.
  */
-export default function StreamAnnouncer({ isStreaming }) {
+export default function StreamAnnouncer({ isStreaming, failed = false }) {
   const [text, setText] = useState("");
   const wasStreaming = useRef(false);
 
@@ -16,9 +16,9 @@ export default function StreamAnnouncer({ isStreaming }) {
     }
     if (wasStreaming.current) {
       wasStreaming.current = false;
-      setText("APPI selesai menjawab.");
+      setText(failed ? "Jawaban APPI belum selesai. Coba kirim ulang." : "APPI selesai menjawab.");
     }
-  }, [isStreaming]);
+  }, [failed, isStreaming]);
 
   return (
     <div className="aapm-visually-hidden" role="status" aria-live="polite">

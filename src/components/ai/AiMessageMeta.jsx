@@ -36,7 +36,7 @@ export default function AiMessageMeta({
         role="alert"
       >
         <AapmIcon name="alert" className="h-3.5 w-3.5 shrink-0" />
-        <span className="min-w-0">Permintaan tidak dapat diproses. Coba kirim ulang beberapa saat lagi.</span>
+        <span className="min-w-0">{message.notice || "Permintaan tidak dapat diproses. Coba kirim ulang beberapa saat lagi."}</span>
         {retryPrompt && onRetry ? (
           <button type="button" className="aapm-ai-status-line__action" disabled={disabled} onClick={() => onRetry(retryPrompt)}>
             Kirim ulang

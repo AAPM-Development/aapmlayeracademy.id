@@ -43,6 +43,7 @@ import {
 } from "@/components/admin/AdminPage";
 import {
   useAdminModule,
+  useAdminCourse,
   useAdminModuleQuestions,
   useCreateAdminModule,
   useDeleteAdminModule,
@@ -60,6 +61,7 @@ import {
   normaliseAiEditorialMaterial,
 } from "@/lib/aiEditorialRewrite";
 import { useAuth } from "@/lib/AuthContext";
+import { reconcileSavedModule } from "@/lib/editorSaveState";
 
 const emptyModule = {
   levelNumber: 1,
@@ -943,19 +945,23 @@ export default function AdminModuleEditor() {
   const { toast } = useToast();
   const { user } = useAuth();
   const isNew = moduleId === "new";
+  const { data: course, isLoading: isLoadingCourse } = useAdminCourse(courseId);
   const newModuleParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const isNewChapter = isNew && newModuleParams.get("newChapter") === "1";
   const newModuleDefaults = useMemo(() => {
     if (!isNew) return emptyModule;
-    const levelNumber = Number(newModuleParams.get("levelNumber"));
+    const requestedLevel = Number(newModuleParams.get("levelNumber"));
+    const levelNumber = Number.isInteger(requestedLevel) && requestedLevel >= 1 && requestedLevel <= 20
+      ? requestedLevel : course?.curriculum?.[0]?.levelNumber || 1;
+    const chapter = course?.curriculum?.find((level) => Number(level.levelNumber) === Number(levelNumber));
     const levelName = newModuleParams.get("levelName");
     return {
       ...emptyModule,
-      ...(Number.isInteger(levelNumber) && levelNumber >= 1 && levelNumber <= 20 ? { levelNumber } : {}),
-      ...(levelName ? { levelName } : {}),
+      levelNumber,
+      levelName: chapter?.levelName || levelName || emptyModule.levelName,
       ...(isNewChapter ? { levelName: "Chapter baru" } : {}),
     };
-  }, [isNew, isNewChapter, newModuleParams]);
+  }, [course, isNew, isNewChapter, newModuleParams]);
   const accountId = user?.id ? String(user.id) : "";
   const editorModuleId = isNew ? "new" : moduleId;
   const { data, isLoading, error, refetch } = useAdminModule(
@@ -1025,6 +1031,7 @@ export default function AdminModuleEditor() {
   const serverFormSnapshotRef = useRef(moduleFormSnapshot(emptyModule));
   const editorContextRef = useRef("");
   const formRef = useRef(form);
+  const saveInFlightRef = useRef(false);
   const isDirtyRef = useRef(false);
   const pendingNavigationRef = useRef(null);
   const historyGuardRef = useRef(null);
@@ -1037,6 +1044,8 @@ export default function AdminModuleEditor() {
     () => `${accountId}:${courseId}:${editorModuleId}:${location.search}`,
     [accountId, courseId, editorModuleId, location.search],
   );
+  const currentEditorContextRef = useRef(editorContextKey);
+  currentEditorContextRef.current = editorContextKey;
   const draftKeyRef = useRef(draftKey);
   // The draft key this session has written. Only a draft this session wrote is
   // removed when the edit is undone, so a draft from an earlier visit still prompts.
@@ -1057,13 +1066,24 @@ export default function AdminModuleEditor() {
   );
 
   useEffect(() => {
+    const resizeHeadings = () => {
+      ["module-title", "module-summary"].forEach((id) => {
+        const field = document.getElementById(id);
+        if (!field || !field.getClientRects().length) return;
+        field.style.height = "auto";
+        field.style.height = `${field.scrollHeight}px`;
+      });
+    };
+    resizeHeadings();
+    window.addEventListener("resize", resizeHeadings);
+    return () => window.removeEventListener("resize", resizeHeadings);
+  }, [activeTab, form.title, form.summary]);
+
+  useEffect(() => {
     formRef.current = form;
     draftKeyRef.current = draftKey;
     isDirtyRef.current = isDirty;
   }, [draftKey, form, isDirty]);
-
-  useEffect(() => {
-  }, [editorContextKey, isNew]);
 
   const promptNavigation = (request) => {
     pendingNavigationRef.current = request;
@@ -1089,7 +1109,7 @@ export default function AdminModuleEditor() {
 
   useEffect(() => {
     const module = data?.module;
-    if (!accountId || (!isNew && !module)) return;
+    if (!accountId || (isNew && isLoadingCourse) || (!isNew && !module)) return;
     if (editorContextRef.current === editorContextKey) return;
 
     const nextForm = isNew ? { ...newModuleDefaults } : moduleFormFromApi(module);
@@ -1100,6 +1120,9 @@ export default function AdminModuleEditor() {
     setForm(nextForm);
     formRef.current = nextForm;
     setEditorReady(true);
+    setSaveError("");
+    setSavedAt(null);
+    setDrawer(null);
 
     const draft = readEditorDraft(draftKey);
     const draftSnapshot = draft ? moduleFormSnapshot(draft.form) : "";
@@ -1111,12 +1134,16 @@ export default function AdminModuleEditor() {
       draftSnapshot !== nextServerSnapshot &&
       (!draft.serverSnapshot || draftMatchesCurrentServer)
     ) {
-      setPendingDraft({ key: draftKey, ...draft });
+      if (location.state?.preserveEditorDraft && draftMatchesCurrentServer) {
+        setForm(draft.form);
+        formRef.current = draft.form;
+        setPendingDraft(null);
+      } else setPendingDraft({ key: draftKey, ...draft });
     } else {
       removeEditorDraft(draftKey);
       setPendingDraft(null);
     }
-  }, [accountId, data, draftKey, editorContextKey, isNew, newModuleDefaults]);
+  }, [accountId, data, draftKey, editorContextKey, isLoadingCourse, isNew, location.state, newModuleDefaults]);
 
   useEffect(() => {
     if (!editorReady || !isDirty || !draftKey) return undefined;
@@ -1364,9 +1391,29 @@ export default function AdminModuleEditor() {
   const submitEditorForm = () => {
     if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
   };
+  const handleInvalidField = (event) => {
+    event.preventDefault();
+    const control = event.target;
+    if (control !== event.currentTarget.querySelector(":invalid")) return;
+    const label = { "module-number": "Nomor modul", "module-level-number": "Nomor chapter", "module-level-name": "Nama chapter", "module-title": "Judul modul" }[control.id] || "Field ini";
+    const message = control.validity.valueMissing ? `${label} wajib diisi.`
+      : control.type === "number" ? `${label} harus berupa bilangan bulat dari ${control.min} sampai ${control.max}.`
+        : control.validationMessage || "Lengkapi field wajib sebelum menyimpan.";
+    setSaveError(message);
+    if (control.closest(".aapm-editor-inspector")) openInspector("module");
+    window.requestAnimationFrame(() => {
+      // Native validation can target a field inside a hidden inspector tab/sheet.
+      // Reveal it before moving focus so the next action is immediately available.
+      const firstInvalid = document.querySelector("#module-editor-form :invalid");
+      firstInvalid?.focus();
+      firstInvalid?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  };
   const save = async (event) => {
     event.preventDefault();
+    if (saveInFlightRef.current) return;
     if (editorialComposerRef.current?.validate?.() === false) {
+      setSaveError("Lengkapi blok materi yang ditandai sebelum menyimpan.");
       toast({
         variant: "destructive",
         title: "Lengkapi blok materi terlebih dahulu",
@@ -1374,49 +1421,68 @@ export default function AdminModuleEditor() {
       });
       return;
     }
+    const submittedForm = formRef.current;
+    if (!submittedForm.content.trim() && !parseEditorialDocument(submittedForm.editorialContent)?.blocks?.some((block) => block.type !== "divider")) {
+      setSaveError("Tambahkan materi utama sebelum menyimpan modul.");
+      scrollToEditorSection("module-section-content");
+      return;
+    }
+    const submittedContext = editorContextKey;
     const payload = {
-      ...form,
-      levelNumber: Number(form.levelNumber),
-      moduleNumber: Number(form.moduleNumber),
-      order: Number(form.order || 0),
-      learningObjectives: textToList(form.learningObjectives),
-      keyTakeaways: textToList(form.keyTakeaways),
-      checklist: textToList(form.checklist),
+      ...submittedForm,
+      levelNumber: Number(submittedForm.levelNumber),
+      moduleNumber: Number(submittedForm.moduleNumber),
+      order: Number(submittedForm.order || 0),
+      learningObjectives: textToList(submittedForm.learningObjectives),
+      keyTakeaways: textToList(submittedForm.keyTakeaways),
+      checklist: textToList(submittedForm.checklist),
     };
     if (!isNew && payload.videoUrl === (data?.module?.videoUrl || "")) {
       delete payload.videoUrl;
     }
+    saveInFlightRef.current = true;
     try {
       const result = isNew
         ? await createModule.mutateAsync(payload)
         : await updateModule.mutateAsync({ moduleId, data: payload });
+      if (currentEditorContextRef.current !== submittedContext) return;
       const saved = result?.module || result;
       toast({
         title: "Modul disimpan",
         description: "Perubahan langsung dipakai oleh Academy.",
       });
-      const savedForm = saved?.id ? moduleFormFromApi(saved) : form;
+      const savedForm = saved?.id ? moduleFormFromApi(saved) : submittedForm;
       const savedSnapshot = moduleFormSnapshot(savedForm);
+      const nextForm = reconcileSavedModule(submittedForm, formRef.current, savedForm);
+      const hasNewEdits = moduleFormSnapshot(nextForm) !== savedSnapshot;
       serverFormSnapshotRef.current = savedSnapshot;
       initialFormRef.current = savedSnapshot;
-      setForm(savedForm);
-      formRef.current = savedForm;
-      removeEditorDraft(draftKey);
+      setForm(nextForm);
+      formRef.current = nextForm;
+      if (hasNewEdits) {
+        const nextDraftKey = isNew && saved?.id ? editorDraftKey(accountId, courseId, saved.id) : draftKey;
+        writeEditorDraft(nextDraftKey, nextForm, savedSnapshot);
+        if (nextDraftKey !== draftKey) removeEditorDraft(draftKey);
+      } else removeEditorDraft(draftKey);
       setSaveError("");
       setSavedAt(new Date());
       setEditorReady(true);
-      releaseHistoryGuard();
+      if (!hasNewEdits || isNew) releaseHistoryGuard();
       if (isNew && saved?.id)
         navigate(`/admin/courses/${courseId}/modules/${saved.id}`, {
           replace: true,
+          state: { preserveEditorDraft: hasNewEdits },
         });
     } catch (saveError) {
+      if (currentEditorContextRef.current !== submittedContext) return;
       setSaveError(saveError?.message || "Periksa isian, lalu coba lagi.");
       toast({
         variant: "destructive",
         title: "Modul belum disimpan",
         description: saveError.message,
       });
+    } finally {
+      saveInFlightRef.current = false;
     }
   };
   const remove = async ({ purgeProgress = false } = {}) => {
@@ -1464,9 +1530,8 @@ export default function AdminModuleEditor() {
       formRef.current = next;
       return next;
     });
-    toast({ title: "Saran APPI diterapkan", description: "Perubahan masih berupa draft lokal. Tinjau lalu pilih Simpan modul." });
   };
-  if (!isNew && isLoading)
+  if ((!isNew && isLoading) || (isNew && isLoadingCourse))
     return (
       <AdminPageFrame title="Editor modul">
         <AdminLoading label="Memuat modul…" />
@@ -1505,7 +1570,7 @@ export default function AdminModuleEditor() {
         )}
       >
         <TabsContent value="content" className="aapm-editor-content">
-          <form id="module-editor-form" onSubmit={save} className="aapm-editor-form aapm-editor-workspace">
+          <form id="module-editor-form" onSubmit={save} onInvalid={handleInvalidField} className="aapm-editor-form aapm-editor-workspace">
             <EditorOutline
               asideRef={outlineDrawerRef}
               drawerOpen={drawer === "outline"}
@@ -1564,6 +1629,7 @@ export default function AdminModuleEditor() {
                   settingsContainer={blockInspectorNode}
                   outlineContainer={outlineSlot}
                   onSelectionChange={handleBlockSelection}
+                  onOutlineSelect={closeDrawer}
                   value={form.editorialContent}
                   fallback={form.content}
                   legacyVideoUrl={form.videoUrl}
@@ -1631,7 +1697,7 @@ export default function AdminModuleEditor() {
               </section>
             </div>
 
-            <aside ref={inspectorDrawerRef} className="aapm-editor-inspector" aria-label="Inspektor editor" data-drawer-open={drawer === "inspector" ? "true" : undefined}>
+            <aside ref={inspectorDrawerRef} className="aapm-editor-inspector" aria-label="Inspektor editor" role={drawer === "inspector" ? "dialog" : undefined} aria-modal={drawer === "inspector" ? true : undefined} tabIndex={drawer === "inspector" ? -1 : undefined} data-drawer-open={drawer === "inspector" ? "true" : undefined}>
               <div className="aapm-editor-inspector__head">
                 <IconButton className="aapm-editor-drawer-close" label="Tutup inspektor" tooltip={false} icon="close" size="sm" onClick={closeDrawer} />
               </div>
@@ -1643,9 +1709,20 @@ export default function AdminModuleEditor() {
                     role="tab"
                     id={`inspector-tab-${tab.id}`}
                     aria-selected={inspectorTab === tab.id}
-                    aria-controls={`inspector-panel-${tab.id}`}
+                    aria-controls={tab.id === "module" ? "module-section-identity" : `inspector-panel-${tab.id}`}
+                    tabIndex={inspectorTab === tab.id ? 0 : -1}
                     className="aapm-tabs-trigger"
                     onClick={() => setInspectorTab(tab.id)}
+                    onKeyDown={(event) => {
+                      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                      event.preventDefault();
+                      const index = INSPECTOR_TABS.findIndex((item) => item.id === tab.id);
+                      const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? INSPECTOR_TABS.length - 1
+                        : (index + (event.key === "ArrowRight" ? 1 : -1) + INSPECTOR_TABS.length) % INSPECTOR_TABS.length;
+                      const nextTab = INSPECTOR_TABS[nextIndex].id;
+                      setInspectorTab(nextTab);
+                      document.getElementById(`inspector-tab-${nextTab}`)?.focus();
+                    }}
                   >
                     <AapmIcon name={tab.icon} />{tab.label}
                   </button>
@@ -1657,14 +1734,23 @@ export default function AdminModuleEditor() {
                 </div>
                 <div className="aapm-card__content" ref={setBlockInspectorNode} />
               </section>
-              <section className="aapm-card" id="module-section-identity" hidden={inspectorTab !== "module"} data-active={activeSection === "module-section-identity" ? "true" : "false"} aria-labelledby="editor-identity-title">
+              <section className="aapm-card" id="module-section-identity" role="tabpanel" hidden={inspectorTab !== "module"} data-active={activeSection === "module-section-identity" ? "true" : "false"} aria-labelledby="inspector-tab-module">
                 <div className="aapm-card__header">
                   <h2 id="editor-identity-title" className="aapm-card__title">Identitas modul</h2>
                   <p className="aapm-card__description">Posisi di kurikulum dan informasi di katalog learner.</p>
                 </div>
                 <div className="aapm-card__content grid gap-3" id="module-identity-fields">
                   <div className="grid grid-cols-2 gap-3">
-                    <Field id="module-level-number" label="No. chapter" required><Input type="number" min="1" max="20" value={form.levelNumber} onChange={(event) => set("levelNumber", event.target.value)} /></Field>
+                    <Field id="module-level-number" label="No. chapter" required><Input type="number" min="1" max="20" value={form.levelNumber} onChange={(event) => {
+                      const value = event.target.value;
+                      const chapter = course?.curriculum?.find((level) => Number(level.levelNumber) === Number(value));
+                      setSaveError("");
+                      setForm((current) => {
+                        const next = { ...current, levelNumber: value, ...(chapter ? { levelName: chapter.levelName } : {}) };
+                        formRef.current = next;
+                        return next;
+                      });
+                    }} /></Field>
                     <Field id="module-number" label="No. modul" required><Input type="number" min="1" max="999" value={form.moduleNumber} onChange={(event) => set("moduleNumber", event.target.value)} /></Field>
                   </div>
                   <Field id="module-level-name" label="Nama chapter" required><Input value={form.levelName} onChange={(event) => set("levelName", event.target.value)} /></Field>
@@ -1697,7 +1783,7 @@ export default function AdminModuleEditor() {
                 </div>
               </section>
 
-              <section className="aapm-card aapm-editor-ai" aria-labelledby="editor-ai-title" hidden={inspectorTab !== "ai"}>
+              <section className="aapm-card aapm-editor-ai" id="inspector-panel-ai" role="tabpanel" aria-labelledby="inspector-tab-ai" hidden={inspectorTab !== "ai"}>
                 <div className="aapm-card__header">
                   <div className="flex items-center gap-2">
                     <IconTile icon="ai" hue="orange" size="xs" shape="circle" />
@@ -1706,7 +1792,7 @@ export default function AdminModuleEditor() {
                   <p className="aapm-card__description">Semua saran tampil sebagai pratinjau dan baru diterapkan setelah Anda setujui.</p>
                 </div>
                 <div className="aapm-card__content grid gap-3">
-                  <AdminModuleCompanion module={form} onApplyModule={applyCompanionDraft} />
+                  <AdminModuleCompanion key={editorContextKey} module={form} onApplyModule={applyCompanionDraft} />
                   <AiModuleDraft form={form} toast={toast} onApply={applyCompanionDraft} />
                 </div>
               </section>

@@ -947,7 +947,9 @@ try {
         if (!$conversation) {
             error_response('Percakapan tidak ditemukan.', 404, 'not_found');
         }
-        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 240');
+        // Bound the payload to the latest turns, then restore reading order. Taking
+        // the first 240 erased newly streamed answers when long chats reconciled.
+        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM (SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 240) AS recent_messages ORDER BY id ASC');
         $messageStmt->execute([(int) $conversation['id']]);
         json_response(['conversation' => present_ai_conversation($conversation), 'messages' => array_map('present_ai_chat_message', $messageStmt->fetchAll())]);
     }
