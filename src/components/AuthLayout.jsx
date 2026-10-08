@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import AppBrand from "@/components/AppBrand";
-import AapmIcon from "@/components/icons/AapmIcon";
+import { IconTile } from "@/design-system";
 
 const academyInsights = [
   "Di balik hasil yang konsisten, ada keputusan kecil yang diamati, dicatat, dan dijalankan dengan disiplin.",
@@ -91,15 +91,17 @@ function AcademyVideoPanel() {
 /**
  * Auth shell (AAPM Farm benchmark): calm form column, brand media panel.
  * Every auth route shares the same anatomy so sign-in, registration and
- * recovery feel like one flow.
+ * recovery feel like one flow. Recovery routes add an icon tile; its hue
+ * carries meaning (green for the neutral step and success, rose for a dead
+ * link), never the APPI orange.
  */
-function AuthLayout({ title, subtitle, footer, children, iconName = null }) {
+function AuthLayout({ title, subtitle, footer, children, iconName = null, iconHue = "green" }) {
   return (
     <div className="aapm-auth">
       <main className="aapm-auth__pane">
         <div className="aapm-auth__form">
           <AppBrand product="aapm" variant="logo" className="aapm-auth__brand" alt="AAPM Layer Academy" />
-          {iconName ? <span className="aapm-icon-tile mb-4" data-hue="orange" data-size="lg" data-shape="circle"><AapmIcon name={iconName} /></span> : null}
+          {iconName ? <IconTile icon={iconName} hue={iconHue} size="lg" shape="circle" className="aapm-auth__icon" /> : null}
           <h1 className="aapm-auth__title">{title}</h1>
           {subtitle ? <p className="aapm-auth__subtitle">{subtitle}</p> : null}
           {children}

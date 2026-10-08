@@ -261,7 +261,9 @@
       "hueRose": "{primitive.hueRose}",
       "hueRoseSoft": "{primitive.hueRoseSoft}",
       "hueRoseTint": "{primitive.hueRoseTint}",
-      "hueRoseInk": "{primitive.hueRoseInk}"
+      "hueRoseInk": "{primitive.hueRoseInk}",
+      "onMedia": "{primitive.white}",
+      "mediaScrim": "linear-gradient(180deg, rgba(10, 30, 14, 0) 40%, rgba(10, 30, 14, .72) 100%)"
     },
     "dark": {
       "background": "{primitive.dark}",
@@ -343,7 +345,9 @@
       "hueRose": "{primitive.hueRoseDark}",
       "hueRoseSoft": "{primitive.hueRoseSoftDark}",
       "hueRoseTint": "{primitive.hueRoseTintDark}",
-      "hueRoseInk": "{primitive.hueRoseDark}"
+      "hueRoseInk": "{primitive.hueRoseDark}",
+      "onMedia": "{primitive.white}",
+      "mediaScrim": "linear-gradient(180deg, rgba(0, 0, 0, .32) 0%, rgba(0, 0, 0, .18) 40%, rgba(0, 0, 0, .72) 100%)"
     }
   },
   "component": {
@@ -472,7 +476,10 @@
     "choiceSelectedDepth": "0 2px 0 var(--aapm-semantic-primary)",
     "courseCardRadius": "{primitive.radiusSurface}",
     "tileIconFrame": "44px",
-    "brandWidth": "132px"
+    "brandWidth": "132px",
+    "authFormWidth": "400px",
+    "authTopOffset": "clamp(32px, 10vh, 96px)",
+    "authMediaBand": "144px"
   },
   "bridge": {
     "description": "Legacy variable names generated as HSL channels so existing utility classes and migrated feature CSS (hsl(var(--x))) follow the AAPM authority.",

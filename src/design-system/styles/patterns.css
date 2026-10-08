@@ -644,6 +644,8 @@
   .aapm-button[data-size="icon-sm"] { width: var(--aapm-component-action-height); min-height: var(--aapm-component-action-height); }
   .aapm-tabs-trigger { min-height: var(--aapm-component-action-height); }
   .aapm-auth .aapm-link { display: inline-flex; align-items: center; min-height: var(--aapm-component-action-height); }
+  /* In a field's label row the taller target overlaps the row instead of pushing the input down. */
+  .aapm-auth .aapm-field .aapm-link { margin-block: calc((var(--aapm-component-type-support-line) - var(--aapm-component-action-height)) / 2); }
 }
 
 /* Phones: the floating APPI pill steps aside where a bottom bar or a focus footer already holds the space. */

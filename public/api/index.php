@@ -126,7 +126,7 @@ try {
         $email = normalize_email($input['email'] ?? '');
         $password = (string) ($input['password'] ?? '');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
-            error_response('Email dan password wajib diisi.', 422, 'validation_error');
+            error_response('Email dan kata sandi wajib diisi.', 422, 'validation_error');
         }
         require_csrf();
         rate_limit_guard('login-ip', '', 60, 900, 900);
@@ -138,7 +138,7 @@ try {
         if (!$user || !password_verify($password, $user['password_hash'])) {
             rate_limit_failure('login-ip', '', 60, 900, 900);
             rate_limit_failure('login-user', $email, 8, 900, 900);
-            error_response('Email atau password tidak sesuai.', 401, 'invalid_credentials');
+            error_response('Email atau kata sandi tidak sesuai.', 401, 'invalid_credentials');
         }
 
         rate_limit_clear('login-ip');
@@ -215,7 +215,7 @@ try {
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             rate_limit_guard('forgot-user', $email, 3, 3600, 3600);
         }
-        $result = ['message' => 'Jika akun tersebut ada, instruksi reset password telah dibuat.'];
+        $result = ['message' => 'Jika akun tersebut ada, instruksi reset kata sandi telah dibuat.'];
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
             $stmt->execute([$email]);
@@ -254,7 +254,7 @@ try {
         $user = $stmt->fetch();
         if (!$user) {
             rate_limit_failure('reset-ip', '', 10, 3600, 3600);
-            error_response('Link reset password sudah tidak berlaku.', 400, 'invalid_reset_token');
+            error_response('Tautan reset kata sandi sudah tidak berlaku.', 400, 'invalid_reset_token');
         }
         $update = db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL WHERE id = ?');
         $update->execute([app_password_hash($password), (int) $user['id']]);

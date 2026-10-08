@@ -305,6 +305,9 @@
   --aapm-component-course-card-radius: var(--aapm-primitive-radius-surface);
   --aapm-component-tile-icon-frame: 44px;
   --aapm-component-brand-width: 132px;
+  --aapm-component-auth-form-width: 400px;
+  --aapm-component-auth-top-offset: clamp(32px, 10vh, 96px);
+  --aapm-component-auth-media-band: 144px;
 }
 
 :root,
@@ -390,6 +393,8 @@
   --aapm-semantic-hue-rose-soft: var(--aapm-primitive-hue-rose-soft);
   --aapm-semantic-hue-rose-tint: var(--aapm-primitive-hue-rose-tint);
   --aapm-semantic-hue-rose-ink: var(--aapm-primitive-hue-rose-ink);
+  --aapm-semantic-on-media: var(--aapm-primitive-white);
+  --aapm-semantic-media-scrim: linear-gradient(180deg, rgba(10, 30, 14, 0) 40%, rgba(10, 30, 14, .72) 100%);
   /* Legacy shadcn/Tailwind bridge (HSL channels). */
   --background: 90 10% 96.1%;
   --foreground: 135 6.1% 12.9%;
@@ -572,6 +577,8 @@
   --aapm-semantic-hue-rose-soft: var(--aapm-primitive-hue-rose-soft-dark);
   --aapm-semantic-hue-rose-tint: var(--aapm-primitive-hue-rose-tint-dark);
   --aapm-semantic-hue-rose-ink: var(--aapm-primitive-hue-rose-dark);
+  --aapm-semantic-on-media: var(--aapm-primitive-white);
+  --aapm-semantic-media-scrim: linear-gradient(180deg, rgba(0, 0, 0, .32) 0%, rgba(0, 0, 0, .18) 40%, rgba(0, 0, 0, .72) 100%);
   /* Legacy shadcn/Tailwind bridge (HSL channels). */
   --background: 150 8.3% 4.7%;
   --foreground: 120 8.3% 95.3%;
