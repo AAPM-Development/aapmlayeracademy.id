@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
+import { useAuth } from "@/lib/AuthContext";
 import { Button, Alert, Field, InputGroup } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
@@ -38,6 +39,9 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  if (!isLoadingAuth && isAuthenticated) return <Navigate to={"/"} replace />;
 
   return (
     <AuthLayout

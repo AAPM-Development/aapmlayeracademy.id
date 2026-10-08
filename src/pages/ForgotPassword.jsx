@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
+import { useAuth } from "@/lib/AuthContext";
 import { Alert, Button, Field, InputGroup } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import AapmIcon from "@/components/icons/AapmIcon";
@@ -26,6 +27,9 @@ export default function ForgotPassword() {
       setSent(true);
     }
   };
+
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  if (!isLoadingAuth && isAuthenticated) return <Navigate to={"/"} replace />;
 
   return (
     <AuthLayout
