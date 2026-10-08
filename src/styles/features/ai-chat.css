@@ -11,6 +11,16 @@
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* ----------------------------------- Answers read as text, not as cards
+ * Only the user's turn carries a tint. The APPI answer sits on the canvas, so
+ * the question and the answer's text stand out instead of a box. */
+.aapm-chat-turn__body .aapm-ai-answer-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 /* ------------------------------------------------------------- Turns */
 .aapm-chat-turn {
   display: flex;
@@ -70,7 +80,7 @@
   .aapm-chat-turn { gap: var(--aapm-primitive-space-2); }
   /* One row on phones: tools scroll sideways, send is icon-only (aria-label stays). */
   .aapm-ai-composer-frame__footer { flex-wrap: nowrap; }
-  .aapm-ai-composer-frame .aapm-ai-composer-tools { flex-wrap: nowrap; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .aapm-ai-composer-frame .aapm-ai-composer-tools { flex-wrap: nowrap; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .aapm-ai-composer-frame .aapm-ai-send-control { min-width: 2.75rem; padding-inline: 0; }
   .aapm-ai-composer-frame .aapm-ai-send-control > span { display: none; }
 }
@@ -219,7 +229,7 @@
 .aapm-history-scope > .aapm-tabs-trigger[aria-checked="true"] {
   background: transparent;
   color: var(--aapm-semantic-foreground);
-  box-shadow: inset 0 -2px 0 var(--aapm-semantic-ai);
+  box-shadow: inset 0 -2px 0 var(--aapm-semantic-foreground);
 }
 
 /* Header: one row on phones; the title truncates instead of pushing actions down. */
@@ -249,6 +259,11 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
   border-color: var(--aapm-semantic-border);
 }
 .aapm-token-scrim { background: color-mix(in srgb, var(--aapm-semantic-foreground) 24%, transparent); }
+/* The mobile history sheet had no surface of its own, so the page showed through it. */
+.aapm-token-sheet {
+  background: var(--aapm-semantic-surface);
+  color: var(--aapm-semantic-foreground);
+}
 .aapm-ai-floating-panel {
   background: var(--aapm-semantic-surface);
   border: 1px solid var(--aapm-semantic-border);
@@ -310,4 +325,39 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 .aapm-ai-composer--compact .aapm-ai-composer-context { display: none; }
 @media (max-width: 639px) {
   .aapm-ai-status-line button { min-height: var(--aapm-component-action-height); }
+}
+
+/* ------------------------------------------------- Local (fallback) replies
+ * A local reply is not an analysis: it gets its own quiet block with the retry
+ * as a real button, instead of an underlined link in a status line. */
+.aapm-ai-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3);
+  margin-top: var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--aapm-semantic-surface-subtle);
+}
+.aapm-ai-fallback > .aapm-icon { color: var(--aapm-semantic-ai); }
+.aapm-ai-fallback__body { flex: 1 1 14rem; min-width: 0; }
+.aapm-ai-fallback__title {
+  margin: 0;
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-strong);
+  line-height: 1.4;
+}
+.aapm-ai-fallback__text {
+  margin: 2px 0 0;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.45;
+}
+.aapm-ai-fallback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aapm-primitive-space-2);
 }

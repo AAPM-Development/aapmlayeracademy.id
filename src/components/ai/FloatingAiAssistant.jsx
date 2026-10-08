@@ -214,7 +214,7 @@ export default function FloatingAiAssistant() {
     retryingMessageId,
   } = useAiChat();
   const activeConversation = conversations.find(
-    (item) => item.id === activeConversationId,
+    (item) => activeConversationId != null && String(item.id) === String(activeConversationId),
   );
   const bubbleSuggestions = useMemo(
     () =>
@@ -631,7 +631,7 @@ export default function FloatingAiAssistant() {
                         compact
                         showMeta={index === lastAssistantMessageIndex || !message.persisted}
                       />
-                      {index === lastAssistantMessageIndex && !message.streaming && !message.error && (
+                      {index === lastAssistantMessageIndex && !message.streaming && !message.error && !message.fallback && (
                         <AiQuickActions
                           content={message.content}
                           pathname={location.pathname}

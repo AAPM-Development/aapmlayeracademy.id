@@ -1,5 +1,6 @@
 import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { Button } from "@/components/primitives";
 
 function providerLabel(message) {
   if (!message?.provider || message.fallback) return "";
@@ -59,6 +60,41 @@ export default function AiMessageMeta({
 
   if (!message?.fallback && !message?.persisted && !canRetryPersistence && !message?.provider) {
     return null;
+  }
+
+  // A local reply is not an analysis. Say so in its own block, with the retry
+  // as a real button, so it cannot pass for a normal answer.
+  if (message?.fallback) {
+    return (
+      <div className="aapm-ai-fallback" role="status">
+        <AapmIcon name="solar:info-circle-bold-duotone" className="mt-px h-4 w-4 shrink-0" />
+        <div className="aapm-ai-fallback__body">
+          <p className="aapm-ai-fallback__title">Balasan lokal</p>
+          <p className="aapm-ai-fallback__text">
+            {message.notice || "Penyedia AI belum menjawab, jadi APPI menampilkan balasan lokal."}
+            {!message.persisted ? " Belum tersimpan." : ""}
+          </p>
+        </div>
+        <div className="aapm-ai-fallback__actions">
+          {canRetryProvider && (
+            <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => onRetry(retryPrompt)}>
+              Coba lagi
+            </Button>
+          )}
+          {canRetryPersistence && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={persistenceRetrying || disabled}
+              onClick={() => onRetryPersistence(message)}
+            >
+              {persistenceRetrying ? "Menyimpan…" : "Coba simpan lagi"}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   const warning = Boolean(message?.fallback || !message?.persisted);

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiQuickActions from "@/components/ai/AiQuickActions";
@@ -29,16 +29,6 @@ const MermaidDiagram = React.lazy(
 
 const welcomeMessage =
   "Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.";
-
-const workspaceTools = [
-  { to: "/kpi", label: "Farm KPI", icon: "solar:chart-square-bold-duotone" },
-  {
-    to: "/calculators",
-    label: "Kalkulator",
-    icon: "solar:calculator-bold-duotone",
-  },
-  { to: "/modules", label: "Materi", icon: "solar:notebook-bold-duotone" },
-];
 
 function findLastAssistantMessageIndex(messages = []) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -313,7 +303,7 @@ function AssistantMessage({
         disabled={disabled}
         showMeta={showMeta}
       />
-      {showQuickActions && !message.streaming && !message.error && (
+      {showQuickActions && !message.streaming && !message.error && !message.fallback && (
         <AiQuickActions
           content={message.content}
           pathname={pathname}
@@ -376,30 +366,24 @@ function ConversationList({
   } = management;
 
   return (
-    <aside className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
-      <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold">Percakapan</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
-            Tersimpan di akun Anda
-          </p>
-        </div>
+    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
+      <div className="px-3 pb-2 pt-3">
         <Button
           type="button"
-          variant="ghost"
-          size="icon"
+          variant="outline"
+          size="md"
           onClick={onNew}
           disabled={disabled}
-          className="h-8 w-8"
-          aria-label="Percakapan baru"
+          className="w-full justify-start gap-2 px-3"
         >
           <AapmIcon
             name="solar:pen-new-square-bold"
             className="h-4 w-4 text-brand-orange"
           />
+          Percakapan baru
         </Button>
       </div>
-      <div className="px-3 pb-2 pt-1">
+      <div className="px-3 pb-2">
         <AiHistoryToolbar
           view={view}
           onViewChange={setView}
@@ -476,26 +460,6 @@ function ConversationList({
           </div>
         )}
       </ScrollArea>
-      <div className="border-t border-border p-3">
-        <p className="mb-2 px-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
-          ALAT CEPAT
-        </p>
-        <div className="space-y-1">
-          {workspaceTools.map((tool) => (
-            <Link
-              key={tool.to}
-              to={tool.to}
-              className="aapm-ai-tool-link flex items-center gap-2 rounded-[var(--radius-control)] px-2 py-2 text-xs text-muted-foreground transition-colors hover:bg-surface-default hover:text-foreground"
-            >
-              <AapmIcon
-                name={tool.icon}
-                className="h-4 w-4 text-brand-orange"
-              />
-              <span>{tool.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         onOpenChange={(open) => !open && setPendingDelete(null)}
@@ -863,9 +827,13 @@ export default function AiAssistant() {
       }),
     [farm, modules, progress, suggestionContext, user],
   );
-  const contextLabel = includeFarm
-    ? `${farm.length ? Math.min(farm.length, 8) : 0} catatan KPI aktif`
-    : "Tanpa konteks KPI";
+  const farmAvailable = farm.length > 0;
+  const activeConversation =
+    activeConversationId == null
+      ? null
+      : conversations.find((item) => String(item.id) === String(activeConversationId));
+  const firstPrompt = messages.find((item) => item.role === "user")?.content?.trim() || "";
+  const headerTitle = activeConversation?.title?.trim() || firstPrompt || "Percakapan baru";
   const historySyncMeta = {
     idle: { label: "Riwayat akun", icon: "solar:history-2-bold-duotone", className: "bg-surface-subtle text-muted-foreground" },
     saving: { label: "Menyimpan chat", icon: "loading", className: "bg-tint-orange text-tint-orange-foreground" },
@@ -1022,7 +990,7 @@ export default function AiAssistant() {
     const message =
       content ||
       "Tolong analisis foto farm ini. Bedakan observasi visual, hal yang belum pasti, dan data yang perlu saya cek berikutnya.";
-    const result = await send(message, { includeFarm, allowWebSearch, image, pageContext: "ai-assistant" });
+    const result = await send(message, { includeFarm: includeFarm && farmAvailable, allowWebSearch, image, pageContext: "ai-assistant" });
     if (result?.ok) {
       setImageAttachment(null);
       setAttachmentError("");
@@ -1063,9 +1031,7 @@ export default function AiAssistant() {
               state={isStreaming ? streamPhase : "idle"}
             />
             <div className="min-w-0">
-              <h1 className="aapm-chat-header__title">
-                {conversations.find((item) => item.id === activeConversationId)?.title?.trim() || (messages.length ? "Percakapan" : "Percakapan baru")}
-              </h1>
+              <h1 className="aapm-chat-header__title">{headerTitle}</h1>
               <p className="aapm-chat-header__meta">APPI · riwayat tersimpan di akun Anda</p>
             </div>
           </div>
@@ -1084,42 +1050,30 @@ export default function AiAssistant() {
               />
               Riwayat
             </Button>
-            <span
-              className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium sm:inline-flex ${includeFarm ? "bg-tint-green text-tint-green-foreground" : "bg-surface-subtle text-muted-foreground"}`}
-            >
+            {historySyncState === "saving" || historySyncState === "attention" ? (
               <span
-                className={`h-1.5 w-1.5 rounded-full ${includeFarm ? "bg-brand-green" : "bg-muted-foreground/50"}`}
-              />
-              {contextLabel}
-            </span>
-            {allowWebSearch && (
-              <span className="hidden items-center gap-1.5 rounded-full bg-tint-orange px-2.5 py-1 text-[10px] font-medium text-tint-orange-foreground sm:inline-flex">
+                role="status"
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${historySyncMeta.className}`}
+              >
                 <AapmIcon
-                  name="solar:global-bold-duotone"
-                  className="h-3 w-3"
+                  name={historySyncMeta.icon}
+                  className={`h-3 w-3 ${historySyncState === "saving" ? "animate-spin" : ""}`}
                 />
-                Referensi web
+                {historySyncMeta.label}
               </span>
-            )}
-            <span className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium xl:inline-flex ${historySyncMeta.className}`}>
-              <AapmIcon
-                name={historySyncMeta.icon}
-                className={`h-3 w-3 ${historySyncState === "saving" ? "animate-spin" : ""}`}
-              />
-              {historySyncMeta.label}
-            </span>
+            ) : null}
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={startNewConversation}
               disabled={isStreaming}
-              className="h-8 px-2.5 text-xs"
+              className="h-8 gap-1.5 px-2.5 text-xs lg:hidden"
             >
               <AapmIcon
                 name="solar:pen-new-square-bold"
                 className="h-3.5 w-3.5"
-              />{" "}
+              />
               Baru
             </Button>
           </div>
@@ -1245,11 +1199,11 @@ export default function AiAssistant() {
               imageAttachment={imageAttachment}
               onRemoveImage={() => setImageAttachment(null)}
               attachmentError={attachmentError}
-              includeFarm={includeFarm}
+              includeFarm={includeFarm && farmAvailable}
               onIncludeFarmChange={setIncludeFarm}
+              farmAvailable={farmAvailable}
               allowWebSearch={allowWebSearch}
               onAllowWebSearchChange={setAllowWebSearch}
-              contextLabel={contextLabel}
               showFarmToggle
               showPrivacy
               idPrefix="appi-workspace-photo"

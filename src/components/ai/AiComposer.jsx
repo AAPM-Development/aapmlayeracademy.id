@@ -24,7 +24,8 @@ export default function AiComposer({
   onIncludeFarmChange = () => {},
   allowWebSearch = false,
   onAllowWebSearchChange = () => {},
-  contextLabel = "Academy",
+  contextLabel = "",
+  farmAvailable = true,
   placeholder = "Tanyakan situasi yang sedang terjadi di farm…",
   compact = false,
   showFarmToggle = true,
@@ -121,20 +122,26 @@ export default function AiComposer({
               <AapmIcon name="solar:gallery-add-bold-duotone" className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-4 w-4"} />
               <span className="text-xs font-semibold">Foto</span>
             </Button>
-            <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[11px] text-muted-foreground sm:inline-flex">
-              <AapmIcon name="solar:map-point-bold-duotone" className="mr-1 h-3.5 w-3.5 shrink-0 text-brand-orange" />
-              <span className="truncate">{contextLabel}</span>
-            </span>
+            {contextLabel && (
+              <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[11px] text-muted-foreground sm:inline-flex">
+                <AapmIcon name="solar:map-point-bold-duotone" className="mr-1 h-3.5 w-3.5 shrink-0 text-brand-orange" />
+                <span className="truncate">{contextLabel}</span>
+              </span>
+            )}
             {showFarmToggle && (
-              <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              <label
+                className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground data-[unavailable=true]:cursor-default"
+                data-unavailable={farmAvailable ? undefined : "true"}
+                title={farmAvailable ? undefined : "Belum ada catatan KPI. Isi di Farm KPI agar APPI bisa membaca data farm."}
+              >
                 <Switch
-                  checked={includeFarm}
+                  checked={farmAvailable && includeFarm}
                   onCheckedChange={onIncludeFarmChange}
                   aria-label="Sertakan data KPI sebagai konteks"
-                  disabled={isStreaming}
+                  disabled={isStreaming || !farmAvailable}
                   className="aapm-ai-composer-switch"
                 />
-                Pakai KPI
+                {farmAvailable ? "Pakai KPI" : "KPI kosong"}
               </label>
             )}
             <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground">

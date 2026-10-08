@@ -14,14 +14,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/primitives";
 
 export const HISTORY_SORT_OPTIONS = [
@@ -263,17 +261,15 @@ export function AiHistoryToolbar({
   activityCount = 0,
   onRefresh,
   isRefreshing = false,
-  compact = false,
   scope = "active",
   onScopeChange,
   activeCount = 0,
   archivedCount = 0,
   selectionMode = false,
   onToggleSelectionMode,
-  selectedCount = 0,
 }) {
   return (
-    <div className={`min-w-0 max-w-full ${compact ? "space-y-2" : "space-y-2.5"}`}>
+    <div className="min-w-0 max-w-full space-y-2.5">
       <SegmentedControl
         label="Jenis riwayat"
         block
@@ -288,94 +284,83 @@ export function AiHistoryToolbar({
 
       {view === "chats" ? (
         <>
-          {onScopeChange && (
-            <SegmentedControl
-              label="Status percakapan"
-              block
-              size="sm"
-              className="aapm-history-scope"
-              value={scope}
-              onChange={onScopeChange}
-              options={[
-                { value: "active", label: "Aktif", count: activeCount },
-                { value: "archived", label: "Arsip", count: archivedCount },
-              ]}
+          <label className="aapm-ai-search-control flex min-h-9 min-w-0 w-full items-center gap-2 px-2.5 py-2 transition-colors">
+            <AapmIcon
+              name="solar:magnifer-bold-duotone"
+              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
             />
-          )}
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <label className="aapm-ai-search-control flex min-h-9 min-w-0 w-full items-center gap-2 px-2.5 py-2 transition-colors">
-              <AapmIcon
-                name="solar:magnifer-bold-duotone"
-                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+            <input
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Cari riwayat percakapan"
+              className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              aria-label="Cari riwayat percakapan"
+            />
+            {query && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onClearQuery}
+                className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Hapus pencarian"
+              >
+                <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </label>
+          <div className="flex min-w-0 items-center gap-1.5">
+            {onScopeChange && (
+              <SegmentedControl
+                label="Status percakapan"
+                block
+                size="sm"
+                className="aapm-history-scope min-w-0 flex-1"
+                value={scope}
+                onChange={onScopeChange}
+                options={[
+                  { value: "active", label: "Aktif", count: activeCount },
+                  { value: "archived", label: "Arsip", count: archivedCount },
+                ]}
               />
-              <input
-                value={query}
-                onChange={(event) => onQueryChange(event.target.value)}
-                placeholder="Cari riwayat percakapan"
-                className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-                aria-label="Cari riwayat percakapan"
-              />
-              {query && (
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={onClearQuery}
-                  className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label="Hapus pencarian"
+                  className={`h-8 w-8 shrink-0 ${selectionMode ? "text-brand-orange" : "text-muted-foreground"} hover:text-foreground`}
+                  aria-label="Urutkan dan pilih percakapan"
+                  title="Urutkan dan pilih"
                 >
-                  <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
+                  <AapmIcon name="solar:sort-vertical-bold-duotone" className="h-4 w-4" />
                 </Button>
-              )}
-            </label>
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_auto] gap-1.5">
-              <Select value={sort} onValueChange={onSortChange}>
-                <SelectTrigger
-                  aria-label="Urutkan riwayat percakapan"
-                  className="h-9 min-w-0 w-full gap-1 px-2 text-xs"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end" className="min-w-[7.5rem]">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Urutkan</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={sort} onValueChange={onSortChange}>
                   {HISTORY_SORT_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                    <DropdownMenuRadioItem key={option.value} value={option.value}>
                       {option.label}
-                    </SelectItem>
+                    </DropdownMenuRadioItem>
                   ))}
-                </SelectContent>
-              </Select>
-              {onRefresh && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={onRefresh}
-                  disabled={isRefreshing}
-                  className="h-9 w-9 shrink-0 text-muted-foreground hover:text-brand-orange"
-                  aria-label="Muat ulang riwayat chat"
-                  title="Muat ulang riwayat"
-                >
-                  <AapmIcon
-                    name="solar:refresh-circle-bold-duotone"
-                    className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                  />
-                </Button>
-              )}
-              {onToggleSelectionMode && (
-                <Button
-                  type="button"
-                  variant={selectionMode ? "soft" : "ghost"}
-                  size="sm"
-                  onClick={onToggleSelectionMode}
-                  className="h-9 min-w-[5rem] shrink-0 justify-center gap-1.5 px-2 text-xs"
-                  aria-pressed={selectionMode}
-                  aria-label={selectionMode ? "Selesai memilih percakapan" : "Pilih percakapan"}
-                >
-                  <AapmIcon name="solar:checklist-bold-duotone" className="h-3.5 w-3.5" />
-                  {selectionMode ? "Selesai" : "Pilih"}
-                </Button>
-              )}
-            </div>
+                </DropdownMenuRadioGroup>
+                {(onToggleSelectionMode || onRefresh) && <DropdownMenuSeparator />}
+                {onToggleSelectionMode && (
+                  <DropdownMenuItem onSelect={onToggleSelectionMode}>
+                    <AapmIcon name="solar:checklist-bold-duotone" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
+                    {selectionMode ? "Selesai memilih" : "Pilih percakapan"}
+                  </DropdownMenuItem>
+                )}
+                {onRefresh && (
+                  <DropdownMenuItem onSelect={onRefresh} disabled={isRefreshing}>
+                    <AapmIcon name="solar:refresh-circle-bold-duotone" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
+                    Muat ulang riwayat
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </>
       ) : (
@@ -614,7 +599,7 @@ export function AiConversationHistoryResults({
               <AiConversationRow
                 key={conversation.id}
                 conversation={conversation}
-                active={conversation.id === activeConversationId}
+                active={activeConversationId != null && String(conversation.id) === String(activeConversationId)}
                 disabled={disabled}
                 onSelect={onSelect}
                 onDelete={onDelete}
