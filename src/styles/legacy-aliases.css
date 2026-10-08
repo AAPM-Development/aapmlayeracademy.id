@@ -1,0 +1,36 @@
+/* Non-colour aliases for feature CSS migrated from the legacy index.css.
+ * Colour aliases are generated as HSL bridges in aapm-tokens.css. New code
+ * must use --aapm-* tokens directly; delete an alias once nothing reads it. */
+:root {
+  --space-2: var(--aapm-primitive-space-2);
+  --space-3: var(--aapm-primitive-space-3);
+  --space-4: var(--aapm-primitive-space-4);
+  --space-5: var(--aapm-primitive-space-5);
+  --radius-sm: var(--aapm-primitive-radius-small);
+  --radius-control: var(--aapm-primitive-radius-control);
+  --radius-panel: var(--aapm-primitive-radius-panel);
+  --radius-data: var(--aapm-primitive-radius-panel);
+  --radius-card: var(--aapm-primitive-radius-surface);
+  --radius-overlay: var(--aapm-primitive-radius-panel);
+  --duration-fast: var(--aapm-primitive-motion-fast);
+  --duration-normal: var(--aapm-primitive-motion-base);
+  --surface-shadow: var(--aapm-semantic-shadow-card);
+  --aapm-reading-measure: var(--aapm-primitive-reading-measure);
+  --aapm-editor-content-max: 100rem;
+  --aapm-ai-history-width: 18rem;
+  --aapm-shell-border-alpha: 0.46;
+  --aapm-shell-divider-alpha: 0.28;
+  --aapm-shell-shadow: none;
+  --ai-stream-radius: var(--aapm-primitive-radius-panel);
+  --ai-stream-shadow: none;
+  --t7-ref-space-1: var(--aapm-primitive-space-1);
+  --t7-ref-space-2: var(--aapm-primitive-space-2);
+  --t7-ref-space-3: var(--aapm-primitive-space-3);
+  --t7-ref-space-4: var(--aapm-primitive-space-4);
+  --t7-ref-space-5: var(--aapm-primitive-space-5);
+  --t7-radius-data: var(--aapm-primitive-radius-panel);
+  --t7-shadow-card: var(--aapm-semantic-shadow-card);
+  --t7-focus-ring: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-focus) 22%, transparent);
+  --t7-table-cell-padding-block: var(--aapm-component-data-cell-padding-block);
+  --t7-table-cell-padding-inline: var(--aapm-component-data-cell-padding-inline);
+}

@@ -386,6 +386,13 @@ try {
         json_response(['course' => admin_reorder_modules($input['items'] ?? [])]);
     }
 
+    if (preg_match('#^admin/chapters/(\\d+)$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['course' => admin_rename_chapter((int) $matches[1], (string) ($input['levelName'] ?? ''))]);
+    }
+
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'GET') {
         require_admin();
         $module = admin_module_from_id((int) $matches[1]);
@@ -534,16 +541,31 @@ try {
             error_response('Nomor modul tidak valid.', 422, 'validation_error');
         }
 
-        $values = [
-            'completed' => bool_value($input['completed'] ?? false),
-            'quiz_score' => array_key_exists('quizScore', $input) && $input['quizScore'] !== null ? (int) $input['quizScore'] : null,
-            'quiz_total' => array_key_exists('quizTotal', $input) && $input['quizTotal'] !== null ? (int) $input['quizTotal'] : null,
-            'practical_done' => bool_value($input['practicalDone'] ?? false),
-            'time_spent_minutes' => array_key_exists('timeSpentMinutes', $input) && $input['timeSpentMinutes'] !== null ? (int) $input['timeSpentMinutes'] : null,
-        ];
-        $existing = db()->prepare('SELECT id FROM user_progress WHERE user_id = ? AND module_number = ? LIMIT 1');
+        $existing = db()->prepare('SELECT * FROM user_progress WHERE user_id = ? AND module_number = ? LIMIT 1');
         $existing->execute([(int) $user['id'], $moduleNumber]);
         $row = $existing->fetch();
+
+        // Partial update: a field the client did not send keeps its stored
+        // value, so "mark complete" no longer clears a quiz score and a quiz
+        // submit no longer clears a finished practice. timeSpentDeltaMinutes
+        // adds study time (one save counts at most 4 hours).
+        $values = [
+            'completed' => array_key_exists('completed', $input) ? bool_value($input['completed']) : (int) ($row['completed'] ?? 0),
+            'quiz_score' => array_key_exists('quizScore', $input)
+                ? ($input['quizScore'] !== null ? (int) $input['quizScore'] : null)
+                : ($row && $row['quiz_score'] !== null ? (int) $row['quiz_score'] : null),
+            'quiz_total' => array_key_exists('quizTotal', $input)
+                ? ($input['quizTotal'] !== null ? (int) $input['quizTotal'] : null)
+                : ($row && $row['quiz_total'] !== null ? (int) $row['quiz_total'] : null),
+            'practical_done' => array_key_exists('practicalDone', $input) ? bool_value($input['practicalDone']) : (int) ($row['practical_done'] ?? 0),
+            'time_spent_minutes' => array_key_exists('timeSpentMinutes', $input)
+                ? ($input['timeSpentMinutes'] !== null ? max(0, (int) $input['timeSpentMinutes']) : null)
+                : ($row && $row['time_spent_minutes'] !== null ? (int) $row['time_spent_minutes'] : null),
+        ];
+        if (array_key_exists('timeSpentDeltaMinutes', $input)) {
+            $delta = min(240, max(0, (int) $input['timeSpentDeltaMinutes']));
+            $values['time_spent_minutes'] = (int) ($values['time_spent_minutes'] ?? 0) + $delta;
+        }
         if ($row) {
             $update = db()->prepare('UPDATE user_progress SET completed = ?, quiz_score = ?, quiz_total = ?, practical_done = ?, time_spent_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
             $update->execute([$values['completed'], $values['quiz_score'], $values['quiz_total'], $values['practical_done'], $values['time_spent_minutes'], (int) $row['id']]);
@@ -940,7 +962,9 @@ try {
         if (!$conversation) {
             error_response('Percakapan tidak ditemukan.', 404, 'not_found');
         }
-        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 240');
+        // Bound the payload to the latest turns, then restore reading order. Taking
+        // the first 240 erased newly streamed answers when long chats reconciled.
+        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM (SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 240) AS recent_messages ORDER BY id ASC');
         $messageStmt->execute([(int) $conversation['id']]);
         json_response(['conversation' => present_ai_conversation($conversation), 'messages' => array_map('present_ai_chat_message', $messageStmt->fetchAll())]);
     }
@@ -1009,6 +1033,8 @@ try {
     }
 
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');
+} catch (AiConfigurationException $exception) {
+    error_response($exception->getMessage(), 503, 'ai_configuration_missing');
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');

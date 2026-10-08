@@ -1,24 +1,33 @@
 // @ts-nocheck
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Badge,
   Button,
   ConfirmDialog,
   DataTable,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Field,
+  FormGrid,
+  FormSection,
   Input,
   Label,
+  Progress,
+  SearchInput,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Progress,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Surface,
   useToast,
 } from "@/components/primitives";
@@ -36,9 +45,15 @@ import {
   AdminUnavailable,
 } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 
-function UserDialog({ user, open, onOpenChange }) {
+const FORM_ID = "admin-user-form";
+
+function initialOf(user) {
+  return (user?.full_name || user?.email || "?").slice(0, 1).toUpperCase();
+}
+
+/* Kelola akun: identity first; security and progress reset are one step away. */
+function UserSheet({ user, open, onOpenChange }) {
   const isNew = !user;
   const createUser = useCreateAdminUser();
   const updateUser = useUpdateAdminUser();
@@ -52,7 +67,6 @@ function UserDialog({ user, open, onOpenChange }) {
   const [newPassword, setNewPassword] = useState("");
   const [passwordConfirmationOpen, setPasswordConfirmationOpen] = useState(false);
   const [progressConfirmationOpen, setProgressConfirmationOpen] = useState(false);
-  const dialogScrollRef = useScrollEdgeFade();
 
   useEffect(() => {
     setName(user?.full_name || "");
@@ -63,6 +77,8 @@ function UserDialog({ user, open, onOpenChange }) {
     setPasswordConfirmationOpen(false);
     setProgressConfirmationOpen(false);
   }, [user, open]);
+
+  const isSaving = createUser.isPending || updateUser.isPending;
 
   const save = async (event) => {
     event.preventDefault();
@@ -87,14 +103,10 @@ function UserDialog({ user, open, onOpenChange }) {
     } catch (saveError) {
       toast({
         variant: "destructive",
-        title: "Perubahan gagal",
+        title: isNew ? "Akun belum dibuat" : "Perubahan belum disimpan",
         description: saveError.message,
       });
     }
-  };
-
-  const changePassword = () => {
-    if (newPassword) setPasswordConfirmationOpen(true);
   };
 
   const confirmChangePassword = async () => {
@@ -142,140 +154,97 @@ function UserDialog({ user, open, onOpenChange }) {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          ref={dialogScrollRef}
-          className="aapm-scroll-fade max-h-[min(90dvh,44rem)] overflow-y-auto sm:max-w-lg"
-        >
-          <DialogHeader>
-            <DialogTitle>{isNew ? "Buat akun" : "Kelola akun"}</DialogTitle>
-            <DialogDescription>
-              {isNew
-                ? "Buat akses learner atau admin dengan password awal yang Anda tetapkan."
-                : "Email adalah identitas akun. Atur identitas, keamanan, dan progress dari panel ini."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form className="mt-2 space-y-4" onSubmit={save}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="admin-user-name">Nama</Label>
-                <Input
-                  id="admin-user-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  maxLength={160}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="admin-user-email">Email</Label>
-                <Input
-                  id="admin-user-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  disabled={!isNew}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="learner">Learner</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isNew && (
-              <div className="space-y-2">
-                <Label htmlFor="admin-user-password">Password awal</Label>
-                <Input
-                  id="admin-user-password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={8}
-                  placeholder="Minimal 8 karakter, huruf dan angka"
-                  required
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Password tidak akan ditampilkan kembali setelah akun dibuat.
-                </p>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={createUser.isPending || updateUser.isPending}
-            >
-              {isNew
-                ? createUser.isPending
-                  ? "Membuat akun…"
-                  : "Buat akun"
-                : updateUser.isPending
-                  ? "Menyimpan…"
-                  : "Simpan perubahan"}
-            </Button>
-          </form>
-
-          {!isNew && (
-            <div className="space-y-5 border-t border-border pt-5">
-              <div>
-                <div className="text-sm font-semibold">Progress belajar</div>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {user.completedModules || 0} modul selesai · {user.progressPercent || 0}% · {user.progressEntries || 0} entri tersimpan.
-                </p>
-                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                  Reset menghapus status modul, nilai kuis, praktik, dan waktu belajar. Sertifikat, data farm, dan percakapan tidak ikut dihapus.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-3 border-danger/25 text-danger hover:border-danger/45 hover:bg-danger/5"
-                  onClick={() => setProgressConfirmationOpen(true)}
-                  disabled={resetProgress.isPending}
-                >
-                  <AapmIcon name="refresh" />
-                  {resetProgress.isPending ? "Mereset…" : "Reset progress"}
-                </Button>
-              </div>
-
-              <div className="border-t border-border pt-5">
-                <div className="text-sm font-semibold">Ganti password</div>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Tindakan ini tidak mengirimkan password melalui email. Berikan password baru secara aman kepada pengguna.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <Input
-                    type="password"
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    minLength={8}
-                    placeholder="Password baru"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={changePassword}
-                    disabled={resetPassword.isPending || !newPassword}
-                  >
-                    {resetPassword.isPending ? "Mengubah…" : "Ganti"}
-                  </Button>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="aapm-form-sheet">
+          <SheetHeader>
+            {isNew ? (
+              <>
+                <SheetTitle>Buat akun</SheetTitle>
+                <SheetDescription>Buat akses learner atau admin dengan password awal yang Anda tetapkan.</SheetDescription>
+              </>
+            ) : (
+              <div className="aapm-user-sheet__identity">
+                <span className="aapm-initial-avatar" data-size="lg" aria-hidden="true">{initialOf(user)}</span>
+                <div className="min-w-0">
+                  <SheetTitle className="truncate">{user.full_name || user.email}</SheetTitle>
+                  <SheetDescription className="truncate">{user.email}</SheetDescription>
                 </div>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </SheetHeader>
+
+          <form id={FORM_ID} className="aapm-form-sheet__body" onSubmit={save}>
+            <FormSection title="Identitas" description="Nama dan role menentukan apa yang dilihat pengguna di Academy.">
+              <FormGrid columns={1}>
+                <Field id="admin-user-name" label="Nama" required>
+                  <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={160} required />
+                </Field>
+                <Field id="admin-user-email" label="Email" hint={isNew ? "Email menjadi identitas login." : "Email adalah identitas akun dan tidak dapat diubah."}>
+                  <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={!isNew} required />
+                </Field>
+                <div className="aapm-field">
+                  <Label htmlFor="admin-user-role">Role</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger id="admin-user-role"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="learner">Learner</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="aapm-field-hint">{role === "admin" ? "Admin dapat mengelola kurikulum, pengguna, dan pengaturan APPI." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
+                </div>
+              </FormGrid>
+            </FormSection>
+
+            {isNew ? (
+              <FormSection title="Password awal" description="Password tidak ditampilkan kembali setelah akun dibuat.">
+                <Field id="admin-user-password" label="Password" required hint="Minimal 8 karakter, huruf dan angka.">
+                  <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} autoComplete="new-password" required />
+                </Field>
+              </FormSection>
+            ) : (
+              <Accordion type="multiple" className="aapm-manage-accordion">
+                <AccordionItem value="security">
+                  <AccordionTrigger>
+                    <span>Keamanan & password</span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <p className="aapm-accordion-note">Password baru tidak dikirim lewat email. Berikan secara aman kepada pengguna.</p>
+                    <div className="aapm-inline-field">
+                      <Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} placeholder="Password baru" aria-label="Password baru" autoComplete="new-password" />
+                      <Button type="button" variant="outline" onClick={() => newPassword && setPasswordConfirmationOpen(true)} disabled={resetPassword.isPending || !newPassword}>
+                        {resetPassword.isPending ? "Mengubah…" : "Ganti password"}
+                      </Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="progress">
+                  <AccordionTrigger>
+                    <span>Progress belajar</span>
+                    <Badge variant="soft">{user.completedModules || 0} modul · {user.progressPercent || 0}%</Badge>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Progress value={user.progressPercent || 0} aria-label={`Progress ${user.progressPercent || 0}%`} />
+                    <p className="aapm-accordion-note">{user.progressEntries || 0} entri tersimpan. Reset menghapus status modul, nilai kuis, praktik, dan waktu belajar.</p>
+                    <p className="aapm-accordion-note">Sertifikat, data farm, dan percakapan tidak ikut dihapus.</p>
+                    <Button type="button" variant="danger-soft" size="sm" onClick={() => setProgressConfirmationOpen(true)} disabled={resetProgress.isPending}>
+                      <AapmIcon name="refresh" />
+                      {resetProgress.isPending ? "Mereset…" : "Reset progress"}
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+          </form>
+
+          <SheetFooter className="aapm-form-sheet__footer">
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Batal</Button>
+            <Button type="submit" form={FORM_ID} loading={isSaving}>
+              {isNew ? "Buat akun" : "Simpan perubahan"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <ConfirmDialog
         open={passwordConfirmationOpen}
@@ -302,37 +271,37 @@ function UserDialog({ user, open, onOpenChange }) {
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
-  const [dialogUser, setDialogUser] = useState(undefined);
+  const [sheetUser, setSheetUser] = useState(undefined);
+  const lastSheetUser = useRef(undefined);
+  if (sheetUser !== undefined) lastSheetUser.current = sheetUser;
+  const displayUser = sheetUser !== undefined ? sheetUser : lastSheetUser.current;
   const { data, isLoading, error, refetch } = useAdminUsers(search);
   const users = data?.users || [];
 
   return (
     <AdminPageFrame
-      title="User management"
+      title="Pengguna"
       description="Kelola akses akun, role, password, dan reset progress dari satu tempat."
       actions={
-        <Button onClick={() => setDialogUser(null)}>
-          <AapmIcon name="add" className="h-4 w-4" /> Buat akun
+        <Button onClick={() => setSheetUser(null)}>
+          <AapmIcon name="add" />
+          Buat akun
         </Button>
       }
     >
-      <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <label className="flex h-11 items-center gap-2 rounded-xl border border-input bg-background px-3 focus-within:border-brand-orange/55 focus-within:ring-2 focus-within:ring-brand-orange/15">
-          <AapmIcon name="search" className="h-4 w-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cari nama atau email pengguna"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </label>
-        <Surface
-          variant="muted"
-          className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground"
-        >
-          <AapmIcon name="users" className="h-4 w-4 text-brand-green" />
+      <div className="aapm-toolbar mb-5">
+        <SearchInput
+          className="w-full sm:max-w-sm"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Cari nama atau email pengguna"
+          aria-label="Cari pengguna"
+        />
+        <span className="aapm-toolbar__spacer" />
+        <Badge variant="soft">
+          <AapmIcon name="users" />
           {users.length} akun tampil
-        </Surface>
+        </Badge>
       </div>
 
       {isLoading ? (
@@ -357,20 +326,58 @@ export default function AdminUsers() {
                 header: "Pengguna",
                 required: true,
                 overflow: "wrap",
-                render: (user) => <div className="flex min-w-56 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-green text-xs font-semibold text-brand-green">{(user.full_name || user.email).slice(0, 1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate font-semibold">{user.full_name || user.email}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{user.email}</span></span></div>,
+                render: (user) => (
+                  <div className="aapm-user-cell">
+                    <span className="aapm-initial-avatar" aria-hidden="true">{initialOf(user)}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{user.full_name || user.email}</span>
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">{user.email}</span>
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">Aktif {formatAdminDate(user.lastActivity || user.created_at)}</span>
+                    </span>
+                  </div>
+                ),
               },
-              { key: "role", header: "Role", overflow: "nowrap", render: (user) => <Badge variant={user.role === "admin" ? "warning" : "success"}>{user.role === "admin" ? "Admin" : "Learner"}</Badge> },
-              { key: "progress", header: "Progress", overflow: "wrap", render: (user) => <div className="min-w-32"><div className="mb-1 flex justify-between gap-2 text-xs"><span>{user.completedModules} modul</span><span className="tabular-nums">{user.progressPercent}%</span></div><Progress value={user.progressPercent} aria-label={`Progress ${user.progressPercent}%`} /></div> },
-              { key: "lastActivity", header: "Aktivitas", overflow: "nowrap", render: (user) => <span className="text-xs text-muted-foreground">{formatAdminDate(user.lastActivity || user.created_at)}</span> },
-              { key: "actions", header: "Kelola", align: "right", required: true, overflow: "nowrap", render: (user) => <Button size="sm" variant="outline" onClick={() => setDialogUser(user)}><AapmIcon name="edit" className="h-3.5 w-3.5" /> Kelola</Button> },
+              {
+                key: "role",
+                header: "Role",
+                overflow: "nowrap",
+                render: (user) => <Badge variant={user.role === "admin" ? "warning" : "success"}>{user.role === "admin" ? "Admin" : "Learner"}</Badge>,
+              },
+              {
+                key: "progress",
+                header: "Progress",
+                overflow: "wrap",
+                render: (user) => (
+                  <div className="aapm-user-progress">
+                    <div className="mb-1 flex justify-between gap-2 text-xs">
+                      <span>{user.completedModules} modul</span>
+                      <span className="tabular-nums">{user.progressPercent}%</span>
+                    </div>
+                    <Progress value={user.progressPercent} size="sm" aria-label={`Progress ${user.progressPercent}%`} />
+                  </div>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Kelola",
+                align: "right",
+                required: true,
+                overflow: "nowrap",
+                render: (user) => (
+                  <Button size="sm" variant="outline" onClick={() => setSheetUser(user)}>
+                    <AapmIcon name="edit" />
+                    Kelola
+                  </Button>
+                ),
+              },
             ]}
           />
         </Surface>
       )}
-      <UserDialog
-        user={dialogUser || undefined}
-        open={dialogUser !== undefined}
-        onOpenChange={(open) => !open && setDialogUser(undefined)}
+      <UserSheet
+        user={displayUser || undefined}
+        open={sheetUser !== undefined}
+        onOpenChange={(open) => !open && setSheetUser(undefined)}
       />
     </AdminPageFrame>
   );

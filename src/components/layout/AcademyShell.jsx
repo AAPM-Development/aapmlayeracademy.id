@@ -1,112 +1,161 @@
 import React, { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { AppShell } from "@ten4seven/ui";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useModules, useUserProgress } from "@/lib/useCourseData";
 import { useThemeMode } from "@/lib/useThemeMode";
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
-import AcademyHeader from "./AcademyHeader";
-import AcademySidebar from "./AcademySidebar";
-import MobileBottomNav from "./MobileBottomNav";
+import { getNextModule, getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
+import { preloadRoute } from "@/lib/routePreloaders";
 import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
 import { AiChatProvider } from "@/components/ai/AiChatProvider";
+import { Breadcrumbs, IconButton, ProgressRing } from "@/design-system";
+import {
+  AccountMenu,
+  AppShell,
+  BottomNav,
+  NavigationSheet,
+  Sidebar,
+  SidebarNav,
+  Topbar,
+} from "@/design-system/patterns/AppShell";
+import AapmIcon from "@/components/icons/AapmIcon";
+import { academyBottomNavigation, academyNavigation, getNavigationMeta, isFocusRoute } from "./academyNavigation";
+
+const COLLAPSE_KEY = "aapm-sidebar-collapsed";
+
+function readCollapsed() {
+  try {
+    return window.localStorage.getItem(COLLAPSE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/** Course progress at a glance; links straight to the next module. */
+function SidebarProgress({ modules, progress, onNavigate }) {
+  const { completed, total, percent } = getProgressSummary(modules, progress, TOTAL_MODULES);
+  const next = getNextModule(modules, progress);
+  const to = next ? `/modules/${next.moduleNumber}` : "/certification";
+  return (
+    <Link to={to} className="aapm-sidebar-progress" onClick={onNavigate} aria-label={`Progress belajar ${percent} persen. ${next ? `Lanjutkan modul ${next.moduleNumber}` : "Semua modul selesai"}`}>
+      <ProgressRing value={percent} size={44} stroke={5} />
+      <div className="min-w-0">
+        <p className="aapm-sidebar-progress__title">{completed}/{total} modul selesai</p>
+        <p className="aapm-sidebar-progress__meta">{next ? `Lanjut: ${next.title}` : "Siap sertifikasi"}</p>
+      </div>
+    </Link>
+  );
+}
 
 export default function AcademyShell() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isDesktopSidebar, setIsDesktopSidebar] = useState(() =>
-    typeof window === "undefined" || window.matchMedia("(min-width: 861px)").matches,
-  );
   const location = useLocation();
   const { data: modules = [] } = useModules();
   const { data: progress = [] } = useUserProgress();
   const { user, logout } = useAuth();
   const { mode: themeMode, toggleTheme } = useThemeMode();
-  const mainScrollRef = useScrollEdgeFade();
+  const [collapsedPreference, setCollapsedPreference] = useState(readCollapsed);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const isAdmin = user?.role === "admin";
   const isAiWorkspace = location.pathname === "/ai-assistant";
-  const effectiveSidebarCollapsed = isDesktopSidebar && (isAiWorkspace || sidebarCollapsed);
+  const focus = isFocusRoute(location.pathname);
+  const page = getNavigationMeta(location.pathname);
+  const collapsed = isAiWorkspace || collapsedPreference;
+  const accountContext = isAdmin ? "Admin Academy" : "Peserta Layer Farm";
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 861px)");
-    const syncViewport = () => setIsDesktopSidebar(mediaQuery.matches);
+  useEffect(() => setSheetOpen(false), [location.pathname]);
 
-    syncViewport();
-    mediaQuery.addEventListener("change", syncViewport);
-
-    return () => mediaQuery.removeEventListener("change", syncViewport);
-  }, []);
-
-  // AppShell keeps one scroll owner mounted while routes change. Reset that
-  // owner on navigation so a deep scroll in one learner surface never leaks
-  // into the next route (especially visible on the compact mobile shell).
-  useEffect(() => {
-    document
-      .querySelector("#academy-app-shell [data-t7-region=scrollport]")
-      ?.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [location.pathname]);
-
-  const handleLogout = () => logout();
-  const openCanonicalNavigation = () => {
-    document
-      .getElementById("academy-app-shell")
-      ?.querySelector(".t7-app-mobile-menu")
-      ?.click();
+  const toggleCollapsed = () => {
+    setCollapsedPreference((current) => {
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, String(!current));
+      } catch {
+        // Preference is optional.
+      }
+      return !current;
+    });
   };
+
+  const preload = (to) => void preloadRoute(to);
+  const navigation = (inSheet = false) => (
+    <Sidebar
+      collapsed={inSheet ? false : collapsed}
+      onToggle={inSheet || isAiWorkspace ? null : toggleCollapsed}
+      brandLabel="Beranda Academy"
+      context={<SidebarProgress modules={modules} progress={progress} onNavigate={inSheet ? () => setSheetOpen(false) : undefined} />}
+      footer={isAdmin ? (
+        <Link to="/admin" className="aapm-nav-item" aria-label={collapsed ? "Panel admin" : undefined} onClick={inSheet ? () => setSheetOpen(false) : undefined}>
+          <AapmIcon name="admin" />
+          <span className="aapm-nav-item__label">Panel admin</span>
+        </Link>
+      ) : null}
+    >
+      <SidebarNav
+        groups={academyNavigation}
+        collapsed={inSheet ? false : collapsed}
+        onPreload={preload}
+        onNavigate={inSheet ? () => setSheetOpen(false) : undefined}
+        label="Navigasi Academy"
+      />
+    </Sidebar>
+  );
+
+  const accountMenu = (
+    <AccountMenu
+      user={user}
+      context={accountContext}
+      themeMode={themeMode}
+      onToggleTheme={toggleTheme}
+      onLogout={() => logout()}
+      items={[
+        { label: "Profil & prestasi", icon: "user", to: "/profile" },
+        { label: "Sertifikasi", icon: "certificate", to: "/certification" },
+        ...(isAdmin ? [{ label: "Panel admin", icon: "admin", to: "/admin" }] : []),
+      ]}
+    />
+  );
 
   return (
     <AiChatProvider>
-      <AppShell
-        id="academy-app-shell"
-        contentAs="div"
-        className={`academy-shell aapm-token-shell aapm-t7-app-shell ${effectiveSidebarCollapsed ? "aapm-t7-app-shell--collapsed" : ""}`}
-        data-t7-region="app-shell"
-        sidebar={(
-          <AcademySidebar
-            collapsed={effectiveSidebarCollapsed}
-            onToggle={
-              isAiWorkspace || !isDesktopSidebar
-                ? null
-                : () => setSidebarCollapsed((current) => !current)
-            }
-            onToggleTheme={toggleTheme}
-            onLogout={handleLogout}
-            modules={modules}
-            progress={progress}
-            themeMode={themeMode}
-            user={user}
-          />
-        )}
-        topbar={(
-          <AcademyHeader
-            showMobileMenu={false}
-            themeMode={themeMode}
-            onToggleTheme={toggleTheme}
-            onLogout={handleLogout}
-            user={user}
-          />
-        )}
-      >
-        <div className="academy-shell__content flex min-h-0 min-w-0 flex-1 flex-col" data-t7-region="content-shell">
-          <main ref={mainScrollRef} className="aapm-scroll-fade min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0" data-t7-region="scrollport">
-            <Outlet />
-          </main>
-          <MobileBottomNav
-            onOpenMenu={openCanonicalNavigation}
-            items={[
-              { to: "/", label: "Beranda", icon: "dashboard", end: true },
-              { to: "/modules", label: "Belajar", icon: "course" },
-              {
-                to: "/ai-assistant",
-                label: "APPI",
-                icon: "ai",
-                accent: "orange",
-                prominent: true,
-              },
-              { to: "/kpi", label: "KPI", icon: "kpi" },
-            ]}
-          />
-          <FloatingAiAssistant />
-        </div>
-      </AppShell>
+      {focus ? (
+        <Outlet />
+      ) : (
+        <AppShell
+          collapsed={collapsed}
+          label="Navigasi Academy"
+          sidebar={navigation(false)}
+          topbar={(
+            <Topbar
+              breadcrumbs={<Breadcrumbs items={[{ label: page.group }, { label: page.label }]} />}
+              actions={(
+                <>
+                  {/* APPI is reached from the sidebar and the floating launcher;
+                      a third topbar entry only repeated them. */}
+                  <IconButton
+                    label={themeMode === "dark" ? "Mode terang" : "Mode gelap"}
+                    icon={themeMode === "dark" ? "themeLight" : "themeDark"}
+                    onClick={toggleTheme}
+                    data-desktop-only=""
+                  />
+                  {accountMenu}
+                </>
+              )}
+            />
+          )}
+          bottomNav={(
+            <BottomNav
+              items={[
+                ...academyBottomNavigation,
+                { label: "Menu", icon: "menu", onClick: () => setSheetOpen(true) },
+              ]}
+            />
+          )}
+        >
+          <Outlet />
+        </AppShell>
+      )}
+      <NavigationSheet open={sheetOpen} onOpenChange={setSheetOpen} title="Navigasi Academy">
+        {navigation(true)}
+      </NavigationSheet>
+      <FloatingAiAssistant />
     </AiChatProvider>
   );
 }

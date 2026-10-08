@@ -1,0 +1,559 @@
+/* APPI chat: turns with a small APPI mark, calm user bubbles, one composer
+ * control, and a jump affordance. Loaded after ai.css so it wins the cascade
+ * without touching the legacy streaming and history rules. */
+
+@keyframes aapm-chat-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes aapm-chat-jump-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ----------------------------------- Answers read as text, not as cards
+ * Only the user's turn carries a tint. The APPI answer sits on the canvas, so
+ * the question and the answer's text stand out instead of a box. */
+.aapm-chat-turn__body .aapm-ai-answer-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* ------------------------------------------------------------- Turns */
+.aapm-chat-turn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--aapm-primitive-space-3);
+  min-width: 0;
+  max-width: 100%;
+  animation: aapm-chat-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-chat-turn__avatar {
+  flex: none;
+  margin-top: 2px;
+}
+.aapm-chat-turn__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.aapm-chat-turn--user {
+  justify-content: flex-end;
+}
+
+/* User bubble: soft brand tint with a squared corner on the sending side. */
+.aapm-ai-user-bubble.aapm-chat-bubble {
+  border-radius: 20px 20px 6px 20px;
+  background: var(--aapm-semantic-primary-soft);
+  color: var(--aapm-semantic-foreground);
+  box-shadow: none;
+}
+
+/* ----------------------------------------------------------- Composer */
+.aapm-ai-composer-frame {
+  border-radius: 22px;
+  box-shadow: var(--aapm-semantic-shadow-card);
+  transition: border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-composer-frame:focus-within {
+  border-color: color-mix(in srgb, var(--aapm-semantic-ai) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-ai) 14%, transparent), var(--aapm-semantic-shadow-card);
+}
+.aapm-ai-composer-toggle {
+  font-size: var(--aapm-component-type-caption-size);
+  transition: color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-composer-toggle:hover { color: var(--aapm-semantic-foreground); }
+.aapm-ai-composer-switch {
+  transform-origin: center;
+}
+.aapm-ai-send-control {
+  border-radius: var(--aapm-primitive-radius-pill);
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-send-control:not(:disabled):active { transform: scale(0.96); }
+
+@media (max-width: 639px) {
+  /* 16px keeps iOS from zooming into the field on focus. */
+  .aapm-ai-composer-frame textarea { font-size: 16px; }
+  .aapm-chat-turn { gap: var(--aapm-primitive-space-2); }
+  /* One row on phones: tools scroll sideways, send is icon-only (aria-label stays). */
+  .aapm-ai-composer-frame__footer { flex-wrap: nowrap; }
+  /* Tools wrap onto a second line instead of scrolling, so no switch is ever clipped. */
+  .aapm-ai-composer-frame .aapm-ai-composer-tools { flex-wrap: wrap; gap: 2px; min-width: 0; }
+  /* The attach control is an icon on phones; its label stays in aria-label and the tooltip. */
+  .aapm-ai-composer-frame .aapm-ai-attachment-control > span { display: none; }
+  .aapm-ai-composer-frame .aapm-ai-send-control { min-width: 2.75rem; padding-inline: 0; }
+  .aapm-ai-composer-frame .aapm-ai-send-control > span { display: none; }
+}
+
+/* ------------------------------------------------------- Jump to latest */
+.aapm-chat-jump {
+  position: absolute;
+  bottom: var(--aapm-primitive-space-3);
+  left: 50%;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-primitive-radius-pill);
+  background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
+  box-shadow: var(--aapm-semantic-shadow-overlay);
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-strong);
+  cursor: pointer;
+  animation: aapm-chat-jump-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-chat-jump:hover { background: var(--aapm-semantic-surface-subtle); }
+.aapm-chat-jump:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-chat-jump > .aapm-icon { color: var(--aapm-semantic-ai); }
+
+/* --------------------------------------------------- Welcome & starters */
+.aapm-chat-welcome > * {
+  animation: aapm-chat-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-chat-welcome > :nth-child(2) { animation-delay: 60ms; }
+.aapm-chat-welcome > :nth-child(3) { animation-delay: 120ms; }
+.aapm-chat-welcome > :nth-child(n + 4) { animation-delay: 180ms; }
+.aapm-chat-suggestion {
+  animation: aapm-chat-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-chat-suggestion:nth-child(2) { animation-delay: 220ms; }
+.aapm-chat-suggestion:nth-child(3) { animation-delay: 260ms; }
+.aapm-chat-suggestion:nth-child(4) { animation-delay: 300ms; }
+.aapm-chat-suggestion:nth-child(n + 5) { animation-delay: 340ms; }
+
+/* ------------------------------------------------------------- Header */
+.aapm-chat-header__title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-component-type-body-size);
+  line-height: var(--aapm-component-type-body-line);
+  font-weight: var(--aapm-primitive-weight-heading);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aapm-chat-header__meta {
+  margin: 0;
+  overflow: hidden;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------- Empty state & starters */
+.aapm-chat-welcome {
+  gap: var(--aapm-primitive-space-2);
+  padding: var(--aapm-primitive-space-4) 0 var(--aapm-primitive-space-2);
+}
+.aapm-chat-welcome__mark {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--aapm-primitive-space-1);
+}
+.aapm-chat-welcome__mark .aapm-icon { width: 24px; height: 24px; }
+.aapm-chat-welcome__title { max-width: 30ch; }
+.aapm-chat-suggestions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--aapm-primitive-space-2);
+  max-width: 40rem;
+  margin-top: var(--aapm-primitive-space-5);
+}
+/* An odd starter spans the row instead of leaving a hole in the grid. */
+.aapm-chat-suggestions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+.aapm-chat-suggestion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--aapm-primitive-space-3);
+  min-width: 0;
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--hue-tint);
+  color: var(--aapm-semantic-foreground);
+  text-align: start;
+  cursor: pointer;
+  box-shadow: none;
+  transition: box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-chat-suggestion:hover { box-shadow: var(--aapm-semantic-shadow-card); }
+.aapm-chat-suggestion:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-chat-suggestion .aapm-icon-tile {
+  background: var(--aapm-semantic-surface);
+  color: var(--hue);
+  box-shadow: var(--aapm-semantic-shadow-rest);
+}
+.aapm-chat-suggestion__title {
+  display: block;
+  font-size: var(--aapm-component-type-body-size);
+  font-weight: var(--aapm-primitive-weight-strong);
+  line-height: 1.35;
+}
+.aapm-chat-suggestion__detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.45;
+}
+@media (max-width: 639px) {
+  .aapm-chat-suggestions { grid-template-columns: minmax(0, 1fr); }
+  .aapm-chat-suggestions > :last-child:nth-child(odd) { grid-column: auto; }
+}
+
+/* ------------------------------------------------ Sidebar: scope as tabs */
+.aapm-segmented.aapm-history-scope {
+  padding: 0;
+  gap: var(--aapm-primitive-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--aapm-semantic-border);
+  border-radius: 0;
+  background: transparent;
+}
+.aapm-history-scope > .aapm-tabs-trigger {
+  flex: 1 1 0;
+  justify-content: center;
+  padding: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-2);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--aapm-semantic-muted);
+}
+.aapm-history-scope > .aapm-tabs-trigger[aria-checked="true"] {
+  background: transparent;
+  color: var(--aapm-semantic-foreground);
+  box-shadow: inset 0 -2px 0 var(--aapm-semantic-foreground);
+}
+
+/* Header: one row on phones; the title truncates instead of pushing actions down. */
+header.aapm-ai-workspace__header { flex-wrap: nowrap; }
+.aapm-ai-workspace__header > div:first-child { flex: 1 1 auto; min-width: 0; }
+.aapm-ai-workspace__header > div:last-child { flex: none; }
+
+/* Phones: header actions reach a 40px target (overrides the compact h-8 utility). */
+@media (max-width: 639px) {
+  .aapm-ai-workspace__header .aapm-button { height: auto; min-height: var(--aapm-component-action-height); }
+}
+@media (max-width: 639px) {
+  /* The composer switches: the whole label is the target on phones. */
+  .aapm-ai-composer-toggle { min-height: var(--aapm-component-action-height); }
+}
+@media (max-width: 639px) {
+  /* Extend the switch hit area without changing its drawn size. */
+  .aapm-ai-composer-toggle .aapm-switch::before { content: ""; position: absolute; inset: -10px -8px; }
+}
+
+/* ---------------------------------------------------- Floating APPI surfaces
+ * The panel and launcher used token classes with no definition, so the panel
+ * painted transparent over the route. They now sit on solid DS surfaces. */
+.aapm-token-popover {
+  background: var(--aapm-semantic-surface);
+  color: var(--aapm-semantic-foreground);
+  border-color: var(--aapm-semantic-border);
+}
+.aapm-token-scrim { background: color-mix(in srgb, var(--aapm-semantic-foreground) 24%, transparent); }
+/* The mobile history sheet had no surface of its own, so the page showed through it. */
+.aapm-token-sheet {
+  background: var(--aapm-semantic-surface);
+  color: var(--aapm-semantic-foreground);
+}
+.aapm-ai-floating-panel {
+  background: var(--aapm-semantic-surface);
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-component-surface-radius);
+  box-shadow: var(--aapm-semantic-shadow-overlay);
+  overflow: hidden;
+}
+.aapm-ai-floating-panel:focus { outline: none; }
+.aapm-ai-floating-panel__header {
+  background: var(--aapm-semantic-surface);
+  border-bottom: 1px solid var(--aapm-semantic-border);
+  box-shadow: none;
+}
+.aapm-ai-floating-panel__body { background: var(--aapm-semantic-surface); }
+.aapm-ai-floating-panel__icon-button {
+  width: var(--aapm-component-action-height);
+  height: var(--aapm-component-action-height);
+}
+.aapm-ai-floating-panel__header .aapm-ai-floating-panel__status-line { font-size: var(--aapm-component-type-caption-size); }
+
+/* Failed answers: the retry sits on the same line as the explanation. */
+.aapm-ai-status-line__action {
+  margin-inline-start: auto;
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-ai-soft-text);
+  font: inherit;
+  font-weight: var(--aapm-primitive-weight-strong);
+  cursor: pointer;
+}
+.aapm-ai-status-line__action:hover { background: var(--aapm-semantic-surface-subtle); }
+.aapm-ai-status-line__action:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-ai-status-line__action:disabled { opacity: var(--aapm-primitive-disabled-opacity); cursor: not-allowed; }
+
+@media (max-width: 639px) {
+  /* Phone targets: send and the floating header actions reach 40px. */
+  .aapm-ai-composer-frame .aapm-ai-send-control { min-height: var(--aapm-component-action-height); }
+  .aapm-ai-status-line__action { min-height: var(--aapm-component-action-height); }
+}
+
+/* Reduced motion: the panel and jump affordance open without travel. */
+@media (prefers-reduced-motion: reduce) {
+  .aapm-ai-floating-panel,
+  .aapm-chat-jump,
+  .aapm-chat-turn { animation: none; }
+}
+
+/* One user bubble for the page and the floating panel: soft brand tint, squared sending corner. */
+.aapm-ai-user-bubble {
+  border-radius: 18px 18px 6px 18px;
+  background: var(--aapm-semantic-primary-soft);
+  color: var(--aapm-semantic-foreground);
+  box-shadow: none;
+}
+/* The compact composer (floating panel) drops the page context chip: the header already names the page. */
+.aapm-ai-composer--compact .aapm-ai-composer-context { display: none; }
+@media (max-width: 639px) {
+  .aapm-ai-status-line button { min-height: var(--aapm-component-action-height); }
+}
+
+/* ------------------------------------------------- Local (fallback) replies
+ * A local reply is not an analysis: it gets its own quiet block with the retry
+ * as a real button, instead of an underlined link in a status line. */
+.aapm-ai-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3);
+  margin-top: var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--aapm-semantic-surface-subtle);
+}
+.aapm-ai-fallback > .aapm-icon { color: var(--aapm-semantic-ai); }
+.aapm-ai-fallback__body { flex: 1 1 14rem; min-width: 0; }
+.aapm-ai-fallback__title {
+  margin: 0;
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-strong);
+  line-height: 1.4;
+}
+.aapm-ai-fallback__text {
+  margin: 2px 0 0;
+  color: var(--aapm-semantic-muted);
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: 1.45;
+}
+.aapm-ai-fallback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aapm-primitive-space-2);
+}
+
+/* ------------------------------------------- Phone targets and reading size
+ * Phone controls reach the 40px action height. The search field stays at 16px
+ * so iOS does not zoom in when it takes focus. */
+@media (max-width: 639px) {
+  .aapm-chat-jump { min-height: var(--aapm-component-action-height); padding-inline: var(--aapm-primitive-space-4); }
+  .aapm-ai-search-control input { font-size: 16px; }
+  .aapm-history-scope > .aapm-tabs-trigger { min-height: var(--aapm-component-action-height); }
+}
+
+/* Compact status lines were 10px; they now sit on the caption size. */
+.aapm-ai-status-line--compact { font-size: var(--aapm-component-type-caption-size); }
+
+/* Under the bottom bar the chat fills the space between the top bar and the bar:
+ * the composer must never sit behind it. */
+@media (max-width: 859px) {
+  html:has(.aapm-app[data-bottom-nav="true"]) .aapm-ai-workspace--full-mobile {
+    height: calc(100dvh - 3.75rem - var(--aapm-component-bottom-nav-height) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 3.75rem - var(--aapm-component-bottom-nav-height) - env(safe-area-inset-bottom));
+  }
+}
+
+/* Phones: the composer toolbar fits one row (attach, KPI, web, send). */
+@media (max-width: 639px) {
+  .aapm-ai-composer-frame .aapm-ai-composer-toggle { padding-inline: 0; gap: var(--aapm-primitive-space-1); }
+  .aapm-ai-composer-frame .aapm-ai-attachment-control { flex: 0 0 auto; width: var(--aapm-component-action-height); padding-inline: 0; justify-content: center; }
+  .aapm-ai-composer-frame .aapm-ai-composer-toggle { flex: 0 0 auto; }
+}
+
+/* ==================================================== Chat room, 2026-10
+ * One reading size for answers, one Markdown frame for the workspace and the
+ * floating panel (AiMarkdown.jsx), a copy row under each answer, the mascot
+ * in the empty state, a tactile send button, and a phone layout where the
+ * answer takes the full width under a small "APPI" line. */
+
+/* ------------------------------------------------------- Answer Markdown */
+.aapm-ai-markdown {
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-primitive-text-md);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.aapm-ai-markdown[data-density="compact"] { font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-primitive-line-relaxed); }
+.aapm-ai-markdown > * + *,
+.aapm-ai-markdown li > * + * { margin-top: 0.75em; }
+.aapm-ai-markdown > :first-child { margin-top: 0; }
+.aapm-ai-markdown :is(h2, h3, h4) {
+  margin: 1.4em 0 0;
+  color: var(--aapm-semantic-foreground);
+  font-weight: var(--aapm-primitive-weight-heading);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.aapm-ai-markdown h2 { font-size: 1.15em; }
+.aapm-ai-markdown h3 { font-size: 1.05em; }
+.aapm-ai-markdown h4 { font-size: 1em; }
+.aapm-ai-markdown :is(ul, ol) { margin-bottom: 0; padding-inline-start: 1.35em; }
+.aapm-ai-markdown ul { list-style: disc; }
+.aapm-ai-markdown ol { list-style: decimal; }
+.aapm-ai-markdown li + li { margin-top: 0.4em; }
+.aapm-ai-markdown li::marker { color: var(--aapm-semantic-ai); }
+.aapm-ai-markdown ol > li::marker { font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-ai-markdown strong { color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-heading); }
+/* Links were indistinguishable from text; they now carry colour and a line. */
+.aapm-ai-markdown a {
+  color: var(--aapm-semantic-ai-soft-text);
+  font-weight: var(--aapm-primitive-weight-label);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.aapm-ai-markdown a:hover { text-decoration-thickness: 2px; }
+.aapm-ai-markdown a:focus-visible { border-radius: 2px; outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-ai-markdown blockquote {
+  margin: 0.9em 0 0;
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border-left: 3px solid var(--aapm-semantic-ai);
+  border-radius: 0 var(--aapm-primitive-radius-panel) var(--aapm-primitive-radius-panel) 0;
+  background: var(--aapm-semantic-ai-soft);
+  color: var(--aapm-semantic-foreground);
+}
+.aapm-ai-markdown hr { margin: 1.4em 0 0; border: 0; border-top: 1px solid var(--aapm-semantic-border); }
+.aapm-ai-markdown .aapm-table-wrap { border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-panel); }
+.aapm-ai-markdown .aapm-ai-markdown-table { min-width: 26rem; font-size: 0.875em; }
+.aapm-ai-markdown .aapm-ai-inline-code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--aapm-primitive-radius-xs);
+  background: var(--aapm-semantic-surface-secondary);
+  color: var(--aapm-semantic-foreground);
+  font-size: 0.86em;
+}
+
+/* Fenced code: language label and copy on a bar above the code. */
+.aapm-ai-code {
+  /* Dark in both themes: the inverse surface in light, a raised surface in dark. */
+  --code-surface: var(--aapm-semantic-surface-inverse);
+  --code-text: var(--aapm-semantic-surface-inverse-text);
+  margin: 0.9em 0 0;
+  overflow: hidden;
+  border-radius: var(--aapm-primitive-radius-panel);
+  background: var(--code-surface);
+  color: var(--code-text);
+}
+.dark .aapm-ai-code {
+  --code-surface: var(--aapm-semantic-surface-secondary);
+  --code-text: var(--aapm-semantic-foreground);
+  border: 1px solid var(--aapm-semantic-border);
+}
+.aapm-ai-code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aapm-primitive-space-2);
+  padding: 4px 4px 4px var(--aapm-primitive-space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--code-text) 14%, transparent);
+  color: color-mix(in srgb, var(--code-text) 72%, transparent);
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-label);
+}
+.aapm-ai-code .aapm-ai-code-block { margin: 0; border-radius: 0; background: transparent; color: inherit; font-size: 0.85em; }
+
+/* ------------------------------------------------- Copy and answer actions */
+.aapm-ai-answer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aapm-primitive-space-1);
+  margin: var(--aapm-primitive-space-2) 0 0 calc(var(--aapm-primitive-space-2) * -1);
+}
+.aapm-ai-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  cursor: pointer;
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-copy .aapm-icon { width: 16px; height: 16px; }
+.aapm-ai-copy:hover { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); }
+.aapm-ai-copy:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-ai-copy[data-state="copied"] { color: var(--aapm-semantic-success); }
+.aapm-ai-copy[data-state="copied"] .aapm-icon { animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) both; }
+.aapm-ai-copy[data-state="failed"] { color: var(--aapm-semantic-danger); }
+.aapm-ai-copy[data-tone="inverse"] { color: inherit; }
+.aapm-ai-copy[data-tone="inverse"]:hover,
+.aapm-ai-copy[data-tone="inverse"][data-state="copied"] { background: color-mix(in srgb, var(--code-text, currentColor) 12%, transparent); color: var(--code-text, inherit); }
+
+/* --------------------------------------------------- Turns: reading width */
+.aapm-chat-turn--user .aapm-ai-user-bubble { font-size: var(--aapm-primitive-text-md); line-height: 1.6; }
+.aapm-chat-turn__name { display: none; }
+
+/* ------------------------------------------------- Empty state: the mascot */
+.aapm-chat-welcome__mark.aapm-chat-welcome__mark--mascot {
+  width: 88px;
+  height: 88px;
+  margin-bottom: var(--aapm-primitive-space-2);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--aapm-semantic-ai) 8%, transparent);
+  animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) both;
+}
+
+/* ------------------------------------------------- Composer: tactile send */
+.aapm-ai-composer-frame .aapm-ai-send-control:not(:disabled) {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--aapm-semantic-ai) 68%, var(--aapm-depth-shade));
+}
+.aapm-ai-composer-frame .aapm-ai-send-control:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--aapm-semantic-ai) 68%, var(--aapm-depth-shade));
+}
+/* Waiting to type reads as unavailable, not as an outlined green pill. */
+.aapm-ai-composer-frame .aapm-ai-send-control:disabled { border-color: transparent; }
+
+/* Desktop pages end above the floating APPI pill, so the last card can always
+ * scroll clear of it (phones hide the pill where the bottom bar sits). */
+@media (min-width: 640px) {
+  html:has(.aapm-ai-launcher) .aapm-app__main > .aapm-page { padding-bottom: calc(var(--aapm-primitive-space-10) + var(--aapm-component-action-height)); }
+}
+
+/* ---------------------------------------------- Phones: full-width answers */
+@media (max-width: 639px) {
+  .aapm-chat-turn:not(.aapm-chat-turn--user) { flex-direction: column; gap: var(--aapm-primitive-space-1); }
+  .aapm-chat-turn:not(.aapm-chat-turn--user) .aapm-chat-turn__avatar { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-2); margin-top: 0; }
+  .aapm-chat-turn__name { display: inline; color: var(--aapm-semantic-foreground); font-size: var(--aapm-component-type-support-size); font-weight: var(--aapm-primitive-weight-heading); }
+  .aapm-chat-turn:not(.aapm-chat-turn--user) .aapm-chat-turn__body { width: 100%; }
+  .aapm-ai-copy { min-height: var(--aapm-component-action-height); }
+  .aapm-chat-welcome__mark.aapm-chat-welcome__mark--mascot { width: 76px; height: 76px; }
+}

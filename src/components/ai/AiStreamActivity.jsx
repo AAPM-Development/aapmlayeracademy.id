@@ -18,8 +18,6 @@ export default function AiStreamActivity({
   return (
     <div
       className={`aapm-ai-activity ${compact ? "aapm-ai-activity--compact" : ""}`}
-      role="status"
-      aria-live="polite"
     >
       <div className="min-w-0 flex-1">
         <div className="aapm-ai-activity__status">

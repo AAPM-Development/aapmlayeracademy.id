@@ -1,28 +1,20 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  IconTile,
-  T7Checkbox,
-} from "@/components/primitives";
+import { Alert, Badge, CheckboxField, IconTile } from "@/design-system";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 
 export const lessonSections = [
-  { id: "content", label: "Materi", icon: "solar:file-text-bold" },
-  { id: "video", label: "Video", icon: "solar:play-circle-bold" },
+  { id: "content", label: "Materi", icon: "lesson" },
+  { id: "video", label: "Video", icon: "video" },
   {
     id: "objectives",
     label: "Tujuan & Insight",
-    icon: "solar:target-bold-duotone",
+    icon: "target",
   },
   {
     id: "practical",
     label: "Praktik",
-    icon: "solar:clipboard-check-bold-duotone",
+    icon: "practice",
   },
 ];
 
@@ -96,8 +88,12 @@ export function LessonMedia({ module = null } = {}) {
   if (!module) return null;
 
   if (source) {
+    // An embed can be blocked (network, extensions, region); the original link
+    // is always one tap away instead of a dead grey frame.
+    const provider = /vimeo/.test(source.src) ? "Vimeo" : "YouTube";
     return (
-      <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-black shadow-sm">
+      <>
+      <div className="aapm-lesson-media">
         {source.kind === "file" ? (
           <video
             className="absolute inset-0 h-full w-full object-contain"
@@ -108,7 +104,7 @@ export function LessonMedia({ module = null } = {}) {
           />
         ) : (
           <>
-            {loadedEmbedSource !== source.src && <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black px-5 text-center text-xs text-white/80" aria-live="polite"><div><AapmIcon name="solar:play-circle-bold" className="mx-auto mb-2 h-6 w-6 text-brand-orange" />Memuat video…</div></div>}
+            {loadedEmbedSource !== source.src && <div className="aapm-lesson-media__loading" aria-live="polite"><span className="aapm-spinner" aria-hidden="true" />Memuat video…</div>}
             <iframe
               className="absolute inset-0 h-full w-full"
               src={source.src}
@@ -122,247 +118,82 @@ export function LessonMedia({ module = null } = {}) {
           </>
         )}
       </div>
+      {source.kind === "embed" ? (
+        <p className="aapm-lesson-media__fallback">
+          Video tidak muncul?{" "}
+          <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+            Buka di {provider}<AapmIcon name="externalLink" /><span className="aapm-visually-hidden"> (tab baru)</span>
+          </a>
+        </p>
+      ) : null}
+      </>
     );
   }
 
   if (mediaUrl) {
     return (
-      <Card className="border-tint-orange-border bg-tint-orange shadow-none">
-        <CardContent className="flex items-start gap-3 p-4 sm:p-5">
-          <IconTile icon="solar:shield-warning-bold" tone="orange" size="md" />
-          <div className="min-w-0">
-            <Badge variant="soft" className="bg-card/70 text-[10px] uppercase tracking-[0.14em] text-foreground">Media dibatasi</Badge>
-            <h3 className="mt-2 text-sm font-semibold text-foreground">Tautan video tidak dapat ditampilkan</h3>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">Untuk menjaga keamanan lesson, gunakan YouTube, Vimeo, atau file video HTTPS/internal dengan format MP4, WebM, OGG, atau M4V.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <Alert
+        tone="warning"
+        icon="shieldWarning"
+        title="Tautan video tidak dapat ditampilkan"
+        description="Untuk menjaga keamanan lesson, gunakan YouTube, Vimeo, atau file video HTTPS/internal (MP4, WebM, OGG, M4V)."
+      />
     );
   }
 
   return null;
 }
 
-export function LessonHeader({ module = null, completed = false } = {}) {
+/** Lesson title block: level chip, module meta, title and summary. */
+export function LessonHeader({ module = null, completed = false, hue = "green", minutes = null } = {}) {
   if (!module) return null;
   return (
-    <div>
-      <Link
-        to="/modules"
-        className="mb-5 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-      >
-          <AapmIcon name="arrowLeft" className="h-3.5 w-3.5" /> Jalur belajar
-      </Link>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border-brand-green/30 bg-brand-green/5 text-brand-green"
-            >
-              Level {module.level}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              Modul {module.moduleNumber} · {module.category}
-            </span>
-          </div>
-          <h1 className="break-words text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
-            {module.title}
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            {module.summary}
-          </p>
-        </div>
-        {completed && (
-          <Badge className="w-fit bg-success text-white">
-            <AapmIcon name="check" className="mr-1 h-3.5 w-3.5" /> Selesai
-          </Badge>
-        )}
+    <header className="aapm-lesson__header">
+      <div className="aapm-meta-row">
+        <Badge hue={hue}>Level {module.level} · {module.levelName || module.category}</Badge>
+        <span className="aapm-meta"><AapmIcon name="modules" />Modul {module.moduleNumber}</span>
+        {minutes ? <span className="aapm-meta"><AapmIcon name="clock" />±{minutes} menit</span> : null}
+        {completed ? <Badge tone="success" icon="check">Selesai</Badge> : null}
       </div>
-    </div>
+      <h1 className="aapm-lesson__title">{module.title}</h1>
+      {module.summary ? <p className="aapm-lesson__summary">{module.summary}</p> : null}
+    </header>
   );
 }
 
-export function LessonSidebar({
-  module = null,
-  activeSection = "content",
-  onSectionChange = (_section) => {},
-  sections = lessonSections,
-} = {}) {
-  if (!module || !sections.length) return null;
-
-  const activeIndex = Math.max(0, sections.findIndex((section) => section.id === activeSection));
-  const activeMeta = sections[activeIndex] || sections[0];
-  const nextMeta = sections[activeIndex + 1] || null;
-  const progress = Math.round(((activeIndex + 1) / sections.length) * 100);
-  const selectId = `lesson-section-jump-${module.moduleNumber || "current"}`;
-
+/** "Di halaman ini" table of contents with the active section highlighted. */
+export function LessonToc({ sections = lessonSections, activeSection = "content", onSectionChange = (_section) => {} } = {}) {
+  if (!sections.length) return null;
   return (
-    <nav
-      className="border-y border-border/60 py-3 sm:py-4"
-      aria-label="Navigasi bagian modul"
-      data-t7-region="lesson-navigation"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-green/10 text-xs font-semibold tabular-nums text-brand-green"
+    <nav aria-label="Di halaman ini">
+      <p className="aapm-toc__title aapm-text-overline">Di halaman ini</p>
+      <div className="aapm-toc">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            className="aapm-toc__link"
+            aria-current={section.id === activeSection ? "true" : undefined}
+            onClick={() => onSectionChange(section.id)}
           >
-            {String(activeIndex + 1).padStart(2, "0")}
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Bagian modul
-            </p>
-            <p className="truncate text-sm font-semibold text-foreground">
-              {activeMeta.label}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {activeIndex + 1} dari {sections.length} bagian
-          </span>
-          {nextMeta ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => onSectionChange(nextMeta.id)}
-              className="w-full bg-brand-green text-white hover:bg-brand-green/90 sm:w-auto"
-            >
-              <span className="truncate">Lanjutkan ke {nextMeta.label}</span>
-              <AapmIcon name="arrowRight" className="shrink-0" />
-            </Button>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-green">
-              <AapmIcon name="check" className="h-3.5 w-3.5" /> Bagian terakhir
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div
-        className="mt-3 h-1 overflow-hidden rounded-full bg-surface-subtle"
-        role="progressbar"
-        aria-label="Progres bagian modul"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-      >
-        <span
-          className="block h-full rounded-full bg-brand-green transition-[width] duration-300"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <label htmlFor={selectId} className="shrink-0 text-xs font-medium text-muted-foreground">
-          Lompat ke bagian
-        </label>
-        <div className="relative min-w-0 sm:max-w-sm sm:flex-1">
-          <select
-            id={selectId}
-            value={activeMeta.id}
-            onChange={(event) => onSectionChange(event.target.value)}
-            className="h-10 w-full appearance-none rounded-[var(--radius-control)] border border-border/70 bg-background px-3 pr-9 text-sm text-foreground outline-none transition-colors hover:border-border focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {sections.map((section, index) => (
-              <option key={section.id} value={section.id}>
-                {String(index + 1).padStart(2, "0")} · {section.label}
-              </option>
-            ))}
-          </select>
-          <AapmIcon
-            name="chevronDown"
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          />
-        </div>
-        <span className="hidden text-xs text-muted-foreground lg:inline">
-          Pilih bagian lain tanpa meninggalkan lesson.
-        </span>
+            {section.label}
+          </button>
+        ))}
       </div>
     </nav>
   );
 }
 
-export function LessonNavigation({
-  previous = null,
-  next = null,
-  onComplete = () => {},
-  completeDisabled = false,
-  completed = false,
-  saving = false,
-} = {}) {
-  const disabled = completeDisabled || completed || saving;
-  const completeLabel = saving
-    ? "Menyimpan..."
-    : completed
-      ? "Modul selesai"
-      : "Tandai selesai";
-
+export function LessonSection({ id = "", title = "", icon = "lesson", hue = "green", children = null, className = "" } = {}) {
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        {previous && (
-          <Button asChild variant="outline" className="w-full sm:w-auto">
-            <Link to={`/modules/${previous.moduleNumber}`}>
-              <AapmIcon name="arrowLeft" /> Sebelumnya
-            </Link>
-          </Button>
-        )}
-      </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onComplete}
-          disabled={disabled}
-          aria-busy={saving}
-          className="w-full sm:w-auto"
-        >
-          <AapmIcon name="check" /> {completeLabel}
-        </Button>
-        {next && (
-          <Button
-            asChild
-            className="bg-brand-orange text-white hover:bg-brand-orange/90"
-          >
-            <Link to={`/modules/${next.moduleNumber}`}>
-              Modul berikutnya <AapmIcon name="arrowRight" />
-            </Link>
-          </Button>
-        )}
-        {!next && (
-          <Button
-            asChild
-            className="bg-brand-orange text-white hover:bg-brand-orange/90"
-          >
-            <Link to="/modules">
-              Kembali ke jalur belajar <AapmIcon name="arrowRight" />
-            </Link>
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function LessonSection({
-  id = "",
-  title = "",
-  icon = "solar:file-text-bold",
-  children = null,
-  className = "",
-} = {}) {
-  return (
-    <section id={id} className={cn("scroll-mt-24", className)}>
-      <div className="flex items-center gap-2 border-b border-border/70 pb-2.5">
-        <AapmIcon name={icon} className="h-4 w-4 shrink-0 text-brand-orange" />
-        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-      </div>
-      <div className="mt-4">{children}</div>
+    <section id={id || undefined} className={cn("aapm-lesson-section", className)} aria-labelledby={id ? `${id}-title` : undefined}>
+      {title ? (
+        <div className="aapm-lesson-section__head">
+          <IconTile icon={icon} hue={hue} size="sm" shape="circle" />
+          <h2 id={id ? `${id}-title` : undefined} className="aapm-lesson-section__title">{title}</h2>
+        </div>
+      ) : null}
+      {children}
     </section>
   );
 }
@@ -370,64 +201,32 @@ export function LessonSection({
 export function LessonChecklist({ items = [], style = "checkbox", density = "comfortable" } = {}) {
   const listId = React.useId();
   return (
-    <ul className={density === "compact" ? "space-y-1.5" : "space-y-2"}>
-      {items.map((item, index) => {
-        const id = `${listId}-checklist-${index}`;
-        return (
-          <li
-            key={`${item}-${index}`}
-            className={cn(
-              "rounded-md px-2 transition-colors",
-              density === "compact" ? "py-1.5" : "py-2",
-              style === "checkbox" && "hover:bg-surface-subtle",
-            )}
-          >
-            {style === "list" ? (
-              <div className="flex items-start gap-2.5 text-sm leading-6">
-                <AapmIcon name="arrowRight" className="mt-1 h-4 w-4 shrink-0 text-brand-orange" />
-                <span className="min-w-0">{item}</span>
-              </div>
-            ) : (
-              <T7Checkbox
-                id={id}
-                label={item}
-                className="items-start gap-2.5"
-              />
-            )}
-          </li>
-        );
-      })}
+    <ul className={cn("aapm-lesson-checklist", density === "compact" && "aapm-lesson-checklist--compact")}>
+      {items.map((item, index) => (
+        <li key={`${item}-${index}`}>
+          {style === "list" ? (
+            <span className="aapm-lesson-checklist__item">
+              <AapmIcon name="arrowRight" />
+              <span className="min-w-0">{item}</span>
+            </span>
+          ) : (
+            <CheckboxField id={`${listId}-checklist-${index}`} label={item} />
+          )}
+        </li>
+      ))}
     </ul>
   );
 }
 
-export function LessonInsightList({
-  items = [],
-  icon = "solar:lightbulb-bolt-bold-duotone",
-  density = "comfortable",
-  iconClassName = "text-brand-orange",
-  marker = "number",
-} = {}) {
+export function LessonInsightList({ items = [], icon = "insight", density = "comfortable", marker = "number" } = {}) {
   return (
-    <ol className={cn("aapm-lesson-insight-list", density === "compact" ? "space-y-1.5" : "space-y-2")}>
+    <ol className={cn("aapm-lesson-insight-list", density === "compact" && "aapm-lesson-insight-list--compact")}>
       {items.map((item, index) => (
-        <li key={`${item}-${index}`} className="aapm-lesson-insight-item grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-x-2.5 text-sm leading-6">
+        <li key={`${item}-${index}`} className="aapm-lesson-insight-item grid">
           {marker === "icon" ? (
-            <AapmIcon
-              name={icon}
-              className={cn("mt-1 h-4 w-4 shrink-0 justify-self-start", iconClassName)}
-            />
+            <AapmIcon name={icon} className="aapm-lesson-insight-icon" />
           ) : (
-            <span
-              aria-hidden="true"
-              className={cn(
-                "aapm-lesson-insight-index mt-0.5 grid h-6 w-6 shrink-0 place-items-center justify-self-start rounded-full border text-[10px] font-semibold tabular-nums",
-                iconClassName,
-                "border-current/25 bg-current/5",
-              )}
-            >
-              {String(index + 1).padStart(2, "0")}
-            </span>
+            <span aria-hidden="true" className="aapm-lesson-insight-index">{index + 1}</span>
           )}
           <span className="min-w-0">{item}</span>
         </li>

@@ -395,6 +395,7 @@ function ai_registry_public_provider(array $record, string $activeId = ''): arra
         'apiKeyRequired' => $settings['apiKeyRequired'],
         'apiKeyConfigured' => $settings['apiKeyConfigured'],
         'keyStorage' => $settings['keyStorage'],
+        'encryptionReady' => $settings['encryptionReady'],
         'authMode' => $settings['authMode'],
         'chatPath' => $settings['chatPath'],
         'modelsPath' => $settings['modelsPath'],
@@ -488,7 +489,7 @@ function ai_registry_find(array $records, string $id): ?array
     return null;
 }
 
-function ai_registry_build_record(array $input, ?array $existing = null): array
+function ai_registry_build_record(array $input, ?array $existing = null, bool $persistSecrets = true): array
 {
     $type = trim((string) ($input['type'] ?? $input['providerType'] ?? $input['provider'] ?? ($existing['type'] ?? 'custom-openai')));
     $definition = ai_registry_definition($type);
@@ -525,12 +526,12 @@ function ai_registry_build_record(array $input, ?array $existing = null): array
         'secret' => (string) ($existing['secret'] ?? ''),
         'headersSecret' => (string) ($existing['headersSecret'] ?? ''),
     ];
-    if (array_key_exists('apiKey', $input) && trim((string) $input['apiKey']) !== '') {
+    if ($persistSecrets && array_key_exists('apiKey', $input) && trim((string) $input['apiKey']) !== '') {
         $record['secret'] = ai_encrypt_secret(ai_validate_api_key((string) $input['apiKey']));
-    } elseif (!empty($input['clearApiKey'])) {
+    } elseif ($persistSecrets && !empty($input['clearApiKey'])) {
         $record['secret'] = '';
     }
-    if (array_key_exists('headers', $input)) {
+    if ($persistSecrets && array_key_exists('headers', $input)) {
         $headers = ai_registry_validate_headers($input['headers']);
         $record['headersSecret'] = $headers ? ai_encrypt_secret((string) json_encode($headers, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) : '';
     }
@@ -705,9 +706,13 @@ function ai_registry_resolve_test_settings(array $input): array
         if ($configId !== '') {
             $existing = ai_registry_find(ai_registry_records(), ai_registry_validate_id($configId));
         }
-        $record = ai_registry_build_record($config, $existing);
-        $settings = ai_registry_record_settings($record, array_key_exists('apiKey', $config) ? trim((string) $config['apiKey']) : null);
-        if (array_key_exists('apiKey', $config)) $settings['_testApiKey'] = trim((string) $config['apiKey']);
+        // Test settings are never saved: nothing is encrypted here. A typed key
+        // is used for this request only; a blank field keeps the stored key.
+        $record = ai_registry_build_record($config, $existing, false);
+        $typedKey = array_key_exists('apiKey', $config) ? trim((string) $config['apiKey']) : '';
+        $settings = ai_registry_record_settings($record, $typedKey !== '' ? $typedKey : null);
+        if ($typedKey !== '') $settings['_testApiKey'] = $typedKey;
+        if (array_key_exists('headers', $config)) $settings['_extraHeaders'] = ai_registry_validate_headers($config['headers']);
         return $settings;
     }
     if (!empty($input['providerId'])) {

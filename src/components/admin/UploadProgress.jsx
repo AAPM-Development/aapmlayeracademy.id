@@ -38,7 +38,7 @@ export default function UploadProgress({ progress = null, label = "Mengunggah…
       </div>
       {onCancel && (
         <div className="mt-2 flex justify-end">
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={onCancel}>
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onCancel}>
             <AapmIcon name="close" className="h-3 w-3" />
             Batalkan
           </Button>

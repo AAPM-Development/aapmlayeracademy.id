@@ -1,0 +1,86 @@
+/* Feature styles migrated from the legacy index.css onto AAPM tokens. */
+
+/*
+   * Scrollable surfaces use a state-aware edge treatment. Keep the fade on
+   * the scrollport itself instead of adding children to its scrollable
+   * content; inset shadows stay pinned to the viewport while the content
+   * moves underneath them.
+   */
+
+.aapm-scroll-fade {
+    isolation: isolate;
+    position: relative;
+    --scroll-fade-size: 1.35rem;
+    --scroll-fade-color: hsl(var(--background) / 0.76);
+    --scroll-fade-shadow-top: inset 0 0 0 transparent;
+    --scroll-fade-shadow-right: inset 0 0 0 transparent;
+    --scroll-fade-shadow-bottom: inset 0 0 0 transparent;
+    --scroll-fade-shadow-left: inset 0 0 0 transparent;
+    box-shadow:
+      var(--scroll-fade-shadow-top),
+      var(--scroll-fade-shadow-right),
+      var(--scroll-fade-shadow-bottom),
+      var(--scroll-fade-shadow-left);
+    transition: box-shadow var(--duration-fast) ease;
+  }
+
+.aapm-scroll-fade,
+  .aapm-scrollbar {
+    scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
+    scrollbar-width: thin;
+  }
+
+.aapm-scroll-fade--subtle {
+    --scroll-fade-color: hsl(var(--surface-subtle) / 0.78);
+  }
+
+.aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-top="true"] {
+    --scroll-fade-shadow-top: inset 0 var(--scroll-fade-size) var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
+  }
+
+.aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-bottom="true"] {
+    --scroll-fade-shadow-bottom: inset 0 calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
+  }
+
+.aapm-scroll-fade--x[data-scroll-left="true"] {
+    --scroll-fade-shadow-left: inset var(--scroll-fade-size) 0 var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
+  }
+
+.aapm-scroll-fade--x[data-scroll-right="true"] {
+    --scroll-fade-shadow-right: inset calc(-1 * var(--scroll-fade-size)) 0 var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
+  }
+
+.aapm-scroll-fade::-webkit-scrollbar,
+  .aapm-scrollbar::-webkit-scrollbar,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar {
+    width: 0.55rem;
+    height: 0.55rem;
+  }
+
+.aapm-scroll-fade::-webkit-scrollbar-track,
+  .aapm-scrollbar::-webkit-scrollbar-track,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+.aapm-scroll-fade::-webkit-scrollbar-thumb,
+  .aapm-scrollbar::-webkit-scrollbar-thumb,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb {
+    border: 0.18rem solid transparent;
+    border-radius: 999px;
+    background: hsl(var(--foreground) / 0.18);
+    background-clip: padding-box;
+  }
+
+.aapm-scroll-fade::-webkit-scrollbar-thumb:hover,
+  .aapm-scrollbar::-webkit-scrollbar-thumb:hover,
+  .aapm-scroll-fade [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--aapm-orange-700) / 0.55);
+    background-clip: padding-box;
+  }
+
+@media (prefers-reduced-motion: reduce) {
+    .aapm-scroll-fade {
+      transition: none;
+    }
+  }

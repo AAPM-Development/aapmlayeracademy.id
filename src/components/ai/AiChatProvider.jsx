@@ -132,6 +132,13 @@ export function AiChatProvider({ children }) {
   const draftRef = useRef(false);
   const phaseTimerRef = useRef(null);
   const restoreAttemptedRef = useRef(null);
+  const sendInFlightRef = useRef(false);
+  const loadingConversationRef = useRef(false);
+  const selectionRequestRef = useRef(0);
+  const selectionBaselineRef = useRef(null);
+  const accountRequestRef = useRef(0);
+  const streamControllerRef = useRef(null);
+  const promptDraftRef = useRef("");
 
   const settleStreamPhase = useCallback((phase, delay = 1100) => {
     window.clearTimeout(phaseTimerRef.current);
@@ -143,7 +150,12 @@ export function AiChatProvider({ children }) {
   }, []);
 
   useEffect(
-    () => () => window.clearTimeout(phaseTimerRef.current),
+    () => () => {
+      window.clearTimeout(phaseTimerRef.current);
+      accountRequestRef.current += 1;
+      selectionRequestRef.current += 1;
+      streamControllerRef.current?.abort();
+    },
     [],
   );
 
@@ -175,15 +187,18 @@ export function AiChatProvider({ children }) {
   const setPromptDraft = useCallback(
     (value) => {
       const next = typeof value === "string" ? value.slice(0, 3000) : "";
+      promptDraftRef.current = next;
       setPromptDraftState(next);
       writeStorage(composerDraftStorageKey(), next);
     },
     [composerDraftStorageKey],
   );
   const clearPromptDraft = useCallback(
-    (conversationId = activeRef.current) => {
+    (conversationId = activeRef.current, expectedDraft) => {
+      if (expectedDraft !== undefined && promptDraftRef.current !== expectedDraft) return;
       writeStorage(composerDraftStorageKey("new"), "");
       if (conversationId) writeStorage(composerDraftStorageKey(conversationId), "");
+      promptDraftRef.current = "";
       setPromptDraftState("");
     },
     [composerDraftStorageKey],
@@ -191,6 +206,12 @@ export function AiChatProvider({ children }) {
 
   // Account data must never be reused when the active session changes.
   useEffect(() => {
+    accountRequestRef.current += 1;
+    selectionRequestRef.current += 1;
+    streamControllerRef.current?.abort();
+    sendInFlightRef.current = false;
+    loadingConversationRef.current = false;
+    selectionBaselineRef.current = null;
     restoreAttemptedRef.current = null;
     activeRef.current = null;
     setActiveConversationId(null);
@@ -204,8 +225,11 @@ export function AiChatProvider({ children }) {
     setHistorySyncState("idle");
     setHistoryError(null);
     setRetryingMessageId(null);
-    setPromptDraftState(readStorage(scopedStorageKey(COMPOSER_DRAFT_STORAGE_KEY, accountId, "new")));
+    promptDraftRef.current = readStorage(scopedStorageKey(COMPOSER_DRAFT_STORAGE_KEY, accountId, "new"));
+    setPromptDraftState(promptDraftRef.current);
   }, [accountId]);
+
+  useEffect(() => { promptDraftRef.current = promptDraft; }, [promptDraft]);
 
   const upsertConversation = useCallback(
     (conversation) => {
@@ -222,8 +246,10 @@ export function AiChatProvider({ children }) {
       if (!id || !accountId) {
         return { ok: false, assistantPersisted: false };
       }
+      const accountRequest = accountRequestRef.current;
       try {
         const detail = await nativeApi.ai.conversations.detail(id);
+        if (accountRequest !== accountRequestRef.current) return { ok: false, assistantPersisted: false };
         const detailMessages = detail?.messages ?? [];
         const latestMessage = detailMessages.at(-1);
         const assistantPersisted =
@@ -243,7 +269,7 @@ export function AiChatProvider({ children }) {
         }
         return { ok: true, assistantPersisted };
       } catch (error) {
-        setHistoryError(error);
+        if (accountRequest === accountRequestRef.current) setHistoryError(error);
         return { ok: false, assistantPersisted: false };
       }
     },
@@ -252,18 +278,24 @@ export function AiChatProvider({ children }) {
 
   const selectConversation = useCallback(
     async (id) => {
-      if (!id || isStreaming) return false;
-      const previousId = activeRef.current;
-      const previousMessages = messagesRef.current;
-      const previousDraft = draftRef.current;
+      if (!id || sendInFlightRef.current) return false;
+      const requestId = ++selectionRequestRef.current;
+      if (!loadingConversationRef.current) selectionBaselineRef.current = {
+        id: activeRef.current,
+        messages: messagesRef.current,
+        draft: draftRef.current,
+      };
+      const baseline = selectionBaselineRef.current;
       setHistoryError(null);
       setIsDraft(false);
+      setMessages([]);
       setActiveConversationId(id);
       activeRef.current = id;
       setIsLoadingConversation(true);
+      loadingConversationRef.current = true;
       try {
         const detail = await nativeApi.ai.conversations.detail(id);
-        if (activeRef.current === id) {
+        if (selectionRequestRef.current === requestId && activeRef.current === id) {
           if (detail?.conversation) upsertConversation(detail.conversation);
           setMessages(
             (detail?.messages ?? []).map((message) =>
@@ -273,27 +305,36 @@ export function AiChatProvider({ children }) {
           persistActiveConversation(id);
           setPromptDraftState(readStorage(composerDraftStorageKey(id)));
           setHistorySyncState("saved");
+          selectionBaselineRef.current = null;
         }
-        return true;
+        return selectionRequestRef.current === requestId;
       } catch (error) {
-        if (activeRef.current === id) {
-          setActiveConversationId(previousId);
-          activeRef.current = previousId;
-          setMessages(previousMessages);
-          setIsDraft(previousDraft);
+        if (selectionRequestRef.current === requestId && activeRef.current === id) {
+          setActiveConversationId(baseline?.id ?? null);
+          activeRef.current = baseline?.id ?? null;
+          setMessages(baseline?.messages ?? []);
+          setIsDraft(baseline?.draft ?? true);
+          selectionBaselineRef.current = null;
+          setHistoryError(error);
+          setHistorySyncState("attention");
         }
-        setHistoryError(error);
-        setHistorySyncState("attention");
         return false;
       } finally {
-        setIsLoadingConversation(false);
+        if (selectionRequestRef.current === requestId) {
+          loadingConversationRef.current = false;
+          setIsLoadingConversation(false);
+        }
       }
     },
-    [composerDraftStorageKey, isStreaming, persistActiveConversation, upsertConversation],
+    [composerDraftStorageKey, persistActiveConversation, upsertConversation],
   );
 
   const startNewConversation = useCallback(() => {
-    if (isStreaming) return;
+    if (sendInFlightRef.current) return;
+    selectionRequestRef.current += 1;
+    selectionBaselineRef.current = null;
+    loadingConversationRef.current = false;
+    setIsLoadingConversation(false);
     activeRef.current = null;
     persistActiveConversation(null);
     setIsDraft(true);
@@ -305,12 +346,13 @@ export function AiChatProvider({ children }) {
     setHistorySyncState("idle");
     setHistoryError(null);
     setPromptDraftState(readStorage(composerDraftStorageKey("new")));
-  }, [composerDraftStorageKey, isStreaming, persistActiveConversation]);
+  }, [composerDraftStorageKey, persistActiveConversation]);
 
   const ensureConversation = useCallback(
-    async (title) => {
+    async (title, accountRequest) => {
       if (activeRef.current) return { id: activeRef.current };
       const conversation = await nativeApi.ai.conversations.create(title);
+      if (accountRequest !== accountRequestRef.current) throw new DOMException("Sesi berubah.", "AbortError");
       setIsDraft(false);
       setActiveConversationId(conversation.id);
       activeRef.current = conversation.id;
@@ -334,8 +376,9 @@ export function AiChatProvider({ children }) {
     restoreAttemptedRef.current = accountId;
     const savedConversationId = readStorage(activeConversationStorageKey());
     if (!savedConversationId) return;
+    const accountRequest = accountRequestRef.current;
     void selectConversation(savedConversationId).then((restored) => {
-      if (!restored) persistActiveConversation(null);
+      if (!restored && accountRequest === accountRequestRef.current && !activeRef.current) persistActiveConversation(null);
     });
   }, [
     accountId,
@@ -357,17 +400,28 @@ export function AiChatProvider({ children }) {
       } = {},
     ) => {
       const message = rawMessage.trim();
-      if (!message || isStreaming) return;
+      if (!message || !accountId || sendInFlightRef.current || loadingConversationRef.current) return { ok: false, persisted: false };
+      sendInFlightRef.current = true;
+      setIsStreaming(true);
+      const accountRequest = accountRequestRef.current;
+      const isCurrentRequest = () => accountRequest === accountRequestRef.current;
+      const submittedDraft = promptDraftRef.current;
 
       let conversation;
       try {
-        conversation = await ensureConversation(message);
+        conversation = await ensureConversation(message, accountRequest);
       } catch (error) {
+        if (!isCurrentRequest()) return { ok: false, persisted: false };
+        sendInFlightRef.current = false;
+        setIsStreaming(false);
         setHistoryError(error);
         setHistorySyncState("attention");
-        setPromptDraft(message);
+        settleStreamPhase("alert", 1500);
         return { ok: false, persisted: false };
       }
+      if (!isCurrentRequest()) return { ok: false, persisted: false };
+      const controller = new AbortController();
+      streamControllerRef.current = controller;
 
       const assistantId = idFor("assistant");
       const userId = idFor("user");
@@ -422,7 +476,6 @@ export function AiChatProvider({ children }) {
           persisted: false,
         }),
       ]);
-      setIsStreaming(true);
       setHistorySyncState("saving");
       setHistoryError(null);
       window.clearTimeout(phaseTimerRef.current);
@@ -449,7 +502,9 @@ export function AiChatProvider({ children }) {
           allowWebSearch,
           imageDataUrl: image?.dataUrl ?? null,
           pageContext,
+          signal: controller.signal,
           onEvent: ({ event, data }) => {
+            if (!isCurrentRequest()) return;
             if (event === "status") reportStep(data.label);
             if (event === "delta" && data.text) {
               setStreamPhase("responding");
@@ -491,23 +546,27 @@ export function AiChatProvider({ children }) {
             }
           },
         });
+        if (!isCurrentRequest()) return { ok: false, persisted: false };
         flushPendingText();
         const reconciled = await reconcileConversation(conversation.id, {
           // Keep the visible local answer when Phase 3 failed. Replacing it
           // with the DB detail here used to erase the only copy the user
           // could retry.
           replaceMessages: persisted,
-          expectedAssistantContent: streamedContent || null,
+          expectedAssistantContent: streamedContent,
         });
+        if (!isCurrentRequest()) return { ok: false, persisted: false };
         const didPersist = reconciled.assistantPersisted || persisted;
         setHistorySyncState(didPersist ? "saved" : "attention");
         if (reconciled.assistantPersisted && !persisted) {
           updateAssistant({ persisted: true, error: false, notice: "", streaming: false });
         }
-        if (didPersist) clearPromptDraft(conversation.id);
+        updateAssistant({ streaming: false });
+        if (didPersist) clearPromptDraft(conversation.id, submittedDraft);
         settleStreamPhase("complete");
         return { ok: true, persisted: didPersist, conversationId: conversation.id, assistantId };
       } catch (error) {
+        if (!isCurrentRequest()) return { ok: false, persisted: false };
         flushPendingText();
         const visibleContent = streamedContent || error?.message || "Koneksi ke asisten belum tersedia.";
         updateAssistant({
@@ -519,8 +578,9 @@ export function AiChatProvider({ children }) {
         });
         const reconciled = await reconcileConversation(conversation.id, {
           replaceMessages: false,
-          expectedAssistantContent: streamedContent || null,
+          expectedAssistantContent: streamedContent,
         });
+        if (!isCurrentRequest()) return { ok: false, persisted: false };
         const didPersist = reconciled.assistantPersisted || persisted;
         if (reconciled.assistantPersisted && !persisted) {
           updateAssistant({ persisted: true, error: false, notice: "", streaming: false });
@@ -528,28 +588,30 @@ export function AiChatProvider({ children }) {
         setHistorySyncState(didPersist ? "saved" : "attention");
         setHistoryError(didPersist ? null : error);
         settleStreamPhase(didPersist ? "complete" : "alert", didPersist ? 1100 : 1500);
-        if (didPersist) clearPromptDraft(conversation.id);
-        else setPromptDraft(message);
+        if (didPersist) clearPromptDraft(conversation.id, submittedDraft);
         return { ok: didPersist, persisted: didPersist, conversationId: conversation.id, assistantId };
       } finally {
         if (deltaFrame !== null) window.cancelAnimationFrame(deltaFrame);
-        setIsStreaming(false);
-        setStreamStatus("");
-        setStreamSteps([]);
+        if (isCurrentRequest()) {
+          sendInFlightRef.current = false;
+          streamControllerRef.current = null;
+          setIsStreaming(false);
+          setStreamStatus("");
+          setStreamSteps([]);
+        }
         queryClient.invalidateQueries({ queryKey: conversationQueryKey });
         queryClient.invalidateQueries({ queryKey: activityQueryKey });
       }
     },
     [
+      accountId,
       activityQueryKey,
       clearPromptDraft,
       conversationQueryKey,
       ensureConversation,
       farm,
-      isStreaming,
       queryClient,
       reconcileConversation,
-      setPromptDraft,
       settleStreamPhase,
       upsertConversation,
     ],
@@ -581,7 +643,6 @@ export function AiChatProvider({ children }) {
         if (result?.conversation) upsertConversation(result.conversation);
         const reconciled = await reconcileConversation(conversationId, { replaceMessages: true });
         if (reconciled.ok) {
-          clearPromptDraft(conversationId);
           setHistorySyncState("saved");
           return true;
         }
@@ -600,7 +661,6 @@ export function AiChatProvider({ children }) {
     [
       accountId,
       activityQueryKey,
-      clearPromptDraft,
       conversationQueryKey,
       isStreaming,
       queryClient,
@@ -672,7 +732,7 @@ export function AiChatProvider({ children }) {
           updated.push(result.value);
           upsertConversation(result.value);
         } else {
-          failed.push({ id: uniqueIds[index], error: result.reason || new Error("Gagal memperbarui arsip.") });
+          failed.push({ id: uniqueIds[index], error: result.status === "rejected" ? result.reason : new Error("Gagal memperbarui arsip.") });
         }
       });
       queryClient.invalidateQueries({ queryKey: conversationQueryKey });

@@ -6,9 +6,12 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent, EditorialMarkdown } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
-import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
+import EditorialComposer, { editorialInsertGroups } from "@/components/admin/EditorialComposer";
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
-import EditorQuickNav from "@/components/admin/EditorQuickNav";
+import EditorOutline from "@/components/admin/EditorOutline";
+import EditorActionBar from "@/components/admin/EditorActionBar";
+import useModalFocus from "@/components/ai/useModalFocus";
+import { levelVisual } from "@/lib/academyVisuals";
 import {
   Badge,
   Button,
@@ -27,6 +30,11 @@ import {
   TabsTrigger,
   Textarea,
   useToast,
+  Alert,
+  Field,
+  IconTile,
+  IconButton,
+  OverflowMenu,
 } from "@/components/primitives";
 import {
   AdminError,
@@ -35,6 +43,7 @@ import {
 } from "@/components/admin/AdminPage";
 import {
   useAdminModule,
+  useAdminCourse,
   useAdminModuleQuestions,
   useCreateAdminModule,
   useDeleteAdminModule,
@@ -52,6 +61,7 @@ import {
   normaliseAiEditorialMaterial,
 } from "@/lib/aiEditorialRewrite";
 import { useAuth } from "@/lib/AuthContext";
+import { reconcileSavedModule } from "@/lib/editorSaveState";
 
 const emptyModule = {
   levelNumber: 1,
@@ -205,23 +215,16 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
   };
 
   return (
-    <div className="aapm-editor-point-card min-w-0">
-      <div className="mb-2 flex min-w-0 items-center gap-2">
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tone === "orange" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green"}`}>
-          <AapmIcon name={icon} className="h-3.5 w-3.5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <Label htmlFor={`${id}-point-1`} className="text-xs font-semibold">{label}</Label>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Satu baris = satu poin learner</p>
-        </div>
-        <Badge variant="soft" className="shrink-0 text-[10px]">{count} poin</Badge>
+    <div className="aapm-editor-point-card min-w-0" data-hue={tone === "orange" ? "orange" : "green"}>
+      <div className="aapm-editor-point-card__head">
+        <IconTile icon={icon} hue={tone === "orange" ? "orange" : "green"} size="xs" shape="circle" />
+        <Label htmlFor={`${id}-point-1`} className="min-w-0 flex-1">{label}</Label>
+        <Badge hue={tone === "orange" ? "orange" : "green"}>{count} poin</Badge>
       </div>
       <div className="aapm-editor-point-list space-y-1.5" role="list" aria-label={`${label} untuk learner`}>
         {points.map((point, index) => (
-          <div key={`${id}-point-${index + 1}`} className="aapm-editor-point-row grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_2.25rem] items-center gap-1.5 rounded-[var(--radius-control)] p-1" role="listitem">
-            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ${tone === "orange" ? "bg-tint-orange text-brand-orange" : "bg-tint-green text-brand-green"}`} aria-hidden="true">
-              {String(index + 1).padStart(2, "0")}
-            </span>
+          <div key={`${id}-point-${index + 1}`} className="aapm-editor-point-row grid" role="listitem">
+            <span className="aapm-editor-point-index" aria-hidden="true">{index + 1}</span>
             <Input
               ref={(element) => { pointInputRefs.current[index] = element; }}
               id={`${id}-point-${index + 1}`}
@@ -237,15 +240,15 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
                   insertPointAfter(index);
                 }
               }}
-              className="h-8 min-w-0 w-full border-0 bg-transparent px-1.5 text-sm shadow-none focus-visible:ring-0"
+              className="aapm-editor-point-input"
               placeholder={`Tulis poin ${index + 1}…`}
               aria-label={`${label}, poin ${index + 1}`}
             />
             <Button
               type="button"
-              size="icon"
+              size="icon-sm"
               variant="ghost"
-              className="aapm-editor-point-action h-8 w-8 shrink-0 justify-self-end text-muted-foreground hover:text-danger"
+              className="aapm-editor-point-action"
               onClick={() => removePoint(index)}
               disabled={points.length === 1 && !point.trim()}
               aria-label={`Hapus ${label.toLowerCase()} poin ${index + 1}`}
@@ -256,12 +259,9 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
           </div>
         ))}
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[10px] text-muted-foreground">Nomor mengikuti urutan tampil di learner.</span>
-        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={() => insertPointAfter(points.length - 1)}>
-          <AapmIcon name="add" className="h-3.5 w-3.5" /> Tambah poin
-        </Button>
-      </div>
+      <button type="button" className="aapm-editor-point-add" onClick={() => insertPointAfter(points.length - 1)}>
+        <AapmIcon name="plus" />Tambah poin
+      </button>
     </div>
   );
 }
@@ -396,14 +396,14 @@ function AiModuleDraft({ form, onApply, toast }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold">Bantu isi dengan APPI</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Buat draf tujuan, insight, tugas, checklist, atau rewrite teks materi tanpa menimpa isi sebelum Anda menyetujuinya.</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Buat draf tujuan, insight, tugas, checklist, atau rewrite teks materi tanpa menimpa isi sebelum Anda menyetujuinya.</p>
         </div>
         <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-          <Badge variant="soft" className={`max-w-full truncate text-[10px] ${providerStatus.className}`}>
+          <Badge variant="soft" className={`max-w-full truncate text-[11px] ${providerStatus.className}`}>
             <AapmIcon name={providerStatus.icon} className={`h-3 w-3 ${providerStatus.icon === "refresh" ? "animate-spin" : ""}`} />
             {providerStatus.label}
           </Badge>
-          {providerReady === false && <Link to="/admin/ai-settings" className="text-[10px] font-semibold text-brand-orange hover:underline">Buka Pengaturan AI</Link>}
+          {providerReady === false && <Link to="/admin/ai-settings" className="text-[11px] font-semibold text-brand-orange hover:underline">Buka Pengaturan AI</Link>}
         </div>
         <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 px-2.5 text-[11px]" onClick={() => setOpen((current) => !current)}>
           <AapmIcon name={open ? "chevronUp" : "ai"} className="h-3.5 w-3.5" />
@@ -427,7 +427,7 @@ function AiModuleDraft({ form, onApply, toast }) {
               className="h-9 min-w-0 flex-1 text-xs"
               disabled={isGenerating || isRewriting}
             />
-            <label className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-background/70 px-2.5 text-[10px] leading-4 text-muted-foreground sm:max-w-[15rem]">
+            <label className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-background/70 px-2.5 text-[11px] leading-4 text-muted-foreground sm:max-w-[15rem]">
               <input
                 type="checkbox"
                 checked={includeMaterial}
@@ -451,7 +451,7 @@ function AiModuleDraft({ form, onApply, toast }) {
             <div className="mt-3 rounded-[var(--radius-control)] border border-border bg-background p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold">Pratinjau draf</p>
-                <Badge variant="soft" className="text-[10px]">Belum diterapkan</Badge>
+                <Badge variant="soft" className="text-[11px]">Belum diterapkan</Badge>
               </div>
               <div className="grid gap-2 text-[11px] sm:grid-cols-2">
                 {[
@@ -478,8 +478,8 @@ function AiModuleDraft({ form, onApply, toast }) {
           {rewriteDraft && (
             <div className="mt-3 rounded-[var(--radius-control)] border border-brand-orange/35 bg-background p-3">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div><p className="text-xs font-semibold">Pratinjau rewrite copywriting</p><p className="mt-0.5 text-[10px] text-muted-foreground">Hasil ini hanya usulan sampai Anda mengonfirmasi penggantian isi.</p></div>
-                <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground text-[10px]">Konfirmasi diperlukan</Badge>
+                <div><p className="text-xs font-semibold">Pratinjau rewrite copywriting</p><p className="mt-0.5 text-[11px] text-muted-foreground">Hasil ini hanya usulan sampai Anda mengonfirmasi penggantian isi.</p></div>
+                <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground text-[11px]">Konfirmasi diperlukan</Badge>
               </div>
               <div className="grid gap-2 text-[11px] sm:grid-cols-2">
                 {[['Judul', rewriteDraft.title], ['Ringkasan', rewriteDraft.summary]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><p className="mt-1 text-muted-foreground">{value}</p></div>)}
@@ -491,14 +491,14 @@ function AiModuleDraft({ form, onApply, toast }) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-[11px] font-semibold text-foreground">Materi teks</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{rewriteDraft.materialBlocks.length} blok dipratinjau · Markdown, gambar, dan tautan tetap dikunci.</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{rewriteDraft.materialBlocks.length} blok dipratinjau · Markdown, gambar, dan tautan tetap dikunci.</p>
                     </div>
-                    <Badge variant="soft" className="text-[10px]">Format dipertahankan</Badge>
+                    <Badge variant="soft" className="text-[11px]">Format dipertahankan</Badge>
                   </div>
                   <div className="mt-2 space-y-2">
                     {rewriteDraft.materialBlocks.map((block, index) => (
                       <article key={block.id || index} className="overflow-hidden rounded-lg border border-border bg-background p-2.5">
-                        <div className="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <div className="mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                           <span className="font-semibold text-foreground">{aiEditorialMaterialLabel(block.type)}</span>
                           <span aria-hidden="true">·</span>
                           <span>Blok {index + 1}</span>
@@ -539,35 +539,45 @@ const editorDraftPrefix = "aapm:academy:module-editor:v1";
 const moduleFormSnapshot = (value) => JSON.stringify(value || {});
 
 const EDITOR_SECTIONS = [
-  {
-    id: "module-section-identity",
-    label: "Identitas",
-    shortLabel: "Struktur",
-    detail: "Chapter, nomor, judul, dan ringkasan",
-    icon: "course",
-  },
-  {
-    id: "module-section-content",
-    label: "Materi & media",
-    shortLabel: "Materi",
-    detail: "Teks, slide, gambar, dan video",
-    icon: "edit",
-  },
-  {
-    id: "module-section-outcomes",
-    label: "Outcome",
-    shortLabel: "Outcome",
-    detail: "Tujuan, poin penting, checklist",
-    icon: "checkRead",
-  },
-  {
-    id: "module-section-practice",
-    label: "Praktik",
-    shortLabel: "Praktik",
-    detail: "Tugas dan naskah video",
-    icon: "target",
-  },
+  { id: "module-section-content", label: "Materi", shortLabel: "Materi", detail: "Teks, slide, gambar, dan video", icon: "lesson" },
+  { id: "module-section-outcomes", label: "Tujuan & insight", shortLabel: "Tujuan", detail: "Tujuan pembelajaran dan poin penting", icon: "target" },
+  { id: "module-section-practice", label: "Praktik", shortLabel: "Praktik", detail: "Tugas, checklist, dan naskah video", icon: "practice" },
 ];
+
+const INSPECTOR_TABS = [
+  { id: "block", label: "Blok", icon: "widget" },
+  { id: "module", label: "Modul", icon: "settings" },
+  { id: "ai", label: "APPI", icon: "ai" },
+];
+
+const HUE_OPTIONS = [
+  { value: "neutral", label: "Netral", hue: "neutral" },
+  { value: "green", label: "Hijau", hue: "green" },
+  { value: "orange", label: "Oranye", hue: "orange" },
+  { value: "blue", label: "Biru", hue: "blue" },
+  { value: "violet", label: "Violet", hue: "violet" },
+];
+
+/** Colour choice as swatches (radio group) instead of a text select. */
+function HueSelect({ id, value, onChange }) {
+  return (
+    <div id={id} role="radiogroup" className="aapm-hue-select">
+      {HUE_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={value === option.value}
+          aria-label={option.label}
+          title={option.label}
+          data-hue={option.hue}
+          className="aapm-hue-select__swatch"
+          onClick={() => onChange(option.value)}
+        />
+      ))}
+    </div>
+  );
+}
 
 function moduleFormFromApi(module) {
   return {
@@ -739,14 +749,13 @@ function QuestionEditor({ moduleId }) {
     setForm((current) => ({ ...current, [key]: value }));
   return (
     <>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)]">
-      <Surface className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold">Bank soal</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pilihan ganda untuk modul ini.
-            </p>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)] xl:items-start">
+      <section className="aapm-editor-panel" aria-labelledby="question-list-title">
+        <header className="aapm-editor-panel__head">
+          <IconTile icon="quiz" hue="orange" size="sm" shape="circle" />
+          <div className="min-w-0 flex-1">
+            <h2 id="question-list-title" className="aapm-editor-panel__title">Bank soal</h2>
+            <p className="aapm-editor-panel__description">Pilihan ganda untuk modul ini.</p>
           </div>
           <Badge
             variant="soft"
@@ -754,7 +763,7 @@ function QuestionEditor({ moduleId }) {
           >
             {questions.length} soal
           </Badge>
-        </div>
+        </header>
         <div className="divide-y divide-border">
           {isLoading ? (
             <div className="p-5 text-sm text-muted-foreground">
@@ -799,12 +808,15 @@ function QuestionEditor({ moduleId }) {
             </div>
           )}
         </div>
-      </Surface>
-      <Surface className="p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">
-            {selected ? "Edit soal" : "Tambah soal"}
-          </h2>
+      </section>
+      <section className="aapm-editor-panel" aria-labelledby="question-form-title">
+        <header className="aapm-editor-panel__head">
+          <IconTile icon={selected ? "edit" : "add"} hue="green" size="sm" shape="circle" />
+          <div className="min-w-0 flex-1">
+            <h2 id="question-form-title" className="aapm-editor-panel__title">
+              {selected ? "Edit soal" : "Tambah soal"}
+            </h2>
+          </div>
           {selected && (
             <Button
               size="sm"
@@ -817,8 +829,8 @@ function QuestionEditor({ moduleId }) {
               Batal
             </Button>
           )}
-        </div>
-        <form onSubmit={save} className="mt-4 space-y-3">
+        </header>
+        <form onSubmit={save} className="grid gap-3">
           <div className="space-y-1.5">
             <Label>Pertanyaan</Label>
             <Textarea
@@ -906,7 +918,7 @@ function QuestionEditor({ moduleId }) {
                 : "Tambah soal"}
           </Button>
         </form>
-      </Surface>
+      </section>
       </div>
       <ConfirmDialog
         open={Boolean(pendingQuestionDelete)}
@@ -914,7 +926,7 @@ function QuestionEditor({ moduleId }) {
         title="Hapus soal?"
         description="Soal ini akan dihapus dari bank soal modul dan tidak dapat dipulihkan."
         confirmLabel="Hapus soal"
-        icon="solar:trash-bin-trash-bold"
+        icon="delete"
         destructive
         onConfirm={() => {
           const question = pendingQuestionDelete;
@@ -933,19 +945,23 @@ export default function AdminModuleEditor() {
   const { toast } = useToast();
   const { user } = useAuth();
   const isNew = moduleId === "new";
+  const { data: course, isLoading: isLoadingCourse } = useAdminCourse(courseId);
   const newModuleParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const isNewChapter = isNew && newModuleParams.get("newChapter") === "1";
   const newModuleDefaults = useMemo(() => {
     if (!isNew) return emptyModule;
-    const levelNumber = Number(newModuleParams.get("levelNumber"));
+    const requestedLevel = Number(newModuleParams.get("levelNumber"));
+    const levelNumber = Number.isInteger(requestedLevel) && requestedLevel >= 1 && requestedLevel <= 20
+      ? requestedLevel : course?.curriculum?.[0]?.levelNumber || 1;
+    const chapter = course?.curriculum?.find((level) => Number(level.levelNumber) === Number(levelNumber));
     const levelName = newModuleParams.get("levelName");
     return {
       ...emptyModule,
-      ...(Number.isInteger(levelNumber) && levelNumber >= 1 && levelNumber <= 20 ? { levelNumber } : {}),
-      ...(levelName ? { levelName } : {}),
+      levelNumber,
+      levelName: chapter?.levelName || levelName || emptyModule.levelName,
       ...(isNewChapter ? { levelName: "Chapter baru" } : {}),
     };
-  }, [isNew, isNewChapter, newModuleParams]);
+  }, [course, isNew, isNewChapter, newModuleParams]);
   const accountId = user?.id ? String(user.id) : "";
   const editorModuleId = isNew ? "new" : moduleId;
   const { data, isLoading, error, refetch } = useAdminModule(
@@ -962,11 +978,60 @@ export default function AdminModuleEditor() {
   const [editorReady, setEditorReady] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
   const [activeSection, setActiveSection] = useState(EDITOR_SECTIONS[0].id);
-  const [identityExpanded, setIdentityExpanded] = useState(isNew);
+  const [inspectorTab, setInspectorTab] = useState("block");
+  const [blockInspectorNode, setBlockInspectorNode] = useState(null);
+  const [outlineSlot, setOutlineSlot] = useState(null);
+  const [saveError, setSaveError] = useState("");
+  const [savedAt, setSavedAt] = useState(null);
+  // Which bottom sheet is open on small screens: the outline or the inspector.
+  const [drawer, setDrawer] = useState(null);
+  const [selectedBlock, setSelectedBlock] = useState(null);
+  const handleBlockSelection = React.useCallback((selection) => {
+    setSelectedBlock(selection);
+    if (selection) setInspectorTab("block");
+  }, []);
+  const closeDrawer = () => setDrawer(null);
+  // Below 640px the inspector is a bottom sheet. From 640px to 1199px it sits under
+  // the canvas, so it is scrolled to instead.
+  const openInspector = (tab) => {
+    setInspectorTab(tab);
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(max-width: 639px)").matches) {
+      setDrawer("inspector");
+      return;
+    }
+    if (window.matchMedia("(max-width: 1199px)").matches) {
+      window.requestAnimationFrame(() => document.querySelector(".aapm-editor-inspector")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  };
+  const outlineDrawerRef = useModalFocus({ open: drawer === "outline", onClose: closeDrawer });
+  const inspectorDrawerRef = useModalFocus({ open: drawer === "inspector", onClose: closeDrawer });
+
+  // A sheet only applies within its breakpoint. Widening past it closes the sheet,
+  // so the scrim never covers a layout where the panel is inline.
+  useEffect(() => {
+    if (!drawer || typeof window === "undefined") return undefined;
+    const handleResize = () => {
+      if (drawer === "inspector" && !window.matchMedia("(max-width: 639px)").matches) setDrawer(null);
+      if (drawer === "outline" && !window.matchMedia("(max-width: 1199px)").matches) setDrawer(null);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [drawer]);
+
+  // Picking or adding a block from the Susun sheet should reveal it on the canvas, so the
+  // sheet closes when the selected block changes. Opening the sheet alone does not close it.
+  const lastSelectedBlockIdRef = useRef(null);
+  useEffect(() => {
+    const id = selectedBlock?.id || null;
+    if (id && id !== lastSelectedBlockIdRef.current && drawer === "outline") setDrawer(null);
+    lastSelectedBlockIdRef.current = id;
+  }, [selectedBlock?.id, drawer]);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
   const serverFormSnapshotRef = useRef(moduleFormSnapshot(emptyModule));
   const editorContextRef = useRef("");
   const formRef = useRef(form);
+  const saveInFlightRef = useRef(false);
   const isDirtyRef = useRef(false);
   const pendingNavigationRef = useRef(null);
   const historyGuardRef = useRef(null);
@@ -979,7 +1044,12 @@ export default function AdminModuleEditor() {
     () => `${accountId}:${courseId}:${editorModuleId}:${location.search}`,
     [accountId, courseId, editorModuleId, location.search],
   );
+  const currentEditorContextRef = useRef(editorContextKey);
+  currentEditorContextRef.current = editorContextKey;
   const draftKeyRef = useRef(draftKey);
+  // The draft key this session has written. Only a draft this session wrote is
+  // removed when the edit is undone, so a draft from an earlier visit still prompts.
+  const draftWrittenKeyRef = useRef("");
   const formSnapshot = useMemo(() => moduleFormSnapshot(form), [form]);
   const isDirty = editorReady && formSnapshot !== initialFormRef.current;
   const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
@@ -996,14 +1066,24 @@ export default function AdminModuleEditor() {
   );
 
   useEffect(() => {
+    const resizeHeadings = () => {
+      ["module-title", "module-summary"].forEach((id) => {
+        const field = document.getElementById(id);
+        if (!field || !field.getClientRects().length) return;
+        field.style.height = "auto";
+        field.style.height = `${field.scrollHeight}px`;
+      });
+    };
+    resizeHeadings();
+    window.addEventListener("resize", resizeHeadings);
+    return () => window.removeEventListener("resize", resizeHeadings);
+  }, [activeTab, form.title, form.summary]);
+
+  useEffect(() => {
     formRef.current = form;
     draftKeyRef.current = draftKey;
     isDirtyRef.current = isDirty;
   }, [draftKey, form, isDirty]);
-
-  useEffect(() => {
-    setIdentityExpanded(isNew);
-  }, [editorContextKey, isNew]);
 
   const promptNavigation = (request) => {
     pendingNavigationRef.current = request;
@@ -1029,7 +1109,7 @@ export default function AdminModuleEditor() {
 
   useEffect(() => {
     const module = data?.module;
-    if (!accountId || (!isNew && !module)) return;
+    if (!accountId || (isNew && isLoadingCourse) || (!isNew && !module)) return;
     if (editorContextRef.current === editorContextKey) return;
 
     const nextForm = isNew ? { ...newModuleDefaults } : moduleFormFromApi(module);
@@ -1040,6 +1120,9 @@ export default function AdminModuleEditor() {
     setForm(nextForm);
     formRef.current = nextForm;
     setEditorReady(true);
+    setSaveError("");
+    setSavedAt(null);
+    setDrawer(null);
 
     const draft = readEditorDraft(draftKey);
     const draftSnapshot = draft ? moduleFormSnapshot(draft.form) : "";
@@ -1051,21 +1134,32 @@ export default function AdminModuleEditor() {
       draftSnapshot !== nextServerSnapshot &&
       (!draft.serverSnapshot || draftMatchesCurrentServer)
     ) {
-      setPendingDraft({ key: draftKey, ...draft });
+      if (location.state?.preserveEditorDraft && draftMatchesCurrentServer) {
+        setForm(draft.form);
+        formRef.current = draft.form;
+        setPendingDraft(null);
+      } else setPendingDraft({ key: draftKey, ...draft });
     } else {
       removeEditorDraft(draftKey);
       setPendingDraft(null);
     }
-  }, [accountId, data, draftKey, editorContextKey, isNew, newModuleDefaults]);
+  }, [accountId, data, draftKey, editorContextKey, isLoadingCourse, isNew, location.state, newModuleDefaults]);
 
   useEffect(() => {
     if (!editorReady || !isDirty || !draftKey) return undefined;
+    draftWrittenKeyRef.current = draftKey;
     const timeoutId = window.setTimeout(
       () => writeEditorDraft(draftKey, form, serverFormSnapshotRef.current),
       250,
     );
     return () => window.clearTimeout(timeoutId);
   }, [draftKey, editorReady, form, isDirty]);
+
+  useEffect(() => {
+    if (!editorReady || isDirty || !draftKey || draftWrittenKeyRef.current !== draftKey) return;
+    draftWrittenKeyRef.current = "";
+    removeEditorDraft(draftKey);
+  }, [draftKey, editorReady, isDirty]);
 
   useEffect(() => {
     if (!isDirty) return undefined;
@@ -1244,7 +1338,6 @@ export default function AdminModuleEditor() {
         event.preventDefault();
         setActiveTab("content");
         setActiveSection(section.id);
-        if (section.id === "module-section-identity") setIdentityExpanded(true);
         window.requestAnimationFrame(() => {
           document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
@@ -1255,12 +1348,14 @@ export default function AdminModuleEditor() {
     return () => window.removeEventListener("keydown", handleEditorShortcut);
   }, [isSaving]);
 
-  const set = (key, value) =>
+  const set = (key, value) => {
+    setSaveError("");
     setForm((current) => {
       const next = { ...current, [key]: value };
       formRef.current = next;
       return next;
     });
+  };
   const setEditorialPresentation = (section, key, value) => {
     const current = parseEditorialDocument(form.editorialContent) || { version: 1, blocks: [] };
     const presentation = normaliseEditorialPresentation(current.presentation);
@@ -1288,22 +1383,37 @@ export default function AdminModuleEditor() {
   const scrollToEditorSection = (sectionId) => {
     setActiveTab("content");
     setActiveSection(sectionId);
-    if (sectionId === "module-section-identity") setIdentityExpanded(true);
     if (typeof window === "undefined") return;
     window.requestAnimationFrame(() => {
       document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
-  const toggleIdentity = () => {
-    if (identityExpanded && !identityIsComplete) return;
-    setIdentityExpanded((open) => !open);
-  };
   const submitEditorForm = () => {
     if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
   };
+  const handleInvalidField = (event) => {
+    event.preventDefault();
+    const control = event.target;
+    if (control !== event.currentTarget.querySelector(":invalid")) return;
+    const label = { "module-number": "Nomor modul", "module-level-number": "Nomor chapter", "module-level-name": "Nama chapter", "module-title": "Judul modul" }[control.id] || "Field ini";
+    const message = control.validity.valueMissing ? `${label} wajib diisi.`
+      : control.type === "number" ? `${label} harus berupa bilangan bulat dari ${control.min} sampai ${control.max}.`
+        : control.validationMessage || "Lengkapi field wajib sebelum menyimpan.";
+    setSaveError(message);
+    if (control.closest(".aapm-editor-inspector")) openInspector("module");
+    window.requestAnimationFrame(() => {
+      // Native validation can target a field inside a hidden inspector tab/sheet.
+      // Reveal it before moving focus so the next action is immediately available.
+      const firstInvalid = document.querySelector("#module-editor-form :invalid");
+      firstInvalid?.focus();
+      firstInvalid?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  };
   const save = async (event) => {
     event.preventDefault();
+    if (saveInFlightRef.current) return;
     if (editorialComposerRef.current?.validate?.() === false) {
+      setSaveError("Lengkapi blok materi yang ditandai sebelum menyimpan.");
       toast({
         variant: "destructive",
         title: "Lengkapi blok materi terlebih dahulu",
@@ -1311,46 +1421,68 @@ export default function AdminModuleEditor() {
       });
       return;
     }
+    const submittedForm = formRef.current;
+    if (!submittedForm.content.trim() && !parseEditorialDocument(submittedForm.editorialContent)?.blocks?.some((block) => block.type !== "divider")) {
+      setSaveError("Tambahkan materi utama sebelum menyimpan modul.");
+      scrollToEditorSection("module-section-content");
+      return;
+    }
+    const submittedContext = editorContextKey;
     const payload = {
-      ...form,
-      levelNumber: Number(form.levelNumber),
-      moduleNumber: Number(form.moduleNumber),
-      order: Number(form.order || 0),
-      learningObjectives: textToList(form.learningObjectives),
-      keyTakeaways: textToList(form.keyTakeaways),
-      checklist: textToList(form.checklist),
+      ...submittedForm,
+      levelNumber: Number(submittedForm.levelNumber),
+      moduleNumber: Number(submittedForm.moduleNumber),
+      order: Number(submittedForm.order || 0),
+      learningObjectives: textToList(submittedForm.learningObjectives),
+      keyTakeaways: textToList(submittedForm.keyTakeaways),
+      checklist: textToList(submittedForm.checklist),
     };
     if (!isNew && payload.videoUrl === (data?.module?.videoUrl || "")) {
       delete payload.videoUrl;
     }
+    saveInFlightRef.current = true;
     try {
       const result = isNew
         ? await createModule.mutateAsync(payload)
         : await updateModule.mutateAsync({ moduleId, data: payload });
+      if (currentEditorContextRef.current !== submittedContext) return;
       const saved = result?.module || result;
       toast({
         title: "Modul disimpan",
         description: "Perubahan langsung dipakai oleh Academy.",
       });
-      const savedForm = saved?.id ? moduleFormFromApi(saved) : form;
+      const savedForm = saved?.id ? moduleFormFromApi(saved) : submittedForm;
       const savedSnapshot = moduleFormSnapshot(savedForm);
+      const nextForm = reconcileSavedModule(submittedForm, formRef.current, savedForm);
+      const hasNewEdits = moduleFormSnapshot(nextForm) !== savedSnapshot;
       serverFormSnapshotRef.current = savedSnapshot;
       initialFormRef.current = savedSnapshot;
-      setForm(savedForm);
-      formRef.current = savedForm;
-      removeEditorDraft(draftKey);
+      setForm(nextForm);
+      formRef.current = nextForm;
+      if (hasNewEdits) {
+        const nextDraftKey = isNew && saved?.id ? editorDraftKey(accountId, courseId, saved.id) : draftKey;
+        writeEditorDraft(nextDraftKey, nextForm, savedSnapshot);
+        if (nextDraftKey !== draftKey) removeEditorDraft(draftKey);
+      } else removeEditorDraft(draftKey);
+      setSaveError("");
+      setSavedAt(new Date());
       setEditorReady(true);
-      releaseHistoryGuard();
+      if (!hasNewEdits || isNew) releaseHistoryGuard();
       if (isNew && saved?.id)
         navigate(`/admin/courses/${courseId}/modules/${saved.id}`, {
           replace: true,
+          state: { preserveEditorDraft: hasNewEdits },
         });
     } catch (saveError) {
+      if (currentEditorContextRef.current !== submittedContext) return;
+      setSaveError(saveError?.message || "Periksa isian, lalu coba lagi.");
       toast({
         variant: "destructive",
         title: "Modul belum disimpan",
         description: saveError.message,
       });
+    } finally {
+      saveInFlightRef.current = false;
     }
   };
   const remove = async ({ purgeProgress = false } = {}) => {
@@ -1398,9 +1530,8 @@ export default function AdminModuleEditor() {
       formRef.current = next;
       return next;
     });
-    toast({ title: "Saran APPI diterapkan", description: "Perubahan masih berupa draft lokal. Tinjau lalu pilih Simpan modul." });
   };
-  if (!isNew && isLoading)
+  if ((!isNew && isLoading) || (isNew && isLoadingCourse))
     return (
       <AdminPageFrame title="Editor modul">
         <AdminLoading label="Memuat modul…" />
@@ -1413,167 +1544,114 @@ export default function AdminModuleEditor() {
       </AdminPageFrame>
     );
   return (
-    <AdminPageFrame
-      editor
-      title={isNew ? "Tambah modul" : `Edit modul ${form.moduleNumber || ""}`}
-      description="Kelola isi modul, media, dan evaluasi."
-      actions={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}>
-            <AapmIcon name="arrowLeft" className="h-4 w-4" /> Kurikulum
-          </Button>
-          {!isNew && (
-            <Button
-              variant="outline"
-              onClick={() => setPendingModuleDelete(true)}
-              disabled={deleteModule.isPending}
-            >
-              <AapmIcon name="delete" className="h-4 w-4 text-danger" /> Hapus
-            </Button>
-          )}
-        </div>
-      }
-    >
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="aapm-editor-mode-tabs aapm-scrollbar h-auto w-full justify-start gap-4 overflow-x-auto border-b border-border/45 bg-transparent p-0">
-          <TabsTrigger value="content" className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Konten modul</TabsTrigger>
-          <TabsTrigger value="preview" className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">Pratinjau learner</TabsTrigger>
-          <TabsTrigger value="assessment" disabled={isNew} className="rounded-none border-0 px-0 py-2.5 text-xs shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none">
-            Bank soal
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="content" className="aapm-editor-content mt-4">
-          <div className="space-y-4">
-            <EditorQuickNav
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <AdminPageFrame
+        editor
+        title={isNew ? "Modul baru" : "Edit modul"}
+        actions={(
+          <>
+            <TabsList className="aapm-editor-mode" aria-label="Mode editor">
+              <TabsTrigger value="content" icon="edit">Konten</TabsTrigger>
+              <TabsTrigger value="preview" icon="eye">Pratinjau</TabsTrigger>
+              <TabsTrigger value="assessment" icon="quiz" disabled={isNew}>Bank soal</TabsTrigger>
+            </TabsList>
+            <Button type="button" variant="secondary" onClick={() => requestNavigation(`/modules/${form.moduleNumber}`)} disabled={isNew}><AapmIcon name="eye" />Lihat di Academy</Button>
+            {!isNew ? (
+              <OverflowMenu
+                label="Aksi modul"
+                triggerVariant="secondary"
+                size="md"
+                items={[
+                  { id: "delete", label: "Hapus modul", icon: "delete", tone: "danger", disabled: deleteModule.isPending, onSelect: () => setPendingModuleDelete(true) },
+                ]}
+              />
+            ) : null}
+          </>
+        )}
+      >
+        <TabsContent value="content" className="aapm-editor-content">
+          <form id="module-editor-form" onSubmit={save} onInvalid={handleInvalidField} className="aapm-editor-form aapm-editor-workspace">
+            <EditorOutline
+              asideRef={outlineDrawerRef}
+              drawerOpen={drawer === "outline"}
+              onClose={closeDrawer}
               sections={EDITOR_SECTIONS}
               activeSection={activeSection}
-              onNavigate={scrollToEditorSection}
-              onPreview={() => setActiveTab("preview")}
-              onSave={submitEditorForm}
-              isSaving={isSaving}
-              elementItems={editorialInsertActions}
+              onNavigate={(sectionId) => {
+                closeDrawer();
+                scrollToEditorSection(sectionId);
+              }}
+              blockSlotRef={setOutlineSlot}
+              addGroups={editorialInsertGroups}
               onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             />
-            <form id="module-editor-form" onSubmit={save} className="aapm-editor-form space-y-5">
-            <section id="module-section-identity" className="aapm-editor-section scroll-mt-24 border-b border-border" data-active={activeSection === "module-section-identity" ? "true" : "false"}>
-              <div className="grid gap-3 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">01 · Struktur</div>
-                  <h2 className="mt-1 line-clamp-2 text-base font-semibold">{form.title || "Identitas modul"}</h2>
-                  {form.summary && <p className="mt-1 hidden line-clamp-1 text-xs leading-5 text-muted-foreground sm:block">{form.summary}</p>}
+            <div className="aapm-editor-canvas">
+              <header className="aapm-editor-doc-head">
+                <div className="aapm-meta-row">
+                  <button type="button" className="aapm-chip" data-hue={levelVisual(form.levelNumber).hue} onClick={() => openInspector("module")}>
+                    <AapmIcon name="layers" />Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}
+                  </button>
+                  <button type="button" className="aapm-chip" data-tone="outline" onClick={() => openInspector("module")}>Modul {form.moduleNumber || "—"}</button>
+                  {form.category ? <span className="aapm-chip" data-tone="outline">{form.category}</span> : null}
                 </div>
-                <div className="flex items-center justify-start lg:justify-end">
-                  <Button type="button" size="sm" variant={identityExpanded ? "ghost" : "outline"} className="shrink-0" aria-expanded={identityExpanded} aria-controls="module-identity-fields" onClick={toggleIdentity}>
-                    <AapmIcon name={identityExpanded ? "chevronUp" : "edit"} className="h-3.5 w-3.5" />
-                    <span className="sm:hidden">{identityExpanded ? "Tutup" : "Edit"}</span>
-                    <span className="hidden sm:inline">{identityExpanded ? "Ringkaskan" : "Ubah identitas"}</span>
-                  </Button>
-                </div>
-              </div>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-3 sm:grid-cols-4">
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Chapter</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</dd></div>
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Modul</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.moduleNumber || "—"}</dd></div>
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Roadmap</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.order === "" ? "—" : form.order}</dd></div>
-                <div className="min-w-0"><dt className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Kategori</dt><dd className="mt-0.5 truncate text-xs font-semibold text-foreground">{form.category || "—"}</dd></div>
-              </dl>
-              {identityExpanded && <div id="module-identity-fields" className="border-t border-border bg-surface-subtle/45 py-4">
-                {!identityIsComplete && <div className="mb-3 flex justify-end"><span className="text-[10px] text-brand-orange">Lengkapi field wajib sebelum ditutup.</span></div>}
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="space-y-1.5">
-                    <Label>Nomor chapter</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={form.levelNumber}
-                      onChange={(event) => set("levelNumber", event.target.value)}
-                      required
-                    />
+                <label className="aapm-visually-hidden" htmlFor="module-title">Judul modul</label>
+                <textarea
+                  id="module-title"
+                  className="aapm-editor-doc-title"
+                  rows={1}
+                  required
+                  maxLength={200}
+                  placeholder="Judul modul"
+                  value={form.title}
+                  onChange={(event) => set("title", event.target.value.replace(/\n/g, " "))}
+                  onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}
+                />
+                <label className="aapm-visually-hidden" htmlFor="module-summary">Ringkasan modul</label>
+                <textarea
+                  id="module-summary"
+                  className="aapm-editor-doc-summary"
+                  rows={2}
+                  placeholder="Ringkasan singkat: apa yang akan dikuasai learner di modul ini?"
+                  value={form.summary}
+                  onChange={(event) => set("summary", event.target.value)}
+                />
+              </header>
+              <section id="module-section-content" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-content" ? "true" : "false"} aria-labelledby="editor-content-title">
+                <header className="aapm-editor-panel__head">
+                  <IconTile icon="lesson" hue="green" size="sm" shape="circle" />
+                  <div className="min-w-0">
+                    <h2 id="editor-content-title" className="aapm-editor-panel__title">Materi</h2>
+                    <p className="aapm-editor-panel__description">Teks, gambar, slide, video, tabel, dan tautan — tersusun seperti yang dibaca learner.</p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Nama chapter</Label>
-                    <Input
-                      value={form.levelName}
-                      onChange={(event) => set("levelName", event.target.value)}
-                      required
-                    />
+                </header>
+                <EditorialComposer
+                  ref={editorialComposerRef}
+                  settingsContainer={blockInspectorNode}
+                  outlineContainer={outlineSlot}
+                  onSelectionChange={handleBlockSelection}
+                  onOutlineSelect={closeDrawer}
+                  value={form.editorialContent}
+                  fallback={form.content}
+                  legacyVideoUrl={form.videoUrl}
+                  onChange={(editorialContent) => {
+                    set("editorialContent", editorialContent);
+                    // Once the Word-like canvas is edited, the legacy Markdown
+                    // field must not remain as a hidden fallback.
+                    set("content", "");
+                  }}
+                  onLegacyVideoChange={(videoUrl) => set("videoUrl", videoUrl)}
+                />
+              </section>
+
+              <section id="module-section-outcomes" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-outcomes" ? "true" : "false"} aria-labelledby="editor-outcomes-title">
+                <header className="aapm-editor-panel__head">
+                  <IconTile icon="target" hue="orange" size="sm" shape="circle" />
+                  <div className="min-w-0">
+                    <h2 id="editor-outcomes-title" className="aapm-editor-panel__title">Tujuan & insight</h2>
+                    <p className="aapm-editor-panel__description">Satu baris = satu poin. Tekan Enter untuk menambah poin baru.</p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Nomor modul</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={form.moduleNumber}
-                      onChange={(event) =>
-                        set("moduleNumber", event.target.value)
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Urutan modul di roadmap</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={form.order}
-                      onChange={(event) => set("order", event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>Judul modul</Label>
-                    <Input
-                      value={form.title}
-                      onChange={(event) => set("title", event.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Kategori</Label>
-                    <Input
-                      value={form.category}
-                      onChange={(event) => set("category", event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  <Label>Ringkasan</Label>
-                  <Textarea
-                    rows={2}
-                    value={form.summary}
-                    onChange={(event) => set("summary", event.target.value)}
-                  />
-                </div>
-              </div>}
-            </section>
-            <section id="module-section-content" className="aapm-editor-section scroll-mt-24" data-active={activeSection === "module-section-content" ? "true" : "false"}>
-              <h2 className="mb-3 text-base font-semibold">Materi utama</h2>
-              <EditorialComposer
-                ref={editorialComposerRef}
-                value={form.editorialContent}
-                fallback={form.content}
-                legacyVideoUrl={form.videoUrl}
-                onChange={(editorialContent) => {
-                  set("editorialContent", editorialContent);
-                  // Once the Word-like canvas is edited, the legacy Markdown
-                  // field must not remain as a hidden fallback. In
-                  // particular, clearing the last block must clear old
-                  // content too, otherwise learner view appears unchanged.
-                  set("content", "");
-                }}
-                onLegacyVideoChange={(videoUrl) => set("videoUrl", videoUrl)}
-              />
-              <div id="module-section-outcomes" className="aapm-editor-section mt-4 scroll-mt-24 space-y-3" data-active={activeSection === "module-section-outcomes" ? "true" : "false"}>
-                <div className="flex flex-wrap items-end justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-semibold">Tujuan & insight</h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Edit poin learner langsung. Satu poin per baris.</p>
-                  </div>
-                  <Badge variant="outline" className="text-[10px]">Konten utama</Badge>
-                </div>
-                <div className="aapm-editor-outcome-grid grid gap-3 lg:grid-cols-3">
+                </header>
+                <div className="aapm-editor-outcome-grid">
                   <CompactListField
                     id="module-learning-objectives"
                     label="Tujuan pembelajaran"
@@ -1584,82 +1662,155 @@ export default function AdminModuleEditor() {
                   <CompactListField
                     id="module-key-takeaways"
                     label="Poin penting"
-                    icon="info"
+                    icon="insight"
+                    tone="orange"
                     value={form.keyTakeaways}
                     onChange={(event) => set("keyTakeaways", event.target.value)}
                   />
+                </div>
+              </section>
+
+              <section id="module-section-practice" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-practice" ? "true" : "false"} aria-labelledby="editor-practice-title">
+                <header className="aapm-editor-panel__head">
+                  <IconTile icon="practice" hue="teal" size="sm" shape="circle" />
+                  <div className="min-w-0">
+                    <h2 id="editor-practice-title" className="aapm-editor-panel__title">Praktik</h2>
+                    <p className="aapm-editor-panel__description">Tugas yang dikerjakan di kandang dan checklist observasinya.</p>
+                  </div>
+                </header>
+                <div className="aapm-editor-practice-fields">
+                  <Field id="module-practical-assignment" label="Tugas praktik" hint="Satu tugas konkret yang dapat dikerjakan learner.">
+                    <Textarea rows={4} value={form.practicalAssignment} onChange={(event) => set("practicalAssignment", event.target.value)} placeholder="Tulis tugas praktik…" />
+                  </Field>
                   <CompactListField
                     id="module-checklist"
-                    label="Checklist praktik"
+                    label="Checklist observasi"
                     icon="checkRead"
                     tone="orange"
                     value={form.checklist}
                     onChange={(event) => set("checklist", event.target.value)}
                   />
+                  <Field id="module-video-script" label="Naskah video" hint="Opsional — tampil sebagai catatan instruktur di bawah video.">
+                    <Textarea rows={3} value={form.videoScript} onChange={(event) => set("videoScript", event.target.value)} placeholder="Tulis catatan video…" />
+                  </Field>
                 </div>
-                <AdminModuleCompanion
-                  module={form}
-                  onApplyModule={applyCompanionDraft}
-                />
-                <AiModuleDraft
-                  form={form}
-                  toast={toast}
-                  onApply={applyCompanionDraft}
-                />
-                <details className="aapm-editor-settings">
-                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold [&::-webkit-details-marker]:hidden">
-                    <AapmIcon name="settings" className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="flex-1">Tampilan tujuan & insight</span>
-                    <span className="text-[10px] font-normal text-muted-foreground">opsional</span>
-                    <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-muted-foreground" />
-                  </summary>
-                  <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-3">
-                    <div className="space-y-1.5"><Label>Layout</Label><Select value={editorialPresentation.objectives.layout} onValueChange={(value) => setEditorialPresentation("objectives", "layout", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="columns">Dua kolom</SelectItem><SelectItem value="stacked">Satu kolom</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-1.5"><Label>Aksen warna</Label><Select value={editorialPresentation.objectives.tone} onValueChange={(value) => setEditorialPresentation("objectives", "tone", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="neutral">Netral</SelectItem><SelectItem value="green">Hijau</SelectItem><SelectItem value="orange">Orange</SelectItem><SelectItem value="blue">Biru</SelectItem><SelectItem value="violet">Violet</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-1.5"><Label>Kepadatan</Label><Select value={editorialPresentation.objectives.density} onValueChange={(value) => setEditorialPresentation("objectives", "density", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></div>
-                  </div>
-                </details>
-              </div>
-              <div id="module-section-practice" className="aapm-editor-section mt-4 scroll-mt-24 space-y-3" data-active={activeSection === "module-section-practice" ? "true" : "false"}>
-                <div className="aapm-editor-practice-fields grid gap-6 lg:grid-cols-2">
-                  <div className="aapm-editor-point-card min-w-0">
-                    <Label htmlFor="module-practical-assignment" className="text-xs font-semibold">Tugas praktik</Label>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Satu tugas yang dapat dikerjakan learner.</p>
-                    <Textarea id="module-practical-assignment" rows={3} className="mt-2 min-h-[6.25rem] resize-y text-sm" value={form.practicalAssignment} onChange={(event) => set("practicalAssignment", event.target.value)} placeholder="Tulis tugas praktik…" />
-                  </div>
-                  <div className="aapm-editor-point-card min-w-0">
-                    <Label htmlFor="module-video-script" className="text-xs font-semibold">Naskah video</Label>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Opsional, tampil sebagai pendamping video.</p>
-                    <Textarea id="module-video-script" rows={3} className="mt-2 min-h-[6.25rem] resize-y text-sm" value={form.videoScript} onChange={(event) => set("videoScript", event.target.value)} placeholder="Tulis catatan video…" />
-                  </div>
-                </div>
-                <details className="aapm-editor-settings">
-                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold [&::-webkit-details-marker]:hidden">
-                    <AapmIcon name="settings" className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="flex-1">Tampilan praktik & checklist</span>
-                    <span className="text-[10px] font-normal text-muted-foreground">opsional</span>
-                    <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-muted-foreground" />
-                  </summary>
-                  <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-3">
-                    <div className="space-y-1.5"><Label>Aksen kartu</Label><Select value={editorialPresentation.practical.tone} onValueChange={(value) => setEditorialPresentation("practical", "tone", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="green">Hijau</SelectItem><SelectItem value="orange">Orange</SelectItem><SelectItem value="blue">Biru</SelectItem><SelectItem value="violet">Violet</SelectItem><SelectItem value="neutral">Netral</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-1.5"><Label>Kepadatan</Label><Select value={editorialPresentation.practical.density} onValueChange={(value) => setEditorialPresentation("practical", "density", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-1.5"><Label>Gaya checklist</Label><Select value={editorialPresentation.practical.checklistStyle} onValueChange={(value) => setEditorialPresentation("practical", "checklistStyle", value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="checkbox">Checkbox interaktif</SelectItem><SelectItem value="list">Daftar ringkas</SelectItem></SelectContent></Select></div>
-                  </div>
-                </details>
-              </div>
-            </section>
-            <div className="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 border-t border-border bg-background/95 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground" role="status" aria-live="polite">
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isSaving ? "animate-pulse bg-brand-orange" : isDirty ? "bg-brand-orange" : "bg-brand-green"}`} aria-hidden="true" />
-                <span className="truncate">{isSaving ? "Menyimpan…" : isDirty ? "Ada perubahan belum disimpan" : "Semua perubahan tersimpan"}</span>
-              </div>
-              <Button type="submit" className="w-full sm:w-auto" disabled={isSaving}>
-                {isSaving ? "Menyimpan…" : "Simpan modul"}
-                <AapmIcon name={isSaving ? "refresh" : "checkRead"} className={isSaving ? "animate-spin" : undefined} />
-              </Button>
+              </section>
             </div>
-            </form>
-          </div>
+
+            <aside ref={inspectorDrawerRef} className="aapm-editor-inspector" aria-label="Inspektor editor" role={drawer === "inspector" ? "dialog" : undefined} aria-modal={drawer === "inspector" ? true : undefined} tabIndex={drawer === "inspector" ? -1 : undefined} data-drawer-open={drawer === "inspector" ? "true" : undefined}>
+              <div className="aapm-editor-inspector__head">
+                <IconButton className="aapm-editor-drawer-close" label="Tutup inspektor" tooltip={false} icon="close" size="sm" onClick={closeDrawer} />
+              </div>
+              <div className="aapm-segmented aapm-inspector-tabs" role="tablist" aria-label="Panel inspektor">
+                {INSPECTOR_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`inspector-tab-${tab.id}`}
+                    aria-selected={inspectorTab === tab.id}
+                    aria-controls={tab.id === "module" ? "module-section-identity" : `inspector-panel-${tab.id}`}
+                    tabIndex={inspectorTab === tab.id ? 0 : -1}
+                    className="aapm-tabs-trigger"
+                    onClick={() => setInspectorTab(tab.id)}
+                    onKeyDown={(event) => {
+                      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                      event.preventDefault();
+                      const index = INSPECTOR_TABS.findIndex((item) => item.id === tab.id);
+                      const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? INSPECTOR_TABS.length - 1
+                        : (index + (event.key === "ArrowRight" ? 1 : -1) + INSPECTOR_TABS.length) % INSPECTOR_TABS.length;
+                      const nextTab = INSPECTOR_TABS[nextIndex].id;
+                      setInspectorTab(nextTab);
+                      document.getElementById(`inspector-tab-${nextTab}`)?.focus();
+                    }}
+                  >
+                    <AapmIcon name={tab.icon} />{tab.label}
+                  </button>
+                ))}
+              </div>
+              <section className="aapm-card" id="inspector-panel-block" role="tabpanel" aria-labelledby="inspector-tab-block" hidden={inspectorTab !== "block"}>
+                <div className="aapm-card__header">
+                  <h2 className="aapm-card__title">{selectedBlock ? "Pengaturan blok" : "Blok materi"}</h2>
+                </div>
+                <div className="aapm-card__content" ref={setBlockInspectorNode} />
+              </section>
+              <section className="aapm-card" id="module-section-identity" role="tabpanel" hidden={inspectorTab !== "module"} data-active={activeSection === "module-section-identity" ? "true" : "false"} aria-labelledby="inspector-tab-module">
+                <div className="aapm-card__header">
+                  <h2 id="editor-identity-title" className="aapm-card__title">Identitas modul</h2>
+                  <p className="aapm-card__description">Posisi di kurikulum dan informasi di katalog learner.</p>
+                </div>
+                <div className="aapm-card__content grid gap-3" id="module-identity-fields">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field id="module-level-number" label="No. chapter" required><Input type="number" min="1" max="20" value={form.levelNumber} onChange={(event) => {
+                      const value = event.target.value;
+                      const chapter = course?.curriculum?.find((level) => Number(level.levelNumber) === Number(value));
+                      setSaveError("");
+                      setForm((current) => {
+                        const next = { ...current, levelNumber: value, ...(chapter ? { levelName: chapter.levelName } : {}) };
+                        formRef.current = next;
+                        return next;
+                      });
+                    }} /></Field>
+                    <Field id="module-number" label="No. modul" required><Input type="number" min="1" max="999" value={form.moduleNumber} onChange={(event) => set("moduleNumber", event.target.value)} /></Field>
+                  </div>
+                  <Field id="module-level-name" label="Nama chapter" required><Input value={form.levelName} onChange={(event) => set("levelName", event.target.value)} /></Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field id="module-category" label="Kategori"><Input value={form.category} onChange={(event) => set("category", event.target.value)} /></Field>
+                    <Field id="module-order" label="Urutan roadmap"><Input type="number" min="0" value={form.order} onChange={(event) => set("order", event.target.value)} /></Field>
+                  </div>
+                  {!identityIsComplete ? <Alert tone="warning" title="Lengkapi field wajib" description="Chapter, nomor modul, dan judul diperlukan sebelum menyimpan." /> : null}
+                </div>
+              </section>
+
+              <section className="aapm-card" aria-labelledby="editor-appearance-title" hidden={inspectorTab !== "module"}>
+                <div className="aapm-card__header">
+                  <h2 id="editor-appearance-title" className="aapm-card__title">Tampilan learner</h2>
+                  <p className="aapm-card__description">Atur bagaimana tujuan dan praktik tampil di lesson.</p>
+                </div>
+                <div className="aapm-card__content grid gap-3">
+                  <p className="aapm-text-overline m-0">Tujuan & insight</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field id="presentation-objectives-layout" label="Layout"><Select value={editorialPresentation.objectives.layout} onValueChange={(value) => setEditorialPresentation("objectives", "layout", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="columns">Dua kolom</SelectItem><SelectItem value="stacked">Satu kolom</SelectItem></SelectContent></Select></Field>
+                    <Field id="presentation-objectives-density" label="Kepadatan"><Select value={editorialPresentation.objectives.density} onValueChange={(value) => setEditorialPresentation("objectives", "density", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></Field>
+                  </div>
+                  <Field id="presentation-objectives-tone" label="Warna"><HueSelect value={editorialPresentation.objectives.tone} onChange={(value) => setEditorialPresentation("objectives", "tone", value)} /></Field>
+                  <p className="aapm-text-overline m-0 mt-2">Praktik</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field id="presentation-practical-density" label="Kepadatan"><Select value={editorialPresentation.practical.density} onValueChange={(value) => setEditorialPresentation("practical", "density", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></Field>
+                    <Field id="presentation-practical-checklist" label="Checklist"><Select value={editorialPresentation.practical.checklistStyle} onValueChange={(value) => setEditorialPresentation("practical", "checklistStyle", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="checkbox">Interaktif</SelectItem><SelectItem value="list">Daftar ringkas</SelectItem></SelectContent></Select></Field>
+                  </div>
+                  <Field id="presentation-practical-tone" label="Warna"><HueSelect value={editorialPresentation.practical.tone} onChange={(value) => setEditorialPresentation("practical", "tone", value)} /></Field>
+                </div>
+              </section>
+
+              <section className="aapm-card aapm-editor-ai" id="inspector-panel-ai" role="tabpanel" aria-labelledby="inspector-tab-ai" hidden={inspectorTab !== "ai"}>
+                <div className="aapm-card__header">
+                  <div className="flex items-center gap-2">
+                    <IconTile icon="ai" hue="orange" size="xs" shape="circle" />
+                    <h2 id="editor-ai-title" className="aapm-card__title">Bantuan APPI</h2>
+                  </div>
+                  <p className="aapm-card__description">Semua saran tampil sebagai pratinjau dan baru diterapkan setelah Anda setujui.</p>
+                </div>
+                <div className="aapm-card__content grid gap-3">
+                  <AdminModuleCompanion key={editorContextKey} module={form} onApplyModule={applyCompanionDraft} />
+                  <AiModuleDraft form={form} toast={toast} onApply={applyCompanionDraft} />
+                </div>
+              </section>
+            </aside>
+          </form>
+          {drawer ? <button type="button" className="aapm-editor-drawer-scrim" tabIndex={-1} aria-label="Tutup panel" onClick={closeDrawer} /> : null}
+          <EditorActionBar
+            elementGroups={editorialInsertGroups}
+            onOpenOutline={() => setDrawer("outline")}
+            onOpenInspector={openInspector}
+            onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
+            onSave={submitEditorForm}
+            onRetry={submitEditorForm}
+            isSaving={isSaving}
+            isDirty={isDirty}
+            saveError={saveError}
+            savedAt={savedAt}
+          />
         </TabsContent>
         <TabsContent value="preview" className="mt-5">
           <Surface className="p-3 sm:p-5 lg:p-7">
@@ -1673,7 +1824,7 @@ export default function AdminModuleEditor() {
                 <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
                 {!editorialVideoIsPresent && form.videoUrl.trim() && (
                   <div className="mt-7 border-t border-border pt-7">
-                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video materi</p>
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video materi</p>
                     <LessonMedia module={{ title: form.title || "Video", videoUrl: form.videoUrl }} />
                     {form.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{form.videoScript}</p>}
                   </div>
@@ -1694,10 +1845,10 @@ export default function AdminModuleEditor() {
             </div>
           </Surface>
         </TabsContent>
-        <TabsContent value="assessment" className="mt-5">
+        <TabsContent value="assessment" className="mt-5 aapm-editor-content">
           {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}
         </TabsContent>
-      </Tabs>
+      </AdminPageFrame>
       <ConfirmDialog
         open={Boolean(pendingDraft)}
         onOpenChange={(open) => {
@@ -1710,7 +1861,7 @@ export default function AdminModuleEditor() {
         description="Ada perubahan lokal yang belum tersimpan untuk modul ini. Pulihkan draft untuk melanjutkan dari titik terakhir atau buang draft tersebut."
         confirmLabel="Pulihkan draft"
         cancelLabel="Buang draft"
-        icon="solar:history-bold-duotone"
+        icon="history"
         onConfirm={() => {
            const draft = pendingDraft;
            if (!draft) return;
@@ -1727,7 +1878,7 @@ export default function AdminModuleEditor() {
         description="Perubahan belum disimpan. Jika Anda keluar sekarang, draft aman akan tetap disimpan di browser dan dapat dipulihkan saat editor ini dibuka lagi."
         confirmLabel="Tinggalkan tanpa simpan"
         cancelLabel="Tetap di editor"
-        icon="solar:logout-2-bold-duotone"
+        icon="logout"
         onConfirm={() => {
           const request = pendingNavigationRef.current || pendingNavigation;
           clearNavigationPrompt();
@@ -1750,7 +1901,7 @@ export default function AdminModuleEditor() {
         title="Hapus modul?"
         description={`Modul dan seluruh bank soalnya akan dihapus. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang setelah Anda mengonfirmasi. " : ""}Jika modul memiliki progres learner, sistem akan meminta konfirmasi tambahan sebelum ikut menghapus progres tersebut.`}
         confirmLabel="Hapus modul"
-        icon="solar:trash-bin-trash-bold"
+        icon="delete"
         destructive
         onConfirm={() => {
           setPendingModuleDelete(false);
@@ -1763,13 +1914,13 @@ export default function AdminModuleEditor() {
         title="Hapus modul beserta progress learner?"
         description={`Modul, bank soal, dan seluruh progress learner pada Modul ${form.moduleNumber || "ini"} akan dihapus permanen. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang. " : ""}Sertifikat, data farm, dan percakapan pengguna tetap dipertahankan.`}
         confirmLabel="Hapus bersama progress"
-        icon="solar:trash-bin-trash-bold"
+        icon="delete"
         destructive
         onConfirm={() => {
           setPendingModuleDeleteWithProgress(false);
           remove({ purgeProgress: true });
         }}
       />
-    </AdminPageFrame>
+    </Tabs>
   );
 }

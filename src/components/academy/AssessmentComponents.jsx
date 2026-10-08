@@ -1,39 +1,195 @@
 import React from "react";
-import { Button, Card, CardContent, Progress } from "@/components/primitives";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { cn } from "@/lib/utils";
+import { Badge, IconButton, Segments } from "@/design-system";
+import { StatTile } from "@/components/academy/CourseElements";
+import { formatDuration } from "@/lib/learningPath";
 
-export function AssessmentProgress({ current = 0, total = 0, label = "Assessment progress" } = {}) {
-  const percent = total ? Math.round(((current + 1) / total) * 100) : 0;
-  return <div className="flex items-center gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground"><span>{label}</span><span>{total ? `${current + 1} / ${total}` : "—"}</span></div><Progress value={percent} className="h-2 bg-muted [&>div]:bg-brand-lime" /></div><span className="text-xs font-semibold text-brand-green">{percent}%</span></div>;
-}
+const KEYS = ["A", "B", "C", "D", "E", "F"];
 
-export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagged = {}, onSelect = (_index) => {}, onToggleFlag = (_index) => {} } = {}) {
-  const answered = Object.keys(answers).length;
-  const marked = Object.values(flagged).filter(Boolean).length;
+/** Slim assessment bar: exit, segmented progress, counter. */
+export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title, context, children }) {
   return (
-    <Card className="shadow-none">
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3"><div><div className="text-xs font-semibold">Review jawaban</div><p className="mt-1 text-[11px] leading-4 text-muted-foreground">Pilih nomor untuk berpindah soal.</p></div><div className="text-right text-[11px] text-muted-foreground"><div><span className="font-semibold text-foreground">{answered}</span>/{total} terjawab</div>{marked > 0 && <div className="mt-0.5 text-brand-orange">{marked} ditandai</div>}</div></div>
-        <div className="mt-4 grid grid-cols-6 gap-1.5 sm:grid-cols-5">{Array.from({ length: total }, (_, index) => { const hasAnswer = answers[index] !== undefined; const active = index === current; const isMarked = flagged[index]; return <button key={index} type="button" onClick={() => onSelect(index)} className={cn("relative flex min-h-9 items-center justify-center rounded-lg border text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active ? "border-brand-green bg-brand-green text-white" : hasAnswer ? "border-brand-lime/60 bg-tint-lime text-brand-green" : "border-border bg-background text-muted-foreground hover:bg-muted")} aria-label={`Question ${index + 1}`}><span>{index + 1}</span>{isMarked && <AapmIcon name="flag" className="absolute -right-1 -top-1 h-3 w-3 text-brand-orange" />}</button>; })}</div>
-        {total > 0 && <Button type="button" variant="ghost" size="sm" className="mt-4 w-full text-xs" onClick={() => onToggleFlag(current)}><AapmIcon name="flag" className={cn(flagged[current] && "text-brand-orange")} /> {flagged[current] ? "Hapus tanda review" : "Tandai untuk review"}</Button>}
-      </CardContent>
-    </Card>
+    <header className="aapm-topbar aapm-focus__bar">
+      <IconButton label="Keluar" icon="close" onClick={onExit} />
+      {title || context ? (
+        <div className="aapm-topbar__title">
+          {context ? <span className="aapm-topbar__context">{context}</span> : null}
+          {title ? <h1 className="aapm-topbar__title-text">{title}</h1> : null}
+        </div>
+      ) : null}
+      <div className="aapm-topbar__actions">
+        <div className="aapm-focus__segments">
+          <Segments total={total} current={current} states={states} label={label} />
+        </div>
+        <span className="aapm-text-caption aapm-numeric whitespace-nowrap">{Math.min(current + 1, total)}/{total}</span>
+        {children}
+      </div>
+    </header>
   );
 }
 
-export function AnswerOption({ option = "", index = 0, selected = false, disabled = false, result = null, onSelect = () => {} } = {}) {
-  const resultCorrect = result === "correct";
-  const resultWrong = result === "wrong";
-  return <button type="button" onClick={onSelect} disabled={disabled} className={cn("flex min-h-14 w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left text-sm leading-6 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selected && !result ? "border-brand-green bg-tint-lime" : "border-border hover:border-brand-green/35 hover:bg-muted/40", resultCorrect && "border-success/40 bg-success/10", resultWrong && "border-danger/40 bg-danger/10", disabled && "cursor-default")}><span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold", selected && !result ? "border-brand-green bg-brand-green text-white" : "border-border text-muted-foreground", resultCorrect && "border-success bg-success text-white", resultWrong && "border-danger bg-danger text-white")}>{resultCorrect ? <AapmIcon name="check" className="h-3.5 w-3.5" /> : resultWrong ? <AapmIcon name="close" className="h-3.5 w-3.5" /> : String.fromCharCode(65 + index)}</span><span className="pt-0.5">{option}</span></button>;
-}
-
-export function QuizQuestion({ question = null, answer = undefined, submitted = false, number = null, total = 0, onAnswer = (_answer) => {} } = {}) {
+/**
+ * One question with A/B/C/D choice cards (radiogroup). `revealed` shows the
+ * correct and chosen-wrong options after checking. The quiz page maps the
+ * A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
+ */
+export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, meta, children = null }) {
   if (!question) return null;
-  return <Card className="overflow-hidden shadow-none"><div className="h-1 bg-brand-orange" /><CardContent className="p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"><span className="rounded-full bg-muted px-2 py-1">{question.difficulty || "medium"}</span><span>{question.type || "mcq"}</span></div>{number !== null && <span className="text-xs font-semibold tabular-nums text-brand-green">Soal {number}{total ? ` / ${total}` : ""}</span>}</div><h2 className="mt-5 max-w-3xl text-lg font-semibold leading-7 sm:text-xl">{question.question}</h2><div className="mt-6 space-y-2.5">{question.options.map((option, index) => <AnswerOption key={`${option}-${index}`} option={option} index={index} selected={answer === index} disabled={submitted} result={submitted ? (answer === index ? (index === question.correctIndex ? "correct" : "wrong") : index === question.correctIndex ? "correct" : null) : null} onSelect={() => onAnswer(index)} />)}</div>{submitted && <div className={cn("mt-5 flex items-start gap-2 rounded-xl p-3 text-sm leading-6", answer === question.correctIndex ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>{answer === question.correctIndex ? <AapmIcon name="checkRead" className="mt-0.5 h-4 w-4 shrink-0" /> : <AapmIcon name="closeCircle" className="mt-0.5 h-4 w-4 shrink-0" />}<span>{question.explanation || (answer === question.correctIndex ? "Jawaban benar." : `Jawaban benar: ${question.options[question.correctIndex]}`)}</span></div>}</CardContent></Card>;
+  const titleId = `question-${number}`;
+  return (
+    <div className="aapm-quiz" key={number}>
+      <div className="aapm-quiz__meta">
+        <span className="aapm-text-overline">Soal {number}{total ? ` dari ${total}` : ""}</span>
+        <div className="flex flex-wrap gap-1.5">
+          {question.difficulty ? <Badge>{question.difficulty}</Badge> : null}
+          {meta}
+        </div>
+      </div>
+      <h2 id={titleId} className="aapm-quiz__question aapm-motion-rise">{question.question}</h2>
+      <div className="aapm-choices aapm-motion-stack" role="radiogroup" aria-labelledby={titleId}>
+        {question.options.map((option, index) => {
+          const selected = answer === index;
+          const result = revealed ? (index === question.correctIndex ? "correct" : selected ? "wrong" : undefined) : undefined;
+          return (
+            <button
+              key={`${option}-${index}`}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              className="aapm-choice"
+              data-result={result}
+              disabled={revealed}
+              aria-keyshortcuts={KEYS[index] ? `${KEYS[index]} ${index + 1}` : undefined}
+              onClick={() => onAnswer(index)}
+            >
+              <span className="aapm-choice__key" aria-hidden="true">{KEYS[index] || index + 1}</span>
+              <span>{option}</span>
+              {result === "correct" ? <AapmIcon name="check" className="aapm-choice__mark" /> : result === "wrong" ? <AapmIcon name="closeCircle" className="aapm-choice__mark" /> : <span />}
+            </button>
+          );
+        })}
+      </div>
+      {children}
+    </div>
+  );
 }
 
-export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, title = "Hasil assessment", children = null } = {}) {
+/** Short screen-reader sentence for a checked answer (feeds a live region). */
+export function checkAnnouncement(question, answer, run = 0) {
+  if (!question || answer === undefined) return "";
+  if (answer !== question.correctIndex) return `Belum tepat. Jawaban benar: ${question.options[question.correctIndex]}.`;
+  return run >= 3 ? `Tepat sekali! ${run} benar beruntun.` : "Tepat sekali!";
+}
+
+/**
+ * Answer feedback inside the action bar after "Periksa" (Duolingo-style):
+ * verdict, the correct answer when wrong, the explanation, and a run of
+ * correct answers from three on. The bar itself carries the tone; the
+ * announcement goes through the page's persistent live region.
+ */
+export function CheckFeedback({ question, answer, run = 0 }) {
+  if (!question || answer === undefined) return null;
+  const correct = answer === question.correctIndex;
+  return (
+    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"}>
+      <span className="aapm-check-feedback__icon" aria-hidden="true"><AapmIcon name={correct ? "glyphCheck" : "close"} /></span>
+      <div className="aapm-check-feedback__body">
+        <p className="aapm-check-feedback__title">
+          {correct ? "Tepat sekali!" : "Belum tepat"}
+          {correct && run >= 3 ? <span className="aapm-check-feedback__run"><AapmIcon name="streak" />{run} benar beruntun</span> : null}
+        </p>
+        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[question.correctIndex]}</strong></p> : null}
+        {question.explanation ? <p className="aapm-check-feedback__text">{question.explanation}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+/** Numbered grid to move between questions; flagged items carry a dot. */
+export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagged = {}, onSelect = (_index) => {} }) {
+  const answered = Object.keys(answers).length;
+  const marked = Object.values(flagged).filter(Boolean).length;
+  return (
+    <div className="grid gap-4 p-4">
+      <div>
+        <p className="aapm-text-label m-0">Daftar soal</p>
+        <p className="aapm-text-caption m-0">{answered}/{total} terjawab{marked ? ` · ${marked} ditandai` : ""}</p>
+      </div>
+      <div className="aapm-question-nav">
+        {Array.from({ length: total }, (_, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => onSelect(index)}
+            aria-current={index === current ? "step" : undefined}
+            data-answered={answers[index] !== undefined ? "true" : undefined}
+            data-flagged={flagged[index] ? "true" : undefined}
+            aria-label={`Soal ${index + 1}${answers[index] !== undefined ? ", terjawab" : ""}${flagged[index] ? ", ditandai" : ""}`}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-1.5 text-caption text-muted-foreground">
+        <span className="inline-flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-sm bg-[var(--aapm-semantic-primary-soft)]" />Terjawab</span>
+        <span className="inline-flex items-center gap-2"><i className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--aapm-semantic-attention)]" />Ditandai untuk ditinjau</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Result screen: badge, headline, stat tiles; actions are passed as children.
+ * With `duration` (ms) the third tile shows the time taken instead of the
+ * passing grade, like a lesson-complete screen.
+ */
+export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title, description, children }) {
   const percent = total ? Math.round((score / total) * 100) : 0;
-  return <Card className={cn("overflow-hidden shadow-none", passed ? "border-success/30" : "border-warning/30")}><div className={cn("h-1", passed ? "bg-success" : "bg-brand-orange")} /><CardContent className="p-6 text-center sm:p-10"><div className={cn("mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl", passed ? "bg-success/10 text-success" : "bg-warning/15 text-warning")}>{passed ? <AapmIcon name="checkRead" className="h-8 w-8" /> : <AapmIcon name="closeCircle" className="h-8 w-8" />}</div><div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-orange">Hasil ujian</div><h2 className="mt-2 text-xl font-semibold sm:text-2xl">{title}</h2><p className="mt-2 text-sm text-muted-foreground">Skor {score}/{total} ({percent}%) · Nilai lulus {passingGrade}%</p>{children}</CardContent></Card>;
+  return (
+    <div className="aapm-quiz">
+      <div className="aapm-result" data-hue={passed ? "green" : "orange"}>
+        <div className="aapm-result__badge"><AapmIcon name={passed ? "exam" : "refresh"} /></div>
+        {/* The assessment bar already holds the screen's h1 (quiz or exam title). */}
+        <h2 className="aapm-result__title">{title || (passed ? "Luar biasa!" : "Hampir sampai")}</h2>
+        <p className="aapm-result__text">{description || (passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi.`)}</p>
+      </div>
+      <div className="aapm-stat-grid aapm-stat-grid--result">
+        <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={`${percent}%`} />
+        <StatTile icon="check" hue="blue" label="Jawaban benar" value={`${score}/${total}`} />
+        {duration !== undefined
+          ? <StatTile icon="timer" hue="violet" label="Waktu" value={formatDuration(duration)} />
+          : <StatTile icon="flag" hue="violet" label="Nilai lulus" value={`${passingGrade}%`} />}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Answer review after submission. */
+export function AnswerReview({ questions = [], answers = {} }) {
+  return (
+    <details className="aapm-card aapm-disclosure mt-6">
+      <summary className="aapm-card__header">
+        <span className="grid min-w-0 gap-0.5">
+          <span className="aapm-card__title">Tinjau jawaban</span>
+          <span className="aapm-card__description">Lihat jawaban yang benar untuk setiap soal.</span>
+        </span>
+        <AapmIcon name="chevronDown" className="aapm-disclosure__chevron" />
+      </summary>
+      <ol className="aapm-card__content m-0 grid list-none gap-2 p-5 pt-0">
+        {questions.map((item, index) => {
+          const correct = answers[index] === item.correctIndex;
+          return (
+            <li key={item.id || index} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-[var(--aapm-primitive-radius-panel)] bg-[var(--aapm-semantic-surface-subtle)] p-3">
+              <span className="aapm-icon-tile" data-size="xs" data-shape="circle" data-hue={correct ? "green" : "rose"}><AapmIcon name={correct ? "check" : "closeCircle"} /></span>
+              <div className="min-w-0">
+                <p className="m-0 text-body font-medium">{index + 1}. {item.question}</p>
+                <p className="m-0 text-caption text-muted-foreground">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.correctIndex]}`}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </details>
+  );
 }

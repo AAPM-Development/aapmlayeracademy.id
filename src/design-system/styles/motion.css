@@ -1,0 +1,222 @@
+/* AAPM motion layer. Motion explains change (arrival, progress, selection)
+ * and never delays work: short distances, token durations, one easing.
+ * prefers-reduced-motion collapses everything (see base.css). */
+
+@keyframes aapm-page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes aapm-progress-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes aapm-ring-draw {
+  from { stroke-dashoffset: var(--ring-circumference); }
+}
+
+@keyframes aapm-pill-in {
+  from { transform: scale(.82); opacity: .4; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes aapm-pop {
+  0% { transform: scale(.96); opacity: 0; }
+  60% { transform: scale(1.01); opacity: 1; }
+  100% { transform: none; }
+}
+
+/* Route arrival: sections settle in order (max ~200ms of stagger). */
+.aapm-page > *,
+.aapm-lesson > *,
+.aapm-quiz > * {
+  animation: aapm-page-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-page > :nth-child(2), .aapm-lesson > :nth-child(2), .aapm-quiz > :nth-child(2) { animation-delay: 40ms; }
+.aapm-page > :nth-child(3), .aapm-lesson > :nth-child(3), .aapm-quiz > :nth-child(3) { animation-delay: 80ms; }
+.aapm-page > :nth-child(4), .aapm-lesson > :nth-child(4), .aapm-quiz > :nth-child(4) { animation-delay: 120ms; }
+.aapm-page > :nth-child(5), .aapm-lesson > :nth-child(5), .aapm-quiz > :nth-child(5) { animation-delay: 160ms; }
+.aapm-page > :nth-child(n + 6), .aapm-lesson > :nth-child(n + 6), .aapm-quiz > :nth-child(n + 6) { animation-delay: 200ms; }
+
+/* Collections inside a section arrive together, slightly after their frame. */
+.aapm-stat-grid > *,
+.aapm-kpi-group > *,
+.aapm-track__list > *,
+.aapm-curriculum > *,
+.aapm-course-card,
+.aapm-progress-tile {
+  animation: aapm-page-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-stat-grid > :nth-child(2), .aapm-kpi-group > :nth-child(2), .aapm-track__list > :nth-child(2) { animation-delay: 30ms; }
+.aapm-stat-grid > :nth-child(3), .aapm-kpi-group > :nth-child(3), .aapm-track__list > :nth-child(3) { animation-delay: 60ms; }
+.aapm-stat-grid > :nth-child(n + 4), .aapm-kpi-group > :nth-child(n + 4), .aapm-track__list > :nth-child(n + 4) { animation-delay: 90ms; }
+
+/* Progress reads as progress: bars fill and rings draw when they appear. */
+.aapm-progress__fill {
+  animation: aapm-progress-grow var(--aapm-primitive-motion-chart) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-ring__value {
+  animation: aapm-ring-draw var(--aapm-primitive-motion-chart) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-segments > span[data-state] { transition: background-color var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease); }
+
+/* Selection feedback. */
+.aapm-bottom-nav__item[aria-current="page"] .aapm-bottom-nav__icon { animation: aapm-pill-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease); }
+.aapm-choice[aria-checked="true"] .aapm-choice__key { animation: aapm-pill-in var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease-spring); }
+
+/* ------------------------------------------- Learning moments (Duolingo)
+ * A right answer springs, a wrong one shakes once, the verdict rises from
+ * the action bar and a result badge lands with a little overshoot. Every
+ * effect is one short iteration and collapses under reduced motion. */
+@keyframes aapm-spring-in {
+  0% { opacity: 0; transform: scale(.6); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes aapm-answer-correct {
+  0%, 100% { transform: none; }
+  45% { transform: scale(1.03); }
+}
+@keyframes aapm-answer-wrong {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+.aapm-choice[data-result="correct"] { animation: aapm-answer-correct var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring); }
+.aapm-choice[data-result="wrong"] { animation: aapm-answer-wrong var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-in-out); }
+.aapm-check-feedback { animation: aapm-rise-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both; }
+.aapm-check-feedback__icon { animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) both; }
+.aapm-check-feedback__run { animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) 120ms both; }
+.aapm-focus__footer[data-tone] .aapm-focus__footer-group:last-child { animation: aapm-fade-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both; }
+.aapm-result__badge { animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) both; }
+.aapm-track__item[data-state="current"] .aapm-track__node { animation: aapm-spring-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) 120ms both; }
+.aapm-segments > span[data-state="done"],
+.aapm-segments > span[data-state="wrong"] { animation: aapm-pill-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease-spring); }
+.aapm-tabs-trigger[data-state="active"],
+.aapm-tabs-trigger[aria-pressed="true"],
+.aapm-tabs-trigger[aria-selected="true"] { transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
+
+/* Gentle affordance on interactive surfaces (no bounce, no scale-up). */
+.aapm-stat,
+.aapm-module-row,
+.aapm-calc-tool,
+.aapm-block-picker__item,
+.aapm-outline__item {
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
+}
+a.aapm-module-row:hover .aapm-module-row__action { transform: translateX(2px); }
+.aapm-module-row__action { transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
+
+/* Editors and sticky bars must not be transformed (sticky + inputs). */
+.aapm-page > .aapm-editor-command-bar,
+.aapm-editor-content { animation: none; }
+
+/* Tab panels fade in place (no travel), so switching tabs never jumps. */
+@keyframes aapm-tab-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+[role="tabpanel"][data-state="active"] {
+  animation: aapm-tab-in var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease) both;
+}
+
+/* Profile and admin lists arrive as a group, like the course collections. */
+.aapm-achievement-grid > *,
+.aapm-certificate-grid > *,
+.aapm-ai-status-grid > *,
+.aapm-hof-list > *,
+.aapm-link-list > *,
+.aapm-planned-list > *,
+.aapm-ai-registry__list > * {
+  animation: aapm-page-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-achievement-grid > :nth-child(2), .aapm-certificate-grid > :nth-child(2), .aapm-ai-status-grid > :nth-child(2),
+.aapm-hof-list > :nth-child(2), .aapm-link-list > :nth-child(2), .aapm-planned-list > :nth-child(2), .aapm-ai-registry__list > :nth-child(2) { animation-delay: 30ms; }
+.aapm-achievement-grid > :nth-child(3), .aapm-certificate-grid > :nth-child(3), .aapm-ai-status-grid > :nth-child(3),
+.aapm-hof-list > :nth-child(3), .aapm-link-list > :nth-child(3), .aapm-planned-list > :nth-child(3), .aapm-ai-registry__list > :nth-child(3) { animation-delay: 60ms; }
+.aapm-achievement-grid > :nth-child(n + 4), .aapm-certificate-grid > :nth-child(n + 4), .aapm-ai-status-grid > :nth-child(n + 4),
+.aapm-hof-list > :nth-child(n + 4), .aapm-link-list > :nth-child(n + 4), .aapm-planned-list > :nth-child(n + 4), .aapm-ai-registry__list > :nth-child(n + 4) { animation-delay: 90ms; }
+
+/* ------------------------------------------------ Coverage: press feedback
+ * Every pressable thing answers the finger: a short scale-down on :active.
+ * Scale stays between .96 and .99 so nothing looks like a game button. */
+.aapm-button,
+.aapm-icon-button {
+  transition-property: background-color, border-color, color, box-shadow, transform, opacity;
+  transition-duration: var(--aapm-primitive-motion-fast);
+  transition-timing-function: var(--aapm-primitive-motion-ease);
+}
+.aapm-button:not(:disabled):active,
+.aapm-icon-button:not(:disabled):active { transform: scale(0.97); }
+.aapm-choice:not(:disabled):active,
+.aapm-module-row:active,
+.aapm-course-card:active,
+.aapm-surface[data-interactive="true"]:active,
+.aapm-link-list__item:active,
+.aapm-provider-item:active { transform: scale(0.99); }
+
+/* ------------------------------------------- Tabs: underline draws itself
+ * The active underline grows from the centre instead of appearing. */
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger {
+  position: relative;
+  box-shadow: none;
+}
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger[data-state="active"] {
+  box-shadow: none;
+}
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger::after {
+  content: "";
+  position: absolute;
+  inset-inline: 8px;
+  bottom: 0;
+  height: 2px;
+  border-radius: var(--aapm-primitive-radius-pill);
+  background: var(--aapm-semantic-primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
+}
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger[data-state="active"]::after { transform: scaleX(1); }
+
+/* ------------------------------------------------ Bottom bar: motion
+ * The active pill grows in behind the icon (see aapm-pill-in above); the icon
+ * presses in on tap. No separate indicator bar. */
+.aapm-bottom-nav__item { transition: color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
+.aapm-bottom-nav__icon {
+  transition: background-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-bottom-nav__item:active .aapm-bottom-nav__icon { transform: scale(0.9); }
+.aapm-bottom-nav__item:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: -2px; border-radius: var(--aapm-primitive-radius-control); }
+
+/* ------------------------------------------------------ Fields & choices */
+.aapm-input,
+.aapm-textarea,
+.aapm-select-trigger {
+  transition: border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-checkbox:checked { animation: aapm-pop var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
+
+/* ---------------------------------------------- Status & empty entrances */
+.aapm-alert,
+.aapm-state {
+  animation: aapm-page-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-toast-region .aapm-toast + .aapm-toast { animation-delay: 60ms; }
+
+/* ------------------------------------------------ Auth: the card arrives */
+.aapm-auth__form {
+  animation: aapm-page-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-auth__brand { animation: aapm-fade-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both; }
+
+/* ---------------------------------------------- Reduced motion, explicitly
+ * base.css collapses durations already; transforms that move content are
+ * also reset so nothing slides when the user asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .aapm-button:not(:disabled):active,
+  .aapm-icon-button:not(:disabled):active,
+  .aapm-bottom-nav__item:active .aapm-bottom-nav__icon,
+  .aapm-choice:not(:disabled):active { transform: none; }
+}

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "academy-api",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["-d", "extension=php_sqlite3.dll", "-d", "extension=php_pdo_sqlite.dll", "-S", "127.0.0.1:8000", "-t", "public", "public/router.php"],
+      "port": 8000
+    },
+    {
+      "name": "academy-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

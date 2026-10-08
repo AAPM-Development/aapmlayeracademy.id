@@ -1,0 +1,307 @@
+/* Module editor composition: mode switch in the page header, canvas panels, inspector, action bar. */
+.aapm-editor-content { display: grid; gap: var(--aapm-primitive-space-4); }
+
+.aapm-editor-workspace {
+  display: grid;
+  grid-template-columns: 13.5rem minmax(0, 1fr) var(--aapm-component-editor-inspector-width);
+  align-items: start;
+  gap: var(--aapm-primitive-space-5);
+}
+
+/* Mode switch: Konten / Pratinjau / Bank soal, in the page header beside the actions.
+ * It is one quiet segmented control; the active mode is the only raised surface. */
+.aapm-editor-mode {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: var(--aapm-semantic-surface-subtle);
+}
+.aapm-editor-mode .aapm-tabs-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aapm-primitive-space-1-5);
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: calc(var(--aapm-primitive-radius-control) - 2px);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-support-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.aapm-editor-mode .aapm-tabs-trigger .aapm-icon { width: 15px; height: 15px; }
+.aapm-editor-mode .aapm-tabs-trigger:hover:not(:disabled) { color: var(--aapm-semantic-foreground); }
+.aapm-editor-mode .aapm-tabs-trigger[data-state="active"] { background: var(--aapm-semantic-surface); color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); box-shadow: var(--aapm-semantic-shadow-rest); }
+.aapm-editor-mode .aapm-tabs-trigger:disabled { opacity: .45; cursor: not-allowed; }
+.aapm-editor-mode .aapm-tabs-trigger:focus-visible { outline: 2px solid var(--aapm-semantic-primary); outline-offset: 2px; }
+
+/* Action bar: the one save surface, stuck to the bottom of the canvas. */
+.aapm-editor-actionbar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--aapm-primitive-layer-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-4);
+  padding: var(--aapm-primitive-space-3) 0;
+  border-top: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+}
+/* Susun: the outline rail. It is quiet text, not a card. The active section is the
+ * only ink-weight item, and the Materi group nests the blocks in reading order. */
+.aapm-editor-outline {
+  position: sticky;
+  top: calc(var(--aapm-primitive-space-16) + var(--aapm-primitive-space-2));
+  display: grid;
+  align-content: start;
+  gap: var(--aapm-primitive-space-2);
+  max-height: calc(100svh - var(--aapm-primitive-header-height) - var(--aapm-primitive-space-16) - var(--aapm-primitive-space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-margin-top: var(--aapm-primitive-space-16);
+}
+.aapm-editor-outline__nav { display: grid; gap: 2px; }
+.aapm-editor-outline__group { display: grid; gap: 2px; }
+.aapm-editor-outline__section {
+  display: flex;
+  align-items: center;
+  gap: var(--aapm-primitive-space-1-5);
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-support-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  text-align: start;
+  cursor: pointer;
+}
+.aapm-editor-outline__section .aapm-icon { width: 16px; height: 16px; flex: none; }
+.aapm-editor-outline__section:hover { color: var(--aapm-semantic-foreground); }
+.aapm-editor-outline__section[aria-current="step"] { color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
+.aapm-editor-outline__section[aria-current="step"] .aapm-icon { color: var(--aapm-semantic-primary); }
+.aapm-editor-outline__blocks { display: grid; gap: 2px; margin-inline-start: 13px; padding-inline-start: 8px; border-inline-start: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border); }
+.aapm-editor-outline__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.aapm-editor-outline__item { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 2px; border-radius: var(--aapm-primitive-radius-control); }
+.aapm-editor-outline__item[data-dragging="true"] { background: var(--aapm-semantic-surface); box-shadow: var(--aapm-semantic-shadow-rest); }
+.aapm-editor-outline__grip { display: grid; place-items: center; width: 16px; height: 30px; color: var(--aapm-semantic-subtle-text); cursor: grab; opacity: 0; }
+.aapm-editor-outline__grip .aapm-icon { width: 14px; height: 14px; }
+.aapm-editor-outline__item:hover .aapm-editor-outline__grip,
+.aapm-editor-outline__item[data-selected="true"] .aapm-editor-outline__grip,
+.aapm-editor-outline__grip:focus-visible { opacity: 1; }
+.aapm-editor-outline__target {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--aapm-primitive-space-1-5);
+  min-width: 0;
+  padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-1-5);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-support-size);
+  text-align: start;
+  cursor: pointer;
+}
+.aapm-editor-outline__target:hover { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); }
+.aapm-editor-outline__target[aria-current="true"] { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
+.aapm-editor-outline__index { display: grid; place-items: center; flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--aapm-semantic-surface); font-size: 11px; font-variant-numeric: tabular-nums; }
+.aapm-editor-outline__text { display: grid; min-width: 0; }
+.aapm-editor-outline__type { overflow: hidden; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-label); text-overflow: ellipsis; white-space: nowrap; }
+.aapm-editor-outline__detail { overflow: hidden; color: var(--aapm-semantic-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.aapm-editor-outline__empty { margin: 0; padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-2); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); }
+.aapm-editor-outline__add .aapm-button { width: 100%; }
+.aapm-editor-actionbar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-2); }
+.aapm-editor-save-status { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-1-5); padding-inline: var(--aapm-primitive-space-2); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); white-space: nowrap; }
+.aapm-editor-save-status[data-status="saved"] .aapm-chip__dot { color: var(--aapm-semantic-success); }
+.aapm-editor-save-status[data-status="dirty"] { color: var(--aapm-semantic-attention-soft-text); }
+.aapm-editor-save-status[data-status="dirty"] .aapm-chip__dot,
+.aapm-editor-save-status[data-status="saving"] .aapm-chip__dot { color: var(--aapm-semantic-attention); animation: aapm-pulse 1.2s ease-in-out infinite; }
+.aapm-editor-save-status__label { display: inline; }
+.aapm-editor-save-status[data-status="error"] { color: var(--aapm-semantic-danger); }
+.aapm-editor-save-status[data-status="error"] .aapm-chip__dot { color: var(--aapm-semantic-danger); }
+.aapm-editor-save-status__detail { min-width: 0; max-width: 40ch; overflow: hidden; color: var(--aapm-semantic-muted); text-overflow: ellipsis; white-space: nowrap; }
+.aapm-editor-kbd { margin-inline-start: var(--aapm-primitive-space-1); border-color: color-mix(in srgb, currentColor 35%, transparent); background: transparent; color: inherit; opacity: .75; }
+
+.aapm-editor-canvas { display: grid; gap: var(--aapm-primitive-space-4); min-width: 0; }
+.aapm-editor-panel {
+  display: grid;
+  gap: var(--aapm-primitive-space-4);
+  min-width: 0;
+  padding: var(--aapm-primitive-space-5);
+  border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--aapm-semantic-surface);
+  scroll-margin-top: var(--aapm-primitive-space-16);
+  transition: border-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), box-shadow var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
+}
+.aapm-editor-panel[data-active="true"] { border-color: color-mix(in srgb, var(--aapm-semantic-primary) 35%, var(--aapm-semantic-border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-primary) 8%, transparent); }
+.aapm-editor-panel__head { display: flex; align-items: flex-start; gap: var(--aapm-primitive-space-3); }
+.aapm-editor-panel__title { margin: 0; font-size: var(--aapm-component-type-heading-size); line-height: var(--aapm-component-type-heading-line); font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-editor-panel__description { margin: 2px 0 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
+
+.aapm-editor-inspector {
+  position: sticky;
+  top: calc(var(--aapm-primitive-space-16) + var(--aapm-primitive-space-2));
+  display: grid;
+  gap: var(--aapm-primitive-space-4);
+  max-height: calc(100svh - var(--aapm-primitive-header-height) - var(--aapm-primitive-space-16) - var(--aapm-primitive-space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-margin-top: var(--aapm-primitive-space-16);
+}
+.aapm-editor-inspector > .aapm-card { scroll-margin-top: var(--aapm-primitive-space-16); }
+.aapm-editor-inspector > .aapm-card[data-active="true"] { border-color: color-mix(in srgb, var(--aapm-semantic-primary) 35%, var(--aapm-semantic-border)); }
+.aapm-editor-inspector .aapm-card__header { padding-bottom: var(--aapm-primitive-space-3); }
+.aapm-editor-inspector .aapm-card__content { padding-top: 0; }
+
+.aapm-editor-outcome-grid { display: grid; gap: var(--aapm-primitive-space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.aapm-editor-practice-fields { display: grid; gap: var(--aapm-primitive-space-4); }
+.aapm-editor-point-card { display: grid; gap: var(--aapm-primitive-space-2); min-width: 0; padding: var(--aapm-primitive-space-3); border-radius: var(--aapm-primitive-radius-panel); background: var(--hue-soft, var(--aapm-semantic-surface-subtle)); }
+.aapm-editor-point-card__head { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); }
+.aapm-editor-point-list { display: grid; gap: 2px; }
+.aapm-editor-point-row { grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--aapm-primitive-space-2); padding: 2px var(--aapm-primitive-space-1); border-radius: var(--aapm-primitive-radius-control); }
+.aapm-editor-point-row:focus-within { background: var(--aapm-semantic-surface); box-shadow: var(--aapm-semantic-shadow-rest); }
+.aapm-editor-point-index { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--aapm-semantic-surface); color: var(--hue-ink, var(--aapm-semantic-muted)); font-size: 11px; font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; }
+.aapm-editor-point-input.aapm-input { min-height: 34px; padding-inline: var(--aapm-primitive-space-1); border-color: transparent; background: transparent; box-shadow: none; }
+.aapm-editor-point-input.aapm-input:focus { border-color: transparent; box-shadow: none; }
+.aapm-editor-point-action { opacity: .4; }
+.aapm-editor-point-row:hover .aapm-editor-point-action,
+.aapm-editor-point-row:focus-within .aapm-editor-point-action { opacity: 1; }
+.aapm-editor-point-action:hover:not(:disabled) { color: var(--aapm-semantic-danger); }
+.aapm-editor-point-add { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-1-5); justify-self: start; padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-2); border: 0; border-radius: var(--aapm-primitive-radius-control); background: transparent; color: var(--hue-ink, var(--aapm-semantic-primary)); font: inherit; font-size: var(--aapm-component-type-support-size); font-weight: var(--aapm-primitive-weight-label); cursor: pointer; }
+.aapm-editor-point-add:hover { background: var(--aapm-semantic-surface); }
+.aapm-editor-point-add .aapm-icon { width: 14px; height: 14px; }
+
+.aapm-hue-select { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); }
+.aapm-hue-select__swatch { width: 28px; height: 28px; padding: 0; border: 2px solid var(--aapm-semantic-surface); border-radius: 50%; background: var(--hue); box-shadow: 0 0 0 1px var(--aapm-semantic-border-strong); cursor: pointer; }
+.aapm-hue-select__swatch[data-hue="neutral"] { background: var(--aapm-semantic-surface-tertiary); }
+.aapm-hue-select__swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--aapm-semantic-foreground); }
+
+/* Between the phone-tablet stack and the full three columns, the outline keeps its
+ * left rail and the inspector drops under the canvas, so the canvas stays readable. */
+@media (min-width: 1200px) and (max-width: 1359px) {
+  .aapm-editor-workspace { grid-template-columns: 13.5rem minmax(0, 1fr); }
+  .aapm-editor-outline { grid-row: span 2; }
+  .aapm-editor-inspector { grid-column: 2; position: static; max-height: none; overflow: visible; }
+}
+/* Drawers: below the desktop grid the outline is a bottom sheet, opened from the action
+ * bar. Phones also get the inspector as a sheet. Escape, the scrim, and the close
+ * control all dismiss a sheet, and focus returns to the control that opened it. */
+.aapm-editor-actionbar [data-drawer] { display: none; }
+.aapm-editor-drawer-close { display: none; }
+.aapm-editor-inspector__head { display: none; }
+.aapm-editor-outline__head { display: flex; align-items: center; justify-content: space-between; gap: var(--aapm-primitive-space-2); }
+.aapm-editor-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--aapm-primitive-layer-overlay) - 1);
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--aapm-semantic-foreground) 28%, transparent);
+  cursor: default;
+}
+@media (max-width: 1199px) {
+  .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); }
+  .aapm-editor-inspector { position: static; max-height: none; overflow: visible; }
+  .aapm-editor-outline {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--aapm-primitive-layer-overlay);
+    max-height: min(72svh, 36rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4) calc(var(--aapm-primitive-space-4) + env(safe-area-inset-bottom));
+    border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0;
+    background: var(--aapm-semantic-surface);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
+    /* A closed sheet is not rendered, so it cannot hold focus. An open one takes focus at once. */
+    display: none;
+  }
+  .aapm-editor-outline[data-drawer-open="true"] { display: grid; }
+  .aapm-editor-outline .aapm-editor-drawer-close { display: inline-flex; }
+  .aapm-editor-actionbar [data-drawer="outline"] { display: inline-flex; }
+}
+@media (max-width: 639px) {
+  .aapm-editor-kbd { display: none; }
+  .aapm-editor-panel { padding: var(--aapm-primitive-space-4); }
+  .aapm-editor-inspector {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--aapm-primitive-layer-overlay);
+    max-height: min(78svh, 40rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4) calc(var(--aapm-primitive-space-4) + env(safe-area-inset-bottom));
+    border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0;
+    background: var(--aapm-semantic-surface);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
+    /* A closed sheet is not rendered, so it cannot hold focus. An open one takes focus at once. */
+    display: none;
+  }
+  .aapm-editor-inspector[data-drawer-open="true"] { display: grid; }
+  .aapm-editor-inspector__head { display: flex; justify-content: flex-end; }
+  .aapm-editor-inspector .aapm-editor-drawer-close { display: inline-flex; }
+  .aapm-editor-actionbar [data-drawer="inspector"] { display: inline-flex; }
+  /* A failed save stays visible on phones, because its retry is the next step. */
+  .aapm-editor-save-status[data-status="error"] .aapm-editor-save-status__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+}
+
+/* Phones: the action bar keeps one row and the keyboard hint goes. */
+@media (max-width: 639px) {
+  .aapm-editor-actionbar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); }
+  .aapm-editor-actionbar__actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .aapm-editor-actionbar__actions .aapm-button { width: 100%; padding-inline: 6px; }
+  .aapm-editor-actionbar__actions [data-editor-add-menu],
+  .aapm-editor-actionbar__actions .aapm-editor-kbd { display: none; }
+  .aapm-editor-save-status { padding-inline: 0; }
+}
+
+/* Touch and narrow layouts: no hover is needed to reach an editor control, and targets
+ * are sized for fingers. Fields are 16px, so iOS does not zoom when one is focused. */
+@media (hover: none), (pointer: coarse), (max-width: 1199px) {
+  .aapm-editor-outline__item { grid-template-columns: 28px minmax(0, 1fr); }
+  .aapm-editor-outline__grip { opacity: 1; width: 28px; height: 44px; }
+  .aapm-editor-outline__section,
+  .aapm-editor-outline__target { min-height: 44px; }
+  .aapm-editor-point-action { opacity: 1; min-width: 40px; min-height: 40px; }
+  .aapm-editor-point-add { min-height: 44px; }
+  .aapm-editor-mode .aapm-tabs-trigger { min-height: 44px; }
+  .aapm-inspector-tabs .aapm-tabs-trigger { min-height: 44px; }
+  .aapm-editor-actionbar .aapm-button { min-height: 44px; }
+  .aapm-editor-drawer-close { min-width: 44px; min-height: 44px; }
+  .aapm-editor-doc-head .aapm-chip { min-height: 44px; }
+  .aapm-editor-doc-title { min-height: 44px; }
+  .aapm-editor-content [role="combobox"],
+  .aapm-editor-inspector [role="combobox"] { min-height: 44px; }
+  .aapm-hue-select__swatch { width: 40px; height: 40px; }
+  .aapm-editor-content .aapm-button,
+  .aapm-editor-inspector .aapm-button,
+  .aapm-editor-outline .aapm-button { min-width: 44px; min-height: 44px; }
+  .aapm-editor-content .aapm-input,
+  .aapm-editor-inspector .aapm-input,
+  .aapm-editor-outline .aapm-input { min-height: 44px; }
+}
+@media (max-width: 639px), (pointer: coarse) {
+  .aapm-editor-content input,
+  .aapm-editor-content textarea,
+  .aapm-editor-content select,
+  .aapm-editor-inspector input,
+  .aapm-editor-inspector textarea,
+  .aapm-editor-inspector select,
+  .aapm-editor-outline input { font-size: 16px; }
+}

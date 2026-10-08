@@ -3,41 +3,41 @@ import { Link } from "react-router-dom";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { LineChart as T7LineChart } from "@/design-system/charts";
 import {
+  ConfirmDialog,
+  SectionHeader,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  StateView,
+  OverflowMenu,
   Badge,
   Button,
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   ChartPanel,
   DataTable,
-  FilterToolbar,
   FormGrid,
+  Field,
   FormSection,
-  IconButton,
   IconTile,
   Input,
   KPICluster,
   Label,
-  T7LineChart,
   Sparkline,
   Textarea,
   TrendIndicator,
 } from "@/components/primitives";
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  aggregateWismanByDate,
-  WISMAN_FIXTURE_META,
-  WISMAN_FIXTURE_ROWS,
-} from "@/lib/wismanFixture";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/components/primitives";
 
-/** @typedef {import("@ten4seven/ui").KPIItem} KPIItem */
-/** @typedef {import("@ten4seven/ui").DataTableColumn<any>} DataTableColumn */
-/** @typedef {import("@ten4seven/ui").DataTableSort} DataTableSort */
+/** @typedef {{label: string, value: any, [key: string]: any}} KPIItem */
+/** @typedef {{key: string, header: string, [key: string]: any}} DataTableColumn */
+/** @typedef {{key: string, direction: "asc" | "desc"}} DataTableSort */
 
 function emptyForm() {
   return {
@@ -59,15 +59,15 @@ function emptyForm() {
 const numberFields = [
   { key: "week", label: "Umur (minggu)", required: true },
   { key: "henDayProduction", label: "HDP (%)" },
-  { key: "feedIntake", label: "Feed intake (g)" },
-  { key: "eggWeight", label: "Egg weight (g)" },
+  { key: "feedIntake", label: "Asupan pakan (g)" },
+  { key: "eggWeight", label: "Berat telur (g)" },
   { key: "fcr", label: "FCR" },
-  { key: "mortality", label: "Mortality (%)" },
-  { key: "waterIntake", label: "Water (ml)" },
+  { key: "mortality", label: "Mortalitas (%)" },
+  { key: "waterIntake", label: "Air minum (ml)" },
   { key: "temperature", label: "Suhu (°C)" },
-  { key: "humidity", label: "Humidity (%)" },
-  { key: "revenue", label: "Revenue (Rp)" },
-  { key: "cost", label: "Cost (Rp)" },
+  { key: "humidity", label: "Kelembapan (%)" },
+  { key: "revenue", label: "Pendapatan (Rp)" },
+  { key: "cost", label: "Biaya (Rp)" },
 ];
 
 const primaryFields = numberFields.slice(0, 5);
@@ -81,72 +81,40 @@ export default function KpiDashboard() {
   const deleteFarmData = /** @type {any} */ (del.mutateAsync);
   const { toast } = useToast();
   const [editing, setEditing] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
-  // Keep the Wisman fixture available for explicit local QA without exposing
-  // synthetic data or audit metadata in the learner-facing build.
-  const devFixtureTools = import.meta.env.DEV;
-  const [previewWisman, setPreviewWisman] = useState(() => {
-    if (!devFixtureTools || typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("fixture") === "wisman";
-  });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [tableSort, setTableSort] = useState(/** @type {DataTableSort} */ ({ key: "week", direction: "asc" }));
 
   const sorted = useMemo(
     () => [...rows].sort((a, b) => toNumber(a.week) - toNumber(b.week)),
     [rows],
   );
-  const wismanRows = useMemo(() => aggregateWismanByDate(), []);
-  const activeRows = previewWisman ? wismanRows : sorted;
-  const activeSourceLabel = previewWisman
-    ? "Wisman Farm · preview lokal"
-    : "Farm API · data tersimpan";
+  const activeSourceLabel = "Farm API · data tersimpan";
 
-  const activeLabels = useMemo(
-    () =>
-      activeRows.map((row) =>
-        previewWisman ? formatDateLabel(row.date) : `M${row.week}`,
-      ),
-    [activeRows, previewWisman],
-  );
+  const activeLabels = useMemo(() => sorted.map((row) => `M${row.week}`), [sorted]);
 
-  const activeStats = useMemo(
-    () => buildStats(activeRows, { preview: previewWisman }),
-    [activeRows, previewWisman],
-  );
+  const activeStats = useMemo(() => buildStats(sorted), [sorted]);
 
   const productionSeries = useMemo(() => {
-    const hdp = completeSeries(activeRows, "henDayProduction");
+    const hdp = completeSeries(sorted, "henDayProduction");
     if (!hdp.length) return [];
-    const series = [{ id: "hdp", label: "HDP (%)", values: hdp }];
-    if (previewWisman) {
-      const mortality = completeSeries(activeRows, "mortality");
-      if (mortality.length) {
-        series.push({ id: "mortality", label: "Mortality (%)", values: mortality });
-      }
-    }
-    return series;
-  }, [activeRows, previewWisman]);
+    return [{ id: "hdp", label: "HDP (%)", values: hdp }];
+  }, [sorted]);
 
-  const fcrSeries = useMemo(
-    () => (previewWisman ? [] : chartSeries(activeRows, "fcr", "FCR")),
-    [activeRows, previewWisman],
-  );
+  const fcrSeries = useMemo(() => chartSeries(sorted, "fcr", "FCR"), [sorted]);
 
-  const eggWeightSeries = useMemo(
-    () => (previewWisman ? [] : chartSeries(activeRows, "eggWeight", "Egg weight (g)")),
-    [activeRows, previewWisman],
-  );
+  const eggWeightSeries = useMemo(() => chartSeries(sorted, "eggWeight", "Berat telur (g)"), [sorted]);
 
   const financeSeries = useMemo(() => {
-    if (previewWisman) return [];
-    const revenue = completeSeries(activeRows, "revenue");
-    const cost = completeSeries(activeRows, "cost");
+    const revenue = completeSeries(sorted, "revenue");
+    const cost = completeSeries(sorted, "cost");
     if (!revenue.length || !cost.length) return [];
     return [
-      { id: "revenue", label: "Revenue (jt)", values: revenue.map((value) => value / 1e6) },
-      { id: "cost", label: "Cost (jt)", values: cost.map((value) => value / 1e6) },
+      { id: "revenue", label: "Pendapatan (jt)", values: revenue.map((value) => value / 1e6) },
+      { id: "cost", label: "Biaya (jt)", values: cost.map((value) => value / 1e6) },
     ];
-  }, [activeRows, previewWisman]);
+  }, [sorted]);
 
   const visibleWeeklyRows = useMemo(
     () => sortRows(sorted, tableSort),
@@ -155,6 +123,12 @@ export default function KpiDashboard() {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!String(form.week ?? "").trim()) {
+      setFieldErrors({ week: "Isi umur flock dalam minggu, misalnya 12." });
+      document.getElementById("farm-week")?.focus();
+      return;
+    }
+    setFieldErrors({});
     const data = Object.fromEntries(
       Object.entries(form).map(([key, value]) => [
         key,
@@ -166,6 +140,7 @@ export default function KpiDashboard() {
       toast({ title: editing ? "Data diperbarui" : "Data farm ditambahkan" });
       setForm(emptyForm());
       setEditing(null);
+      setSheetOpen(false);
     } catch (error) {
       toast({
         title: "Data belum tersimpan",
@@ -191,16 +166,10 @@ export default function KpiDashboard() {
       fcr: row.fcr,
       notes: row.notes || "",
     });
-    window.requestAnimationFrame(() => {
-      document
-        .getElementById("farm-data-form")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      document
-        .getElementById("farm-week")
-        ?.focus({ preventScroll: true });
-    });
+    setSheetOpen(true);
   };
 
+  const [pendingDelete, setPendingDelete] = useState(null);
   const remove = async (id) => {
     try {
       await deleteFarmData(id);
@@ -281,23 +250,13 @@ export default function KpiDashboard() {
         overflow: "nowrap",
         render: (row) => (
           <div className="flex justify-end gap-1">
-            <IconButton
-              label={`Edit minggu ${row.week}`}
-              tooltip="Edit data"
-              variant="outline"
-              onClick={() => startEdit(row)}
-            >
-              <AapmIcon name="edit" className="h-4 w-4" />
-            </IconButton>
-            <IconButton
-              label={`Hapus minggu ${row.week}`}
-              tooltip="Hapus data"
-              variant="ghost"
-              className="text-danger hover:bg-danger/10 hover:text-danger"
-              onClick={() => remove(row.id)}
-            >
-              <AapmIcon name="delete" className="h-4 w-4" />
-            </IconButton>
+            <Button size="sm" variant="secondary" onClick={() => startEdit(row)}>
+              <AapmIcon name="edit" />Edit
+            </Button>
+            <OverflowMenu
+              label={`Aksi minggu ${row.week}`}
+              items={[{ id: "delete", label: "Hapus data minggu ini", icon: "delete", tone: "danger", onSelect: () => setPendingDelete(row) }]}
+            />
           </div>
         ),
       },
@@ -305,288 +264,142 @@ export default function KpiDashboard() {
     [],
   );
 
+  const openNewEntry = () => {
+    setEditing(null);
+    setForm(emptyForm());
+    setSheetOpen(true);
+  };
+
   return (
     <ContentContainer>
       <PageHeader
-        eyebrow="Farm performance"
-        title="Farm KPI dashboard"
-        description="Catat indikator mingguan, baca pola produksi, lalu ambil keputusan yang lebih presisi."
-        actions={
-          <Button asChild variant="outline">
-            <Link to="/ai-assistant">
-              <AapmIcon name="ai" />
-              Analisis dengan AI
-            </Link>
-          </Button>
-        }
+        title="Farm KPI"
+        description="Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya."
+        actions={(
+          <>
+            <Button asChild variant="ai"><Link to="/ai-assistant"><AapmIcon name="ai" />Analisis dengan APPI</Link></Button>
+            <Button type="button" onClick={openNewEntry}><AapmIcon name="plus" />Catat minggu ini</Button>
+          </>
+        )}
       />
 
-      <FilterToolbar
-        className="mb-6"
-        title="Data KPI tersimpan"
-        summary={
-          previewWisman
-            ? `${WISMAN_FIXTURE_META.coverage}; KPI hanya menghitung baris siap rekonsiliasi.`
-            : `${rows.length} catatan mingguan dari Farm API.`
-        }
-        actions={devFixtureTools ? (
-          <Button
-            type="button"
-            size="sm"
-            variant={previewWisman ? "default" : "outline"}
-            onClick={() => setPreviewWisman((current) => !current)}
-          >
-            <AapmIcon name={previewWisman ? "close" : "analytics"} />
-            {previewWisman ? "Kembali ke data API" : "Preview data Wisman"}
-          </Button>
-        ) : null}
-      >
-        <Badge variant={previewWisman ? "warning" : "success"}>
-          {previewWisman ? "Preview lokal · tidak disimpan" : "Farm API · aktif"}
-        </Badge>
-        {devFixtureTools && previewWisman && (
-          <Badge variant="secondary">{WISMAN_FIXTURE_META.source}</Badge>
-        )}
-      </FilterToolbar>
 
-      <section aria-label="Ringkasan KPI farm" className="mb-7">
-        <KPICluster
-          className="aapm-kpi-cluster"
-          label={`${activeSourceLabel} · ringkasan KPI`}
-          columns={4}
-          variant="cards"
-          items={activeStats}
+      <KPICluster label={`${activeSourceLabel} · ringkasan KPI`} columns={4} items={activeStats} />
+
+      {isLoading ? (
+        <EmptyKpiState loading />
+      ) : sorted.length === 0 ? (
+        <StateView
+          kind="empty"
+          icon="kpi"
+          hue="teal"
+          title="Belum ada data mingguan"
+          description="Catat satu minggu data flock untuk mulai melihat tren HDP, FCR, dan biaya."
+          action={<Button type="button" onClick={openNewEntry}><AapmIcon name="plus" />Catat data pertama</Button>}
         />
-      </section>
+      ) : (
+        <section className="grid gap-4" aria-label="Grafik tren">
+        {isLoading ? (
+          <EmptyKpiState loading />
+        ) : sorted.length === 0 ? (
+          <EmptyKpiState />
+        ) : (
+          <>
+            <ChartPanel
+              className="min-w-0"
+              title={"HDP trend"}
+              description={
+                "Hen day production berdasarkan umur flock; seri tanpa data tidak dibuat."
+              }
+              chart={
+                productionSeries.length ? (
+                  <T7LineChart
+                    ariaLabel="Grafik produksi farm"
+                    labels={activeLabels}
+                    series={productionSeries}
+                    height={242}
+                    valueFormatter={(value) => `${value.toFixed(1)}%`}
+                  />
+                ) : (
+                  <ChartEmpty message="Belum ada seri produksi yang lengkap untuk divisualkan." />
+                )
+              }
+            />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card
-          id="farm-data-form"
-          className={cn(
-            "aapm-token-form h-fit scroll-mt-4 lg:col-span-1 lg:sticky lg:top-5",
-            editing && "border-brand-orange/45 ring-1 ring-brand-orange/15",
-          )}
-        >
-          <CardHeader className="p-5 pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-base">
-                    {editing ? "Edit data mingguan" : "Input data mingguan"}
-                  </CardTitle>
-                  {editing && (
-                    <Badge variant="warning">Minggu {editing.week}</Badge>
-                  )}
-                </div>
-                <CardDescription className="mt-1">
-                  {editing
-                    ? "Perbarui angka lalu simpan perubahan Anda."
-                    : "Angka yang rapi membuat tren lebih mudah dibaca."}
-                </CardDescription>
-              </div>
-              <IconTile icon={editing ? "edit" : "finance"} tone={editing ? "orange" : "blue"} size="sm" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-5 pt-2">
-            <form onSubmit={submit} className="space-y-5">
-              <FormSection
-                title="Produksi & efisiensi"
-                description="Field inti untuk membaca performa flock."
-                className="space-y-3"
-              >
-                <FormGrid columns={2} className="gap-x-3 gap-y-3">
-                  {primaryFields.map((field) => (
-                    <MetricInput
-                      key={field.key}
-                      fieldKey={field.key}
-                      label={field.label}
-                      value={form[field.key]}
-                      required={field.required}
-                      onChange={(value) =>
-                        setForm((current) => ({ ...current, [field.key]: value }))
-                      }
-                    />
-                  ))}
-                </FormGrid>
-              </FormSection>
-
-              <FormSection
-                title="Konteks operasional"
-                description="Suhu, input pakan, dan biaya membantu menjelaskan penyimpangan."
-                className="space-y-3"
-              >
-                <FormGrid columns={2} className="gap-x-3 gap-y-3">
-                  {contextFields.map((field) => (
-                    <MetricInput
-                      key={field.key}
-                      fieldKey={field.key}
-                      label={field.label}
-                      value={form[field.key]}
-                      required={field.required}
-                      onChange={(value) =>
-                        setForm((current) => ({ ...current, [field.key]: value }))
-                      }
-                    />
-                  ))}
-                </FormGrid>
-              </FormSection>
-
-              <FormSection
-                title="Catatan operasional"
-                description="Simpan alasan perubahan, bukan sekadar angka."
-                className="space-y-2"
-              >
-                <Label htmlFor="farm-notes" className="sr-only">
-                  Catatan operasional
-                </Label>
-                <Textarea
-                  id="farm-notes"
-                  value={form.notes}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, notes: event.target.value }))
-                  }
-                  placeholder="Contoh: perubahan pakan, cuaca, atau kondisi kandang."
-                />
-              </FormSection>
-
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                {editing && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setEditing(null);
-                      setForm(emptyForm());
-                    }}
-                  >
-                    Batal
-                  </Button>
-                )}
-                <Button type="submit" className="flex-1" disabled={save.isPending}>
-                  {editing ? "Simpan perubahan" : "Tambah data"}
-                  <AapmIcon name="arrowRight" />
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <section className="min-w-0 space-y-6 lg:col-span-2">
-          {isLoading ? (
-            <EmptyKpiState loading />
-          ) : activeRows.length === 0 ? (
-            <EmptyKpiState />
-          ) : (
-            <>
+            <div className="grid gap-6 lg:grid-cols-2">
               <ChartPanel
                 className="min-w-0"
-                title={previewWisman ? "HDP & mortality" : "HDP trend"}
+                title="FCR trend"
                 description={
-                  previewWisman
-                    ? "Preview hanya memakai baris Wisman yang siap direkonsiliasi."
-                    : "Hen day production berdasarkan umur flock; seri tanpa data tidak dibuat."
+                  "Efisiensi pakan dari minggu ke minggu."
                 }
                 chart={
-                  productionSeries.length ? (
+                  fcrSeries.length ? (
                     <T7LineChart
-                      ariaLabel="Grafik produksi farm"
+                      ariaLabel="Grafik tren FCR"
                       labels={activeLabels}
-                      series={productionSeries}
-                      height={242}
-                      valueFormatter={(value) => `${value.toFixed(1)}%`}
+                      series={fcrSeries}
+                      height={210}
+                      valueFormatter={(value) => value.toFixed(2)}
                     />
                   ) : (
-                    <ChartEmpty message="Belum ada seri produksi yang lengkap untuk divisualkan." />
+                    <ChartEmpty message="Belum ada data FCR yang lengkap." />
                   )
                 }
               />
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                <ChartPanel
-                  className="min-w-0"
-                  title="FCR trend"
-                  description={
-                    previewWisman
-                      ? "FCR belum tersedia pada grain daily fixture."
-                      : "Efisiensi pakan dari minggu ke minggu."
-                  }
-                  chart={
-                    fcrSeries.length ? (
-                      <T7LineChart
-                        ariaLabel="Grafik tren FCR"
-                        labels={activeLabels}
-                        series={fcrSeries}
-                        height={210}
-                        valueFormatter={(value) => value.toFixed(2)}
-                      />
-                    ) : (
-                      <ChartEmpty message="Belum ada data FCR yang lengkap." />
-                    )
-                  }
-                />
-                <ChartPanel
-                  className="min-w-0"
-                  title="Egg weight trend"
-                  description={
-                    previewWisman
-                      ? "Berat telur belum tersedia pada Daily Flock Report preview."
-                      : "Berat telur rata-rata berdasarkan umur flock."
-                  }
-                  chart={
-                    eggWeightSeries.length ? (
-                      <T7LineChart
-                        ariaLabel="Grafik tren berat telur"
-                        labels={activeLabels}
-                        series={eggWeightSeries}
-                        height={210}
-                        valueFormatter={(value) => `${value.toFixed(1)} g`}
-                      />
-                    ) : (
-                      <ChartEmpty message="Belum ada data berat telur yang lengkap." />
-                    )
-                  }
-                />
-                <ChartPanel
-                  className="min-w-0 lg:col-span-2"
-                  title="Revenue vs cost"
-                  description={
-                    previewWisman
-                      ? "Data biaya tidak ada di Daily Flock Report preview."
-                      : "Nilai ditampilkan dalam juta rupiah."
-                  }
-                  chart={
-                    financeSeries.length ? (
-                      <T7LineChart
-                        ariaLabel="Grafik revenue dan cost"
-                        labels={activeLabels}
-                        series={financeSeries}
-                        height={210}
-                        valueFormatter={(value) => `Rp ${value.toFixed(1)} jt`}
-                      />
-                    ) : (
-                      <ChartEmpty message="Belum ada pasangan revenue dan cost yang lengkap." />
-                    )
-                  }
-                />
-              </div>
-            </>
-          )}
+              <ChartPanel
+                className="min-w-0"
+                title="Tren berat telur"
+                description={
+                  "Berat telur rata-rata berdasarkan umur flock."
+                }
+                chart={
+                  eggWeightSeries.length ? (
+                    <T7LineChart
+                      ariaLabel="Grafik tren berat telur"
+                      labels={activeLabels}
+                      series={eggWeightSeries}
+                      height={210}
+                      valueFormatter={(value) => `${value.toFixed(1)} g`}
+                    />
+                  ) : (
+                    <ChartEmpty message="Belum ada data berat telur yang lengkap." />
+                  )
+                }
+              />
+              <ChartPanel
+                className="min-w-0 lg:col-span-2"
+                title="Pendapatan vs biaya"
+                description={
+                  "Nilai ditampilkan dalam juta rupiah."
+                }
+                chart={
+                  financeSeries.length ? (
+                    <T7LineChart
+                      ariaLabel="Grafik revenue dan cost"
+                      labels={activeLabels}
+                      series={financeSeries}
+                      height={210}
+                      valueFormatter={(value) => `Rp ${value.toFixed(1)} jt`}
+                    />
+                  ) : (
+                    <ChartEmpty message="Belum ada pasangan revenue dan cost yang lengkap." />
+                  )
+                }
+              />
+            </div>
+          </>
+        )}
         </section>
-      </div>
+      )}
 
-      <section className="mt-8 space-y-3" aria-labelledby="weekly-history-title">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="aapm-eyebrow">Data API</p>
-            <h2 id="weekly-history-title" className="text-lg font-semibold tracking-[-0.02em]">
-              Riwayat input mingguan
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Kelola dan koreksi data mingguan yang benar-benar tersimpan di akun Anda.
-            </p>
-          </div>
-          <Badge variant="secondary">{rows.length} catatan</Badge>
-        </div>
+            <section aria-labelledby="weekly-history-title">
+        <SectionHeader
+          id="weekly-history-title"
+          title="Riwayat mingguan"
+          description="Data yang tersimpan di akun Anda. Edit untuk mengoreksi angka."
+          actions={<Badge>{rows.length} catatan</Badge>}
+        />
         <DataTable
           className="aapm-token-table"
           caption="Riwayat input KPI mingguan"
@@ -594,7 +407,7 @@ export default function KpiDashboard() {
           rows={visibleWeeklyRows}
           rowKey={(row) => String(row.id)}
           density="compact"
-          responsive="scroll"
+          responsive="stacked"
           loading={isLoading}
           emptyMessage="Belum ada data mingguan. Isi form di samping untuk memulai."
           sort={tableSort}
@@ -602,90 +415,120 @@ export default function KpiDashboard() {
         />
       </section>
 
-      {devFixtureTools && previewWisman && (
-        <WismanPreviewSection rows={WISMAN_FIXTURE_ROWS} />
-      )}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="aapm-form-sheet">
+          <SheetHeader>
+            <SheetTitle>{editing ? `Edit data minggu ${editing.week}` : "Catat data mingguan"}</SheetTitle>
+            <SheetDescription>{editing ? "Perbarui angka lalu simpan perubahan." : "Isi yang Anda punya; field lain boleh kosong."}</SheetDescription>
+          </SheetHeader>
+          <div className="aapm-form-sheet__body">
+        <form id="farm-data-form" noValidate onSubmit={submit} className="grid gap-5">
+          <FormSection
+            title="Produksi & efisiensi"
+            description="Field inti untuk membaca performa flock."
+            className="space-y-3"
+          >
+            <FormGrid columns={2} className="gap-x-3 gap-y-3">
+              {primaryFields.map((field) => (
+                <MetricInput
+                  key={field.key}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={form[field.key]}
+                  required={field.required}
+                  error={fieldErrors[field.key]}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, [field.key]: value }))
+                  }
+                />
+              ))}
+            </FormGrid>
+          </FormSection>
+
+          <FormSection
+            title="Konteks operasional"
+            description="Suhu, input pakan, dan biaya membantu menjelaskan penyimpangan."
+            className="space-y-3"
+          >
+            <FormGrid columns={2} className="gap-x-3 gap-y-3">
+              {contextFields.map((field) => (
+                <MetricInput
+                  key={field.key}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={form[field.key]}
+                  required={field.required}
+                  error={fieldErrors[field.key]}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, [field.key]: value }))
+                  }
+                />
+              ))}
+            </FormGrid>
+          </FormSection>
+
+          <FormSection
+            title="Catatan operasional"
+            description="Simpan alasan perubahan, bukan sekadar angka."
+            className="space-y-2"
+          >
+            <Label htmlFor="farm-notes" className="sr-only">
+              Catatan operasional
+            </Label>
+            <Textarea
+              id="farm-notes"
+              value={form.notes}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, notes: event.target.value }))
+              }
+              placeholder="Contoh: perubahan pakan, cuaca, atau kondisi kandang."
+            />
+          </FormSection>
+
+        </form>
+          </div>
+          <SheetFooter className="aapm-form-sheet__footer">
+            <Button type="button" variant="secondary" onClick={() => setSheetOpen(false)}>Batal</Button>
+            <Button type="submit" form="farm-data-form" loading={save.isPending}>
+              {editing ? "Simpan perubahan" : "Simpan data"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={`Hapus data minggu ${pendingDelete?.week ?? ""}?`}
+        description="Catatan KPI mingguan ini akan dihapus dari akun Anda dan tidak lagi dihitung di grafik."
+        confirmLabel="Hapus data"
+        destructive
+        onConfirm={() => {
+          const row = pendingDelete;
+          setPendingDelete(null);
+          if (row) remove(row.id);
+        }}
+      />
     </ContentContainer>
   );
 }
 
-function MetricInput({ fieldKey, label, value, required = false, onChange }) {
+function MetricInput({ fieldKey, label, value, required = false, error, onChange }) {
   const id = fieldKey === "week" ? "farm-week" : `farm-${fieldKey}`;
   return (
-    <div className="min-w-0 space-y-1.5">
-      <Label htmlFor={id} className="text-[11px] text-muted-foreground">
-        {label}
-      </Label>
+    <Field id={id} label={label} required={required} error={error}>
       <Input
-        id={id}
         type="number"
         inputMode="decimal"
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
-        required={required}
       />
-    </div>
+    </Field>
   );
 }
 
 /** @returns {KPIItem[]} */
-function buildStats(rows, { preview = false } = {}) {
-  if (preview) {
-    const hdp = numericValues(rows, "henDayProduction");
-    const mortality = numericValues(rows, "mortality");
-    const hdpSeries = completeSeries(rows, "henDayProduction");
-    const mortalitySeries = completeSeries(rows, "mortality");
-    // Population and egg count are snapshots, not additive measures across
-    // dates. Use the latest available date so a two-date preview cannot look
-    // like a single farm with double-counted inventory.
-    const latestSnapshot = rows[rows.length - 1];
-    const populationEnd = latestSnapshot?.populationEnd;
-    const eggCount = latestSnapshot?.eggCount;
-    return [
-      {
-        icon: "chart",
-        label: "Avg HDP",
-        value: metricValue(average(hdp), "%", 1),
-        note: `${rows.length} tanggal · baris siap rekonsiliasi`,
-        tone: "warning",
-        colorway: 3,
-        emphasis: "solid",
-        chart: chartFor(hdpSeries, "HDP preview", 3, "warning"),
-        trend: trendFor(hdpSeries),
-      },
-      {
-        icon: "users",
-        label: "Populasi akhir",
-        value: populationEnd ? formatInteger(populationEnd) : "—",
-        note: latestSnapshot ? `Snapshot ${formatDateLabel(latestSnapshot.date)}` : "Snapshot terakhir",
-        tone: "info",
-        colorway: 2,
-        emphasis: "solid",
-        chart: chartFor(completeSeries(rows, "populationEnd"), "Populasi akhir", 2, "info"),
-      },
-      {
-        icon: "package",
-        label: "Total telur",
-        value: eggCount ? formatInteger(eggCount) : "—",
-        note: latestSnapshot ? `Produksi harian · ${formatDateLabel(latestSnapshot.date)}` : "Telur TB + TR + TP",
-        tone: "accent",
-        colorway: 4,
-        emphasis: "solid",
-        chart: chartFor(completeSeries(rows, "eggCount"), "Total telur", 4, "chart"),
-      },
-      {
-        icon: "warning",
-        label: "Avg mortality",
-        value: metricValue(average(mortality), "%", 2),
-        note: "Decrease ÷ end · indikatif",
-        tone: "danger",
-        colorway: 5,
-        emphasis: "solid",
-        chart: chartFor(mortalitySeries, "Mortality preview", 5, "danger"),
-        trend: trendFor(mortalitySeries, { lowerIsBetter: true }),
-      },
-    ];
-  }
+function buildStats(rows) {
 
   const hdp = numericValues(rows, "henDayProduction");
   const fcr = numericValues(rows, "fcr");
@@ -712,7 +555,7 @@ function buildStats(rows, { preview = false } = {}) {
   return [
     {
       icon: "chart",
-      label: "Avg HDP",
+      label: "Rata-rata HDP",
       value: metricValue(average(hdp), "%", 1),
       note: `${rows.length} minggu · Hen day production`,
       tone: "warning",
@@ -723,7 +566,7 @@ function buildStats(rows, { preview = false } = {}) {
     },
       {
         icon: "progress",
-      label: "Avg FCR",
+      label: "Rata-rata FCR",
       value: metricValue(average(fcr), "", 2),
       note: "Feed conversion · data aktual",
       tone: "success",
@@ -734,7 +577,7 @@ function buildStats(rows, { preview = false } = {}) {
     },
     {
       icon: "finance",
-      label: "Total profit",
+      label: "Total laba",
       value: profit.length ? formatMillion(totalProfit) : "—",
       note: profit.length
         ? totalProfit >= 0
@@ -749,13 +592,13 @@ function buildStats(rows, { preview = false } = {}) {
     },
     {
       icon: "package",
-      label: "Avg egg weight",
+      label: "Rata-rata berat telur",
       value: metricValue(average(eggWeight), " g", 1),
       note: "Berat telur · data aktual",
       tone: "accent",
       colorway: 4,
       emphasis: "solid",
-      chart: chartFor(eggWeightSeries, "Egg weight", 4, "chart"),
+      chart: chartFor(eggWeightSeries, "Berat telur", 4, "chart"),
       trend: trendFor(eggWeightSeries),
     },
   ];
@@ -838,123 +681,6 @@ function sortRows(rows, sort) {
   });
 }
 
-function WismanPreviewSection({ rows }) {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const filteredRows =
-    statusFilter === "all"
-      ? rows
-      : rows.filter((row) => row.reviewStatus === statusFilter);
-  /** @type {DataTableColumn[]} */
-  const columns = [
-    { key: "date", header: "Tanggal", required: true, sortable: true, overflow: "nowrap" },
-    { key: "cage", header: "Kandang", required: true, overflow: "nowrap" },
-    { key: "employee", header: "Pelapor", overflow: "nowrap" },
-    {
-      key: "ageWeeks",
-      header: "Umur",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => `${row.ageWeeks} mgg`,
-    },
-    {
-      key: "end",
-      header: "Pop. akhir",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => formatInteger(row.end),
-    },
-    {
-      key: "totalEgg",
-      header: "Total telur",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => formatInteger(row.totalEgg),
-    },
-    {
-      key: "productionPct",
-      header: "HDP",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => `${row.productionPct.toFixed(2)}%`,
-    },
-    {
-      key: "intake",
-      header: "Intake",
-      align: "right",
-      sortable: true,
-      overflow: "nowrap",
-      render: (row) => `${row.intake} g`,
-    },
-    {
-      key: "reviewStatus",
-      header: "Status",
-      required: true,
-      overflow: "nowrap",
-      render: (row) => (
-        <Badge
-          variant={
-            row.reviewStatus === "SIAP_DIREKONSILIASI" ? "success" : "warning"
-          }
-        >
-          {row.reviewStatus === "SIAP_DIREKONSILIASI" ? "Siap" : "Review"}
-        </Badge>
-      ),
-    },
-  ];
-
-  return (
-    <section className="mt-8 space-y-3" aria-labelledby="wisman-preview-title">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="aapm-eyebrow text-brand-orange">Fixture audit</p>
-          <h2 id="wisman-preview-title" className="text-lg font-semibold tracking-[-0.02em]">
-            Wisman Farm · daily cage preview
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            {WISMAN_FIXTURE_META.source}. Baris OCR yang perlu review tetap terlihat untuk audit,
-            tetapi tidak ikut menghitung KPI di atas.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">
-            {filteredRows.length}/{rows.length} baris
-          </Badge>
-          <Button
-            type="button"
-            size="sm"
-            variant={statusFilter === "all" ? "outline" : "soft"}
-            onClick={() =>
-              setStatusFilter(
-                statusFilter === "all" ? "SIAP_DIREKONSILIASI" : "all",
-              )
-            }
-          >
-            {statusFilter === "all" ? "Tampilkan siap saja" : "Tampilkan semua"}
-          </Button>
-        </div>
-      </div>
-      <DataTable
-        className="aapm-token-table"
-        caption="Preview data Wisman Farm pada grain harian per kandang"
-        columns={columns}
-        rows={filteredRows}
-        rowKey={(row) => row.id}
-        density="compact"
-        responsive="scroll"
-        emptyMessage="Tidak ada baris pada filter ini."
-      />
-      <p className="text-xs leading-5 text-muted-foreground">
-        Preview-only · tidak memanggil endpoint simpan dan tidak mengubah tenant/DB. Cocok untuk
-        menguji density, status, responsive table, dan warna chart sebelum kontrak daily input
-        diputuskan.
-      </p>
-    </section>
-  );
-}
 
 function ChartEmpty({ message }) {
   return (
@@ -1005,18 +731,7 @@ function formatMillion(value) {
   return Number.isFinite(value) ? `Rp ${(value / 1000000).toFixed(1)} jt` : "—";
 }
 
-function formatInteger(value) {
-  return Number.isFinite(toNumber(value))
-    ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(toNumber(value))
-    : "—";
-}
 
-function formatDateLabel(value) {
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short" }).format(date);
-}
 
 function formatValue(value, suffix = "") {
   return value === null || value === undefined || value === "" ? "—" : `${value}${suffix}`;

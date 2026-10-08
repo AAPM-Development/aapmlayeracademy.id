@@ -10,7 +10,9 @@
     "lint:fix": "eslint . --fix",
     "test": "node --test tests/academy-hardening.test.mjs",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tokens": "node scripts/build-aapm-tokens.mjs",
+    "tokens:check": "node scripts/build-aapm-tokens.mjs --check"
   },
   "dependencies": {
     "@file-viewer/pptx": "2.3.0",
@@ -48,7 +50,6 @@
     "@stripe/react-stripe-js": "^3.0.0",
     "@stripe/stripe-js": "^5.2.0",
     "@tanstack/react-query": "^5.84.1",
-    "@ten4seven/ui": "file:vendor/ten4seven-ui-1.0.0.tgz",
     "@tiptap/extension-image": "^3.30.5",
     "@tiptap/extension-link": "^3.30.5",
     "@tiptap/extension-underline": "^3.30.5",
@@ -82,7 +83,7 @@
     "react-markdown": "^9.0.1",
     "react-quill-new": "^3.8.3",
     "react-resizable-panels": "^2.1.7",
-    "react-router-dom": "^6.26.0",
+    "react-router-dom": "^7.18.4",
     "recharts": "^2.15.4",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.1",

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Outlet, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -9,8 +9,9 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
 import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
-import { exactColor, Ten4SevenProvider, ToastProvider } from '@ten4seven/ui';
-import { ThemeModeProvider, useThemeMode } from '@/lib/useThemeMode';
+import { ToastProvider } from '@/design-system/components/toast';
+import { TooltipProvider } from '@/design-system/components/tooltip';
+import { ThemeModeProvider } from '@/lib/useThemeMode';
 
 const Layout = lazy(() => loadRouteModule('layout'));
 const AdminShell = lazy(() => loadRouteModule('adminShell'));
@@ -40,64 +41,10 @@ const AdminWorkspaceStatus = lazy(() => loadRouteModule('adminWorkspaceStatus'))
 
 function RouteLoading() {
   return (
-    <div className="flex min-h-[14rem] items-center justify-center bg-background px-6 text-sm text-muted-foreground" role="status" aria-live="polite">
-      <span className="mr-3 flex items-center gap-1" aria-hidden="true">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange [animation-delay:-0.2s]" />
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange [animation-delay:-0.1s]" />
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" />
-      </span>
+    <div className="aapm-route-loading" role="status" aria-live="polite">
+      <span className="aapm-spinner" aria-hidden="true" />
       Menyiapkan halaman…
     </div>
-  );
-}
-
-function Ten4SevenRuntime({ children }) {
-  const { mode } = useThemeMode();
-
-  return (
-    <Ten4SevenProvider
-      theme="product"
-      // The Academy surface is data-dense by nature. Use the canonical
-      // Ten4Seven compact profile so controls, tables, KPI cards, and shell
-      // spacing share one rhythm instead of each route inventing its own.
-      preferences={{ appearance: mode, density: 'compact' }}
-      overrides={{
-        // Product recipe supplies composition; approved AAPM colors own the
-        // action/accent roles instead of silently falling back to indigo/cyan.
-        // Emerald keeps any non-brand semantic fallback in the same green
-        // family; data series deliberately use the spectrum chart palette so
-        // operational categories do not collapse into one green signal.
-        config: {
-          palette: 'emerald',
-          chartPalette: 'spectrum',
-          primary: exactColor('#318139'),
-          accent: exactColor('#d4451a'),
-        },
-        // Provider-generated variables are emitted inline. Keep the focus
-        // contract here so input borders, focus rings, and chart focus states
-        // cannot fall back to the product recipe's unrelated blue default.
-        variables: {
-          // AAPM needs a slightly tighter product geometry than the reference
-          // recipe's roomy default. These remain provider-owned variables, so
-          // every canonical primitive (and every semantic bridge) receives
-          // the same radius scale rather than a route-level override.
-          '--t7-radius-control': '8px',
-          '--t7-radius-panel': '12px',
-          '--t7-radius-data': '12px',
-          '--t7-radius-card': '14px',
-          '--t7-radius-shell': '16px',
-          '--t7-focus-hsl': 'var(--t7-primary-hsl)',
-          '--t7-input-focus-border-hsl': 'var(--t7-primary-hsl)',
-          '--t7-chart-focus-hsl': 'var(--t7-primary-hsl)',
-          '--t7-focus-halo': '0 0 0 var(--t7-focus-offset) hsl(var(--t7-surface-hsl))',
-          '--t7-focus-ring': 'var(--t7-focus-halo), 0 0 0 calc(var(--t7-focus-offset) + var(--t7-focus-width)) hsl(var(--t7-focus-hsl))',
-          '--t7-focus-ring-inset': 'inset 0 0 0 var(--t7-focus-width) hsl(var(--t7-focus-hsl))',
-        },
-      }}
-      className="aapm-t7-runtime"
-    >
-      {children}
-    </Ten4SevenProvider>
   );
 }
 
@@ -116,21 +63,20 @@ const AuthenticatedApp = () => {
     return () => window.clearTimeout(timer);
   }, [isAuthenticated]);
 
-  // Show loading spinner while checking app public settings or auth
+  // Brand boot screen while public settings and the session are resolved.
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-brand-green bg-background"></div>
+      <div className="aapm-boot-screen" role="status" aria-label="Memuat Academy">
+        <img src="/brand/aapm/icon.svg" alt="" className="aapm-boot-screen__mark" />
+        <span className="aapm-spinner" aria-hidden="true" />
       </div>
     );
   }
 
-  // Handle authentication errors
   if (authError) {
-    return <div className="fixed inset-0 flex items-center justify-center p-6 text-center text-sm text-destructive">{authError.message}</div>;
+    return <div className="aapm-boot-screen aapm-boot-screen--error" role="alert">{authError.message}</div>;
   }
 
-  // Render the main app
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>
@@ -162,10 +108,14 @@ const AuthenticatedApp = () => {
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/ai-settings" element={<AdminAiSettings />} />
               <Route path="/admin/workspace-status" element={<AdminWorkspaceStatus />} />
+              <Route path="/admin/*" element={<PageNotFound scope="admin" />} />
             </Route>
           </Route>
         </Route>
-        <Route path="*" element={<PageNotFound />} />
+        {/* Signed in, an unknown address keeps the learner shell around the 404. */}
+        <Route element={isAuthenticated ? <Layout /> : <Outlet />}>
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
       </Routes>
     </Suspense>
   );
@@ -176,7 +126,7 @@ function App() {
 
   return (
     <ThemeModeProvider>
-      <Ten4SevenRuntime>
+      <TooltipProvider>
         <ToastProvider>
           <AuthProvider>
             <QueryClientProvider client={queryClientInstance}>
@@ -187,7 +137,7 @@ function App() {
             </QueryClientProvider>
           </AuthProvider>
         </ToastProvider>
-      </Ten4SevenRuntime>
+      </TooltipProvider>
     </ThemeModeProvider>
   )
 }

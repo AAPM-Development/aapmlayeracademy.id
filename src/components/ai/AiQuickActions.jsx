@@ -169,10 +169,10 @@ export default function AiQuickActions({
 
   return (
     <div
-      className={`mt-3 min-w-0 max-w-full ${compact ? "text-[10px]" : "text-[11px]"}`}
+      className={`mt-3 min-w-0 max-w-full ${compact ? "text-[11px]" : "text-[11px]"}`}
       aria-label="Saran lanjutan APPI"
     >
-      <div className="mb-1.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         <AapmIcon
           name="solar:stars-minimalistic-bold-duotone"
           className="h-3 w-3 text-brand-orange"
@@ -185,7 +185,7 @@ export default function AiQuickActions({
             key={action.label}
             type="button"
             onClick={() => onSelect(action.prompt)}
-            className="aapm-ai-quick-action-chip group inline-flex min-w-0 max-w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange disabled:pointer-events-none disabled:opacity-50"
+            className="aapm-ai-quick-action-chip group inline-flex min-h-10 min-w-0 max-w-full items-center gap-1.5 px-2.5 py-2 text-left sm:min-h-8 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange disabled:pointer-events-none disabled:opacity-50"
             disabled={disabled}
           >
             <AapmIcon

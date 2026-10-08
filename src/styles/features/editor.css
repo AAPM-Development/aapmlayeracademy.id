@@ -1,0 +1,488 @@
+/* Feature styles migrated from the legacy index.css onto AAPM tokens. */
+
+/* Rich-text controls follow the visual grammar people already know from
+   * Office-style editors: one compact group per task, familiar glyphs, and
+   * quiet separators instead of a row of high-contrast bordered buttons. */
+
+.aapm-rich-editor__toolbar {
+    scrollbar-width: thin;
+  }
+
+.aapm-rich-editor__toolbar-group {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-control);
+    background: hsl(var(--surface-elevated) / 0.48);
+  }
+
+.aapm-rich-editor__toolbar-group--style {
+    padding: 0;
+    background: transparent;
+  }
+
+.aapm-rich-editor__toolbar-separator {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 1.25rem;
+    margin-inline: 3px;
+    background: hsl(var(--surface-border) / 0.64);
+  }
+
+.aapm-rich-editor__toolbar-style-select {
+    border-color: hsl(var(--surface-border) / 0.78);
+    background: hsl(var(--control-canvas) / 0.82);
+  }
+
+.aapm-rich-editor__toolbar-button {
+    color: hsl(var(--muted-foreground));
+    transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  }
+
+.aapm-rich-editor__toolbar-button:hover:not(:disabled) {
+    background: hsl(var(--surface-subtle) / 0.92);
+    color: hsl(var(--foreground));
+  }
+
+.aapm-rich-editor__toolbar-button[aria-pressed="true"] {
+    background: hsl(var(--tint-orange) / 0.9);
+    color: hsl(var(--tint-orange-foreground));
+    box-shadow: inset 0 0 0 1px hsl(var(--tint-orange-border) / 0.42);
+  }
+
+.aapm-rich-editor__toolbar-button:disabled {
+    opacity: 0.42;
+  }
+
+@media (max-width: 640px) {
+    .aapm-rich-editor__toolbar {
+      padding-inline: 0.5rem;
+      padding-block: 0.375rem;
+    }
+
+    .aapm-rich-editor__toolbar-button {
+      width: 2.75rem;
+      min-width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .aapm-rich-editor__toolbar-separator {
+      height: 1.5rem;
+      margin-inline: 4px;
+    }
+  }
+
+/* The module editor is an entity-form workspace, not a stack of cards. Keep
+   * the shared Ten4Seven controls, but let the document flow and hairlines
+   * provide hierarchy so the author can focus on the content itself. */
+
+.aapm-editorial-summary {
+    border: 0 !important;
+    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 0 var(--t7-ref-space-4, 1rem) !important;
+  }
+
+.aapm-editorial-layout {
+    align-items: start;
+    gap: var(--t7-ref-space-5, 1.25rem);
+  }
+
+.aapm-editor-block-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--t7-ref-space-3, 0.75rem) !important;
+  }
+
+.aapm-editor-block-list > * {
+    margin-top: 0 !important;
+  }
+
+.aapm-editorial-block {
+    scroll-margin-top: 6.5rem;
+    border: 0 !important;
+    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none;
+    padding-bottom: var(--t7-ref-space-3, 0.75rem);
+  }
+
+.aapm-editorial-block__header {
+    border-bottom: 0 !important;
+    background: transparent !important;
+    align-items: center !important;
+    gap: var(--t7-ref-space-2, 0.5rem) !important;
+    min-height: 2.5rem;
+    padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
+  }
+
+.aapm-editorial-block__body {
+    padding: 0 0 var(--t7-ref-space-3, 0.75rem) !important;
+  }
+
+.aapm-editorial-element-preview {
+    margin-top: var(--t7-ref-space-2, 0.5rem) !important;
+    border-top: 1px solid var(--aapm-editor-hairline) !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+.aapm-editorial-element-preview [data-editorial-element-preview-toggle] {
+    min-height: 2rem;
+    border-radius: 0 !important;
+    background: hsl(var(--surface-subtle) / 0.3) !important;
+    padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
+  }
+
+.aapm-editorial-element-preview [data-editorial-element-preview-toggle]:hover {
+    background: hsl(var(--surface-subtle) / 0.58) !important;
+  }
+
+.aapm-editorial-element-preview__body {
+    border-top: 0 !important;
+    padding: var(--t7-ref-space-2, 0.5rem) 0 !important;
+  }
+
+.aapm-editor-media-fields {
+    min-width: 0;
+  }
+
+.aapm-editor-media-row {
+    min-width: 0;
+  }
+
+.aapm-editor-media-row > .space-y-1\.5 {
+    min-width: 0;
+  }
+
+.aapm-editor-media-fields > .space-y-1\.5,
+  .aapm-editor-media-fields .space-y-1\.5 {
+    gap: var(--t7-ref-space-1, 0.25rem);
+  }
+
+.aapm-editor-media-fields label {
+    font-size: 0.6875rem;
+  }
+
+.aapm-editor-media-fields textarea {
+    min-height: 4.75rem;
+  }
+
+.aapm-editor-video-row textarea {
+    min-height: 2.5rem;
+  }
+
+.aapm-editor-video-row,
+  .aapm-editor-video-row > * {
+    min-width: 0;
+  }
+
+.aapm-editor-video-row textarea {
+    height: 2.5rem;
+    resize: vertical;
+  }
+
+.aapm-editor-video-fields .aapm-editor-media-actions {
+    padding-top: 0;
+  }
+
+.aapm-editor-slide-source {
+    border-color: hsl(var(--brand-aapm-orange) / 0.24) !important;
+    background: hsl(var(--brand-aapm-orange) / 0.045) !important;
+    padding: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+.aapm-editor-slide-fields {
+    gap: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+.aapm-editor-slide-fields > :not([hidden]) ~ :not([hidden]) {
+    margin-top: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+.aapm-editor-slide-assets {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    gap: var(--t7-ref-space-2, 0.5rem);
+  }
+
+.aapm-editor-slide-source__inner {
+    flex-wrap: nowrap;
+  }
+
+.aapm-editor-slide-source__meta {
+    min-width: 0;
+  }
+
+.aapm-editor-presentation-file {
+    border-color: hsl(var(--surface-border) / 0.4) !important;
+    border-radius: var(--radius-control) !important;
+    box-shadow: none !important;
+    padding: var(--t7-ref-space-2, 0.5rem) !important;
+  }
+
+.aapm-editor-slide-statuses,
+  .aapm-editor-slide-manual-controls,
+  .aapm-editor-slide-manual-list {
+    min-width: 0;
+  }
+
+.aapm-editor-media-actions {
+    min-height: 2rem;
+  }
+
+.aapm-editorial-block > :last-child {
+    min-width: 0;
+  }
+
+.aapm-editorial-outline {
+    min-width: 0;
+  }
+
+.aapm-editorial-outline > aside {
+    border: 0 !important;
+    border-left: 1px solid var(--aapm-editor-hairline) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none;
+  }
+
+.aapm-editorial-outline > aside > div:first-child {
+    border-bottom-color: var(--aapm-editor-hairline) !important;
+  }
+
+.aapm-editorial-outline > section {
+    border: 0 !important;
+    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding-inline: 0 !important;
+  }
+
+.aapm-editorial-quality {
+    border-top: 1px solid hsl(var(--surface-border) / 0.36) !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid hsl(var(--surface-border) / 0.36) !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    background: hsl(var(--surface-subtle) / 0.2) !important;
+    box-shadow: none;
+    padding: var(--t7-ref-space-3, 0.75rem) 0 !important;
+  }
+
+.aapm-editorial-insert-rail {
+    border-top: 1px solid var(--aapm-editor-hairline) !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: var(--t7-ref-space-5, 1.25rem) 0 0 !important;
+  }
+
+@media (max-width: 860px) {
+    .aapm-editorial-outline > aside {
+      border-left: 0 !important;
+    }
+
+    .aapm-editor-outcome-grid,
+    .aapm-editor-practice-fields {
+      gap: var(--t7-ref-space-5, 1.25rem);
+    }
+
+    .aapm-editor-media-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aapm-editor-slide-source__inner {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .aapm-editor-slide-source__meta {
+      flex-basis: 100%;
+    }
+  }
+
+@media (min-width: 861px) {
+    .aapm-editor-video-row {
+      grid-template-columns: minmax(0, 1.4fr) minmax(11rem, 1fr) minmax(8.5rem, 0.62fr);
+      align-items: start;
+    }
+
+    .aapm-editor-slide-assets {
+      grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.82fr);
+      grid-template-areas:
+        "source file"
+        "status status"
+        "manual manual";
+      align-items: stretch;
+    }
+
+    .aapm-editor-slide-source {
+      grid-area: source;
+    }
+
+    .aapm-editor-slide-presentation-file {
+      grid-area: file;
+    }
+
+    .aapm-editor-slide-statuses {
+      grid-area: status;
+    }
+
+    .aapm-editor-slide-manual-controls,
+    .aapm-editor-slide-manual-list {
+      grid-column: 1 / -1;
+    }
+  }
+
+.aapm-rich-editor__content {
+    min-height: 10rem;
+    padding: var(--aapm-primitive-space-4) var(--aapm-primitive-space-5);
+    background: var(--aapm-semantic-surface);
+    color: var(--aapm-semantic-foreground);
+    font-size: var(--aapm-component-type-reading-size);
+    line-height: var(--aapm-component-type-reading-line);
+    outline: none;
+  }
+.aapm-rich-editor__content ::selection { background: color-mix(in srgb, var(--aapm-semantic-attention) 18%, transparent); }
+
+/* Keep authored prose at a learner-readable measure even when the editor
+   * workspace expands on desktop. Wide media/table blocks remain free to use
+   * their own layout; only prose primitives are constrained. */
+
+.aapm-rich-editor__content > :is(p, h1, h2, h3, ul, ol, blockquote) {
+    max-width: var(--aapm-reading-measure);
+    margin-inline: 0;
+  }
+
+.aapm-rich-editor__content > :is(ul, ol) {
+    padding-inline-start: 2rem;
+  }
+
+.aapm-rich-editor__content p {
+    @apply my-2 first:mt-0 last:mb-0;
+  }
+
+.aapm-rich-editor__content h1,
+  .aapm-rich-editor__content h2,
+  .aapm-rich-editor__content h3 {
+    @apply mt-4 mb-2 font-semibold tracking-[-0.015em] first:mt-0;
+  }
+
+.aapm-rich-editor__content h1 {
+    @apply text-xl;
+  }
+
+.aapm-rich-editor__content h2 {
+    @apply text-lg;
+  }
+
+.aapm-rich-editor__content h3 {
+    @apply text-base;
+  }
+
+.aapm-rich-editor__content ul {
+    @apply my-2 list-disc space-y-1 pl-5;
+  }
+
+.aapm-rich-editor__content ol {
+    @apply my-2 list-decimal space-y-1 pl-5;
+  }
+
+.aapm-rich-editor__content blockquote {
+    @apply my-3 border-l-2 border-brand-orange pl-3 italic text-muted-foreground;
+  }
+
+.aapm-rich-editor__content img {
+    @apply my-4 block h-auto max-w-full rounded-[var(--t7-radius-data)] object-contain;
+    margin-inline: 0;
+  }
+
+.aapm-rich-editor__content img[data-image-align="left"] {
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+.aapm-rich-editor__content img[data-image-align="right"] {
+    margin-left: auto;
+    margin-right: 0;
+  }
+
+.aapm-rich-editor__content img.ProseMirror-selectednode {
+    @apply ring-2 ring-brand-green/25;
+    outline: 2px solid hsl(var(--brand-aapm-green) / 0.28);
+    outline-offset: 2px;
+  }
+
+.aapm-rich-editor__content [data-resize-container] {
+    display: flex;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+.aapm-rich-editor__content [data-resize-container]:has(img[data-image-align="center"]) {
+    justify-content: center;
+  }
+
+.aapm-rich-editor__content [data-resize-container]:has(img[data-image-align="right"]) {
+    justify-content: flex-end;
+  }
+
+.aapm-rich-editor__content [data-resize-wrapper] {
+    max-width: 100%;
+  }
+
+.aapm-rich-editor__content [data-resize-handle] {
+    z-index: 2;
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+    background: hsl(var(--brand-aapm-green));
+    box-shadow: 0 1px 4px hsl(var(--foreground) / 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+
+.aapm-rich-editor__content [data-resize-container]:has(.ProseMirror-selectednode) [data-resize-handle] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+.aapm-rich-editor__content [data-resize-container]:hover [data-resize-handle],
+  .aapm-rich-editor__content [data-resize-container]:focus-within [data-resize-handle] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+.aapm-rich-editor__content [data-resize-handle="top-left"],
+  .aapm-rich-editor__content [data-resize-handle="bottom-right"] {
+    cursor: nwse-resize;
+  }
+
+.aapm-rich-editor__content [data-resize-handle="top-right"],
+  .aapm-rich-editor__content [data-resize-handle="bottom-left"] {
+    cursor: nesw-resize;
+  }
+
+.aapm-rich-editor__content a {
+    @apply text-brand-orange underline decoration-brand-orange/40 underline-offset-2;
+  }
+
+.aapm-rich-editor__content > *:first-child {
+    @apply mt-0;
+  }
+

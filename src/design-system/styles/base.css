@@ -1,0 +1,304 @@
+/* AAPM Academy base: font loading, document defaults, typography roles,
+ * focus, selection, scrollbars and motion preferences. Every value comes from
+ * aapm-tokens.css; this file never introduces a private colour or size. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Variable-Italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --font-body: var(--aapm-primitive-font-ui);
+  --font-heading: var(--aapm-primitive-font-ui);
+  --font-display: var(--aapm-primitive-font-ui);
+  --font-mono: var(--aapm-primitive-font-mono);
+  --radius: var(--aapm-primitive-radius-control);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--aapm-semantic-background);
+  color: var(--aapm-semantic-foreground);
+  font-family: var(--aapm-primitive-font-ui);
+  font-size: var(--aapm-component-type-body-size);
+  line-height: var(--aapm-component-type-body-line);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  border-color: var(--aapm-semantic-border);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--aapm-semantic-primary) 22%, transparent);
+  color: inherit;
+}
+
+:focus-visible {
+  outline: var(--aapm-primitive-focus-width) solid var(--aapm-semantic-focus);
+  outline-offset: var(--aapm-primitive-focus-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Typography roles. Importance drives size; most product copy is body. */
+.aapm-text-display,
+.aapm-text-title,
+.aapm-text-title-compact,
+.aapm-text-section,
+.aapm-text-heading {
+  margin: 0;
+  font-weight: var(--aapm-primitive-weight-heading);
+  color: var(--aapm-semantic-foreground);
+  text-wrap: balance;
+}
+
+.aapm-text-display {
+  font-size: var(--aapm-component-type-display-size);
+  line-height: var(--aapm-component-type-display-line);
+  letter-spacing: var(--aapm-primitive-tracking-tight);
+}
+
+.aapm-text-title {
+  font-size: var(--aapm-component-type-title-size);
+  line-height: var(--aapm-component-type-title-line);
+  letter-spacing: var(--aapm-primitive-tracking-tight);
+}
+
+.aapm-text-title-compact {
+  font-size: var(--aapm-component-type-title-compact-size);
+  line-height: var(--aapm-component-type-title-compact-line);
+  letter-spacing: var(--aapm-primitive-tracking-snug);
+}
+
+.aapm-text-section {
+  font-size: var(--aapm-component-type-section-size);
+  line-height: var(--aapm-component-type-section-line);
+  letter-spacing: var(--aapm-primitive-tracking-snug);
+}
+
+.aapm-text-heading {
+  font-size: var(--aapm-component-type-heading-size);
+  line-height: var(--aapm-component-type-heading-line);
+}
+
+.aapm-text-body {
+  font-size: var(--aapm-component-type-body-size);
+  line-height: var(--aapm-component-type-body-line);
+}
+
+.aapm-text-support {
+  font-size: var(--aapm-component-type-support-size);
+  line-height: var(--aapm-component-type-support-line);
+  color: var(--aapm-semantic-muted);
+}
+
+.aapm-text-label {
+  font-size: var(--aapm-component-type-label-size);
+  line-height: var(--aapm-component-type-label-line);
+  font-weight: var(--aapm-primitive-weight-label);
+}
+
+.aapm-text-caption {
+  font-size: var(--aapm-component-type-caption-size);
+  line-height: var(--aapm-component-type-caption-line);
+  color: var(--aapm-semantic-muted);
+}
+
+.aapm-text-overline {
+  font-size: var(--aapm-component-type-overline-size);
+  line-height: var(--aapm-component-type-overline-line);
+  font-weight: var(--aapm-primitive-weight-heading);
+  letter-spacing: var(--aapm-primitive-tracking-caps);
+  text-transform: uppercase;
+  color: var(--aapm-semantic-muted);
+}
+
+.aapm-text-metric {
+  font-size: var(--aapm-component-type-metric-size);
+  line-height: var(--aapm-component-type-metric-line);
+  font-weight: var(--aapm-primitive-weight-heading);
+  letter-spacing: var(--aapm-primitive-tracking-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.aapm-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.aapm-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Scrollbars stay quiet until the pointer is near the content. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--aapm-semantic-foreground) 16%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: var(--aapm-component-scrollbar-thickness);
+  height: var(--aapm-component-scrollbar-thickness);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--aapm-primitive-radius-pill);
+  background: color-mix(in srgb, var(--aapm-semantic-foreground) 16%, transparent) padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--aapm-semantic-foreground) 28%, transparent);
+}
+
+/* Motion vocabulary. Components reference these names, never ad-hoc curves. */
+@keyframes aapm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes aapm-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes aapm-rise-in {
+  from { opacity: 0; transform: translateY(var(--aapm-primitive-motion-distance)); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes aapm-scale-in {
+  from { opacity: 0; transform: translateY(4px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes aapm-scale-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(4px) scale(.98); }
+}
+
+@keyframes aapm-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+
+@keyframes aapm-slide-out-left {
+  from { transform: none; }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes aapm-slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+
+@keyframes aapm-slide-out-right {
+  from { transform: none; }
+  to { transform: translateX(100%); }
+}
+
+@keyframes aapm-slide-in-bottom {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+@keyframes aapm-slide-out-bottom {
+  from { transform: none; }
+  to { transform: translateY(100%); }
+}
+
+@keyframes aapm-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+
+@keyframes aapm-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aapm-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+@keyframes aapm-progress-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.aapm-motion-rise {
+  animation: aapm-rise-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+
+.aapm-motion-stack > * {
+  animation: aapm-rise-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+
+.aapm-motion-stack > :nth-child(2) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 1); }
+.aapm-motion-stack > :nth-child(3) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 2); }
+.aapm-motion-stack > :nth-child(4) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 3); }
+.aapm-motion-stack > :nth-child(5) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 4); }
+.aapm-motion-stack > :nth-child(n + 6) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 5); }
+
+/* Tactile depth (path nodes, verdict and send buttons): the bottom edge mixes
+ * the face colour toward this shade, so it reads darker in both themes. */
+:root { --aapm-depth-shade: var(--aapm-semantic-foreground); }
+.dark { --aapm-depth-shade: var(--aapm-semantic-background); }
+
+/* Theme change lands in one frame (see applyTheme in useThemeMode.js). */
+.aapm-theme-switching *,
+.aapm-theme-switching *::before,
+.aapm-theme-switching *::after {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

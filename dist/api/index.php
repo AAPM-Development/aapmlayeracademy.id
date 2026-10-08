@@ -386,6 +386,13 @@ try {
         json_response(['course' => admin_reorder_modules($input['items'] ?? [])]);
     }
 
+    if (preg_match('#^admin/chapters/(\\d+)$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['course' => admin_rename_chapter((int) $matches[1], (string) ($input['levelName'] ?? ''))]);
+    }
+
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'GET') {
         require_admin();
         $module = admin_module_from_id((int) $matches[1]);
@@ -940,7 +947,9 @@ try {
         if (!$conversation) {
             error_response('Percakapan tidak ditemukan.', 404, 'not_found');
         }
-        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 240');
+        // Bound the payload to the latest turns, then restore reading order. Taking
+        // the first 240 erased newly streamed answers when long chats reconciled.
+        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM (SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 240) AS recent_messages ORDER BY id ASC');
         $messageStmt->execute([(int) $conversation['id']]);
         json_response(['conversation' => present_ai_conversation($conversation), 'messages' => array_map('present_ai_chat_message', $messageStmt->fetchAll())]);
     }
@@ -1009,6 +1018,8 @@ try {
     }
 
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');
+} catch (AiConfigurationException $exception) {
+    error_response($exception->getMessage(), 503, 'ai_configuration_missing');
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');
