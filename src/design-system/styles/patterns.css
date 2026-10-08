@@ -490,8 +490,17 @@
   padding: 0;
   overflow: hidden;
 }
+/* The panel is the container: a table inside it drops its own frame so the
+ * rows meet the panel edge instead of a second rounded border. */
 .aapm-admin-panel > .aapm-data-table,
-.aapm-admin-panel > .aapm-table-wrap { margin: 0; }
+.aapm-admin-panel > .aapm-table-wrap { margin: 0; border: 0; border-radius: 0; }
+.aapm-admin-panel > .aapm-data-table .aapm-table :is(th, td):first-child { padding-inline-start: var(--aapm-primitive-space-5); }
+.aapm-admin-panel > .aapm-data-table .aapm-table :is(th, td):last-child { padding-inline-end: var(--aapm-primitive-space-5); }
+@media (max-width: 767px) {
+  /* Stacked rows are divided bands on the panel's own inset, not inner cards. */
+  .aapm-admin-panel > .aapm-data-table .aapm-table[data-responsive="stacked"] tr { padding-inline: var(--aapm-primitive-space-5); }
+  .aapm-admin-panel > .aapm-data-table .aapm-table[data-responsive="stacked"] td { padding-inline: 0; }
+}
 .aapm-panel-head {
   display: flex;
   align-items: flex-start;

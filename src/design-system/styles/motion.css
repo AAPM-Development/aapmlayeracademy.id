@@ -200,7 +200,7 @@ a.aapm-module-row:hover .aapm-module-row__action { transform: translateX(2px); }
 
 /* ---------------------------------------------- Status & empty entrances */
 .aapm-alert,
-.aapm-state-view {
+.aapm-state {
   animation: aapm-page-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
 }
 .aapm-toast-region .aapm-toast + .aapm-toast { animation-delay: 60ms; }

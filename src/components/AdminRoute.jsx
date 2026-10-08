@@ -12,6 +12,7 @@ export function AdminAccessDenied() {
         <AppBrand product="aapm" className="h-10 w-auto" />
         <StateView
           kind="locked"
+          titleAs="h1"
           hue="orange"
           title="Akses admin diperlukan"
           description="Akun ini terdaftar sebagai learner. Ruang admin hanya tersedia untuk akun dengan akses admin."

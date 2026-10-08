@@ -223,6 +223,10 @@
   --aapm-component-field-icon-size: var(--aapm-primitive-icon-sm);
   --aapm-component-field-background: var(--aapm-semantic-surface);
   --aapm-component-field-border: var(--aapm-semantic-field-border);
+  --aapm-component-field-focus-ring: 0 0 0 var(--aapm-primitive-focus-width) var(--aapm-semantic-focus);
+  --aapm-component-field-focus-halo: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-primary) 18%, transparent);
+  --aapm-component-field-invalid-ring: 0 0 0 var(--aapm-primitive-focus-width) var(--aapm-semantic-danger);
+  --aapm-component-field-invalid-halo: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-danger) 16%, transparent);
   --aapm-component-form-gap: var(--aapm-primitive-space-4);
   --aapm-component-form-section-gap: var(--aapm-primitive-space-6);
   --aapm-component-form-column-min: 16rem;

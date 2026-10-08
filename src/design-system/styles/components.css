@@ -78,6 +78,18 @@
 .aapm-button[data-loading="true"] {
   cursor: progress;
 }
+/* Busy is not unavailable: keep the full face behind the spinner. */
+.aapm-button[data-loading="true"]:disabled {
+  opacity: 1;
+}
+
+/* Solar duotone bodies are drawn at 50% opacity; on a filled face that falls
+ * under 3:1, so lift the secondary layer there (CSS beats the attribute). */
+.aapm-button[data-variant="primary"] > .aapm-icon [opacity],
+.aapm-button[data-variant="learn"] > .aapm-icon [opacity],
+.aapm-icon-tile[data-hue] .aapm-icon [opacity] {
+  opacity: .72;
+}
 
 .aapm-button[data-variant="primary"] {
   background: var(--aapm-semantic-primary);
@@ -302,14 +314,20 @@
 }
 
 .aapm-input:focus,
-.aapm-input:focus-visible,
 .aapm-textarea:focus,
-.aapm-textarea:focus-visible,
-.aapm-select-trigger:focus-visible,
 .aapm-select-trigger[data-state="open"] {
   outline: none;
   border-color: var(--aapm-semantic-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-primary) 18%, transparent);
+  box-shadow: var(--aapm-component-field-focus-halo);
+}
+/* Keyboard focus: the same focus-token ring as buttons and links, drawn as
+ * a shadow so it hugs the field border. */
+.aapm-input:focus-visible,
+.aapm-textarea:focus-visible,
+.aapm-select-trigger:focus-visible {
+  outline: none;
+  border-color: var(--aapm-semantic-focus);
+  box-shadow: var(--aapm-component-field-focus-ring);
 }
 
 .aapm-input[aria-invalid="true"],
@@ -319,7 +337,13 @@
 }
 .aapm-input[aria-invalid="true"]:focus,
 .aapm-textarea[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-danger) 16%, transparent);
+  box-shadow: var(--aapm-component-field-invalid-halo);
+}
+.aapm-input[aria-invalid="true"]:focus-visible,
+.aapm-textarea[aria-invalid="true"]:focus-visible,
+.aapm-select-trigger[aria-invalid="true"]:focus-visible {
+  border-color: var(--aapm-semantic-danger);
+  box-shadow: var(--aapm-component-field-invalid-ring);
 }
 
 .aapm-input:disabled,
@@ -757,7 +781,8 @@ a.aapm-surface { text-decoration: none; }
 }
 .aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger[data-state="active"] {
   background: transparent;
-  color: var(--aapm-semantic-primary);
+  /* Green ink keeps the 13px label above 4.5:1; the underline stays primary. */
+  color: var(--aapm-semantic-primary-soft-text);
   box-shadow: inset 0 -2px 0 var(--aapm-semantic-primary);
 }
 
@@ -923,8 +948,10 @@ a.aapm-surface { text-decoration: none; }
 }
 .aapm-form-sheet__footer > .aapm-button { min-width: 7.5rem; }
 @media (max-width: 639px) {
-  .aapm-form-sheet__footer.aapm-form-actions { flex-direction: column-reverse; align-items: stretch; }
-  .aapm-form-sheet__footer > .aapm-button { width: 100%; min-width: 0; }
+  /* Phones: the pair shares one row (primary on the right, thumb side); a long
+   * label wraps it, and wrap-reverse then puts the primary on top. */
+  .aapm-form-sheet__footer.aapm-form-actions { flex-wrap: wrap-reverse; }
+  .aapm-form-sheet__footer > .aapm-button { flex: 1 1 0; }
 }
 
 .aapm-popover,
@@ -1302,7 +1329,14 @@ a.aapm-surface { text-decoration: none; }
 .aapm-state[data-compact="true"] { min-height: 0; padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-4); }
 .aapm-state__title { margin: var(--aapm-primitive-space-1) 0 0; font-size: var(--aapm-component-type-heading-size); line-height: var(--aapm-component-type-heading-line); font-weight: var(--aapm-primitive-weight-heading); }
 .aapm-state__description { max-width: 46ch; margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); }
-.aapm-state__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--aapm-primitive-space-2); margin-top: var(--aapm-primitive-space-2); }
+/* Primary comes first in the DOM; row-reverse keeps it on the right in a row. */
+.aapm-state__actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap; justify-content: center; gap: var(--aapm-primitive-space-2); margin-top: var(--aapm-primitive-space-2); }
+/* A page-level state carries the page h1, so it takes the page title scale. */
+.aapm-state[data-size="page"] .aapm-state__title { font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); letter-spacing: var(--aapm-primitive-tracking-tight); }
+@media (max-width: 479px) {
+  /* Narrow phones: stack full width, primary on top, instead of ragged wrapping. */
+  .aapm-state__actions { flex-direction: column; align-items: stretch; width: 100%; max-width: 20rem; }
+}
 
 /* --------------------------------------------------- Page composition */
 .aapm-page-header {
@@ -1412,11 +1446,12 @@ a.aapm-surface { text-decoration: none; }
 }
 .aapm-segmented > .aapm-tabs-trigger[aria-checked="true"] .aapm-segmented__count { color: inherit; opacity: 0.75; }
 
+/* 10px triggers + 4px inset = concentric 14px panel corners on the grid. */
 .aapm-segmented {
   display: inline-flex;
-  padding: 3px;
-  gap: 2px;
-  border-radius: calc(var(--aapm-component-action-radius) + 2px);
+  padding: var(--aapm-primitive-space-1);
+  gap: var(--aapm-primitive-space-0-5);
+  border-radius: var(--aapm-primitive-radius-panel);
   background: var(--aapm-semantic-surface-secondary);
 }
 

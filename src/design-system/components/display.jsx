@@ -292,9 +292,13 @@ function StateView({
   secondaryAction,
   framed = true,
   compact = false,
+  size,
   className,
   children,
 }) {
+  // A state that stands in for a whole page (404, access denied) carries the
+  // page h1, so it takes the page title scale and the larger icon tile.
+  const isPage = size === "page" || TitleTag === "h1";
   const defaults = {
     loading: { icon: null, hue: "neutral" },
     empty: { icon: "folder", hue: "neutral" },
@@ -308,21 +312,24 @@ function StateView({
       className={cn("aapm-state", className)}
       data-framed={framed ? "true" : undefined}
       data-compact={compact ? "true" : undefined}
+      data-size={isPage ? "page" : undefined}
       role={kind === "error" ? "alert" : kind === "loading" ? "status" : undefined}
       aria-live={kind === "loading" ? "polite" : undefined}
     >
       {kind === "loading" ? (
         <Spinner size="lg" className="text-primary" label={title || "Memuat"} />
       ) : (
-        <IconTile icon={icon || defaults.icon} hue={hue || defaults.hue} size="lg" shape="circle" />
+        <IconTile icon={icon || defaults.icon} hue={hue || defaults.hue} size={isPage ? "xl" : "lg"} shape="circle" />
       )}
       {title ? <TitleTag className="aapm-state__title">{title}</TitleTag> : null}
       {description ? <p className="aapm-state__description">{description}</p> : null}
       {children}
       {action || secondaryAction ? (
+        // Primary first in reading order; CSS keeps it on the right when the
+        // pair sits in a row and on top when it stacks.
         <div className="aapm-state__actions">
-          {secondaryAction}
           {action}
+          {secondaryAction}
         </div>
       ) : null}
     </div>
