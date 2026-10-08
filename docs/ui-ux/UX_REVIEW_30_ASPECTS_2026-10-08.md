@@ -13,7 +13,7 @@ Pemeriksaan otomatis di semua rute learner (`/`, `/modules`, `/modules/:n`, `/qu
 | # | Aspek | Status | Bukti | Celah / langkah berikutnya |
 |---|---|---|---|---|
 | 1 | Usability | Kuat | Satu aksi utama per layar; alur modul Materi → Praktik → Kuis → Selesai (`ModuleDetail.jsx`) | — |
-| 2 | User Experience | Kuat | Jalur belajar bergaya Duolingo, bilah verdict kuis, perayaan saat lulus | Belum ada streak, XP, atau target harian (lihat Keputusan) |
+| 2 | User Experience | Kuat | Jalur belajar bergaya Duolingo, bilah verdict kuis, perayaan saat lulus; poin belajar dan level di Profil | Belum ada streak atau target harian (lihat Keputusan) |
 | 3 | User Interface | Kuat | Semua permukaan memakai token AAPM (`aapm-academy.tokens.json`) | — |
 | 4 | Visual Hierarchy | Kuat | Penanda Mulai/Lanjutkan di jalur, satu tombol `learn` per layar | — |
 | 5 | Layout & Composition | Kuat | Jalur di kolom tengah 42rem; chat memakai satu lebar kolom untuk jawaban dan composer | — |
@@ -59,19 +59,20 @@ Pemeriksaan otomatis di semua rute learner (`/`, `/modules`, `/modules/:n`, `/qu
 | Tombol taktil 3D | Tombol `learn`, simpul jalur, tombol kirim APPI | Ada / diperluas |
 | Maskot | Maskot APPI di keadaan kosong dan header chat | Ada / diperluas |
 | Streak 🔥 | — | Butuh keputusan |
-| XP dan target harian | — | Butuh keputusan |
+| XP | Poin belajar + level di Profil (dihitung server dari modul, praktik, sertifikat, kuis, KPI, waktu belajar) | Ada; praktik dan waktu belajar kini benar-benar tercatat |
+| Target harian | — | Butuh keputusan |
 | Ulangi kesalahan (review mode) | — | Usulan |
 | Hearts / nyawa | — | Tidak disarankan |
-| Liga / leaderboard | — | Tidak disarankan sekarang |
+| Liga / leaderboard | Hall of Fame opt-in di Profil (nama, level, poin; email tidak ditampilkan) | Ada, opt-in |
 | Efek suara | — | Opsional, default mati |
 
 ---
 
 ## Keputusan yang dibutuhkan
 
-1. **Streak, XP, target harian.** `user_progress` hanya menyimpan satu baris per modul (`updated_at` terakhir), jadi streak yang jujur butuh log aktivitas harian (tabel baru, mis. `learning_activity(user_id, activity_date, xp)`). Staging dan produksi berbagi MySQL, jadi tabel baru ikut muncul di produksi. Putuskan dulu: aturan XP, target harian, zona waktu (WIB), dan retensi data.
+1. **Streak dan target harian.** Poin (XP) sudah ada di Profil. `user_progress` hanya menyimpan satu baris per modul (`updated_at` terakhir), jadi streak yang jujur butuh log aktivitas harian (tabel baru, mis. `learning_activity(user_id, activity_date, points)`). Staging dan produksi berbagi MySQL, jadi tabel baru ikut muncul di produksi. Putuskan dulu: target harian, zona waktu (WIB), dan retensi data.
 2. **Hearts / nyawa.** Tidak disarankan. Di pelatihan profesional, menghukum jawaban salah menghambat belajar; alur sekarang sudah meminta lulus 70% tanpa membatasi percobaan.
-3. **Leaderboard.** Tidak disarankan sekarang. Membandingkan peserta antar-farm menyentuh privasi data farm, dan motivasinya ekstrinsik.
+3. **Leaderboard.** Sudah ada sebagai Hall of Fame opt-in di Profil; pertahankan opt-in dan jangan tampilkan data farm.
 4. **Ulangi kesalahan.** Butuh menyimpan jawaban per soal (sekarang hanya skor total). Nilainya tinggi untuk retensi; kandidat iterasi berikutnya.
 5. **Tombol Hentikan di APPI.** Server menjalankan stream dengan `ignore_user_abort(true)`, sehingga jawaban penuh tetap tersimpan walau klien berhenti. Perlu endpoint batal atau penanda di server agar riwayat sesuai dengan yang dilihat pengguna.
 6. **Nama course** (P3-2): pilih satu nama tampilan untuk admin dan learner.
@@ -85,3 +86,9 @@ Pemeriksaan otomatis di semua rute learner (`/`, `/modules`, `/modules/:n`, `/qu
 - Motion: token `ease-spring`; jawaban benar memantul, salah bergetar sekali, verdict naik, badge hasil mendarat.
 - Perbaikan audit: satu `h1` di layar hasil, tanpa toast di atas bilah kuis, tile hasil satu baris, "Tinjau jawaban" sebagai aksi (P3-4), "Periksa" nonaktif berwarna abu-abu (P3-5), tombol APPI ganda di topbar dihapus (P3-3), pergantian tema dalam satu frame, label stepper kuis tidak terpotong, tombol hero penuh di ponsel, konten desktop tidak tertutup pill APPI, logo topbar ponsel 40 px.
 - APPI: satu renderer Markdown (tautan terlihat, blok kode berlabel dengan Salin, tabel berbingkai, kutipan sebagai callout), "Salin jawaban", jawaban 16 px selebar kolom, jawaban penuh lebar di ponsel, maskot di keadaan kosong, tombol kirim taktil.
+
+## Koreksi dan tambahan (putaran berikutnya)
+
+- Poin belajar, level, dan Hall of Fame opt-in ternyata sudah ada di Profil; peta pola Duolingo di atas sudah dikoreksi.
+- Ditemukan bug data: `POST /progress` menimpa semua kolom, sehingga "Tandai selesai" menghapus skor kuis dan kuis menghapus status praktik. Kini penyimpanan bersifat parsial.
+- Praktik tidak pernah tercatat (tidak ada kontrolnya) dan waktu belajar tidak pernah dikirim, sehingga prestasi "Praktik lapangan", kolom praktik di admin, dan "Waktu belajar" selalu kosong. Kini ada centang praktik di materi dan waktu belajar aktif dicatat dari materi dan kuis.
