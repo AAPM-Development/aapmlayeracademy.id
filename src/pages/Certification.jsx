@@ -4,7 +4,7 @@ import { Page } from "@/design-system/patterns/AppShell";
 import { StatTile } from "@/components/academy/CourseElements";
 import { hueFor } from "@/design-system/components/display";
 import CertificationPath from "@/components/academy/CertificationPath";
-import { Badge, Button, IconButton, IconTile, PageHeader, SectionHeader, useToast } from "@/components/primitives";
+import { Button, IconButton, IconTile, PageHeader, SectionHeader, useToast } from "@/components/primitives";
 import { useCertificates, useIssueCertificate, useModules, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
@@ -89,13 +89,12 @@ export default function Certification() {
       <PageHeader
         title="Sertifikasi profesional"
         description="Setiap tingkat merangkum kemampuan dari modul, praktik, dan evaluasi. Klaim saat semua prasyaratnya tuntas."
-        actions={<Badge size="lg" icon="certificate">{certificates.length}/6 tingkat dimiliki</Badge>}
       />
 
       <section className="aapm-stat-grid" aria-label="Ringkasan sertifikasi">
         <StatTile icon="check" hue="green" label="Modul selesai" value={`${completedModules}/${totalModules}`} />
         <StatTile icon="roadmap" hue="blue" label="Progress kurikulum" value={`${curriculumPercent}%`} />
-        <StatTile icon="certificate" hue="violet" label="Sertifikat dimiliki" value={certificates.length} />
+        <StatTile icon="certificate" hue="violet" label="Sertifikat dimiliki" value={`${certificates.length}/6`} />
         <StatTile icon="exam" hue="orange" label="Ujian akhir" value={finalExamPassed ? "Lulus" : "Belum"} />
       </section>
 

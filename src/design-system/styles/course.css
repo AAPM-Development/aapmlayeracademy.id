@@ -122,9 +122,29 @@ a.aapm-course-card:hover { border-color: var(--aapm-semantic-border-strong); box
 a.aapm-progress-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -20px color-mix(in srgb, var(--hue) 70%, transparent); }
 .aapm-progress-tile__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--aapm-primitive-space-2); }
 .aapm-progress-tile__title { margin: 0; font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); font-weight: var(--aapm-primitive-weight-heading); }
+/* The text block takes the slack, so bars and footers line up across a row when a title wraps. */
+.aapm-progress-tile__body { flex: 1 1 auto; }
 .aapm-progress-tile__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--aapm-primitive-space-2); color: color-mix(in srgb, var(--aapm-semantic-foreground) 70%, transparent); font-size: var(--aapm-component-type-caption-size); font-variant-numeric: tabular-nums; }
 .aapm-progress-tile .aapm-progress { background: color-mix(in srgb, var(--aapm-semantic-surface) 72%, transparent); }
 .aapm-progress-tile .aapm-progress__fill { background: var(--hue-ink); }
+/* Phones: one compact row (mark · text · status) over the bar and footer, so six tiles stay scannable. */
+@media (max-width: 639px) {
+  .aapm-progress-tile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3);
+    padding: var(--aapm-primitive-space-3);
+  }
+  .aapm-progress-tile__head { display: contents; }
+  .aapm-progress-tile__head > :first-child { grid-column: 1; grid-row: 1; }
+  .aapm-progress-tile__head > :not(:first-child) { grid-column: 3; grid-row: 1; }
+  .aapm-progress-tile__body { grid-column: 2; grid-row: 1; }
+  .aapm-progress-tile > .aapm-progress,
+  .aapm-progress-tile__foot { grid-column: 1 / -1; }
+  /* Home shows the active level and the next two; the full path is one link away. */
+  .aapm-progress-grid--compact > :nth-child(n + 4) { display: none; }
+}
 
 /* -------------------------------------------------------------- Hero */
 .aapm-hero {
@@ -440,7 +460,7 @@ a.aapm-progress-tile:hover { transform: translateY(-2px); box-shadow: 0 14px 28p
   text-decoration: none;
   transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
 }
-a.aapm-module-row:hover { background: var(--aapm-semantic-surface-subtle); }
+a.aapm-module-row:not([data-state="locked"]):hover { background: var(--aapm-semantic-surface-subtle); }
 .aapm-module-row[data-state="current"] { background: var(--hue-soft); }
 .aapm-module-row__index {
   display: grid;
@@ -459,10 +479,13 @@ a.aapm-module-row:hover { background: var(--aapm-semantic-surface-subtle); }
 .aapm-module-row[data-state="current"] .aapm-module-row__index { background: var(--hue); color: var(--aapm-semantic-surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--hue) 22%, transparent); }
 .aapm-module-row[data-state="locked"] .aapm-module-row__index { background: var(--aapm-semantic-surface-secondary); color: var(--aapm-semantic-subtle-text); }
 .aapm-module-row__index .aapm-icon { width: 18px; height: 18px; }
-.aapm-module-row__title { margin: 0; overflow: hidden; font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); font-weight: var(--aapm-primitive-weight-label); text-overflow: ellipsis; white-space: nowrap; }
+/* Block, so the ellipsis applies inside the minmax(0, 1fr) column and the meta always stacks below. */
+.aapm-module-row__title { display: block; margin: 0; overflow: hidden; font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); font-weight: var(--aapm-primitive-weight-label); text-overflow: ellipsis; white-space: nowrap; }
 .aapm-module-row[data-state="locked"] .aapm-module-row__title { color: var(--aapm-semantic-muted); }
 .aapm-module-row__action { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--aapm-semantic-border); color: var(--aapm-semantic-muted); }
 .aapm-module-row__action .aapm-icon { width: 16px; height: 16px; }
+/* Locked steps get the path view's quiet chevron, not a play action. */
+.aapm-module-row__chevron { width: var(--aapm-primitive-icon-md); height: var(--aapm-primitive-icon-md); color: var(--aapm-semantic-subtle-text); }
 .aapm-module-row[data-state="current"] .aapm-module-row__action { border-color: transparent; background: var(--hue); color: var(--aapm-semantic-surface); }
 
 /* --------------------------------------------------------- Lesson outline */

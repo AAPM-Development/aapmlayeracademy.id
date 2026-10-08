@@ -75,9 +75,13 @@ export function ModuleRow({ module, state = "available", hue }) {
           {state === "current" ? <span className="aapm-meta aapm-module-row__hint">Lanjutkan di sini</span> : null}
         </span>
       </span>
-      <span className="aapm-module-row__action" aria-hidden="true">
-        <AapmIcon name={state === "completed" ? "refresh" : "play"} />
-      </span>
+      {state === "locked" ? (
+        <AapmIcon name="chevronRight" className="aapm-module-row__chevron" />
+      ) : (
+        <span className="aapm-module-row__action" aria-hidden="true">
+          <AapmIcon name={state === "completed" ? "refresh" : "play"} />
+        </span>
+      )}
     </Link>
   );
 }

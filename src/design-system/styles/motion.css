@@ -106,7 +106,7 @@
 .aapm-outline__item {
   transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
 }
-a.aapm-module-row:hover .aapm-module-row__action { transform: translateX(2px); }
+a.aapm-module-row:not([data-state="locked"]):hover .aapm-module-row__action { transform: translateX(2px); }
 .aapm-module-row__action { transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
 
 /* Editors and sticky bars must not be transformed (sticky + inputs). */
