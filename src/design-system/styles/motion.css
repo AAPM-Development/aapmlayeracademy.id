@@ -109,3 +109,102 @@ a.aapm-module-row:hover .aapm-module-row__action { transform: translateX(2px); }
 .aapm-hof-list > :nth-child(3), .aapm-link-list > :nth-child(3), .aapm-planned-list > :nth-child(3), .aapm-ai-registry__list > :nth-child(3) { animation-delay: 60ms; }
 .aapm-achievement-grid > :nth-child(n + 4), .aapm-certificate-grid > :nth-child(n + 4), .aapm-ai-status-grid > :nth-child(n + 4),
 .aapm-hof-list > :nth-child(n + 4), .aapm-link-list > :nth-child(n + 4), .aapm-planned-list > :nth-child(n + 4), .aapm-ai-registry__list > :nth-child(n + 4) { animation-delay: 90ms; }
+
+/* ------------------------------------------------ Coverage: press feedback
+ * Every pressable thing answers the finger: a short scale-down on :active.
+ * Scale stays between .96 and .99 so nothing looks like a game button. */
+.aapm-button,
+.aapm-icon-button {
+  transition-property: background-color, border-color, color, box-shadow, transform, opacity;
+  transition-duration: var(--aapm-primitive-motion-fast);
+  transition-timing-function: var(--aapm-primitive-motion-ease);
+}
+.aapm-button:not(:disabled):active,
+.aapm-icon-button:not(:disabled):active { transform: scale(0.97); }
+.aapm-choice:not(:disabled):active,
+.aapm-module-row:active,
+.aapm-course-card:active,
+.aapm-surface[data-interactive="true"]:active,
+.aapm-link-list__item:active,
+.aapm-provider-item:active { transform: scale(0.99); }
+
+/* ------------------------------------------- Tabs: underline draws itself
+ * The active underline grows from the centre instead of appearing. */
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger {
+  position: relative;
+  box-shadow: none;
+}
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger[data-state="active"] {
+  box-shadow: none;
+}
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger::after {
+  content: "";
+  position: absolute;
+  inset-inline: 8px;
+  bottom: 0;
+  height: 2px;
+  border-radius: var(--aapm-primitive-radius-pill);
+  background: var(--aapm-semantic-primary);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
+}
+.aapm-tabs-list[data-variant="underline"] .aapm-tabs-trigger[data-state="active"]::after { transform: scaleX(1); }
+
+/* ------------------------------------------------ Bottom nav: indicator
+ * A short bar slides in above the active tab; the icon presses in on tap. */
+.aapm-bottom-nav__item {
+  position: relative;
+  transition: color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-bottom-nav__item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 28px;
+  height: 3px;
+  margin-left: -14px;
+  border-radius: 0 0 3px 3px;
+  background: var(--aapm-semantic-primary);
+  transform: scaleX(0);
+  transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease);
+}
+.aapm-bottom-nav__item[aria-current="page"]::before { transform: scaleX(1); }
+.aapm-bottom-nav__item[data-accent="ai"]::before { background: var(--aapm-semantic-ai); }
+.aapm-bottom-nav__icon {
+  transition: background-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-bottom-nav__item:active .aapm-bottom-nav__icon { transform: scale(0.9); }
+.aapm-bottom-nav__item:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: -2px; border-radius: var(--aapm-primitive-radius-control); }
+
+/* ------------------------------------------------------ Fields & choices */
+.aapm-input,
+.aapm-textarea,
+.aapm-select-trigger {
+  transition: border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-checkbox:checked { animation: aapm-pop var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
+
+/* ---------------------------------------------- Status & empty entrances */
+.aapm-alert,
+.aapm-state-view {
+  animation: aapm-page-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-toast-region .aapm-toast + .aapm-toast { animation-delay: 60ms; }
+
+/* ------------------------------------------------ Auth: the card arrives */
+.aapm-auth__form {
+  animation: aapm-page-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-auth__brand { animation: aapm-fade-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both; }
+
+/* ---------------------------------------------- Reduced motion, explicitly
+ * base.css collapses durations already; transforms that move content are
+ * also reset so nothing slides when the user asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .aapm-button:not(:disabled):active,
+  .aapm-icon-button:not(:disabled):active,
+  .aapm-bottom-nav__item:active .aapm-bottom-nav__icon,
+  .aapm-choice:not(:disabled):active { transform: none; }
+}

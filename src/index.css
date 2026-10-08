@@ -18,6 +18,7 @@
 @import "./styles/features/editor-workspace.css";
 @import "./styles/features/editor-blocks.css";
 @import "./styles/features/ai.css";
+@import "./styles/features/ai-chat.css";
 
 @tailwind base;
 @tailwind components;

@@ -1,0 +1,116 @@
+/* APPI chat: turns with a small APPI mark, calm user bubbles, one composer
+ * control, and a jump affordance. Loaded after ai.css so it wins the cascade
+ * without touching the legacy streaming and history rules. */
+
+@keyframes aapm-chat-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes aapm-chat-jump-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ------------------------------------------------------------- Turns */
+.aapm-chat-turn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--aapm-primitive-space-3);
+  min-width: 0;
+  max-width: 100%;
+  animation: aapm-chat-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-chat-turn__avatar {
+  flex: none;
+  margin-top: 2px;
+}
+.aapm-chat-turn__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.aapm-chat-turn--user {
+  justify-content: flex-end;
+}
+
+/* User bubble: soft brand tint with a squared corner on the sending side. */
+.aapm-ai-user-bubble.aapm-chat-bubble {
+  border-radius: 20px 20px 6px 20px;
+  background: var(--aapm-semantic-primary-soft);
+  color: var(--aapm-semantic-foreground);
+  box-shadow: none;
+}
+
+/* ----------------------------------------------------------- Composer */
+.aapm-ai-composer-frame {
+  border-radius: 22px;
+  box-shadow: var(--aapm-semantic-shadow-card);
+  transition: border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), box-shadow var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-composer-frame:focus-within {
+  border-color: color-mix(in srgb, var(--aapm-semantic-ai) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aapm-semantic-ai) 14%, transparent), var(--aapm-semantic-shadow-card);
+}
+.aapm-ai-composer-toggle {
+  font-size: var(--aapm-component-type-caption-size);
+  transition: color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-composer-toggle:hover { color: var(--aapm-semantic-foreground); }
+.aapm-ai-composer-switch {
+  transform-origin: center;
+}
+.aapm-ai-send-control {
+  border-radius: var(--aapm-primitive-radius-pill);
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), transform var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-ai-send-control:not(:disabled):active { transform: scale(0.96); }
+
+@media (max-width: 639px) {
+  /* 16px keeps iOS from zooming into the field on focus. */
+  .aapm-ai-composer-frame textarea { font-size: 16px; }
+  .aapm-chat-turn { gap: var(--aapm-primitive-space-2); }
+  /* One row on phones: tools scroll sideways, send is icon-only (aria-label stays). */
+  .aapm-ai-composer-frame__footer { flex-wrap: nowrap; }
+  .aapm-ai-composer-frame .aapm-ai-composer-tools { flex-wrap: nowrap; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .aapm-ai-composer-frame .aapm-ai-send-control { min-width: 2.75rem; padding-inline: 0; }
+  .aapm-ai-composer-frame .aapm-ai-send-control > span { display: none; }
+}
+
+/* ------------------------------------------------------- Jump to latest */
+.aapm-chat-jump {
+  position: absolute;
+  bottom: var(--aapm-primitive-space-3);
+  left: 50%;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-primitive-radius-pill);
+  background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
+  box-shadow: var(--aapm-semantic-shadow-overlay);
+  color: var(--aapm-semantic-foreground);
+  font-size: var(--aapm-component-type-caption-size);
+  font-weight: var(--aapm-primitive-weight-strong);
+  cursor: pointer;
+  animation: aapm-chat-jump-in var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease) both;
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-chat-jump:hover { background: var(--aapm-semantic-surface-subtle); }
+.aapm-chat-jump:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-chat-jump > .aapm-icon { color: var(--aapm-semantic-ai); }
+
+/* --------------------------------------------------- Welcome & starters */
+.aapm-chat-welcome > * {
+  animation: aapm-chat-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-chat-welcome > :nth-child(2) { animation-delay: 60ms; }
+.aapm-chat-welcome > :nth-child(3) { animation-delay: 120ms; }
+.aapm-chat-welcome > :nth-child(n + 4) { animation-delay: 180ms; }
+.aapm-chat-suggestion {
+  animation: aapm-chat-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-chat-suggestion:nth-child(2) { animation-delay: 220ms; }
+.aapm-chat-suggestion:nth-child(3) { animation-delay: 260ms; }
+.aapm-chat-suggestion:nth-child(4) { animation-delay: 300ms; }
+.aapm-chat-suggestion:nth-child(n + 5) { animation-delay: 340ms; }

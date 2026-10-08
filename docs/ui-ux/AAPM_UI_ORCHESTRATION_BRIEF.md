@@ -178,6 +178,11 @@ Jika surface tidak cocok dengan tabel, pilih archetype yang paling dekat, lalu t
 | Tab | Fade saja, tanpa geser (`[role="tabpanel"][data-state="active"]`). |
 | Overlay | Sheet slide 240ms. Dialog fade-scale. |
 | Hover | Background dan border 140ms. Affordance kecil (chevron geser 2px). |
+| Tekan (press) | Tombol, choice, module row, kartu interaktif: scale 0.97–0.99 saat `:active`. |
+| Indikator tab | Garis underline tumbuh dari tengah (`scaleX`) pada tab aktif. |
+| Bottom nav | Bar indikator di atas tab aktif meluncur masuk. Ikon menekan ke 0.9 saat disentuh. |
+| Chat APPI | Turn dan bubble naik 8px sambil fade. Welcome dan starter bertahap. Tombol "Ke pesan terbaru" fade-in dari bawah. |
+| Status & empty | Alert dan StateView fade-up (`aapm-page-in`). |
 
 **Dilarang**:
 - Bounce atau animasi loop dekoratif.

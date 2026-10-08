@@ -1156,8 +1156,8 @@ export default function AiAssistant() {
                 <div className="flex min-w-0 max-w-full flex-col gap-6 sm:gap-8">
                   {messages.map((message, index) =>
                     message.role === "user" ? (
-                      <div key={message.id} className="flex min-w-0 max-w-full justify-end">
-                        <div className="aapm-ai-user-bubble min-w-0 max-w-[84%] break-words px-3.5 py-2.5 text-sm leading-6 [overflow-wrap:anywhere] sm:max-w-[88%]">
+                      <div key={message.id} className="aapm-chat-turn aapm-chat-turn--user min-w-0 max-w-full">
+                        <div className="aapm-ai-user-bubble aapm-chat-bubble min-w-0 max-w-[84%] break-words px-3.5 py-2.5 text-sm leading-6 [overflow-wrap:anywhere] sm:max-w-[88%]">
                           {message.image?.dataUrl && (
                             <img
                               src={message.image.dataUrl}
@@ -1169,6 +1169,15 @@ export default function AiAssistant() {
                         </div>
                       </div>
                     ) : (
+                      <div key={message.id} className="aapm-chat-turn">
+                        <span className="aapm-chat-turn__avatar" aria-hidden="true">
+                          <AiProfileAvatar
+                            size="xs"
+                            label=""
+                            state={message.streaming ? (message.content ? "responding" : "thinking") : "idle"}
+                          />
+                        </span>
+                        <div className="aapm-chat-turn__body">
                       <AssistantMessage
                         key={message.id}
                         message={{ ...message, streamStatus, streamSteps }}
@@ -1185,6 +1194,8 @@ export default function AiAssistant() {
                         showQuickActions={index === lastAssistantMessageIndex}
                         showMeta={index === lastAssistantMessageIndex || !message.persisted}
                       />
+                        </div>
+                      </div>
                     ),
                   )}
                 </div>
@@ -1196,7 +1207,7 @@ export default function AiAssistant() {
             <button
               type="button"
               onClick={jumpToLatest}
-              className="absolute bottom-3 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-background/95 px-3 py-1.5 text-[11px] font-semibold text-foreground shadow-[0_8px_24px_hsl(var(--foreground)/0.12)] backdrop-blur transition hover:-translate-y-0.5 hover:border-brand-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              className="aapm-chat-jump"
             >
               <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-brand-orange" />
               Ke pesan terbaru

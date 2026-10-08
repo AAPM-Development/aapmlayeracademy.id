@@ -65,7 +65,7 @@ export default function AiComposer({
               alt="Pratinjau foto lampiran"
               className="h-9 w-9 shrink-0 rounded-[var(--radius-control)] object-cover ring-1 ring-border"
             />
-            <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground">
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
               {imageAttachment.name}
             </span>
             <Button
@@ -121,29 +121,29 @@ export default function AiComposer({
               <AapmIcon name="solar:gallery-add-bold-duotone" className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-4 w-4"} />
               {compact && <span className="text-[11px] font-semibold">Foto</span>}
             </Button>
-            <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[10px] text-muted-foreground sm:inline-flex">
+            <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[11px] text-muted-foreground sm:inline-flex">
               <AapmIcon name="solar:map-point-bold-duotone" className="mr-1 h-3.5 w-3.5 shrink-0 text-brand-orange" />
               <span className="truncate">{contextLabel}</span>
             </span>
             {showFarmToggle && (
-              <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+              <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
                 <Switch
                   checked={includeFarm}
                   onCheckedChange={onIncludeFarmChange}
                   aria-label="Sertakan data KPI sebagai konteks"
                   disabled={isStreaming}
-                  className="scale-75"
+                  className="aapm-ai-composer-switch"
                 />
                 Pakai KPI
               </label>
             )}
-            <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+            <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
               <Switch
                 checked={allowWebSearch}
                 onCheckedChange={onAllowWebSearchChange}
                 aria-label="Izinkan APPI mencari referensi web"
                 disabled={isStreaming}
-                className="scale-75"
+                className="aapm-ai-composer-switch"
               />
               <AapmIcon name="solar:global-bold-duotone" className="h-3.5 w-3.5 text-brand-orange" />
               Cari web
@@ -165,10 +165,10 @@ export default function AiComposer({
       </ComposerSurface>
 
       {attachmentError && (
-        <p className="mt-1.5 text-[10px] font-medium text-danger">{attachmentError}</p>
+        <p className="mt-1.5 text-[11px] font-medium text-danger">{attachmentError}</p>
       )}
       {showPrivacy && (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] leading-4 text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] leading-4 text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <AapmIcon name="solar:medical-kit-bold" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
             Untuk diagnosis penyakit atau dosis obat, konsultasikan dengan dokter hewan.
