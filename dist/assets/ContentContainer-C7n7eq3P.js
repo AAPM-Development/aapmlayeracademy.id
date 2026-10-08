@@ -1,0 +1,1 @@
+import{j as e}from"./index-B-g6zMAZ.js";import{P as s}from"./AppShell-CU0ND6e1.js";function m({children:t=null,width:n,className:o="",...r}={}){return e.jsx(s,{width:n,className:o,...r,children:t})}export{m as C};
