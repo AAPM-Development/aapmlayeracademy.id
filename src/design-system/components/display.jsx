@@ -263,6 +263,7 @@ function ProgressRing({ value = 0, max = 100, size = 56, stroke = 6, hue, label,
           strokeWidth={stroke}
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - percent / 100)}
+          style={{ "--ring-circumference": circumference }}
         />
       </svg>
       {children ? <span className="aapm-ring__label">{children}</span> : showValue ? <span className="aapm-ring__label">{Math.round(percent)}%</span> : null}

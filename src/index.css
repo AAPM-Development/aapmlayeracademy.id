@@ -8,6 +8,7 @@
 @import "./design-system/styles/components.css";
 @import "./design-system/styles/shell.css";
 @import "./design-system/styles/course.css";
+@import "./design-system/styles/motion.css";
 @import "./styles/legacy-aliases.css";
 @import "./styles/features/scroll.css";
 @import "./styles/features/content.css";
