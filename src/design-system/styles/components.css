@@ -1329,6 +1329,13 @@ a.aapm-surface { text-decoration: none; }
 .aapm-breadcrumbs a:hover { color: var(--aapm-semantic-foreground); }
 .aapm-breadcrumbs [aria-current="page"] { overflow: hidden; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-label); text-overflow: ellipsis; white-space: nowrap; }
 
+/* Phones: the trail keeps the parent and the current page, so it stays on one line. */
+@media (max-width: 639px) {
+  .aapm-breadcrumbs ol { flex-wrap: nowrap; }
+  .aapm-breadcrumbs li:not(:nth-last-child(-n + 2)) { display: none; }
+  .aapm-breadcrumbs li:nth-last-child(2) > .aapm-icon { display: none; }
+}
+
 .aapm-separator { flex: none; background: var(--aapm-semantic-border); }
 .aapm-separator[data-orientation="horizontal"] { width: 100%; height: 1px; }
 .aapm-separator[data-orientation="vertical"] { width: 1px; align-self: stretch; }
