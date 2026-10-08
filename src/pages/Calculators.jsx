@@ -1,3 +1,4 @@
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import React, { useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconTile, Input, PageHeader } from "@/design-system";
@@ -21,6 +22,7 @@ const ToolContext = React.createContext(tools[0]);
  */
 export default function Calculators() {
   const [active, setActive] = useState("fcr");
+  const railRef = useScrollEdgeFade();
   const activeTool = tools.find((tool) => tool.id === active) || tools[0];
 
   return (
@@ -32,7 +34,7 @@ export default function Calculators() {
         actions={<Badge size="lg" icon="calculator">{tools.length} kalkulator</Badge>}
       />
       <section className="aapm-calc-layout">
-        <nav className="aapm-calc-tools" aria-label="Pilih kalkulator">
+        <nav ref={railRef} className="aapm-calc-tools aapm-scroll-fade aapm-scroll-fade--x" aria-label="Pilih kalkulator">
           {tools.map((tool) => (
             <button
               key={tool.id}
@@ -79,6 +81,7 @@ function CalculatorCard({ title, formula, children, result }) {
   const inputs = items.filter((child) => child !== outcome);
   const value = outcome ? outcome.props.value : result;
   const note = outcome?.props.note;
+  const emptyNote = value === "—" ? "Hasil muncul saat semua angka terisi dan lebih dari 0. Periksa kolom kosong atau bernilai 0." : "Isi angka aktual untuk melihat interpretasi.";
   const resultHue = note && attentionPattern.test(String(note)) ? "orange" : tool.hue;
 
   return (
@@ -101,7 +104,7 @@ function CalculatorCard({ title, formula, children, result }) {
         <aside className="aapm-calc__result" data-hue={resultHue} aria-live="polite">
           <p className="aapm-text-overline m-0">Hasil</p>
           <p className="aapm-calc__value">{value ?? "—"}</p>
-          {note ? <p className="aapm-calc__note"><AapmIcon name={resultHue === "orange" ? "warning" : "check"} />{note}</p> : <p className="aapm-calc__note">Isi angka aktual untuk melihat interpretasi.</p>}
+          {note ? <p className="aapm-calc__note"><AapmIcon name={resultHue === "orange" ? "warning" : "check"} />{note}</p> : <p className="aapm-calc__note">{emptyNote}</p>}
         </aside>
       </div>
     </article>
