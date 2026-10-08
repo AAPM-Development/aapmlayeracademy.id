@@ -80,6 +80,7 @@ export const SelectScrollUpButton: any;
 export const SelectScrollDownButton: any;
 export const Checkbox: any;
 export const CheckboxField: any;
+export const SwitchField: any;
 export const RadioGroup: any;
 export const RadioGroupItem: any;
 export const Switch: any;

@@ -82,9 +82,9 @@ const TabsContent = React.forwardRef(function TabsContent({ className, ...props 
 });
 
 /** Mutually exclusive view switch (list/board, period, filter). */
-function SegmentedControl({ label, options = [], value, onChange, className, size }) {
+function SegmentedControl({ label, options = [], value, onChange, className, size, block = false }) {
   return (
-    <div role="radiogroup" aria-label={label} className={cn("aapm-segmented", className)}>
+    <div role="radiogroup" aria-label={label} className={cn("aapm-segmented", className)} data-block={block ? "true" : undefined}>
       {options.map((option) => (
         <button
           key={option.value}
@@ -98,6 +98,7 @@ function SegmentedControl({ label, options = [], value, onChange, className, siz
         >
           {option.icon ? <AapmIcon name={option.icon} /> : null}
           {option.label}
+          {option.count !== undefined ? <span className="aapm-segmented__count">{option.count}</span> : null}
         </button>
       ))}
     </div>

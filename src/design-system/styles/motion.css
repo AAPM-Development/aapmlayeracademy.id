@@ -83,3 +83,29 @@ a.aapm-module-row:hover .aapm-module-row__action { transform: translateX(2px); }
 /* Editors and sticky bars must not be transformed (sticky + inputs). */
 .aapm-page > .aapm-editor-command-bar,
 .aapm-editor-content { animation: none; }
+
+/* Tab panels fade in place (no travel), so switching tabs never jumps. */
+@keyframes aapm-tab-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+[role="tabpanel"][data-state="active"] {
+  animation: aapm-tab-in var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease) both;
+}
+
+/* Profile and admin lists arrive as a group, like the course collections. */
+.aapm-achievement-grid > *,
+.aapm-certificate-grid > *,
+.aapm-ai-status-grid > *,
+.aapm-hof-list > *,
+.aapm-link-list > *,
+.aapm-planned-list > *,
+.aapm-ai-registry__list > * {
+  animation: aapm-page-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
+}
+.aapm-achievement-grid > :nth-child(2), .aapm-certificate-grid > :nth-child(2), .aapm-ai-status-grid > :nth-child(2),
+.aapm-hof-list > :nth-child(2), .aapm-link-list > :nth-child(2), .aapm-planned-list > :nth-child(2), .aapm-ai-registry__list > :nth-child(2) { animation-delay: 30ms; }
+.aapm-achievement-grid > :nth-child(3), .aapm-certificate-grid > :nth-child(3), .aapm-ai-status-grid > :nth-child(3),
+.aapm-hof-list > :nth-child(3), .aapm-link-list > :nth-child(3), .aapm-planned-list > :nth-child(3), .aapm-ai-registry__list > :nth-child(3) { animation-delay: 60ms; }
+.aapm-achievement-grid > :nth-child(n + 4), .aapm-certificate-grid > :nth-child(n + 4), .aapm-ai-status-grid > :nth-child(n + 4),
+.aapm-hof-list > :nth-child(n + 4), .aapm-link-list > :nth-child(n + 4), .aapm-planned-list > :nth-child(n + 4), .aapm-ai-registry__list > :nth-child(n + 4) { animation-delay: 90ms; }

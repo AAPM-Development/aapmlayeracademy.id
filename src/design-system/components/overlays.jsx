@@ -89,7 +89,7 @@ const SheetContent = React.forwardRef(function SheetContent(
   );
 });
 
-const SheetHeader = ({ className, ...props }) => <div className={cn("aapm-dialog__header !p-0 !pe-10", className)} {...props} />;
+const SheetHeader = ({ className, ...props }) => <div className={cn("aapm-dialog__header aapm-sheet__header", className)} {...props} />;
 const SheetFooter = ({ className, ...props }) => <div className={cn("aapm-form-actions mt-auto", className)} {...props} />;
 const SheetTitle = DialogTitle;
 const SheetDescription = DialogDescription;

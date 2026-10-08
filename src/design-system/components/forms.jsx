@@ -224,6 +224,22 @@ const Switch = React.forwardRef(function Switch({ className, ...props }, ref) {
   );
 });
 
+/* Toggle row: a setting with a title, an optional explanation, and a switch.
+ * The whole row is the label, so the switch is easy to hit on touch. */
+const SwitchField = React.forwardRef(function SwitchField({ id, label, description, className, ...props }, ref) {
+  const generated = React.useId();
+  const inputId = id || generated;
+  return (
+    <div className={cn("aapm-switch-row", className)}>
+      <div className="min-w-0 flex-1">
+        <label htmlFor={inputId} className="aapm-switch-row__label">{label}</label>
+        {description ? <p className="aapm-switch-row__description">{description}</p> : null}
+      </div>
+      <Switch ref={ref} id={inputId} {...props} />
+    </div>
+  );
+});
+
 const Slider = React.forwardRef(function Slider({ className, ...props }, ref) {
   const thumbs = Array.isArray(props.value) ? props.value : Array.isArray(props.defaultValue) ? props.defaultValue : [0];
   return (
@@ -282,6 +298,7 @@ export {
   SelectScrollDownButton,
   Checkbox,
   CheckboxField,
+  SwitchField,
   RadioGroup,
   RadioGroupItem,
   Switch,
