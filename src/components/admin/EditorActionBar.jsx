@@ -11,8 +11,8 @@ import {
   Kbd,
 } from "@/components/primitives";
 
-export function AddElementMenu({ items, onAddElement }) {
-  if (!items.length || !onAddElement) return null;
+export function AddElementMenu({ groups = [], onAddElement }) {
+  if (!groups.length || !onAddElement) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -23,12 +23,16 @@ export function AddElementMenu({ items, onAddElement }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel>Tambah ke materi</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {items.map((item) => (
-          <DropdownMenuItem key={item.type} icon={item.icon || "add"} onSelect={() => onAddElement(item.type)} data-editor-add-item={item.type}>
-            {item.label}
-          </DropdownMenuItem>
+        {groups.map((group, groupIndex) => (
+          <React.Fragment key={group.label}>
+            {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+            {group.items.map((item) => (
+              <DropdownMenuItem key={item.type} icon={item.icon || "add"} onSelect={() => onAddElement(item.type)} data-editor-add-item={item.type}>
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </React.Fragment>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -40,7 +44,7 @@ export function AddElementMenu({ items, onAddElement }) {
  * the single Simpan action (also Ctrl/⌘ S). It stays at the bottom of the canvas.
  */
 export default function EditorActionBar({
-  elementItems = [],
+  elementGroups = [],
   onAddElement = null,
   onSave = () => {},
   isSaving = false,
@@ -55,7 +59,7 @@ export default function EditorActionBar({
         <span className="aapm-editor-save-status__label">{status === "saving" ? "Menyimpan…" : status === "dirty" ? "Belum disimpan" : "Tersimpan"}</span>
       </span>
       <div className="aapm-editor-actionbar__actions">
-        <AddElementMenu items={elementItems} onAddElement={onAddElement} />
+        <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
         <Button type="button" size="sm" loading={isSaving} onClick={onSave} title="Simpan modul (Ctrl/⌘ S)">
           {!isSaving ? <AapmIcon name="check" /> : null}Simpan
           <Kbd className="aapm-editor-kbd">⌘S</Kbd>

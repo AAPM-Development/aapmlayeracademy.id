@@ -6,7 +6,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent, EditorialMarkdown } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
-import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
+import EditorialComposer, { editorialInsertGroups } from "@/components/admin/EditorialComposer";
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import EditorOutline from "@/components/admin/EditorOutline";
 import EditorActionBar from "@/components/admin/EditorActionBar";
@@ -1457,7 +1457,7 @@ export default function AdminModuleEditor() {
               activeSection={activeSection}
               onNavigate={scrollToEditorSection}
               blockSlotRef={setOutlineSlot}
-              addItems={editorialInsertActions}
+              addGroups={editorialInsertGroups}
               onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             />
             <div className="aapm-editor-canvas">
@@ -1650,7 +1650,7 @@ export default function AdminModuleEditor() {
             </aside>
           </form>
           <EditorActionBar
-            elementItems={editorialInsertActions}
+            elementGroups={editorialInsertGroups}
             onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             onSave={submitEditorForm}
             isSaving={isSaving}

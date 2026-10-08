@@ -837,20 +837,22 @@ const quickBlockLabels = Object.freeze({
   video: "Video",
 });
 
-export const editorialInsertActions = Object.freeze([
-  ...insertableTypes.map((type) => ({
-    type,
-    label: quickBlockLabels[type],
-    icon: editorIcon(type),
-  })),
-]);
-
 const BLOCK_GROUPS = [
   { label: "Teks", types: ["richText", "heading", "callout"] },
   { label: "Media", types: ["image", "slides", "video"] },
   { label: "Struktur", types: ["table", "divider"] },
   { label: "Aksi", types: ["link", "cta"] },
 ];
+
+/** Insert menu items, grouped the same way as the block picker. */
+export const editorialInsertGroups = BLOCK_GROUPS
+  .map((group) => ({
+    label: group.label,
+    items: group.types
+      .filter((type) => insertableTypes.includes(type))
+      .map((type) => ({ type, label: quickBlockLabels[type] || blockMeta[type]?.label, icon: editorIcon(type) })),
+  }))
+  .filter((group) => group.items.length);
 
 const BLOCK_DESCRIPTIONS = {
   richText: "Paragraf, daftar, gambar inline",
@@ -907,14 +909,10 @@ function InsertPoint({ onInsert, disabled }) {
 }
 
 /** Inspector "Blok" tab content, portalled from the composer. */
-function BlockInspector({ block, index, total, onChange, onDuplicate, onRemove, onAdd, full }) {
+function BlockInspector({ block, index, total, onChange, onDuplicate, onRemove }) {
   if (!block) {
     return (
-      <div className="grid gap-4">
-        <p className="aapm-text-support m-0">Klik blok di kanvas untuk mengedit. Isi diedit langsung di kanvas; gaya dan tata letaknya diatur di sini.</p>
-        <p className="aapm-text-overline m-0">Tambah blok di akhir</p>
-        <BlockPicker onPick={onAdd} disabled={full} />
-      </div>
+      <p className="aapm-text-support m-0">Pilih blok dari Susun atau kanvas. Isi diedit langsung di kanvas; gaya dan tata letaknya diatur di sini.</p>
     );
   }
   const meta = blockMeta[block.type];
@@ -1148,11 +1146,9 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
           block={selectedBlock}
           index={selectedIndex}
           total={blocks.length}
-          full={full}
           onChange={(patch) => updateBlock(selectedIndex, patch)}
           onDuplicate={duplicateContentBlock}
           onRemove={requestRemoveContentBlock}
-          onAdd={addContentBlock}
         />,
         settingsContainer,
       ) : null}

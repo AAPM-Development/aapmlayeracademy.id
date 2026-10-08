@@ -67,7 +67,7 @@ export default function EditorOutline({
   activeSection = "",
   onNavigate = () => {},
   blockSlotRef = null,
-  addItems = [],
+  addGroups = [],
   onAddElement = null,
 }) {
   return (
@@ -90,9 +90,9 @@ export default function EditorOutline({
           </div>
         ))}
       </nav>
-      {onAddElement && addItems.length ? (
+      {onAddElement && addGroups.length ? (
         <div className="aapm-editor-outline__add">
-          <AddElementMenu items={addItems} onAddElement={onAddElement} />
+          <AddElementMenu groups={addGroups} onAddElement={onAddElement} />
         </div>
       ) : null}
     </aside>
