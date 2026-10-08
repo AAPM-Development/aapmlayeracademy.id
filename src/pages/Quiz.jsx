@@ -32,6 +32,8 @@ export default function Quiz() {
   const sorted = useMemo(() => sortModules(modules), [modules]);
   const module = sorted.find((item) => item.moduleNumber === number);
   const quizTitle = module ? "Kuis · " + module.title : "Kuis modul " + number;
+  const barTitle = module ? module.title : "Kuis modul " + number;
+  const barContext = "Kuis · Modul " + number;
   const next = sorted[sorted.findIndex((item) => item.moduleNumber === number) + 1] || null;
   const score = useMemo(() => questions.filter((item, index) => answers[index] === item.correctIndex).length, [answers, questions]);
   const percent = questions.length ? Math.round((score / questions.length) * 100) : 0;
@@ -66,7 +68,7 @@ export default function Quiz() {
 
   if (submitted) {
     return (
-      <FocusShell resetKey="result" label="Hasil kuis" bar={<AssessmentBar onExit={exit} title={quizTitle} total={questions.length} current={questions.length - 1} states={questions.map((item, index) => (answers[index] === item.correctIndex ? "done" : "wrong"))} />}>
+      <FocusShell resetKey="result" label="Hasil kuis" bar={<AssessmentBar onExit={exit} title={barTitle} context={barContext} total={questions.length} current={questions.length - 1} states={questions.map((item, index) => (answers[index] === item.correctIndex ? "done" : "wrong"))} />}>
         <AssessmentResult passed={passed} score={score} total={questions.length} passingGrade={PASSING_GRADE}>
           <div className="aapm-result-actions">
             {passed ? (
@@ -94,7 +96,7 @@ export default function Quiz() {
     <FocusShell
       resetKey={current}
       label={`Kuis modul ${number}`}
-      bar={<AssessmentBar onExit={exit} title={quizTitle} total={questions.length} current={current} states={states} />}
+      bar={<AssessmentBar onExit={exit} title={barTitle} context={barContext} total={questions.length} current={current} states={states} />}
       footer={(
         <>
           <div className="aapm-focus__footer-group">

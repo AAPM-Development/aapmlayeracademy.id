@@ -161,19 +161,21 @@ export default function ModuleDetail() {
       outline={outline}
       outlineOpen={outlineOpen}
       bar={(
-        <div className="aapm-focus__bar" data-hue={visual.hue}>
+        <header className="aapm-topbar aapm-focus__bar" data-hue={visual.hue}>
           <IconButton label="Keluar ke jalur belajar" icon="close" onClick={() => navigate("/modules")} />
-          <IconButton className="hidden lg:inline-flex" label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} icon="sidebar" onClick={toggleOutline} />
-          <IconButton className="lg:hidden" label="Buka kurikulum" icon="list" onClick={() => setOutlineSheet(true)} />
-          <div className="aapm-focus__title">
-            <strong>{module.title}</strong>
-            <span>Modul {module.moduleNumber} dari {summary.total} · {module.levelName || module.category}</span>
+          <div className="aapm-topbar__title">
+            <span className="aapm-topbar__context">Modul {module.moduleNumber} dari {summary.total} · {module.levelName || module.category}</span>
+            <p className="aapm-topbar__title-text">{module.title}</p>
           </div>
-          <div className="aapm-focus__progress">
-            <Progress value={summary.percent} label="Progress course" />
-            <span>{summary.percent}%</span>
+          <div className="aapm-topbar__actions">
+            <IconButton className="hidden lg:inline-flex" label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} icon="sidebar" onClick={toggleOutline} />
+            <IconButton className="lg:hidden" label="Buka kurikulum" icon="list" onClick={() => setOutlineSheet(true)} />
+            <div className="aapm-focus__progress">
+              <Progress value={summary.percent} label="Progress course" />
+              <span>{summary.percent}%</span>
+            </div>
           </div>
-        </div>
+        </header>
       )}
       footer={(
         <>

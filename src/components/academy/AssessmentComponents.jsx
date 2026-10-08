@@ -6,17 +6,24 @@ import { StatTile } from "@/components/academy/CourseElements";
 const KEYS = ["A", "B", "C", "D", "E", "F"];
 
 /** Slim assessment bar: exit, segmented progress, counter. */
-export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title, children }) {
+export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title, context, children }) {
   return (
-    <div className="aapm-focus__bar">
+    <header className="aapm-topbar aapm-focus__bar">
       <IconButton label="Keluar" icon="close" onClick={onExit} />
-      {title ? <h1 className="aapm-visually-hidden">{title}</h1> : null}
-      <div className="min-w-0 flex-1">
-        <Segments total={total} current={current} states={states} label={label} />
+      {title || context ? (
+        <div className="aapm-topbar__title">
+          {context ? <span className="aapm-topbar__context">{context}</span> : null}
+          {title ? <h1 className="aapm-topbar__title-text">{title}</h1> : null}
+        </div>
+      ) : null}
+      <div className="aapm-topbar__actions">
+        <div className="aapm-focus__segments">
+          <Segments total={total} current={current} states={states} label={label} />
+        </div>
+        <span className="aapm-text-caption aapm-numeric whitespace-nowrap">{Math.min(current + 1, total)}/{total}</span>
+        {children}
       </div>
-      <span className="aapm-text-caption aapm-numeric whitespace-nowrap">{Math.min(current + 1, total)}/{total}</span>
-      {children}
-    </div>
+    </header>
   );
 }
 
