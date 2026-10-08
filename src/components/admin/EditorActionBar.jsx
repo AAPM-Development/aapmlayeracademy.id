@@ -47,17 +47,30 @@ export default function EditorActionBar({
   elementGroups = [],
   onAddElement = null,
   onSave = () => {},
+  onRetry = () => {},
   isSaving = false,
   isDirty = false,
+  saveError = "",
+  savedAt = null,
 }) {
-  const status = isSaving ? "saving" : isDirty ? "dirty" : "saved";
+  const status = isSaving ? "saving" : saveError ? "error" : isDirty ? "dirty" : "saved";
+  const label = {
+    saving: "Menyimpan…",
+    error: "Gagal disimpan",
+    dirty: "Belum disimpan",
+    saved: savedAt ? `Tersimpan ${savedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Tersimpan",
+  }[status];
 
   return (
     <div className="aapm-editor-actionbar" data-editor-actionbar>
       <span className="aapm-editor-save-status" data-status={status} role="status" aria-live="polite">
         <span className="aapm-chip__dot" aria-hidden="true" />
-        <span className="aapm-editor-save-status__label">{status === "saving" ? "Menyimpan…" : status === "dirty" ? "Belum disimpan" : "Tersimpan"}</span>
+        <span className="aapm-editor-save-status__label">{label}</span>
+        {status === "error" ? <span className="aapm-editor-save-status__detail">{saveError}</span> : null}
       </span>
+      {status === "error" ? (
+        <Button type="button" size="sm" variant="secondary" onClick={onRetry}>Coba lagi</Button>
+      ) : null}
       <div className="aapm-editor-actionbar__actions">
         <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
         <Button type="button" size="sm" loading={isSaving} onClick={onSave} title="Simpan modul (Ctrl/⌘ S)">

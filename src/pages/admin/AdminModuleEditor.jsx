@@ -971,6 +971,8 @@ export default function AdminModuleEditor() {
   const [inspectorTab, setInspectorTab] = useState("block");
   const [blockInspectorNode, setBlockInspectorNode] = useState(null);
   const [outlineSlot, setOutlineSlot] = useState(null);
+  const [saveError, setSaveError] = useState("");
+  const [savedAt, setSavedAt] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const handleBlockSelection = React.useCallback((selection) => {
     setSelectedBlock(selection);
@@ -999,6 +1001,9 @@ export default function AdminModuleEditor() {
     [accountId, courseId, editorModuleId, location.search],
   );
   const draftKeyRef = useRef(draftKey);
+  // The draft key this session has written. Only a draft this session wrote is
+  // removed when the edit is undone, so a draft from an earlier visit still prompts.
+  const draftWrittenKeyRef = useRef("");
   const formSnapshot = useMemo(() => moduleFormSnapshot(form), [form]);
   const isDirty = editorReady && formSnapshot !== initialFormRef.current;
   const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
@@ -1078,12 +1083,19 @@ export default function AdminModuleEditor() {
 
   useEffect(() => {
     if (!editorReady || !isDirty || !draftKey) return undefined;
+    draftWrittenKeyRef.current = draftKey;
     const timeoutId = window.setTimeout(
       () => writeEditorDraft(draftKey, form, serverFormSnapshotRef.current),
       250,
     );
     return () => window.clearTimeout(timeoutId);
   }, [draftKey, editorReady, form, isDirty]);
+
+  useEffect(() => {
+    if (!editorReady || isDirty || !draftKey || draftWrittenKeyRef.current !== draftKey) return;
+    draftWrittenKeyRef.current = "";
+    removeEditorDraft(draftKey);
+  }, [draftKey, editorReady, isDirty]);
 
   useEffect(() => {
     if (!isDirty) return undefined;
@@ -1272,12 +1284,14 @@ export default function AdminModuleEditor() {
     return () => window.removeEventListener("keydown", handleEditorShortcut);
   }, [isSaving]);
 
-  const set = (key, value) =>
+  const set = (key, value) => {
+    setSaveError("");
     setForm((current) => {
       const next = { ...current, [key]: value };
       formRef.current = next;
       return next;
     });
+  };
   const setEditorialPresentation = (section, key, value) => {
     const current = parseEditorialDocument(form.editorialContent) || { version: 1, blocks: [] };
     const presentation = normaliseEditorialPresentation(current.presentation);
@@ -1351,6 +1365,8 @@ export default function AdminModuleEditor() {
       setForm(savedForm);
       formRef.current = savedForm;
       removeEditorDraft(draftKey);
+      setSaveError("");
+      setSavedAt(new Date());
       setEditorReady(true);
       releaseHistoryGuard();
       if (isNew && saved?.id)
@@ -1358,6 +1374,7 @@ export default function AdminModuleEditor() {
           replace: true,
         });
     } catch (saveError) {
+      setSaveError(saveError?.message || "Periksa isian, lalu coba lagi.");
       toast({
         variant: "destructive",
         title: "Modul belum disimpan",
@@ -1653,8 +1670,11 @@ export default function AdminModuleEditor() {
             elementGroups={editorialInsertGroups}
             onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
             onSave={submitEditorForm}
+            onRetry={submitEditorForm}
             isSaving={isSaving}
             isDirty={isDirty}
+            saveError={saveError}
+            savedAt={savedAt}
           />
         </TabsContent>
         <TabsContent value="preview" className="mt-5">

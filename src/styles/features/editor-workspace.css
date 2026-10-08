@@ -131,6 +131,9 @@
 .aapm-editor-save-status[data-status="dirty"] .aapm-chip__dot,
 .aapm-editor-save-status[data-status="saving"] .aapm-chip__dot { color: var(--aapm-semantic-attention); animation: aapm-pulse 1.2s ease-in-out infinite; }
 .aapm-editor-save-status__label { display: inline; }
+.aapm-editor-save-status[data-status="error"] { color: var(--aapm-semantic-danger); }
+.aapm-editor-save-status[data-status="error"] .aapm-chip__dot { color: var(--aapm-semantic-danger); }
+.aapm-editor-save-status__detail { min-width: 0; max-width: 40ch; overflow: hidden; color: var(--aapm-semantic-muted); text-overflow: ellipsis; white-space: nowrap; }
 .aapm-editor-kbd { margin-inline-start: var(--aapm-primitive-space-1); border-color: color-mix(in srgb, currentColor 35%, transparent); background: transparent; color: inherit; opacity: .75; }
 
 .aapm-editor-canvas { display: grid; gap: var(--aapm-primitive-space-4); min-width: 0; }
@@ -205,8 +208,10 @@
   .aapm-editor-outline__blocks { display: none; }
 }
 @media (max-width: 639px) {
-  .aapm-editor-save-status, .aapm-editor-kbd { display: none; }
+  .aapm-editor-save-status:not([data-status="error"]), .aapm-editor-kbd { display: none; }
   .aapm-editor-panel { padding: var(--aapm-primitive-space-4); }
+  /* A failed save stays visible on phones, because its retry is the next step. */
+  .aapm-editor-save-status[data-status="error"] .aapm-editor-save-status__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 }
 
 /* Phones: the action bar keeps one row and the keyboard hint goes. */
