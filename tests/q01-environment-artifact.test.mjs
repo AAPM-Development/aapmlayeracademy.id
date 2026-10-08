@@ -456,10 +456,31 @@ test("init never overwrites a marker that names another environment", async () =
 
 /* ----------------------------------------------------------------- artifact */
 
+/**
+ * On this memory-constrained Windows host, Vite's native and zlib work has
+ * failed with "VirtualAlloc ... out of memory", "The service was stopped",
+ * "insufficient memory", or an access violation, while the same build passes
+ * when rerun. A failed Vite step is retried up to three attempts and every
+ * retry is printed. Verification failures ("build rejected by verification")
+ * are never retried, so a real artifact problem still fails at once.
+ */
+function buildFreshArtifact(out) {
+  let attempt = null;
+  for (let tries = 1; tries <= 3; tries++) {
+    attempt = phpNode(["scripts/release/build-artifact.mjs", "--channel=staging", `--out=${out}`, `--source=${repo}`]);
+    if (attempt.status === 0) {
+      if (tries > 1) console.log(`fresh build succeeded on attempt ${tries} after Vite infrastructure failures`);
+      return attempt;
+    }
+    if (!/vite build failed/.test(attempt.stdout + attempt.stderr)) break;
+  }
+  return attempt;
+}
+
 test("a fresh build verifies with both Node and PHP, and both report the same identity", async () => {
   const root = scratch("fresh-build");
   const out = join(root, "dist");
-  const built = phpNode(["scripts/release/build-artifact.mjs", "--channel=staging", `--out=${out}`, `--source=${repo}`]);
+  const built = buildFreshArtifact(out);
   assert.equal(built.status, 0, built.stdout + built.stderr);
 
   const node = await verifyArtifact({ distRoot: out, sourceRoot: repo, contract, expectedChannel: "staging" });
