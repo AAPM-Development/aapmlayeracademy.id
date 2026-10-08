@@ -379,6 +379,8 @@ export default function AdminAiSettings() {
   const isDiscovering = discover.isPending;
   const isBusy = isSaving || isTesting || isDiscovering;
   const isLocked = lockedByPrivateConfig;
+  // The API reports whether this server can encrypt keys; say so before an admin types one.
+  const keyStorageReady = providers.every((provider) => provider.encryptionReady !== false);
 
   return (
     <AdminPageFrame
@@ -393,6 +395,9 @@ export default function AdminAiSettings() {
     >
       {isLocked ? (
         <Alert tone="warning" title="Registry dikunci konfigurasi server." description="Provider aktif dikelola dari private cPanel config. Admin tetap dapat melihat status dan menjalankan test." className="mb-5" />
+      ) : null}
+      {!isLocked && !keyStorageReady ? (
+        <Alert tone="warning" title="Penyimpanan key belum siap di server." description="Isi ai_settings_encryption_key di konfigurasi server privat sebelum menyimpan API key. Baca model dan Simpan & test tetap bisa dicoba dengan key yang diketik." className="mb-5" />
       ) : null}
 
       <div className="aapm-ai-settings">

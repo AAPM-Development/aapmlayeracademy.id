@@ -1009,6 +1009,8 @@ try {
     }
 
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');
+} catch (AiConfigurationException $exception) {
+    error_response($exception->getMessage(), 503, 'ai_configuration_missing');
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');
