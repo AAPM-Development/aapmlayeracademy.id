@@ -480,6 +480,25 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 
+test("progress saves are partial and record practice and study time", () => {
+  const api = readWorkspaceFile("../public/api/index.php");
+  const lesson = readWorkspaceFile("../src/pages/ModuleDetail.jsx");
+  const quiz = readWorkspaceFile("../src/pages/Quiz.jsx");
+  const studyTime = readWorkspaceFile("../src/lib/useStudyTime.js");
+
+  // A field the client did not send keeps its stored value.
+  assert.match(api, /array_key_exists\('completed', \$input\) \? bool_value\(\$input\['completed'\]\) : \(int\) \(\$row\['completed'\] \?\? 0\)/);
+  assert.match(api, /array_key_exists\('practicalDone', \$input\)/);
+  assert.match(api, /array_key_exists\('quizScore', \$input\)/);
+  // Study time accumulates, at most four hours per save.
+  assert.match(api, /min\(240, max\(0, \(int\) \$input\['timeSpentDeltaMinutes'\]\)\)/);
+  assert.match(lesson, /useStudyTime\(module\?\.moduleNumber/);
+  assert.match(lesson, /practicalDone: done/);
+  assert.match(quiz, /timeSpentDeltaMinutes: minutes/);
+  // Idle tabs do not count: only visible time with recent activity.
+  assert.match(studyTime, /document\.visibilityState === "visible" && Date\.now\(\) - lastActivity < IDLE_AFTER_MS/);
+});
+
 test("PWA metadata uses the canonical app icon and leaves API responses uncached", () => {
   const manifest = JSON.parse(readWorkspaceFile("../public/manifest.json"));
   assert.equal(manifest.display, "standalone");

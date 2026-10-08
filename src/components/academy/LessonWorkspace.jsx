@@ -88,7 +88,11 @@ export function LessonMedia({ module = null } = {}) {
   if (!module) return null;
 
   if (source) {
+    // An embed can be blocked (network, extensions, region); the original link
+    // is always one tap away instead of a dead grey frame.
+    const provider = /vimeo/.test(source.src) ? "Vimeo" : "YouTube";
     return (
+      <>
       <div className="aapm-lesson-media">
         {source.kind === "file" ? (
           <video
@@ -114,6 +118,15 @@ export function LessonMedia({ module = null } = {}) {
           </>
         )}
       </div>
+      {source.kind === "embed" ? (
+        <p className="aapm-lesson-media__fallback">
+          Video tidak muncul?{" "}
+          <a href={mediaUrl} target="_blank" rel="noopener noreferrer">
+            Buka di {provider}<AapmIcon name="externalLink" /><span className="aapm-visually-hidden"> (tab baru)</span>
+          </a>
+        </p>
+      ) : null}
+      </>
     );
   }
 

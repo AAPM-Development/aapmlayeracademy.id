@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, IconButton, Progress, Sheet, SheetContent, SheetTitle, useToast } from "@/design-system";
+import { Alert, Button, CheckboxField, IconButton, Progress, Sheet, SheetContent, SheetTitle, useToast } from "@/design-system";
 import { FocusShell, Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
@@ -12,6 +12,7 @@ import { useModules, useQuizQuestions, useSaveProgress, useUserProgress } from "
 import { getProgressSummary, sortModules } from "@/lib/academyData";
 import { buildCurriculum, estimateMinutes, moduleFlowState, moduleVisual } from "@/lib/academyVisuals";
 import { celebrate } from "@/lib/celebrate";
+import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
 
 const OUTLINE_KEY = "aapm-lesson-outline";
@@ -45,6 +46,8 @@ export default function ModuleDetail() {
   const [activeSection, setActiveSection] = useState("content");
   const [outlineOpen, setOutlineOpen] = useState(readOutlinePreference);
   const [outlineSheet, setOutlineSheet] = useState(false);
+  // The practice check answers at once; the saved value takes over after refetch.
+  const [practiceOverride, setPracticeOverride] = useState(null);
   const mainRef = useRef(null);
   const isLoading = modulesLoading || progressLoading;
 
@@ -63,7 +66,8 @@ export default function ModuleDetail() {
   const legacyVideoIsPresent = [module?.videoUrl, module?.videoEmbedUrl, module?.video, module?.videoScript].some(hasText);
   const objectivesArePresent = hasListContent(module?.learningObjectives) || hasListContent(module?.keyTakeaways);
   const practiceIsPresent = hasText(module?.practicalAssignment) || hasListContent(module?.checklist);
-  const flow = moduleFlowState({ module, progress: moduleProgress, hasPractice: practiceIsPresent, quizCount: questions.length });
+  const flowProgress = practiceOverride === null ? moduleProgress : { ...moduleProgress, practicalDone: practiceOverride };
+  const flow = moduleFlowState({ module, progress: flowProgress, hasPractice: practiceIsPresent, quizCount: questions.length });
 
   const learnerSections = useMemo(() => {
     const visible = lessonSections.filter((section) => {
@@ -76,7 +80,10 @@ export default function ModuleDetail() {
     return [contentSection, ...editorialNavigationItems, ...remaining].filter(Boolean);
   }, [editorialNavigationItems, editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
 
-  useEffect(() => setActiveSection("content"), [number]);
+  useEffect(() => {
+    setActiveSection("content");
+    setPracticeOverride(null);
+  }, [number]);
 
   useEffect(() => {
     if (!module) return undefined;
@@ -99,6 +106,21 @@ export default function ModuleDetail() {
       }
       return !current;
     });
+  };
+
+  // Active reading time goes to "Waktu belajar" when the learner leaves the lesson.
+  useStudyTime(module?.moduleNumber, (moduleNumber, minutes) => {
+    save({ moduleNumber, data: { moduleNumber, timeSpentDeltaMinutes: minutes } }).catch(() => {});
+  });
+
+  const togglePracticeDone = async (done) => {
+    setPracticeOverride(done);
+    try {
+      await save({ moduleNumber: number, data: { moduleNumber: number, practicalDone: done } });
+    } catch {
+      setPracticeOverride(null);
+      toast({ title: "Status praktik belum tersimpan", description: "Coba lagi setelah koneksi kembali normal.", variant: "destructive" });
+    }
   };
 
   const markComplete = async () => {
@@ -212,15 +234,30 @@ export default function ModuleDetail() {
             <LessonSection id="video" title="Video materi" icon="video" hue="violet">
               <LessonMedia module={module} />
               {hasText(module.videoScript) && (
-                <details className="aapm-callout mt-4" data-hue="violet">
-                  <summary className="aapm-callout__title cursor-pointer">Catatan instruktur</summary>
+                <details className="aapm-callout aapm-disclosure mt-4" data-hue="violet">
+                  <summary className="aapm-callout__title">Catatan instruktur<AapmIcon name="chevronDown" className="aapm-disclosure__chevron" /></summary>
                   <p className="m-0 text-body text-muted-foreground">{module.videoScript}</p>
                 </details>
               )}
             </LessonSection>
           )}
 
-          {(objectivesArePresent || practiceIsPresent) && <LessonStructuredContent module={module} document={module.editorialContent} />}
+          {(objectivesArePresent || practiceIsPresent) && (
+            <LessonStructuredContent
+              module={module}
+              document={module.editorialContent}
+              practiceAction={(
+                <CheckboxField
+                  className="aapm-practice-done"
+                  label="Saya sudah mengerjakan praktik ini"
+                  description={flow.practicalDone ? "Tercatat di progress dan poin belajar Anda." : "Centang setelah tugas di kandang selesai. Bisa dibatalkan."}
+                  checked={flow.practicalDone}
+                  disabled={saveProgress.isPending}
+                  onChange={(event) => togglePracticeDone(event.target.checked)}
+                />
+              )}
+            />
+          )}
 
           <section className="aapm-lesson-section" aria-label="Langkah berikutnya">
             {saveProgress.isError ? <Alert tone="danger" title="Progress belum tersimpan" description="Silakan coba tombol selesai lagi." className="mb-4" /> : null}

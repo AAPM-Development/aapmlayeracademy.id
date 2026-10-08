@@ -207,14 +207,19 @@ export function StatTile({ icon, hue = "green", label, value, className = undefi
  * from module content and saved progress; nothing here changes the contract.
  */
 export function ModuleFlow({ flow, active = "content", onSelect, quizTo }) {
-  const steps = [
-    { id: "content", label: "Materi", icon: "lesson", state: flow.completed || active !== "content" ? "done" : "current" },
-    ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", state: flow.completed || flow.quizAttempted ? "done" : active === "practice" ? "current" : undefined }] : []),
+  const practiceDone = flow.completed || flow.practicalDone || flow.quizAttempted;
+  const draft = [
+    { id: "content", label: "Materi", icon: "lesson", done: flow.completed || practiceDone || active !== "content" },
+    ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", done: practiceDone }] : []),
     // A passed quiz shows its tick; the score only matters while a retake is due
     // (a done "Kuis 100%" also truncated to "Kuis 10…" on phones).
-    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted && !flow.quizPassed && !flow.completed ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", state: flow.completed || flow.quizPassed ? "done" : active === "quiz" ? "current" : undefined, to: quizTo }] : []),
-    { id: "done", label: "Selesai", icon: "check", state: flow.completed ? "done" : undefined },
+    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted && !flow.quizPassed && !flow.completed ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", done: flow.completed || flow.quizPassed, to: quizTo }] : []),
+    { id: "done", label: "Selesai", icon: "check", done: flow.completed },
   ];
+  // The current step is the first unfinished one, so a later tick never sits
+  // beside an earlier step that still reads as "current".
+  const currentIndex = draft.findIndex((step) => !step.done);
+  const steps = draft.map((step, index) => ({ ...step, state: step.done ? "done" : index === currentIndex ? "current" : undefined }));
   return (
     <ol className="aapm-flow" aria-label="Alur modul">
       {steps.map((step, index) => {

@@ -92,7 +92,8 @@ export function LessonPracticalContent({ module, presentation }) {
   );
 }
 
-export function LessonStructuredContent({ module, document, withSectionIds = true }) {
+/** `practiceAction` (learner player only) closes the practice section, e.g. the "done" check. */
+export function LessonStructuredContent({ module, document, withSectionIds = true, practiceAction = null }) {
   const presentation = useMemo(() => lessonPresentation(document || module?.editorialContent), [document, module?.editorialContent]);
   const objectivesArePresent = hasListContent(module?.learningObjectives) || hasListContent(module?.keyTakeaways);
   const practiceIsPresent = hasText(module?.practicalAssignment) || hasListContent(module?.checklist);
@@ -106,6 +107,7 @@ export function LessonStructuredContent({ module, document, withSectionIds = tru
       {practiceIsPresent && (
         <LessonSection id={withSectionIds ? "practical" : undefined} title="Praktik di kandang" icon="practice" hue="teal">
           <LessonPracticalContent module={module} presentation={presentation} />
+          {practiceAction}
         </LessonSection>
       )}
     </>

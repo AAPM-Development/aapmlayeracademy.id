@@ -168,13 +168,13 @@ export function AssessmentResult({ passed = false, score = 0, total = 0, passing
 /** Answer review after submission. */
 export function AnswerReview({ questions = [], answers = {} }) {
   return (
-    <details className="aapm-card aapm-answer-review mt-6">
+    <details className="aapm-card aapm-disclosure mt-6">
       <summary className="aapm-card__header">
         <span className="grid min-w-0 gap-0.5">
           <span className="aapm-card__title">Tinjau jawaban</span>
           <span className="aapm-card__description">Lihat jawaban yang benar untuk setiap soal.</span>
         </span>
-        <AapmIcon name="chevronDown" className="aapm-answer-review__chevron" />
+        <AapmIcon name="chevronDown" className="aapm-disclosure__chevron" />
       </summary>
       <ol className="aapm-card__content m-0 grid list-none gap-2 p-5 pt-0">
         {questions.map((item, index) => {

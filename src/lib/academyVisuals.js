@@ -92,6 +92,7 @@ export function moduleFlowState({ module, progress, hasPractice, quizCount = 0 }
     quizAttempted: quizTotal > 0,
     quizPercent,
     quizPassed: quizPercent !== null && quizPercent >= 70,
+    practicalDone: Boolean(progress?.practicalDone),
     hasQuiz: quizCount > 0,
     hasPractice: Boolean(hasPractice),
     moduleNumber: module?.moduleNumber,

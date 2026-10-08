@@ -749,8 +749,9 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
 .aapm-result__text { max-width: 44ch; margin: 0; color: var(--aapm-semantic-muted); }
 .aapm-result-actions { display: grid; gap: var(--aapm-primitive-space-2); width: 100%; max-width: 420px; margin: var(--aapm-primitive-space-6) auto 0; }
 
-/* Answer review disclosure: reads as an action (chevron, hover, focus). */
-.aapm-answer-review > summary {
+/* Disclosure (answer review, instructor notes): reads as an action with a
+ * chevron, hover and focus ring instead of the browser's triangle. */
+.aapm-disclosure > summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -760,11 +761,31 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
   list-style: none;
   transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
 }
-.aapm-answer-review > summary::-webkit-details-marker { display: none; }
-.aapm-answer-review > summary:hover { background: var(--aapm-semantic-surface-subtle); }
-.aapm-answer-review > summary:focus-visible { outline: var(--aapm-primitive-focus-width) solid var(--aapm-semantic-focus); outline-offset: 2px; }
-.aapm-answer-review__chevron { width: 20px; height: 20px; color: var(--aapm-semantic-muted); transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease); }
-.aapm-answer-review[open] .aapm-answer-review__chevron { transform: rotate(180deg); }
+.aapm-disclosure > summary::-webkit-details-marker { display: none; }
+.aapm-card.aapm-disclosure > summary:hover { background: var(--aapm-semantic-surface-subtle); }
+.aapm-disclosure > summary:focus-visible { outline: var(--aapm-primitive-focus-width) solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-disclosure__chevron { width: 20px; height: 20px; color: var(--aapm-semantic-muted); transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease); }
+.aapm-disclosure[open] .aapm-disclosure__chevron { transform: rotate(180deg); }
+.aapm-callout.aapm-disclosure[open] > summary { margin-bottom: var(--aapm-primitive-space-2); }
+
+/* Practice done: a dashed promise that turns into a green, ticked record. */
+.aapm-practice-done {
+  margin-top: var(--aapm-primitive-space-4);
+  padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-4);
+  border: 2px dashed var(--aapm-semantic-border-strong);
+  border-radius: var(--aapm-component-surface-radius);
+  background: var(--aapm-semantic-surface);
+  cursor: pointer;
+  transition: border-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease), background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-practice-done:hover { border-color: var(--aapm-semantic-primary); }
+.aapm-practice-done:has(.aapm-checkbox:checked) {
+  border-style: solid;
+  border-color: var(--aapm-semantic-success);
+  background: var(--aapm-semantic-feedback-success-surface);
+}
+.aapm-practice-done:has(.aapm-checkbox:focus-visible) { outline: var(--aapm-primitive-focus-width) solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-practice-done > span > span:first-child { font-weight: var(--aapm-primitive-weight-label); }
 
 /* --------------------------------------------------- Admin curriculum */
 .aapm-curriculum { display: grid; gap: var(--aapm-primitive-space-4); }
@@ -937,3 +958,6 @@ a.aapm-lesson-row__title:hover { color: var(--aapm-semantic-primary); }
   .aapm-flow { grid-auto-flow: column; grid-auto-columns: auto; justify-content: space-between; }
   .aapm-flow__step[data-state="current"] .aapm-flow__text { overflow: visible; }
 }
+.aapm-lesson-media__fallback { margin: var(--aapm-primitive-space-2) 0 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); line-height: var(--aapm-component-type-caption-line); }
+.aapm-lesson-media__fallback a { display: inline-flex; align-items: center; gap: 4px; color: var(--hue-ink, var(--aapm-semantic-primary)); font-weight: var(--aapm-primitive-weight-label); text-decoration: underline; text-underline-offset: 3px; }
+.aapm-lesson-media__fallback .aapm-icon { width: 14px; height: 14px; }

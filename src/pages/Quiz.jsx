@@ -64,7 +64,8 @@ export default function Quiz() {
     setDuration(Date.now() - startedAt.current);
     setSubmitted(true);
     try {
-      await save({ moduleNumber: number, data: { moduleNumber: number, completed: passed || Boolean(previousProgress?.completed), quizScore: score, quizTotal: questions.length } });
+      const minutes = Math.round((Date.now() - startedAt.current) / 60000);
+      await save({ moduleNumber: number, data: { moduleNumber: number, completed: passed || Boolean(previousProgress?.completed), quizScore: score, quizTotal: questions.length, timeSpentDeltaMinutes: minutes } });
       // The result screen is the feedback; a toast would repeat it over the bar.
       if (passed) celebrate();
     } catch {
