@@ -1,0 +1,1 @@
+import{j as e}from"./index-xDtqqs14.js";import{P as s}from"./AppShell-Bt8JZ-xF.js";function m({children:t=null,width:n,className:o="",...r}={}){return e.jsx(s,{width:n,className:o,...r,children:t})}export{m as C};
