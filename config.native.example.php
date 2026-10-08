@@ -1,10 +1,13 @@
 <?php
 
-// Copy this file to config.php for local development, or to
-// /home/aapp8359/aapmlayeracademy-config.php on cPanel. Keep the real file
-// outside git and outside public_html whenever possible.
+// Local development and disposable test configuration only.
+// Copy this file to config.php in the repository root (never inside public/).
+// Deployed environments use config.staging.example.php or
+// config.production.example.php, filled in on the server outside public_html.
+// Keep the real file out of git.
 return [
-    'app_env' => 'local',
+    // Required. local and test are the only environments that may use SQLite.
+    'environment' => 'local',
     'db_driver' => 'sqlite',
     'db_path' => __DIR__ . '/storage/aapmlayeracademy.sqlite',
     'db_host' => '127.0.0.1',
@@ -12,6 +15,8 @@ return [
     'db_name' => '',
     'db_user' => '',
     'db_password' => '',
+    // Optional for local work. Set true to exercise the marker check locally.
+    'environment_marker_required' => false,
     'session_name' => 'aapm_layer_session',
     'app_url' => 'http://127.0.0.1:8000',
     'mail_from' => '',

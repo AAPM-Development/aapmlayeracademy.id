@@ -5,8 +5,6 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/editorialMedia.php';
 require_once __DIR__ . '/openrouter.php';
 
-apply_security_headers();
-start_app_session();
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $rawPath = isset($_GET['path']) ? (string) $_GET['path'] : (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
 $path = trim($rawPath, '/');
@@ -14,12 +12,24 @@ $path = preg_replace('#^api/?#', '', $path);
 $path = preg_replace('#^index\.php/?#', '', $path);
 $path = trim((string) $path, '/');
 
-try {
-    if ($path === 'health' && $method === 'GET') {
-        db();
-        json_response(['ok' => true, 'app' => 'aapm-layer-academy-native', 'environment' => app_config()['app_env']]);
-    }
+// Health reports its own state, including configuration problems, as 503.
+if ($path === 'health' && $method === 'GET') {
+    aapm_health_response();
+}
 
+// Configuration is validated before the session, security headers, or any
+// database work. A missing or invalid environment fails closed.
+try {
+    aapm_assert_runtime_identity(app_config());
+} catch (AppConfigException $exception) {
+    error_log('[aapm-native-api] configuration unavailable: ' . $exception->safeCode());
+    error_response('Konfigurasi server belum siap.', 503, 'configuration_unavailable');
+}
+
+apply_security_headers();
+start_app_session();
+
+try {
     if ($path === 'auth/csrf' && $method === 'GET') {
         json_response(['csrfToken' => csrf_token()]);
     }
@@ -226,7 +236,7 @@ try {
                 $update = db()->prepare('UPDATE users SET reset_token_hash = ?, reset_token_expires_at = ? WHERE id = ?');
                 $update->execute([hash('sha256', $token), $expires, (int) $user['id']]);
                 send_password_reset_email($email, $token);
-                if (app_config()['app_env'] === 'local' && app_config()['expose_dev_reset_token']) {
+                if (app_config()['environment'] === 'local' && app_config()['expose_dev_reset_token']) {
                     $result['devResetToken'] = $token;
                 }
             }
@@ -1035,6 +1045,9 @@ try {
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');
 } catch (AiConfigurationException $exception) {
     error_response($exception->getMessage(), 503, 'ai_configuration_missing');
+} catch (AppConfigException $exception) {
+    error_log('[aapm-native-api] configuration unavailable: ' . $exception->safeCode());
+    error_response('Konfigurasi server belum siap.', 503, 'configuration_unavailable');
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');

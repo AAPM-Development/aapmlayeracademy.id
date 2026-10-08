@@ -2,6 +2,5 @@
 deployment:
   tasks:
     - export DEPLOYBRANCH="$(git branch --show-current)"
-    - 'if [ "$DEPLOYBRANCH" = "main" ]; then export DEPLOYPATH=/home/aapp8359/public_html/; elif [ "$DEPLOYBRANCH" = "develop" ]; then export DEPLOYPATH=/home/aapp8359/public_html/staging.aapmlayeracademy.id/; else echo "Unsupported deploy branch: $DEPLOYBRANCH"; exit 1; fi'
-    - /bin/mkdir -p "$DEPLOYPATH"
-    - /bin/cp -R dist/. "$DEPLOYPATH"
+    - 'if [ "$DEPLOYBRANCH" = "main" ]; then export AAPM_RELEASE_CHANNEL=production; export DEPLOYPATH=/home/aapp8359/public_html/; export AAPM_PRIVATE_CONFIG=/home/aapp8359/aapmlayeracademy-production-config.php; elif [ "$DEPLOYBRANCH" = "develop" ]; then export AAPM_RELEASE_CHANNEL=staging; export DEPLOYPATH=/home/aapp8359/public_html/staging.aapmlayeracademy.id/; export AAPM_PRIVATE_CONFIG=/home/aapp8359/aapmlayeracademy-staging-config.php; else echo "Unsupported deploy branch: $DEPLOYBRANCH"; exit 1; fi'
+    - '"${AAPM_PHP:-php}" scripts/deploy/cpanel-deploy.php --channel="$AAPM_RELEASE_CHANNEL" --target="$DEPLOYPATH" --private-config="$AAPM_PRIVATE_CONFIG" --source="$PWD" --dist="$PWD/dist" --state="$HOME/.aapm-release-state"'
