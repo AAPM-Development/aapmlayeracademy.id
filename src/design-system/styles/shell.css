@@ -208,6 +208,40 @@
 .aapm-app[data-collapsed="true"] .aapm-sidebar-progress { grid-template-columns: auto; justify-content: center; margin-inline: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-2); }
 .aapm-app[data-collapsed="true"] .aapm-sidebar-progress > :last-child { display: none; }
 
+/* Admin workspace card: the same anatomy as the learner progress card, on a
+ * neutral surface. Admin areas keep one accent; the card names the workspace. */
+.aapm-sidebar-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--aapm-primitive-space-3);
+  margin: 0 var(--aapm-component-nav-padding) var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-3);
+  border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-primitive-radius-panel);
+  background: var(--aapm-semantic-surface-subtle);
+  color: var(--aapm-semantic-foreground);
+  text-decoration: none;
+  transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-sidebar-card:hover { background: var(--aapm-semantic-surface); }
+.aapm-sidebar-card:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-sidebar-card__icon {
+  display: grid;
+  place-items: center;
+  width: var(--aapm-component-action-height);
+  height: var(--aapm-component-action-height);
+  border-radius: var(--aapm-primitive-radius-control);
+  background: var(--aapm-semantic-surface);
+  color: var(--aapm-semantic-primary);
+  box-shadow: var(--aapm-semantic-shadow-rest);
+}
+.aapm-sidebar-card__icon .aapm-icon { width: var(--aapm-primitive-icon-lg); height: var(--aapm-primitive-icon-lg); }
+.aapm-sidebar-card__title { display: block; margin: 0; font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-sidebar-card__meta { display: block; margin: 0; overflow: hidden; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); line-height: var(--aapm-component-type-caption-line); text-overflow: ellipsis; white-space: nowrap; }
+.aapm-app[data-collapsed="true"] .aapm-sidebar-card { grid-template-columns: auto; justify-content: center; margin-inline: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-2); }
+.aapm-app[data-collapsed="true"] .aapm-sidebar-card > :last-child { display: none; }
+
 /* Account row in the sidebar footer. */
 .aapm-account-row {
   display: flex;
