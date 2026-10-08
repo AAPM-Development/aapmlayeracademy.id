@@ -1,0 +1,1 @@
+import{j as e}from"./index-DVpWFtsp.js";import{P as s}from"./AppShell-DhhSoVeV.js";function m({children:t=null,width:n,className:o="",...r}={}){return e.jsx(s,{width:n,className:o,...r,children:t})}export{m as C};
