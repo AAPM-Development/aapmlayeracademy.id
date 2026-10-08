@@ -1145,9 +1145,10 @@
    * elevation contract as the expanded panel. */
 
 .aapm-ai-launcher {
-    border-color: hsl(var(--surface-border) / var(--aapm-shell-border-alpha, 0.54));
-    background: hsl(var(--surface-default) / 0.96);
-    box-shadow: var(--aapm-shell-shadow, none);
+    border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+    border-radius: var(--aapm-primitive-radius-pill);
+    background: var(--aapm-semantic-surface);
+    box-shadow: var(--aapm-semantic-shadow-raised);
     transition:
       transform var(--duration-fast),
       border-color var(--duration-fast),
@@ -1155,9 +1156,9 @@
   }
 
 .aapm-ai-launcher:hover {
-    border-color: hsl(var(--surface-border) / 0.68);
-    background: hsl(var(--surface-subtle));
-    box-shadow: var(--aapm-shell-shadow, none);
+    border-color: var(--aapm-semantic-border-strong);
+    background: var(--aapm-semantic-surface-subtle);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
     transform: translateY(-1px);
   }
 
