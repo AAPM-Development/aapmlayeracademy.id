@@ -1,4 +1,4 @@
-/* Module editor composition: one command bar, canvas panels, inspector. */
+/* Module editor composition: mode switch in the page header, canvas panels, inspector, action bar. */
 .aapm-editor-content { display: grid; gap: var(--aapm-primitive-space-4); }
 
 .aapm-editor-workspace {
@@ -8,23 +8,52 @@
   gap: var(--aapm-primitive-space-5);
 }
 
-/* Command bar: a flat row under the mode tabs, not a second card. Its only filled
- * control is the save action, so it never competes with the mode tabs. */
-.aapm-editor-command-bar {
+/* Mode switch: Konten / Pratinjau / Bank soal, in the page header beside the actions.
+ * It is one quiet segmented control; the active mode is the only raised surface. */
+.aapm-editor-mode {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: var(--aapm-semantic-surface-subtle);
+}
+.aapm-editor-mode .aapm-tabs-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aapm-primitive-space-1-5);
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: calc(var(--aapm-primitive-radius-control) - 2px);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-support-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.aapm-editor-mode .aapm-tabs-trigger .aapm-icon { width: 15px; height: 15px; }
+.aapm-editor-mode .aapm-tabs-trigger:hover:not(:disabled) { color: var(--aapm-semantic-foreground); }
+.aapm-editor-mode .aapm-tabs-trigger[data-state="active"] { background: var(--aapm-semantic-surface); color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); box-shadow: var(--aapm-semantic-shadow-rest); }
+.aapm-editor-mode .aapm-tabs-trigger:disabled { opacity: .45; cursor: not-allowed; }
+.aapm-editor-mode .aapm-tabs-trigger:focus-visible { outline: 2px solid var(--aapm-semantic-primary); outline-offset: 2px; }
+
+/* Action bar: the one save surface, stuck to the bottom of the canvas. */
+.aapm-editor-actionbar {
   position: sticky;
-  top: 0;
+  bottom: 0;
   z-index: var(--aapm-primitive-layer-sticky);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-4);
-  padding: var(--aapm-primitive-space-2) 0;
-  border: 0;
-  border-bottom: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
-  border-radius: 0;
+  padding: var(--aapm-primitive-space-3) 0;
+  border-top: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
   background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
-  box-shadow: none;
   backdrop-filter: blur(10px);
 }
 .aapm-editor-section-nav { display: flex; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; }
@@ -49,7 +78,7 @@
 .aapm-editor-section-link:hover { background: transparent; color: var(--aapm-semantic-foreground); }
 .aapm-editor-section-link[aria-current="step"] { background: transparent; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
 .aapm-editor-section-link[aria-current="step"] .aapm-icon { color: var(--aapm-semantic-primary); }
-.aapm-editor-command-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-2); }
+.aapm-editor-actionbar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-2); }
 .aapm-editor-save-status { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-1-5); padding-inline: var(--aapm-primitive-space-2); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); white-space: nowrap; }
 .aapm-editor-save-status[data-status="saved"] .aapm-chip__dot { color: var(--aapm-semantic-success); }
 .aapm-editor-save-status[data-status="dirty"] { color: var(--aapm-semantic-attention-soft-text); }
@@ -123,13 +152,13 @@
   .aapm-editor-panel { padding: var(--aapm-primitive-space-4); }
 }
 
-/* Phones: the sticky bar stacks into two short rows instead of wrapping into four. */
+/* Phones: the action bar keeps one row and the keyboard hint goes. */
 @media (max-width: 639px) {
-  .aapm-editor-command-bar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 6px; }
+  .aapm-editor-actionbar { flex-wrap: nowrap; gap: 4px; padding: 6px 0; }
   .aapm-editor-section-nav { width: 100%; }
-  .aapm-editor-command-actions { flex-wrap: nowrap; justify-content: space-between; gap: 4px; }
-  .aapm-editor-command-actions .aapm-button { padding-inline: 10px; }
-  .aapm-editor-command-actions .aapm-editor-kbd { display: none; }
+  .aapm-editor-actionbar__actions { flex-wrap: nowrap; justify-content: space-between; gap: 4px; }
+  .aapm-editor-actionbar__actions .aapm-button { padding-inline: 10px; }
+  .aapm-editor-actionbar__actions .aapm-editor-kbd { display: none; }
   .aapm-editor-save-status { padding-inline: 0; }
   .aapm-editor-save-status__label {
     position: absolute;

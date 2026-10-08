@@ -78,10 +78,6 @@
    * the shared Ten4Seven controls, but let the document flow and hairlines
    * provide hierarchy so the author can focus on the content itself. */
 
-.aapm-editor-mode-tabs {
-    border-color: var(--aapm-editor-hairline) !important;
-  }
-
 .aapm-editorial-summary {
     border: 0 !important;
     border-bottom: 1px solid var(--aapm-editor-hairline) !important;
@@ -293,35 +289,6 @@
   }
 
 @media (max-width: 860px) {
-    .aapm-editor-command-bar {
-      position: static;
-      backdrop-filter: none;
-    }
-
-    .aapm-editor-command-top {
-      align-items: flex-start;
-    }
-
-    .aapm-editor-current-location {
-      flex: 1 1 auto;
-    }
-
-    .aapm-editor-section-nav {
-      order: 3;
-      flex-basis: 100%;
-      width: 100%;
-      border-top: 1px solid hsl(var(--surface-border) / 0.24);
-      padding-top: var(--t7-ref-space-1, 0.25rem);
-    }
-
-    .aapm-editor-command-actions {
-      margin-left: auto;
-    }
-
-    .aapm-editor-command-actions > * {
-      flex-shrink: 0;
-    }
-
     .aapm-editorial-outline > aside {
       border-left: 0 !important;
     }

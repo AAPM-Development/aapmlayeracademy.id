@@ -9,6 +9,7 @@ import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import EditorQuickNav from "@/components/admin/EditorQuickNav";
+import EditorActionBar from "@/components/admin/EditorActionBar";
 import { levelVisual } from "@/lib/academyVisuals";
 import {
   Badge,
@@ -1423,42 +1424,36 @@ export default function AdminModuleEditor() {
       </AdminPageFrame>
     );
   return (
-    <AdminPageFrame
-      editor
-      title={isNew ? "Modul baru" : "Edit modul"}
-      actions={(
-        <>
-          <Button type="button" variant="secondary" onClick={() => requestNavigation(`/modules/${form.moduleNumber}`)} disabled={isNew}><AapmIcon name="eye" />Lihat di Academy</Button>
-          {!isNew ? (
-            <OverflowMenu
-              label="Aksi modul"
-              triggerVariant="secondary"
-              size="md"
-              items={[
-                { id: "delete", label: "Hapus modul", icon: "delete", tone: "danger", disabled: deleteModule.isPending, onSelect: () => setPendingModuleDelete(true) },
-              ]}
-            />
-          ) : null}
-        </>
-      )}
-    >
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList variant="underline" className="aapm-editor-mode-tabs">
-          <TabsTrigger value="content" icon="edit">Konten modul</TabsTrigger>
-          <TabsTrigger value="preview" icon="eye">Pratinjau learner</TabsTrigger>
-          <TabsTrigger value="assessment" icon="quiz" disabled={isNew}>Bank soal</TabsTrigger>
-        </TabsList>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <AdminPageFrame
+        editor
+        title={isNew ? "Modul baru" : "Edit modul"}
+        actions={(
+          <>
+            <TabsList className="aapm-editor-mode" aria-label="Mode editor">
+              <TabsTrigger value="content" icon="edit">Konten</TabsTrigger>
+              <TabsTrigger value="preview" icon="eye">Pratinjau</TabsTrigger>
+              <TabsTrigger value="assessment" icon="quiz" disabled={isNew}>Bank soal</TabsTrigger>
+            </TabsList>
+            <Button type="button" variant="secondary" onClick={() => requestNavigation(`/modules/${form.moduleNumber}`)} disabled={isNew}><AapmIcon name="eye" />Lihat di Academy</Button>
+            {!isNew ? (
+              <OverflowMenu
+                label="Aksi modul"
+                triggerVariant="secondary"
+                size="md"
+                items={[
+                  { id: "delete", label: "Hapus modul", icon: "delete", tone: "danger", disabled: deleteModule.isPending, onSelect: () => setPendingModuleDelete(true) },
+                ]}
+              />
+            ) : null}
+          </>
+        )}
+      >
         <TabsContent value="content" className="aapm-editor-content">
           <EditorQuickNav
             sections={EDITOR_SECTIONS}
             activeSection={activeSection}
             onNavigate={scrollToEditorSection}
-            onPreview={() => setActiveTab("preview")}
-            onSave={submitEditorForm}
-            isSaving={isSaving}
-            isDirty={isDirty}
-            elementItems={editorialInsertActions}
-            onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
           />
           <form id="module-editor-form" onSubmit={save} className="aapm-editor-form aapm-editor-workspace">
             <div className="aapm-editor-canvas">
@@ -1649,6 +1644,13 @@ export default function AdminModuleEditor() {
               </section>
             </aside>
           </form>
+          <EditorActionBar
+            elementItems={editorialInsertActions}
+            onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
+            onSave={submitEditorForm}
+            isSaving={isSaving}
+            isDirty={isDirty}
+          />
         </TabsContent>
         <TabsContent value="preview" className="mt-5">
           <Surface className="p-3 sm:p-5 lg:p-7">
@@ -1686,7 +1688,7 @@ export default function AdminModuleEditor() {
         <TabsContent value="assessment" className="mt-5">
           {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}
         </TabsContent>
-      </Tabs>
+      </AdminPageFrame>
       <ConfirmDialog
         open={Boolean(pendingDraft)}
         onOpenChange={(open) => {
@@ -1759,6 +1761,6 @@ export default function AdminModuleEditor() {
           remove({ purgeProgress: true });
         }}
       />
-    </AdminPageFrame>
+    </Tabs>
   );
 }
