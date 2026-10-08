@@ -17,14 +17,11 @@ import {
   OverflowMenu,
   Badge,
   Button,
-  Card,
-  CardContent,
   ChartPanel,
   DataTable,
   FormGrid,
   Field,
   FormSection,
-  IconTile,
   Input,
   KPICluster,
   Label,
@@ -270,25 +267,26 @@ export default function KpiDashboard() {
     setSheetOpen(true);
   };
 
+  const hasData = sorted.length > 0;
+
   return (
     <ContentContainer>
+      {/* With no weeks yet the empty state carries the one primary action, and
+          there is nothing for APPI to analyse. */}
       <PageHeader
         title="Farm KPI"
         description="Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya."
-        actions={(
+        actions={hasData ? (
           <>
-            <Button asChild variant="ai"><Link to="/ai-assistant"><AapmIcon name="ai" />Analisis dengan APPI</Link></Button>
+            <Button asChild variant="secondary"><Link to="/ai-assistant"><AapmIcon name="ai" />Analisis dengan APPI</Link></Button>
             <Button type="button" onClick={openNewEntry}><AapmIcon name="plus" />Catat minggu ini</Button>
           </>
-        )}
+        ) : null}
       />
 
-
-      <KPICluster label={`${activeSourceLabel} · ringkasan KPI`} columns={4} items={activeStats} />
-
       {isLoading ? (
-        <EmptyKpiState loading />
-      ) : sorted.length === 0 ? (
+        <StateView kind="loading" title="Memuat data KPI…" description="Kami sedang menyiapkan ringkasan produksi Anda." />
+      ) : !hasData ? (
         <StateView
           kind="empty"
           icon="kpi"
@@ -298,13 +296,10 @@ export default function KpiDashboard() {
           action={<Button type="button" onClick={openNewEntry}><AapmIcon name="plus" />Catat data pertama</Button>}
         />
       ) : (
-        <section className="grid gap-4" aria-label="Grafik tren">
-        {isLoading ? (
-          <EmptyKpiState loading />
-        ) : sorted.length === 0 ? (
-          <EmptyKpiState />
-        ) : (
-          <>
+        <>
+          <KPICluster label={`${activeSourceLabel} · ringkasan KPI`} columns={4} items={activeStats} />
+
+          <section className="grid gap-4" aria-label="Grafik tren">
             <ChartPanel
               className="min-w-0"
               title={"HDP trend"}
@@ -388,32 +383,30 @@ export default function KpiDashboard() {
                 }
               />
             </div>
-          </>
-        )}
-        </section>
-      )}
+          </section>
 
-            <section aria-labelledby="weekly-history-title">
-        <SectionHeader
-          id="weekly-history-title"
-          title="Riwayat mingguan"
-          description="Data yang tersimpan di akun Anda. Edit untuk mengoreksi angka."
-          actions={<Badge>{rows.length} catatan</Badge>}
-        />
-        <DataTable
-          className="aapm-token-table"
-          caption="Riwayat input KPI mingguan"
-          columns={weeklyColumns}
-          rows={visibleWeeklyRows}
-          rowKey={(row) => String(row.id)}
-          density="compact"
-          responsive="stacked"
-          loading={isLoading}
-          emptyMessage="Belum ada data mingguan. Isi form di samping untuk memulai."
-          sort={tableSort}
-          onSort={changeTableSort}
-        />
-      </section>
+          <section aria-labelledby="weekly-history-title">
+            <SectionHeader
+              id="weekly-history-title"
+              title="Riwayat mingguan"
+              description="Data yang tersimpan di akun Anda. Edit untuk mengoreksi angka."
+              actions={<Badge>{rows.length} catatan</Badge>}
+            />
+            <DataTable
+              className="aapm-token-table"
+              caption="Riwayat input KPI mingguan"
+              columns={weeklyColumns}
+              rows={visibleWeeklyRows}
+              rowKey={(row) => String(row.id)}
+              density="compact"
+              responsive="stacked"
+              emptyMessage="Belum ada data mingguan."
+              sort={tableSort}
+              onSort={changeTableSort}
+            />
+          </section>
+        </>
+      )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="aapm-form-sheet">
@@ -428,7 +421,7 @@ export default function KpiDashboard() {
             description="Field inti untuk membaca performa flock."
             className="space-y-3"
           >
-            <FormGrid columns={2} className="gap-x-3 gap-y-3">
+            <FormGrid columns={2}>
               {primaryFields.map((field) => (
                 <MetricInput
                   key={field.key}
@@ -450,7 +443,7 @@ export default function KpiDashboard() {
             description="Suhu, input pakan, dan biaya membantu menjelaskan penyimpangan."
             className="space-y-3"
           >
-            <FormGrid columns={2} className="gap-x-3 gap-y-3">
+            <FormGrid columns={2}>
               {contextFields.map((field) => (
                 <MetricInput
                   key={field.key}
@@ -684,27 +677,9 @@ function sortRows(rows, sort) {
 
 function ChartEmpty({ message }) {
   return (
-    <div className="flex min-h-[10rem] items-center justify-center rounded-[var(--radius-control)] border border-dashed border-border bg-surface-subtle px-5 text-center text-sm text-muted-foreground">
+    <div className="flex min-h-[10rem] items-center justify-center rounded-control border border-dashed border-border bg-surface-subtle px-5 text-center text-support text-muted-foreground">
       {message}
     </div>
-  );
-}
-
-function EmptyKpiState({ loading = false } = {}) {
-  return (
-    <Card className="aapm-token-card border-dashed">
-      <CardContent className="p-10 text-center sm:p-14">
-        <IconTile icon="analytics" tone="blue" size="lg" className="mx-auto" />
-        <h2 className="mt-4 text-lg font-semibold">
-          {loading ? "Memuat data KPI…" : "Mulai dengan data mingguan pertama"}
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          {loading
-            ? "Kami sedang menyiapkan ringkasan produksi Anda."
-            : "Masukkan HDP, pakan, produksi, dan biaya untuk melihat tren operasional farm."}
-        </p>
-      </CardContent>
-    </Card>
   );
 }
 
