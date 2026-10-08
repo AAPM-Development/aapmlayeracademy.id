@@ -47,7 +47,7 @@ Referensi detail token dan komponen ada di [AAPM_DESIGN_SYSTEM.md](AAPM_DESIGN_S
 |---|---|---|---|---|
 | Materi / lesson | **Course player** | FocusShell | Command bar sticky (progres + prev/next), konten sentral (± 68ch), outline di sheet, callout | `ModuleDetail.jsx`, `LessonWorkspace.jsx` |
 | Kuis / ujian | **Focus assessment** | FocusShell | Satu pertanyaan, pilihan bertombol key, feedback bar, navigator soal | `Quiz.jsx`, `FinalExam.jsx`, `AssessmentComponents.jsx` |
-| Room chat APPI | **Chat workspace (ChatGPT-like)** | AppShell + workspace | Riwayat kiri (dua segmented + search), thread tengah, composer bawah, welcome cards | `AiAssistant.jsx`, `components/ai/AiHistoryControls.jsx` |
+| Room chat APPI | **Chat workspace (ChatGPT-like)** | AppShell + workspace | Riwayat kiri: tombol "Percakapan baru", segmented Chat/Aktivitas, search, filter Aktif/Arsip + menu urutkan. Thread tengah: jawaban tanpa kartu, balasan lokal punya blok sendiri. Composer bawah: toggle KPI nonaktif bila belum ada catatan. Welcome cards | `AiAssistant.jsx`, `components/ai/AiHistoryControls.jsx`, `components/ai/AiMessageMeta.jsx` |
 | Kalkulator | **Tool pattern** | AppShell | Rail alat, kartu input, hasil sticky (`CalcResult`) | `Calculators.jsx` |
 | Beranda & jalur learner | **Course hub** | AppShell | Hero, continue card, stat tiles, level path | `Home.jsx`, `Modules.jsx` |
 | Daftar admin (pengguna, peserta) | **LMS list** | AdminShell | Toolbar (search + jumlah), `DataTable` stacked, aksi per baris, detail di Sheet | `AdminUsers.jsx`, `AdminLearners.jsx` |
