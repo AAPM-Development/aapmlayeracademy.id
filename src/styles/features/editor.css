@@ -63,9 +63,9 @@
     }
 
     .aapm-rich-editor__toolbar-button {
-      width: 2.5rem;
-      min-width: 2.5rem;
-      height: 2.5rem;
+      width: 2.75rem;
+      min-width: 2.75rem;
+      height: 2.75rem;
     }
 
     .aapm-rich-editor__toolbar-separator {
@@ -211,6 +211,8 @@
 
 .aapm-editor-slide-assets {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: var(--t7-ref-space-2, 0.5rem);
   }
 

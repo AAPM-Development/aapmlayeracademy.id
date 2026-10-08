@@ -229,11 +229,10 @@
     border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0;
     background: var(--aapm-semantic-surface);
     box-shadow: var(--aapm-semantic-shadow-overlay);
-    transform: translateY(100%);
-    visibility: hidden;
-    transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), visibility var(--aapm-primitive-motion-base);
+    /* A closed sheet is not rendered, so it cannot hold focus. An open one takes focus at once. */
+    display: none;
   }
-  .aapm-editor-outline[data-drawer-open="true"] { transform: none; visibility: visible; }
+  .aapm-editor-outline[data-drawer-open="true"] { display: grid; }
   .aapm-editor-outline .aapm-editor-drawer-close { display: inline-flex; }
   .aapm-editor-actionbar [data-drawer="outline"] { display: inline-flex; }
 }
@@ -251,11 +250,10 @@
     border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0;
     background: var(--aapm-semantic-surface);
     box-shadow: var(--aapm-semantic-shadow-overlay);
-    transform: translateY(100%);
-    visibility: hidden;
-    transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), visibility var(--aapm-primitive-motion-base);
+    /* A closed sheet is not rendered, so it cannot hold focus. An open one takes focus at once. */
+    display: none;
   }
-  .aapm-editor-inspector[data-drawer-open="true"] { transform: none; visibility: visible; }
+  .aapm-editor-inspector[data-drawer-open="true"] { display: grid; }
   .aapm-editor-inspector__head { display: flex; justify-content: flex-end; }
   .aapm-editor-inspector .aapm-editor-drawer-close { display: inline-flex; }
   .aapm-editor-actionbar [data-drawer="inspector"] { display: inline-flex; }
@@ -271,4 +269,39 @@
   .aapm-editor-actionbar__actions [data-editor-add-menu],
   .aapm-editor-actionbar__actions .aapm-editor-kbd { display: none; }
   .aapm-editor-save-status { padding-inline: 0; }
+}
+
+/* Touch and narrow layouts: no hover is needed to reach an editor control, and targets
+ * are sized for fingers. Fields are 16px, so iOS does not zoom when one is focused. */
+@media (hover: none), (pointer: coarse), (max-width: 1199px) {
+  .aapm-editor-outline__item { grid-template-columns: 28px minmax(0, 1fr); }
+  .aapm-editor-outline__grip { opacity: 1; width: 28px; height: 44px; }
+  .aapm-editor-outline__section,
+  .aapm-editor-outline__target { min-height: 44px; }
+  .aapm-editor-point-action { opacity: 1; min-width: 40px; min-height: 40px; }
+  .aapm-editor-point-add { min-height: 44px; }
+  .aapm-editor-mode .aapm-tabs-trigger { min-height: 44px; }
+  .aapm-inspector-tabs .aapm-tabs-trigger { min-height: 44px; }
+  .aapm-editor-actionbar .aapm-button { min-height: 44px; }
+  .aapm-editor-drawer-close { min-width: 44px; min-height: 44px; }
+  .aapm-editor-doc-head .aapm-chip { min-height: 44px; }
+  .aapm-editor-doc-title { min-height: 44px; }
+  .aapm-editor-content [role="combobox"],
+  .aapm-editor-inspector [role="combobox"] { min-height: 44px; }
+  .aapm-hue-select__swatch { width: 40px; height: 40px; }
+  .aapm-editor-content .aapm-button,
+  .aapm-editor-inspector .aapm-button,
+  .aapm-editor-outline .aapm-button { min-width: 44px; min-height: 44px; }
+  .aapm-editor-content .aapm-input,
+  .aapm-editor-inspector .aapm-input,
+  .aapm-editor-outline .aapm-input { min-height: 44px; }
+}
+@media (max-width: 639px), (pointer: coarse) {
+  .aapm-editor-content input,
+  .aapm-editor-content textarea,
+  .aapm-editor-content select,
+  .aapm-editor-inspector input,
+  .aapm-editor-inspector textarea,
+  .aapm-editor-inspector select,
+  .aapm-editor-outline input { font-size: 16px; }
 }

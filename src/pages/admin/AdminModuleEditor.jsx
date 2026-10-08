@@ -1012,6 +1012,15 @@ export default function AdminModuleEditor() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [drawer]);
+
+  // Picking or adding a block from the Susun sheet should reveal it on the canvas, so the
+  // sheet closes when the selected block changes. Opening the sheet alone does not close it.
+  const lastSelectedBlockIdRef = useRef(null);
+  useEffect(() => {
+    const id = selectedBlock?.id || null;
+    if (id && id !== lastSelectedBlockIdRef.current && drawer === "outline") setDrawer(null);
+    lastSelectedBlockIdRef.current = id;
+  }, [selectedBlock?.id, drawer]);
   const initialFormRef = useRef(JSON.stringify(emptyModule));
   const serverFormSnapshotRef = useRef(moduleFormSnapshot(emptyModule));
   const editorContextRef = useRef("");
@@ -1503,7 +1512,10 @@ export default function AdminModuleEditor() {
               onClose={closeDrawer}
               sections={EDITOR_SECTIONS}
               activeSection={activeSection}
-              onNavigate={scrollToEditorSection}
+              onNavigate={(sectionId) => {
+                closeDrawer();
+                scrollToEditorSection(sectionId);
+              }}
               blockSlotRef={setOutlineSlot}
               addGroups={editorialInsertGroups}
               onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
@@ -1621,7 +1633,7 @@ export default function AdminModuleEditor() {
 
             <aside ref={inspectorDrawerRef} className="aapm-editor-inspector" aria-label="Inspektor editor" data-drawer-open={drawer === "inspector" ? "true" : undefined}>
               <div className="aapm-editor-inspector__head">
-                <IconButton className="aapm-editor-drawer-close" label="Tutup inspektor" icon="close" size="sm" onClick={closeDrawer} />
+                <IconButton className="aapm-editor-drawer-close" label="Tutup inspektor" tooltip={false} icon="close" size="sm" onClick={closeDrawer} />
               </div>
               <div className="aapm-segmented aapm-inspector-tabs" role="tablist" aria-label="Panel inspektor">
                 {INSPECTOR_TABS.map((tab) => (
@@ -1747,7 +1759,7 @@ export default function AdminModuleEditor() {
             </div>
           </Surface>
         </TabsContent>
-        <TabsContent value="assessment" className="mt-5">
+        <TabsContent value="assessment" className="mt-5 aapm-editor-content">
           {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}
         </TabsContent>
       </AdminPageFrame>

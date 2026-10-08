@@ -2546,6 +2546,26 @@ function admin_reorder_modules(array $items): array
     return admin_course_detail_data();
 }
 
+/** Renames a chapter: the name lives on each module in it, so one write covers them all. */
+function admin_rename_chapter(int $levelNumber, string $levelName): array
+{
+    if ($levelNumber < 1 || $levelNumber > 20) {
+        error_response('Nomor chapter tidak valid.', 422, 'validation_error');
+    }
+    $trimmed = trim($levelName);
+    $name = trim(function_exists('mb_substr') ? mb_substr($trimmed, 0, 120, 'UTF-8') : substr($trimmed, 0, 120));
+    if ($name === '') {
+        error_response('Nama chapter wajib diisi.', 422, 'validation_error');
+    }
+    $existing = db()->prepare('SELECT COUNT(*) FROM course_modules WHERE level_number = ?');
+    $existing->execute([$levelNumber]);
+    if ((int) $existing->fetchColumn() < 1) {
+        error_response('Chapter tidak ditemukan.', 404, 'not_found');
+    }
+    db()->prepare('UPDATE course_modules SET level_name = ?, updated_at = CURRENT_TIMESTAMP WHERE level_number = ?')->execute([$name, $levelNumber]);
+    return admin_course_detail_data();
+}
+
 function admin_module_questions(int $moduleId): array
 {
     $module = admin_module_from_id($moduleId);

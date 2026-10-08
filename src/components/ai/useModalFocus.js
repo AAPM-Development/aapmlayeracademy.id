@@ -29,10 +29,16 @@ export default function useModalFocus({ open, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     const opener = document.activeElement;
-    const frame = window.requestAnimationFrame(() => {
+    const focusSurface = () => {
       const surface = surfaceRef.current;
-      (surface?.querySelector(FOCUSABLE) || surface)?.focus({ preventScroll: true });
-    });
+      if (!surface) return false;
+      (surface.querySelector(FOCUSABLE) || surface).focus({ preventScroll: true });
+      return surface.contains(document.activeElement);
+    };
+    // Focus lands at once when the surface is already rendered. The timer is a fallback
+    // for surfaces whose visibility and transform settle in the same commit.
+    let timer = 0;
+    if (!focusSurface()) timer = window.setTimeout(focusSurface, 0);
 
     const handleKeyDown = (event) => {
       const surface = surfaceRef.current;
@@ -66,7 +72,7 @@ export default function useModalFocus({ open, onClose }) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
       document.removeEventListener("keydown", handleKeyDown);
       if (opener?.focus && document.contains(opener)) {
         opener.focus({ preventScroll: true });

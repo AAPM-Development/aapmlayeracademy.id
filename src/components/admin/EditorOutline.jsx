@@ -78,7 +78,7 @@ export default function EditorOutline({
     <aside ref={asideRef} className="aapm-editor-outline" aria-label="Susun modul" data-editor-outline data-drawer-open={drawerOpen ? "true" : undefined}>
       <div className="aapm-editor-outline__head">
         <h2 className="aapm-text-overline m-0">Susun</h2>
-        <IconButton className="aapm-editor-drawer-close" label="Tutup Susun" icon="close" size="sm" onClick={onClose} />
+        <IconButton className="aapm-editor-drawer-close" label="Tutup Susun" tooltip={false} icon="close" size="sm" onClick={onClose} />
       </div>
       <nav className="aapm-editor-outline__nav" aria-label="Bagian editor">
         {sections.map((section) => (

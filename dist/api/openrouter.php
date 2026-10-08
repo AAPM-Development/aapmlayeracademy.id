@@ -73,6 +73,9 @@ function ai_validate_provider_label(string $label): string
     return $label;
 }
 
+/** The server is missing configuration a request needs. The message is written for an admin. */
+final class AiConfigurationException extends RuntimeException {}
+
 function ai_encryption_key(): string
 {
     $secret = trim((string) (app_config()['ai_settings_encryption_key'] ?? ''));
@@ -83,7 +86,7 @@ function ai_encrypt_secret(string $secret): string
 {
     $key = ai_encryption_key();
     if ($key === '' || !function_exists('openssl_encrypt')) {
-        throw new RuntimeException('Penyimpanan secret terenkripsi belum siap. Tambahkan ai_settings_encryption_key pada konfigurasi server privat.');
+        throw new AiConfigurationException('Penyimpanan secret terenkripsi belum siap. Tambahkan ai_settings_encryption_key pada konfigurasi server privat.');
     }
     $iv = random_bytes(12);
     $tag = '';

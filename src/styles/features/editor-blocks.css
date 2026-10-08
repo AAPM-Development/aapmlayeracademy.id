@@ -105,10 +105,23 @@
 .aapm-insert-point__button:focus-visible { opacity: 1; transform: none; }
 .aapm-insert-point__button:hover { border-color: var(--aapm-semantic-primary); background: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary-foreground); }
 .aapm-insert-point__button:disabled { display: none; }
-@media (hover: none) { .aapm-insert-point__button { opacity: 1; transform: none; } }
+/* Touch screens, coarse pointers, and narrow windows cannot rely on hover. The controls
+ * that hover used to reveal stay visible there, and their touch targets reach 40px+. */
+@media (hover: none), (pointer: coarse), (max-width: 1199px) {
+  .aapm-insert-point { height: 44px; }
+  .aapm-insert-point::before { opacity: .45; }
+  .aapm-insert-point__button { width: 36px; height: 36px; opacity: 1; transform: none; border-color: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary); }
+  .aapm-insert-point__button .aapm-icon { width: 16px; height: 16px; }
+  .aapm-block__bar { opacity: 1; pointer-events: auto; transform: none; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - var(--aapm-primitive-space-4)); }
+  .aapm-block__tools { flex-wrap: wrap; justify-content: flex-end; }
+  .aapm-block__bar .aapm-button { min-width: 44px; min-height: 44px; }
+}
 
 /* Block library. */
 .aapm-block-picker-popover.aapm-popover { width: min(30rem, calc(100vw - 24px)); max-width: none; padding: var(--aapm-primitive-space-3); }
+/* The picker never grows past the space Radix leaves on screen, so on a phone its top
+ * groups cannot slip above the viewport. Long lists scroll inside the picker. */
+.aapm-block-picker-popover.aapm-popover { max-height: min(var(--radix-popover-content-available-height, 70svh), 70svh); overflow-y: auto; overscroll-behavior: contain; }
 .aapm-block-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--aapm-primitive-space-3); }
 .aapm-block-picker__group { display: grid; align-content: start; gap: 2px; }
 .aapm-block-picker__group > .aapm-text-overline { padding: 0 var(--aapm-primitive-space-2) var(--aapm-primitive-space-1); }
