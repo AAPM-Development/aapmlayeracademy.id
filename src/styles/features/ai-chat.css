@@ -239,3 +239,75 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
   /* Extend the switch hit area without changing its drawn size. */
   .aapm-ai-composer-toggle .aapm-switch::before { content: ""; position: absolute; inset: -10px -8px; }
 }
+
+/* ---------------------------------------------------- Floating APPI surfaces
+ * The panel and launcher used token classes with no definition, so the panel
+ * painted transparent over the route. They now sit on solid DS surfaces. */
+.aapm-token-popover {
+  background: var(--aapm-semantic-surface);
+  color: var(--aapm-semantic-foreground);
+  border-color: var(--aapm-semantic-border);
+}
+.aapm-token-scrim { background: color-mix(in srgb, var(--aapm-semantic-foreground) 24%, transparent); }
+.aapm-ai-floating-panel {
+  background: var(--aapm-semantic-surface);
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-component-surface-radius);
+  box-shadow: var(--aapm-semantic-shadow-overlay);
+  overflow: hidden;
+}
+.aapm-ai-floating-panel:focus { outline: none; }
+.aapm-ai-floating-panel__header {
+  background: var(--aapm-semantic-surface);
+  border-bottom: 1px solid var(--aapm-semantic-border);
+  box-shadow: none;
+}
+.aapm-ai-floating-panel__body { background: var(--aapm-semantic-surface); }
+.aapm-ai-floating-panel__icon-button {
+  width: var(--aapm-component-action-height);
+  height: var(--aapm-component-action-height);
+}
+.aapm-ai-floating-panel__header .aapm-ai-floating-panel__status-line { font-size: var(--aapm-component-type-caption-size); }
+
+/* Failed answers: the retry sits on the same line as the explanation. */
+.aapm-ai-status-line__action {
+  margin-inline-start: auto;
+  min-height: 32px;
+  padding: 0 var(--aapm-primitive-space-2);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-ai-soft-text);
+  font: inherit;
+  font-weight: var(--aapm-primitive-weight-strong);
+  cursor: pointer;
+}
+.aapm-ai-status-line__action:hover { background: var(--aapm-semantic-surface-subtle); }
+.aapm-ai-status-line__action:focus-visible { outline: 2px solid var(--aapm-semantic-focus); outline-offset: 2px; }
+.aapm-ai-status-line__action:disabled { opacity: var(--aapm-primitive-disabled-opacity); cursor: not-allowed; }
+
+@media (max-width: 639px) {
+  /* Phone targets: send and the floating header actions reach 40px. */
+  .aapm-ai-composer-frame .aapm-ai-send-control { min-height: var(--aapm-component-action-height); }
+  .aapm-ai-status-line__action { min-height: var(--aapm-component-action-height); }
+}
+
+/* Reduced motion: the panel and jump affordance open without travel. */
+@media (prefers-reduced-motion: reduce) {
+  .aapm-ai-floating-panel,
+  .aapm-chat-jump,
+  .aapm-chat-turn { animation: none; }
+}
+
+/* One user bubble for the page and the floating panel: soft brand tint, squared sending corner. */
+.aapm-ai-user-bubble {
+  border-radius: 18px 18px 6px 18px;
+  background: var(--aapm-semantic-primary-soft);
+  color: var(--aapm-semantic-foreground);
+  box-shadow: none;
+}
+/* The compact composer (floating panel) drops the page context chip: the header already names the page. */
+.aapm-ai-composer--compact .aapm-ai-composer-context { display: none; }
+@media (max-width: 639px) {
+  .aapm-ai-status-line button { min-height: var(--aapm-component-action-height); }
+}

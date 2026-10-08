@@ -251,6 +251,9 @@ export default function FloatingAiAssistant() {
     isStreaming,
   });
   const historyScrollRef = useScrollEdgeFade();
+  const panelRef = useRef(null);
+  const launcherRef = useRef(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   useEffect(() => {
@@ -260,6 +263,21 @@ export default function FloatingAiAssistant() {
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      const frame = window.requestAnimationFrame(() => {
+        const target = panelRef.current?.querySelector("textarea") || panelRef.current;
+        target?.focus({ preventScroll: true });
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+    if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      launcherRef.current?.focus({ preventScroll: true });
+    }
+    return undefined;
   }, [open]);
   useEffect(() => {
     if (!closing) return undefined;
@@ -302,6 +320,20 @@ export default function FloatingAiAssistant() {
   const openPanel = () => {
     setClosing(false);
     setOpen(true);
+  };
+  const trapFocus = (event) => {
+    if (event.key !== "Tab" || !panelRef.current) return;
+    const items = [...panelRef.current.querySelectorAll("button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href]")];
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
   const closePanel = () => {
     setHistoryOpen(false);
@@ -438,6 +470,9 @@ export default function FloatingAiAssistant() {
           role="dialog"
           aria-modal="true"
           aria-label="APPI cepat"
+          ref={panelRef}
+          tabIndex={-1}
+          onKeyDown={trapFocus}
           className={`aapm-ai-panel aapm-ai-floating-panel aapm-token-popover fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
           <header className="aapm-ai-floating-panel__header flex min-w-0 shrink-0 items-center justify-between gap-3 px-3.5 py-2.5">
@@ -455,7 +490,7 @@ export default function FloatingAiAssistant() {
                     aria-hidden="true"
                   />
                 </div>
-                <p className="aapm-ai-floating-panel__status-line truncate text-[10px] text-muted-foreground" aria-live="polite">
+                <p className="aapm-ai-floating-panel__status-line truncate text-xs text-muted-foreground" aria-live="polite">
                   {historySyncLabel}
                 </p>
               </div>
@@ -489,7 +524,7 @@ export default function FloatingAiAssistant() {
               <IconButton
                 type="button"
                 onClick={closePanel}
-                label="Tutup AI Assistant"
+                label="Tutup APPI"
                 tooltip="Tutup APPI"
                 className="aapm-ai-floating-panel__icon-button"
               >
@@ -514,7 +549,7 @@ export default function FloatingAiAssistant() {
               {messages.length === 0 ? (
                 <div className="my-auto pb-2">
                   <p className="text-sm font-semibold tracking-[-0.015em]">
-                    Tanya APPI dari {pageContextLabel(location.pathname).toLowerCase()}.
+                    Tanya APPI tentang {pageContextLabel(location.pathname)}.
                   </p>
                   <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">
                     KPI aktif dapat ikut dibaca. Percakapan ini tersimpan khusus
@@ -828,6 +863,7 @@ export default function FloatingAiAssistant() {
       {!open && (
         <button
           type="button"
+          ref={launcherRef}
           onClick={openPanel}
           className="aapm-ai-launcher aapm-token-popover fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-10 w-10 items-center justify-center p-1 sm:bottom-5 sm:right-5 sm:h-10 sm:w-auto sm:justify-start sm:gap-1.5 sm:py-1 sm:pl-1.5 sm:pr-2"
           aria-label="Buka APPI"
