@@ -103,7 +103,7 @@ function UserSheet({ user, open, onOpenChange }) {
     } catch (saveError) {
       toast({
         variant: "destructive",
-        title: "Perubahan gagal",
+        title: isNew ? "Akun belum dibuat" : "Perubahan belum disimpan",
         description: saveError.message,
       });
     }
