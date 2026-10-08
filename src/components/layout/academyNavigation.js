@@ -44,5 +44,6 @@ export function getNavigationMeta(pathname = "/") {
     if (item) return { ...item, group: group.label };
   }
 
-  return { label: "Academy", group: "Belajar" };
+  // Every learner route is listed above, so a miss is the in-shell 404.
+  return { label: "Halaman tidak ditemukan", group: "Academy" };
 }

@@ -469,7 +469,8 @@
     "choiceDepth": "0 2px 0 var(--aapm-semantic-border-strong)",
     "choiceSelectedDepth": "0 2px 0 var(--aapm-semantic-primary)",
     "courseCardRadius": "{primitive.radiusSurface}",
-    "tileIconFrame": "44px"
+    "tileIconFrame": "44px",
+    "brandWidth": "132px"
   },
   "bridge": {
     "description": "Legacy variable names generated as HSL channels so existing utility classes and migrated feature CSS (hsl(var(--x))) follow the AAPM authority.",

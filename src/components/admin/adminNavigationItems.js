@@ -50,11 +50,24 @@ export function getAdminNavigationMeta(pathname = "/admin") {
   return { label: "Ringkasan", icon: "dashboard", to: "/admin", group: "Administrasi" };
 }
 
+// Mirrors the admin routes in App.jsx; anything else is the in-shell 404.
+const knownAdminPaths = [
+  /^\/admin\/?$/,
+  /^\/admin\/courses(?:\/[^/]+(?:\/modules\/[^/]+)?)?\/?$/,
+  /^\/admin\/learners(?:\/[^/]+)?\/?$/,
+  /^\/admin\/(?:users|ai-settings|workspace-status)\/?$/,
+];
+
+function isKnownAdminPath(pathname) {
+  return knownAdminPaths.some((pattern) => pattern.test(pathname));
+}
+
 /**
  * Route-derived breadcrumb trail for the admin topbar: the navigation group,
  * the page, then the record. Mirrors the academy topbar (group › page).
  */
 export function getAdminBreadcrumbs(pathname = "/admin") {
+  if (!isKnownAdminPath(pathname)) return [{ label: "Administrasi" }, { label: "Halaman tidak ditemukan" }];
   const meta = getAdminNavigationMeta(pathname);
   const isOverview = meta.to === "/admin";
   const trail = [{ label: meta.group }, isOverview ? { label: meta.label } : { label: meta.label, to: meta.to }];

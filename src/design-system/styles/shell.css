@@ -29,6 +29,23 @@
 }
 .aapm-route-loading .aapm-spinner { color: var(--aapm-semantic-primary); }
 
+/* Standalone status page (StatusPage): brand at system size over one state. */
+.aapm-status-page {
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: var(--aapm-primitive-space-6);
+  background: var(--aapm-semantic-background);
+  color: var(--aapm-semantic-foreground);
+}
+.aapm-status-page__inner {
+  display: grid;
+  justify-items: center;
+  gap: var(--aapm-primitive-space-6);
+  width: min(100%, var(--aapm-component-state-max-width));
+}
+.aapm-status-page__brand { display: block; width: var(--aapm-component-brand-width); height: auto; }
+
 .aapm-skip-link {
   position: fixed;
   top: var(--aapm-primitive-space-3);
@@ -534,7 +551,7 @@
   max-width: 400px;
   margin-inline: auto;
 }
-.aapm-auth__brand { display: block; width: 132px; height: auto; margin-bottom: var(--aapm-primitive-space-8); }
+.aapm-auth__brand { display: block; width: var(--aapm-component-brand-width); height: auto; margin-bottom: var(--aapm-primitive-space-8); }
 .aapm-auth__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); }
 .aapm-auth__subtitle { margin: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); }
 .aapm-auth__footer { margin-top: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); text-align: center; }

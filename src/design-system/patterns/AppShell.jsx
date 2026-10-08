@@ -58,6 +58,22 @@ export function Page({ width, flush, className, children, ...props }) {
   );
 }
 
+/**
+ * Standalone status page for a visitor outside any shell (signed-out 404,
+ * access denied, boot failure): the wordmark at its system size above one
+ * page-level StateView, centred on the canvas.
+ */
+export function StatusPage({ children, className }) {
+  return (
+    <main className={cn("aapm-status-page", className)}>
+      <div className="aapm-status-page__inner">
+        <AppBrand variant="logo" className="aapm-status-page__brand" alt="AAPM Layer Academy" />
+        {children}
+      </div>
+    </main>
+  );
+}
+
 function isItemActive(item, pathname) {
   if (item.match) return item.match(pathname);
   return item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);

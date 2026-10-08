@@ -1329,6 +1329,18 @@ a.aapm-surface { text-decoration: none; }
 .aapm-state[data-compact="true"] { min-height: 0; padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-4); }
 .aapm-state__title { margin: var(--aapm-primitive-space-1) 0 0; font-size: var(--aapm-component-type-heading-size); line-height: var(--aapm-component-type-heading-line); font-weight: var(--aapm-primitive-weight-heading); }
 .aapm-state__description { max-width: 46ch; margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); }
+/* An echoed address (404): mono chip, so a long slug never reads as the sentence. */
+.aapm-state__path {
+  max-width: 100%;
+  padding: var(--aapm-primitive-space-0-5) var(--aapm-primitive-space-2);
+  border-radius: var(--aapm-primitive-radius-xs);
+  background: var(--aapm-semantic-surface-secondary);
+  color: var(--aapm-semantic-foreground);
+  font-family: var(--aapm-primitive-font-mono);
+  font-size: var(--aapm-component-type-support-size);
+  line-height: var(--aapm-component-type-support-line);
+  overflow-wrap: anywhere;
+}
 /* Primary comes first in the DOM; row-reverse keeps it on the right in a row. */
 .aapm-state__actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap; justify-content: center; gap: var(--aapm-primitive-space-2); margin-top: var(--aapm-primitive-space-2); }
 /* A page-level state carries the page h1, so it takes the page title scale. */

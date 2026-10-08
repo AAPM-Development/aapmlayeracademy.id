@@ -290,7 +290,7 @@ function StateView({
   description,
   action,
   secondaryAction,
-  framed = true,
+  framed,
   compact = false,
   size,
   className,
@@ -299,6 +299,9 @@ function StateView({
   // A state that stands in for a whole page (404, access denied) carries the
   // page h1, so it takes the page title scale and the larger icon tile.
   const isPage = size === "page" || TitleTag === "h1";
+  // The dashed frame marks an empty slot inside a view; a page-level state is
+  // the view itself, so it goes unframed unless a caller asks otherwise.
+  const isFramed = framed ?? !isPage;
   const defaults = {
     loading: { icon: null, hue: "neutral" },
     empty: { icon: "folder", hue: "neutral" },
@@ -310,7 +313,7 @@ function StateView({
   return (
     <div
       className={cn("aapm-state", className)}
-      data-framed={framed ? "true" : undefined}
+      data-framed={isFramed ? "true" : undefined}
       data-compact={compact ? "true" : undefined}
       data-size={isPage ? "page" : undefined}
       role={kind === "error" ? "alert" : kind === "loading" ? "status" : undefined}

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Outlet, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -108,10 +108,14 @@ const AuthenticatedApp = () => {
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/ai-settings" element={<AdminAiSettings />} />
               <Route path="/admin/workspace-status" element={<AdminWorkspaceStatus />} />
+              <Route path="/admin/*" element={<PageNotFound scope="admin" />} />
             </Route>
           </Route>
         </Route>
-        <Route path="*" element={<PageNotFound />} />
+        {/* Signed in, an unknown address keeps the learner shell around the 404. */}
+        <Route element={isAuthenticated ? <Layout /> : <Outlet />}>
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
       </Routes>
     </Suspense>
   );

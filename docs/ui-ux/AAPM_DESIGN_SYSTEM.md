@@ -12,7 +12,7 @@ colourful course app. Ten4Seven is no longer used.
 | Generated CSS | `src/design-system/aapm-tokens.css` | `npm run tokens`; `npm run tokens:check` and the test suite fail when stale |
 | Base / reset | `src/design-system/styles/base.css` | Inter, typography roles (`aapm-text-*`), focus, motion keyframes, reduced motion |
 | Components | `src/design-system/styles/components.css` + `components/*.jsx` | Button, Field, Select, Checkbox, Switch, Badge, Card, Surface, IconTile, Progress, Tabs, Dialog, Sheet, Menu, Tooltip, Toast, Table, Metric, StateView, PageHeader |
-| Shells | `src/design-system/styles/shell.css` + `patterns/AppShell.jsx` | AppShell, Sidebar, SidebarNav, Topbar, AccountMenu, BottomNav, NavigationSheet, FocusShell, auth |
+| Shells | `src/design-system/styles/shell.css` + `patterns/AppShell.jsx` | AppShell, Sidebar, SidebarNav, Topbar, AccountMenu, BottomNav, NavigationSheet, FocusShell, StatusPage (standalone 404 / access denied / boot error), auth |
 | Course patterns | `src/design-system/styles/course.css`, `src/components/academy/CourseElements.jsx` | covers, course cards, learning path (unit banners + winding nodes, `pathOffset()` in `src/lib/learningPath.js`), outline, module flow stepper, lesson reading, quiz choices and check bar, result, curriculum builder, calculators |
 | Icons | `src/design-system/icons/iconData.js`, `AapmIcon` | Solar Bold Duotone (product/state) + Solar Linear (control glyphs), AAPM egg/hen/feed/cage; bundled offline |
 

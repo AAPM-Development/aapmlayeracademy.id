@@ -302,6 +302,7 @@
   --aapm-component-choice-selected-depth: 0 2px 0 var(--aapm-semantic-primary);
   --aapm-component-course-card-radius: var(--aapm-primitive-radius-surface);
   --aapm-component-tile-icon-frame: 44px;
+  --aapm-component-brand-width: 132px;
 }
 
 :root,
