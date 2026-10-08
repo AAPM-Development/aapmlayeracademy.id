@@ -1426,7 +1426,6 @@ export default function AdminModuleEditor() {
     <AdminPageFrame
       editor
       eyebrow={form.levelName ? `Chapter ${form.levelNumber} · ${form.levelName}` : "Editor modul"}
-      back={{ to: `/admin/courses/${courseId}`, label: "Kurikulum" }}
       title={isNew ? "Modul baru" : "Edit modul"}
       actions={(
         <>

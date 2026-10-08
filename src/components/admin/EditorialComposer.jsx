@@ -75,7 +75,7 @@ const MAX_PRESENTATION_UPLOAD_BYTES = EDITORIAL_PRESENTATION_MAX_BYTES;
 const imageExtensions = /\.(?:jpe?g|png|gif|webp|avif)$/i;
 const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 
-const contentBlockAnchorId = editorialBlockAnchorId;
+const contentBlockAnchorId = (blockId) => "editor-" + editorialBlockAnchorId(blockId);
 
 function Field({ label, children, hint = "", id, required = false, error = "" }) {
   const descriptionId = id && (hint || error) ? `${id}-description` : undefined;
