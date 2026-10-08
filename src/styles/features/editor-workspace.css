@@ -8,6 +8,8 @@
   gap: var(--aapm-primitive-space-5);
 }
 
+/* Command bar: a flat row under the mode tabs, not a second card. Its only filled
+ * control is the save action, so it never competes with the mode tabs. */
 .aapm-editor-command-bar {
   position: sticky;
   top: 0;
@@ -17,11 +19,12 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-4);
-  padding: var(--aapm-primitive-space-2);
-  border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
-  border-radius: var(--aapm-primitive-radius-panel);
+  padding: var(--aapm-primitive-space-2) 0;
+  border: 0;
+  border-bottom: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  border-radius: 0;
   background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
-  box-shadow: var(--aapm-semantic-shadow-card);
+  box-shadow: none;
   backdrop-filter: blur(10px);
 }
 .aapm-editor-section-nav { display: flex; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; }
@@ -32,7 +35,7 @@
   align-items: center;
   gap: var(--aapm-primitive-space-1-5);
   min-height: 32px;
-  padding: 0 var(--aapm-primitive-space-3);
+  padding: 0 var(--aapm-primitive-space-2);
   border: 0;
   border-radius: var(--aapm-primitive-radius-control);
   background: transparent;
@@ -43,8 +46,8 @@
   cursor: pointer;
 }
 .aapm-editor-section-link .aapm-icon { width: 16px; height: 16px; }
-.aapm-editor-section-link:hover { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); }
-.aapm-editor-section-link[aria-current="step"] { background: var(--aapm-semantic-primary-soft); color: var(--aapm-semantic-primary-soft-text); }
+.aapm-editor-section-link:hover { background: transparent; color: var(--aapm-semantic-foreground); }
+.aapm-editor-section-link[aria-current="step"] { background: transparent; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
 .aapm-editor-section-link[aria-current="step"] .aapm-icon { color: var(--aapm-semantic-primary); }
 .aapm-editor-command-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-2); }
 .aapm-editor-save-status { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-1-5); padding-inline: var(--aapm-primitive-space-2); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); white-space: nowrap; }
