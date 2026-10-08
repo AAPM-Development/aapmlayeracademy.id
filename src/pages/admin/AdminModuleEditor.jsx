@@ -8,7 +8,7 @@ import { LessonStructuredContent } from "@/components/academy/LessonStructuredCo
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import EditorialComposer, { editorialInsertActions } from "@/components/admin/EditorialComposer";
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
-import EditorQuickNav from "@/components/admin/EditorQuickNav";
+import EditorOutline from "@/components/admin/EditorOutline";
 import EditorActionBar from "@/components/admin/EditorActionBar";
 import { levelVisual } from "@/lib/academyVisuals";
 import {
@@ -970,6 +970,7 @@ export default function AdminModuleEditor() {
   const [activeSection, setActiveSection] = useState(EDITOR_SECTIONS[0].id);
   const [inspectorTab, setInspectorTab] = useState("block");
   const [blockInspectorNode, setBlockInspectorNode] = useState(null);
+  const [outlineSlot, setOutlineSlot] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const handleBlockSelection = React.useCallback((selection) => {
     setSelectedBlock(selection);
@@ -1450,12 +1451,15 @@ export default function AdminModuleEditor() {
         )}
       >
         <TabsContent value="content" className="aapm-editor-content">
-          <EditorQuickNav
-            sections={EDITOR_SECTIONS}
-            activeSection={activeSection}
-            onNavigate={scrollToEditorSection}
-          />
           <form id="module-editor-form" onSubmit={save} className="aapm-editor-form aapm-editor-workspace">
+            <EditorOutline
+              sections={EDITOR_SECTIONS}
+              activeSection={activeSection}
+              onNavigate={scrollToEditorSection}
+              blockSlotRef={setOutlineSlot}
+              addItems={editorialInsertActions}
+              onAddElement={(type) => editorialComposerRef.current?.addElement(type)}
+            />
             <div className="aapm-editor-canvas">
               <header className="aapm-editor-doc-head">
                 <div className="aapm-meta-row">
@@ -1498,6 +1502,7 @@ export default function AdminModuleEditor() {
                 <EditorialComposer
                   ref={editorialComposerRef}
                   settingsContainer={blockInspectorNode}
+                  outlineContainer={outlineSlot}
                   onSelectionChange={handleBlockSelection}
                   value={form.editorialContent}
                   fallback={form.content}

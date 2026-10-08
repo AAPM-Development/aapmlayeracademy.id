@@ -3,7 +3,7 @@
 
 .aapm-editor-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--aapm-component-editor-inspector-width);
+  grid-template-columns: 13.5rem minmax(0, 1fr) var(--aapm-component-editor-inspector-width);
   align-items: start;
   gap: var(--aapm-primitive-space-5);
 }
@@ -56,11 +56,24 @@
   background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
   backdrop-filter: blur(10px);
 }
-.aapm-editor-section-nav { display: flex; min-width: 0; gap: 2px; overflow-x: auto; scrollbar-width: none; }
-.aapm-editor-section-nav::-webkit-scrollbar { display: none; }
-.aapm-editor-section-link {
-  display: inline-flex;
-  flex: none;
+/* Susun: the outline rail. It is quiet text, not a card. The active section is the
+ * only ink-weight item, and the Materi group nests the blocks in reading order. */
+.aapm-editor-outline {
+  position: sticky;
+  top: calc(var(--aapm-primitive-space-16) + var(--aapm-primitive-space-2));
+  display: grid;
+  align-content: start;
+  gap: var(--aapm-primitive-space-2);
+  max-height: calc(100svh - var(--aapm-primitive-header-height) - var(--aapm-primitive-space-16) - var(--aapm-primitive-space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-margin-top: var(--aapm-primitive-space-16);
+}
+.aapm-editor-outline__nav { display: grid; gap: 2px; }
+.aapm-editor-outline__group { display: grid; gap: 2px; }
+.aapm-editor-outline__section {
+  display: flex;
   align-items: center;
   gap: var(--aapm-primitive-space-1-5);
   min-height: 32px;
@@ -72,12 +85,45 @@
   font: inherit;
   font-size: var(--aapm-component-type-support-size);
   font-weight: var(--aapm-primitive-weight-label);
+  text-align: start;
   cursor: pointer;
 }
-.aapm-editor-section-link .aapm-icon { width: 16px; height: 16px; }
-.aapm-editor-section-link:hover { background: transparent; color: var(--aapm-semantic-foreground); }
-.aapm-editor-section-link[aria-current="step"] { background: transparent; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
-.aapm-editor-section-link[aria-current="step"] .aapm-icon { color: var(--aapm-semantic-primary); }
+.aapm-editor-outline__section .aapm-icon { width: 16px; height: 16px; flex: none; }
+.aapm-editor-outline__section:hover { color: var(--aapm-semantic-foreground); }
+.aapm-editor-outline__section[aria-current="step"] { color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
+.aapm-editor-outline__section[aria-current="step"] .aapm-icon { color: var(--aapm-semantic-primary); }
+.aapm-editor-outline__blocks { display: grid; gap: 2px; margin-inline-start: 13px; padding-inline-start: 8px; border-inline-start: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border); }
+.aapm-editor-outline__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.aapm-editor-outline__item { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 2px; border-radius: var(--aapm-primitive-radius-control); }
+.aapm-editor-outline__item[data-dragging="true"] { background: var(--aapm-semantic-surface); box-shadow: var(--aapm-semantic-shadow-rest); }
+.aapm-editor-outline__grip { display: grid; place-items: center; width: 16px; height: 30px; color: var(--aapm-semantic-subtle-text); cursor: grab; opacity: 0; }
+.aapm-editor-outline__grip .aapm-icon { width: 14px; height: 14px; }
+.aapm-editor-outline__item:hover .aapm-editor-outline__grip,
+.aapm-editor-outline__item[data-selected="true"] .aapm-editor-outline__grip,
+.aapm-editor-outline__grip:focus-visible { opacity: 1; }
+.aapm-editor-outline__target {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--aapm-primitive-space-1-5);
+  min-width: 0;
+  padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-1-5);
+  border: 0;
+  border-radius: var(--aapm-primitive-radius-control);
+  background: transparent;
+  color: var(--aapm-semantic-muted);
+  font: inherit;
+  font-size: var(--aapm-component-type-support-size);
+  text-align: start;
+  cursor: pointer;
+}
+.aapm-editor-outline__target:hover { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); }
+.aapm-editor-outline__target[aria-current="true"] { background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-strong); }
+.aapm-editor-outline__index { display: grid; place-items: center; flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--aapm-semantic-surface); font-size: 11px; font-variant-numeric: tabular-nums; }
+.aapm-editor-outline__text { display: grid; min-width: 0; }
+.aapm-editor-outline__type { overflow: hidden; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-label); text-overflow: ellipsis; white-space: nowrap; }
+.aapm-editor-outline__detail { overflow: hidden; color: var(--aapm-semantic-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.aapm-editor-outline__empty { margin: 0; padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-2); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); }
+.aapm-editor-outline__add .aapm-button { width: 100%; }
 .aapm-editor-actionbar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-2); }
 .aapm-editor-save-status { display: inline-flex; align-items: center; gap: var(--aapm-primitive-space-1-5); padding-inline: var(--aapm-primitive-space-2); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); white-space: nowrap; }
 .aapm-editor-save-status[data-status="saved"] .aapm-chip__dot { color: var(--aapm-semantic-success); }
@@ -143,9 +189,20 @@
 .aapm-hue-select__swatch[data-hue="neutral"] { background: var(--aapm-semantic-surface-tertiary); }
 .aapm-hue-select__swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--aapm-semantic-foreground); }
 
+/* Between the phone-tablet stack and the full three columns, the outline keeps its
+ * left rail and the inspector drops under the canvas, so the canvas stays readable. */
+@media (min-width: 1200px) and (max-width: 1359px) {
+  .aapm-editor-workspace { grid-template-columns: 13.5rem minmax(0, 1fr); }
+  .aapm-editor-outline { grid-row: span 2; }
+  .aapm-editor-inspector { grid-column: 2; position: static; max-height: none; overflow: visible; }
+}
 @media (max-width: 1199px) {
   .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); }
   .aapm-editor-inspector { position: static; max-height: none; overflow: visible; }
+  .aapm-editor-outline { position: static; max-height: none; overflow: visible; }
+  /* Below the desktop grid the outline keeps its section jumps; the block list
+   * returns as a sheet in the responsive phase. */
+  .aapm-editor-outline__blocks { display: none; }
 }
 @media (max-width: 639px) {
   .aapm-editor-save-status, .aapm-editor-kbd { display: none; }
@@ -155,7 +212,6 @@
 /* Phones: the action bar keeps one row and the keyboard hint goes. */
 @media (max-width: 639px) {
   .aapm-editor-actionbar { flex-wrap: nowrap; gap: 4px; padding: 6px 0; }
-  .aapm-editor-section-nav { width: 100%; }
   .aapm-editor-actionbar__actions { flex-wrap: nowrap; justify-content: space-between; gap: 4px; }
   .aapm-editor-actionbar__actions .aapm-button { padding-inline: 10px; }
   .aapm-editor-actionbar__actions .aapm-editor-kbd { display: none; }

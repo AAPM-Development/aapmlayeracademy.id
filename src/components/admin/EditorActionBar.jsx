@@ -11,7 +11,7 @@ import {
   Kbd,
 } from "@/components/primitives";
 
-function AddElementMenu({ items, onAddElement }) {
+export function AddElementMenu({ items, onAddElement }) {
   if (!items.length || !onAddElement) return null;
   return (
     <DropdownMenu>

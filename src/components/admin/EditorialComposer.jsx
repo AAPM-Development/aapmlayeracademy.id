@@ -6,6 +6,7 @@ import RichTextEditor from "@/components/admin/RichTextEditor";
 import UploadProgress from "@/components/admin/UploadProgress";
 import { LessonMedia } from "@/components/academy/LessonWorkspace";
 import { EditorialContent } from "@/components/academy/EditorialContent";
+import { EditorialOutlineList } from "@/components/admin/EditorOutline";
 import EditorialPresentation from "@/components/academy/EditorialPresentation";
 import { nativeApi } from "@/api/nativeClient";
 import {
@@ -976,7 +977,7 @@ function EditorialQualityPanel({ signals, onNavigate, blockCount = 0, textLength
 
 const isEditableTarget = (target) => target instanceof Element && Boolean(target.closest("input, textarea, select, [contenteditable='true'], .ProseMirror"));
 
-const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange, settingsContainer = null, onSelectionChange }, ref) {
+const EditorialComposer = React.forwardRef(function EditorialComposer({ value, fallback = "", legacyVideoUrl = "", onChange, onLegacyVideoChange, settingsContainer = null, outlineContainer = null, onSelectionChange }, ref) {
   const blocks = editorialComposerBlocks(value, fallback, legacyVideoUrl);
   const textLength = editorialTextLength(blocks);
   const qualitySignals = React.useMemo(() => getEditorialQualitySignals(blocks), [blocks]);
@@ -988,6 +989,11 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
   const selectedIndex = blocks.findIndex((block) => block.id === selectedId);
   const selectedBlock = selectedIndex >= 0 ? blocks[selectedIndex] : null;
   const full = blocks.length >= 80;
+  const outlineItems = React.useMemo(() => blocks.map((block, index) => ({
+    id: block.id,
+    label: blockMeta[block.type]?.label || "Elemen materi",
+    detail: outlineLabelForBlock(block, index),
+  })), [blocks]);
 
   React.useEffect(() => {
     if (selectedId && selectedIndex < 0) setSelectedId("");
@@ -1126,6 +1132,16 @@ const EditorialComposer = React.forwardRef(function EditorialComposer({ value, f
           <BlockPicker onPick={(type) => insertBlockAt(type, 0)} />
         </section>
       )}
+
+      {outlineContainer ? createPortal(
+        <EditorialOutlineList
+          items={outlineItems}
+          selectedId={selectedId}
+          onSelect={(id) => selectBlock(id, { scroll: true })}
+          onMove={moveContentBlock}
+        />,
+        outlineContainer,
+      ) : null}
 
       {settingsContainer ? createPortal(
         <BlockInspector
