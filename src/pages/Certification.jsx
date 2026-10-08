@@ -87,7 +87,6 @@ export default function Certification() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Prestasi"
         title="Sertifikasi profesional"
         description="Setiap tingkat merangkum kemampuan dari modul, praktik, dan evaluasi. Klaim saat semua prasyaratnya tuntas."
         actions={<Badge size="lg" icon="certificate">{certificates.length}/6 tingkat dimiliki</Badge>}

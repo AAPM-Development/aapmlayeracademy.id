@@ -311,7 +311,7 @@ export default function Profile() {
   if (isLoading) {
     return (
       <ContentContainer>
-        <PageHeader eyebrow="Prestasi" title="Profil & prestasi" />
+        <PageHeader title="Profil & prestasi" />
         <StateView kind="loading" title="Memuat profil…" framed={false} />
       </ContentContainer>
     );
@@ -319,7 +319,7 @@ export default function Profile() {
   if (error) {
     return (
       <ContentContainer>
-        <PageHeader eyebrow="Prestasi" title="Profil & prestasi" />
+        <PageHeader title="Profil & prestasi" />
         <StateView kind="error" title="Profil belum dapat dimuat" description={error.message} action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>} />
       </ContentContainer>
     );
@@ -341,7 +341,6 @@ export default function Profile() {
   return (
     <ContentContainer>
       <PageHeader
-        eyebrow="Prestasi"
         title="Profil & prestasi"
         description="Identitas belajar, pencapaian, dan preferensi akun Anda."
       />

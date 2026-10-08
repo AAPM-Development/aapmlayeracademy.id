@@ -313,7 +313,6 @@ export default function KpiDashboard() {
   return (
     <ContentContainer>
       <PageHeader
-        eyebrow="Alat farm"
         title="Farm KPI"
         description="Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya."
         actions={(

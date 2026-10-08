@@ -15,7 +15,6 @@ export function DashboardHero({ user, nextModule, summary }) {
   return (
     <section className="aapm-hero" data-hue="green" aria-labelledby="dashboard-hero-title">
       <div className="min-w-0">
-        <p className="aapm-hero__eyebrow aapm-text-overline">Ruang belajar</p>
         <h1 id="dashboard-hero-title" className="aapm-hero__title">
           Halo, {firstName(user)}! {started ? "Siap lanjut belajar?" : "Mari mulai perjalanan Anda."}
         </h1>

@@ -61,7 +61,6 @@ export default function Modules() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Jalur belajar"
         title="Layer Farm Academy"
         description="Kuasai keputusan farm bertahap — dari fondasi flock sampai kepemimpinan operasional."
         actions={<Badge size="lg" icon="modules">{modules.length || 22} modul · {curriculum.length || 14} level</Badge>}

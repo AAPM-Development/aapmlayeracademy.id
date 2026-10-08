@@ -28,7 +28,6 @@ export default function Calculators() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Alat farm"
         title="Kalkulator farm"
         description="Ubah catatan harian menjadi sinyal keputusan. Hasil adalah titik awal untuk observasi kandang, bukan penggantinya."
         actions={<Badge size="lg" icon="calculator">{tools.length} kalkulator</Badge>}
