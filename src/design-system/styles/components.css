@@ -245,6 +245,14 @@
   width: var(--aapm-primitive-icon-xl);
   height: var(--aapm-primitive-icon-xl);
 }
+/* A still spinner reads as a "C": under reduced motion show a full faint
+ * ring with an accent arc instead. */
+@media (prefers-reduced-motion: reduce) {
+  .aapm-spinner {
+    border-color: color-mix(in srgb, currentColor 25%, transparent);
+    border-top-color: currentColor;
+  }
+}
 
 /* --------------------------------------------------------------- Fields */
 .aapm-field {

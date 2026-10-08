@@ -16,12 +16,43 @@ import {
   SheetTitle,
 } from "../components/overlays";
 import { IconButton } from "../components/actions";
+import { StateView } from "../components/display";
 
 /** Reset the shell's single scroll owner whenever the route changes. */
 function useResetScroll(ref, key) {
   React.useEffect(() => {
     ref.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [ref, key]);
+}
+
+/**
+ * React Router commits a navigation inside a transition, so while a lazy
+ * route chunk loads the address has moved but the old page (and its active
+ * nav item) stays up with no sign the click registered. Compare the address
+ * with the rendered route after each click or history step: if they differ,
+ * the next route is still on its way.
+ */
+function useRoutePending(pathname) {
+  const [pending, setPending] = React.useState(false);
+  const rendered = React.useRef(pathname);
+
+  React.useEffect(() => {
+    rendered.current = pathname;
+    setPending(false);
+  }, [pathname]);
+
+  const check = React.useCallback(() => {
+    window.setTimeout(() => {
+      if (window.location.pathname !== rendered.current) setPending(true);
+    }, 0);
+  }, []);
+
+  React.useEffect(() => {
+    window.addEventListener("popstate", check);
+    return () => window.removeEventListener("popstate", check);
+  }, [check]);
+
+  return [pending, check];
 }
 
 /**
@@ -33,15 +64,26 @@ export function AppShell({ sidebar, topbar, bottomNav, collapsed = false, childr
   const location = useLocation();
   const mainRef = React.useRef(null);
   useResetScroll(mainRef, location.pathname);
+  const [pending, checkPending] = useRoutePending(location.pathname);
 
   return (
-    <div className={cn("aapm-app", className)} data-collapsed={collapsed ? "true" : "false"} data-bottom-nav={bottomNav ? "true" : undefined}>
+    <div
+      className={cn("aapm-app", className)}
+      data-collapsed={collapsed ? "true" : "false"}
+      data-bottom-nav={bottomNav ? "true" : undefined}
+      onClickCapture={checkPending}
+    >
       <a className="aapm-skip-link" href="#aapm-main">Lewati ke konten</a>
       <aside className="aapm-app__sidebar" aria-label={label}>{sidebar}</aside>
       <div className="aapm-app__canvas">
+        <div className="aapm-route-progress" data-active={pending ? "true" : undefined} aria-hidden="true" />
         {topbar}
-        <main id="aapm-main" ref={mainRef} tabIndex={-1} className="aapm-app__main" aria-label={mainLabel}>
-          {children}
+        <main id="aapm-main" ref={mainRef} tabIndex={-1} className="aapm-app__main" aria-label={mainLabel} aria-busy={pending || undefined}>
+          {/* The chrome paints at once on a hard load; only the canvas waits
+              for the first route chunk. */}
+          <React.Suspense fallback={<StateView kind="loading" title="Menyiapkan halaman…" framed={false} />}>
+            {children}
+          </React.Suspense>
         </main>
       </div>
       {bottomNav}

@@ -12,6 +12,10 @@ import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
 import { ToastProvider } from '@/design-system/components/toast';
 import { TooltipProvider } from '@/design-system/components/tooltip';
 import { ThemeModeProvider } from '@/lib/useThemeMode';
+import AppBrand from '@/components/AppBrand';
+import AapmIcon from '@/components/icons/AapmIcon';
+import { Button, StateView } from '@/design-system';
+import { StatusPage } from '@/design-system/patterns/AppShell';
 
 const Layout = lazy(() => loadRouteModule('layout'));
 const AdminShell = lazy(() => loadRouteModule('adminShell'));
@@ -39,17 +43,24 @@ const AdminModuleEditor = lazy(() => loadRouteModule('adminModuleEditor'));
 const AdminAiSettings = lazy(() => loadRouteModule('adminAiSettings'));
 const AdminWorkspaceStatus = lazy(() => loadRouteModule('adminWorkspaceStatus'));
 
-function RouteLoading() {
+/**
+ * Boot surface for everything before a shell paints: the session check and
+ * the first route chunk share one centred, branded screen, so a hard load
+ * never jumps from the mark to a loose text line. The shells take over with
+ * an in-canvas fallback once their chrome is up.
+ */
+function BootScreen({ label }) {
   return (
-    <div className="aapm-route-loading" role="status" aria-live="polite">
+    <div className="aapm-boot-screen" role="status" aria-live="polite">
+      <AppBrand variant="icon" className="aapm-boot-screen__mark" alt="" />
       <span className="aapm-spinner" aria-hidden="true" />
-      Menyiapkan halaman…
+      <span className="aapm-boot-screen__label">{label}</span>
     </div>
   );
 }
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, checkAppState } = useAuth();
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
@@ -65,20 +76,27 @@ const AuthenticatedApp = () => {
 
   // Brand boot screen while public settings and the session are resolved.
   if (isLoadingPublicSettings || isLoadingAuth) {
+    return <BootScreen label="Memuat Academy…" />;
+  }
+
+  // The session check failed for a reason other than "signed out": say so
+  // and offer the retry, instead of leaving a bare line of red text.
+  if (authError) {
     return (
-      <div className="aapm-boot-screen" role="status" aria-label="Memuat Academy">
-        <img src="/brand/aapm/icon.svg" alt="" className="aapm-boot-screen__mark" />
-        <span className="aapm-spinner" aria-hidden="true" />
-      </div>
+      <StatusPage>
+        <StateView
+          kind="error"
+          titleAs="h1"
+          title="Academy belum bisa dimuat"
+          description={authError.message}
+          action={<Button onClick={() => void checkAppState()}><AapmIcon name="refresh" />Coba lagi</Button>}
+        />
+      </StatusPage>
     );
   }
 
-  if (authError) {
-    return <div className="aapm-boot-screen aapm-boot-screen--error" role="alert">{authError.message}</div>;
-  }
-
   return (
-    <Suspense fallback={<RouteLoading />}>
+    <Suspense fallback={<BootScreen label="Menyiapkan halaman…" />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

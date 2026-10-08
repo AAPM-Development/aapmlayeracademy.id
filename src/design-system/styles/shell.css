@@ -23,21 +23,9 @@
 /* Visible label: the state is not carried by motion alone. */
 .aapm-boot-screen__label { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
 
-.aapm-route-loading {
-  display: flex;
-  min-height: 14rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--aapm-primitive-space-3);
-  color: var(--aapm-semantic-muted);
-  font-size: var(--aapm-component-type-support-size);
-}
-.aapm-route-loading .aapm-spinner { color: var(--aapm-semantic-primary); }
-
 /* In-app navigation to a lazy route runs in a transition, so the old page
  * stays up until the chunk lands: a thin bar says the click registered. It
  * fades in after motion-base, so cached routes never flash it. */
-.aapm-app__canvas { position: relative; }
 .aapm-route-progress {
   position: absolute;
   inset: 0 0 auto;
@@ -117,6 +105,7 @@
 }
 
 .aapm-app__canvas {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
