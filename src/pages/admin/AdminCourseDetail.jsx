@@ -164,7 +164,7 @@ export default function AdminCourseDetail() {
   return (
     <AdminPageFrame
       back={{ to: "/admin/courses", label: "Semua course" }}
-      title={course?.title || "Kurikulum Academy"}
+      title="Kurikulum"
       description="Susun chapter dan modul, kelola konten, lalu pratinjau seperti yang dilihat learner."
       actions={(
         <>
