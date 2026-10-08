@@ -67,21 +67,26 @@ export default function Calculators() {
   );
 }
 
+/**
+ * Declares a calculator's outcome: one primary number (`value`), its reading
+ * (`note`, flagged `attention` when it asks for action) and secondary figures
+ * (`details`, [label, value] pairs). Until `ready` (the required inputs are
+ * filled), the card shows the neutral empty state instead of a verdict
+ * computed from zeros.
+ */
 function CalcResult() {
   return null;
 }
 
-const attentionPattern = /perlu|evaluasi|tinggi|risiko|rendah|kurang|waspada|cek|periksa|rugi|buruk/i;
+const emptyNote = "Hasil muncul saat angka yang diperlukan terisi. Periksa kolom kosong atau bernilai 0.";
 
-function CalculatorCard({ title, formula, children, result }) {
+function CalculatorCard({ title, formula, children }) {
   const tool = React.useContext(ToolContext);
   const items = React.Children.toArray(children);
   const outcome = items.find((child) => React.isValidElement(child) && child.type === CalcResult);
   const inputs = items.filter((child) => child !== outcome);
-  const value = outcome ? outcome.props.value : result;
-  const note = outcome?.props.note;
-  const emptyNote = value === "—" ? "Hasil muncul saat semua angka terisi dan lebih dari 0. Periksa kolom kosong atau bernilai 0." : "Isi angka aktual untuk melihat interpretasi.";
-  const resultHue = note && attentionPattern.test(String(note)) ? "orange" : tool.hue;
+  const { ready = false, value, note, attention = false, details = [] } = outcome?.props || {};
+  const resultHue = ready && attention ? "orange" : tool.hue;
 
   return (
     <article className="aapm-card aapm-calc">
@@ -100,10 +105,24 @@ function CalculatorCard({ title, formula, children, result }) {
       ) : null}
       <div className="aapm-calc__body">
         <div className="aapm-calc__inputs">{inputs}</div>
-        <aside className="aapm-calc__result" data-hue={resultHue} aria-live="polite">
+        <aside className="aapm-calc__result" data-hue={resultHue} data-empty={ready ? undefined : "true"} aria-live="polite">
           <p className="aapm-text-overline m-0">Hasil</p>
-          <p className="aapm-calc__value">{value ?? "—"}</p>
-          {note ? <p className="aapm-calc__note"><AapmIcon name={resultHue === "orange" ? "warning" : "check"} />{note}</p> : <p className="aapm-calc__note">{emptyNote}</p>}
+          <p className="aapm-calc__value">{ready ? value : "—"}</p>
+          {ready && note ? (
+            <p className="aapm-calc__note"><AapmIcon name={resultHue === "orange" ? "warning" : "check"} />{note}</p>
+          ) : !ready ? (
+            <p className="aapm-calc__note">{emptyNote}</p>
+          ) : null}
+          {ready && details.length ? (
+            <dl className="aapm-description-list aapm-calc__details">
+              {details.map(([label, detail]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{detail}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
         </aside>
       </div>
     </article>
@@ -131,56 +150,23 @@ function FcrCalc() {
   const e = parseFloat(eggs) || 0;
   const w = parseFloat(eggW) || 0;
   const eggMassKg = (e * w) / 1000;
-  const fcr = eggMassKg > 0 ? (f / eggMassKg).toFixed(2) : "—";
+  const ready = f > 0 && eggMassKg > 0;
+  const fcr = ready ? f / eggMassKg : 0;
   return (
     <CalculatorCard
       title="Feed Conversion Ratio (FCR)"
       formula="FCR = Total Feed (kg) ÷ Egg Mass (kg), Egg Mass = Total Eggs × Egg Weight ÷ 1000"
-      icon="equalRatio"
-      tone="green"
     >
-      <Field
-        label="Total Konsumsi Pakan"
-        value={feed}
-        onChange={setFeed}
-        unit="kg"
-        placeholder="contoh 120"
+      <Field label="Total Konsumsi Pakan" value={feed} onChange={setFeed} unit="kg" placeholder="contoh 120" />
+      <Field label="Jumlah Telur" value={eggs} onChange={setEggs} unit="butir" placeholder="contoh 850" />
+      <Field label="Berat Rata-rata Telur" value={eggW} onChange={setEggW} unit="gram" placeholder="contoh 60" />
+      <CalcResult
+        ready={ready}
+        value={fcr.toFixed(2)}
+        note={fcr < 2.2 ? "Sangat baik — efisien" : fcr < 2.6 ? "Baik" : "Perlu evaluasi feed & produksi"}
+        attention={fcr >= 2.6}
+        details={[["Egg mass", `${eggMassKg.toFixed(1)} kg`]]}
       />
-      <Field
-        label="Jumlah Telur"
-        value={eggs}
-        onChange={setEggs}
-        unit="butir"
-        placeholder="contoh 850"
-      />
-      <Field
-        label="Berat Rata-rata Telur"
-        value={eggW}
-        onChange={setEggW}
-        unit="gram"
-        placeholder="contoh 60"
-      />
-      <div className="flex items-end">
-        <div className="text-sm text-muted-foreground">
-          Egg Mass:{" "}
-          <span className="font-semibold text-foreground">
-            {eggMassKg.toFixed(1)} kg
-          </span>
-        </div>
-      </div>
-      <div className="sm:col-span-2">
-        FCR = {f} ÷ {eggMassKg.toFixed(1)} = {fcr}
-      </div>
-      {resultTag(
-        fcr,
-        fcr === "—"
-          ? null
-          : parseFloat(fcr) < 2.2
-            ? "Sangat baik — efisien"
-            : parseFloat(fcr) < 2.6
-              ? "Baik"
-              : "Perlu evaluasi feed & produksi",
-      )}
     </CalculatorCard>
   );
 }
@@ -190,36 +176,17 @@ function EggMassCalc() {
   const [ew, setEw] = useState("");
   const h = parseFloat(hdp) || 0;
   const w = parseFloat(ew) || 0;
-  const mass = ((h * w) / 100).toFixed(1);
+  const mass = (h * w) / 100;
   return (
-    <CalculatorCard
-      title="Egg Mass per Ekor per Hari"
-      formula="Egg Mass = HDP(%) × Egg Weight(g) ÷ 100"
-      icon="egg"
-      tone="orange"
-    >
-      <Field
-        label="Hen Day Production"
-        value={hdp}
-        onChange={setHdp}
-        unit="%"
-        placeholder="contoh 90"
+    <CalculatorCard title="Egg Mass per Ekor per Hari" formula="Egg Mass = HDP(%) × Egg Weight(g) ÷ 100">
+      <Field label="Hen Day Production" value={hdp} onChange={setHdp} unit="%" placeholder="contoh 90" />
+      <Field label="Berat Telur" value={ew} onChange={setEw} unit="gram" placeholder="contoh 60" />
+      <CalcResult
+        ready={h > 0 && w > 0}
+        value={`${mass.toFixed(1)} g/ekor/hari`}
+        note={mass >= 57 ? "Excellent — di atas standar layer komersial" : mass >= 50 ? "Baik" : "Di bawah target — evaluasi produksi & berat telur"}
+        attention={mass < 50}
       />
-      <Field
-        label="Berat Telur"
-        value={ew}
-        onChange={setEw}
-        unit="gram"
-        placeholder="contoh 60"
-      />
-      {resultTag(
-        `${mass} g/ekor/hari`,
-        parseFloat(mass) >= 57
-          ? "Excellent — di atas standar layer komersial"
-          : parseFloat(mass) >= 50
-            ? "Baik"
-            : "Di bawah target — evaluasi produksi & berat telur",
-      )}
     </CalculatorCard>
   );
 }
@@ -228,7 +195,6 @@ function UniformityCalc() {
   const [avg, setAvg] = useState("");
   const [within, setWithin] = useState("");
   const [total, setTotal] = useState("");
-  const a = parseFloat(avg) || 0;
   const wi = parseFloat(within) || 0;
   const t = parseFloat(total) || 0;
   const u = t > 0 ? Math.round((wi / t) * 100) : 0;
@@ -236,38 +202,16 @@ function UniformityCalc() {
     <CalculatorCard
       title="Uniformity (%)"
       formula="Uniformity = (Jumlah ayam dalam ±10% berat rata-rata ÷ Total ayam) × 100"
-      icon="weight"
-      tone="lime"
     >
-      <Field
-        label="Berat Rata-rata"
-        value={avg}
-        onChange={setAvg}
-        unit="gram"
-        placeholder="contoh 1500"
+      <Field label="Berat Rata-rata" value={avg} onChange={setAvg} unit="gram" placeholder="contoh 1500" />
+      <Field label="Ayam dalam ±10%" value={within} onChange={setWithin} unit="ekor" placeholder="contoh 80" />
+      <Field label="Total Ayam Ditimbang" value={total} onChange={setTotal} unit="ekor" placeholder="contoh 100" />
+      <CalcResult
+        ready={t > 0 && wi > 0}
+        value={`${u}%`}
+        note={u >= 85 ? "Excellent — uniformity tinggi" : u >= 75 ? "Baik" : "Rendah — perlu seleksi/culling"}
+        attention={u < 75}
       />
-      <Field
-        label="Ayam dalam ±10%"
-        value={within}
-        onChange={setWithin}
-        unit="ekor"
-        placeholder="contoh 80"
-      />
-      <Field
-        label="Total Ayam Ditimbang"
-        value={total}
-        onChange={setTotal}
-        unit="ekor"
-        placeholder="contoh 100"
-      />
-      {resultTag(
-        `${u}%`,
-        u >= 85
-          ? "Excellent — uniformity tinggi"
-          : u >= 75
-            ? "Baik"
-            : "Rendah — perlu seleksi/culling",
-      )}
     </CalculatorCard>
   );
 }
@@ -277,37 +221,22 @@ function MortalityCalc() {
   const [start, setStart] = useState("");
   const d = parseFloat(dead) || 0;
   const s = parseFloat(start) || 0;
-  const m = s > 0 ? ((d / s) * 100).toFixed(2) : "—";
-  const liv = s > 0 ? (100 - parseFloat(m)).toFixed(1) : "—";
+  const m = s > 0 ? (d / s) * 100 : 0;
   return (
     <CalculatorCard
       title="Mortality & Livability"
       formula="Mortality = (Jumlah Mati ÷ Populasi Awal) × 100  |  Livability = 100 − Mortality"
-      icon="mortality"
-      tone="orange"
     >
-      <Field
-        label="Jumlah Ayam Mati"
-        value={dead}
-        onChange={setDead}
-        unit="ekor"
-        placeholder="contoh 15"
+      <Field label="Jumlah Ayam Mati" value={dead} onChange={setDead} unit="ekor" placeholder="contoh 15" />
+      <Field label="Populasi Awal" value={start} onChange={setStart} unit="ekor" placeholder="contoh 5000" />
+      {/* Zero deaths is a real answer, so only the population must be above 0. */}
+      <CalcResult
+        ready={s > 0 && dead !== ""}
+        value={`${m.toFixed(2)}%`}
+        note={m < 1 ? "Baik — di bawah ambang normal" : m < 5 ? "Pantau — sedang" : "Tinggi — investigasi penyebab"}
+        attention={m >= 1}
+        details={[["Livability", `${(100 - m).toFixed(1)}%`]]}
       />
-      <Field
-        label="Populasi Awal"
-        value={start}
-        onChange={setStart}
-        unit="ekor"
-        placeholder="contoh 5000"
-      />
-      {resultTag(
-        `Mortality ${m}% · Livability ${liv}%`,
-        parseFloat(m) < 1
-          ? "Baik — di bawah ambang normal"
-          : parseFloat(m) < 5
-            ? "Pantau — sedang"
-            : "Tinggi — investigasi penyebab",
-      )}
     </CalculatorCard>
   );
 }
@@ -317,38 +246,17 @@ function WaterFeedCalc() {
   const [feed, setFeed] = useState("");
   const w = parseFloat(water) || 0;
   const f = parseFloat(feed) || 0;
-  const r = f > 0 ? (w / f).toFixed(2) : "—";
+  const r = f > 0 ? w / f : 0;
   return (
-    <CalculatorCard
-      title="Water/Feed Ratio"
-      formula="Ratio = Water Intake (ml) ÷ Feed Intake (g)  — Normal: 1.8–2.2"
-      icon="waterRate"
-      tone="lime"
-    >
-      <Field
-        label="Konsumsi Air"
-        value={water}
-        onChange={setWater}
-        unit="ml/ekor/hari"
-        placeholder="contoh 220"
+    <CalculatorCard title="Water/Feed Ratio" formula="Ratio = Water Intake (ml) ÷ Feed Intake (g)  — Normal: 1.8–2.2">
+      <Field label="Konsumsi Air" value={water} onChange={setWater} unit="ml/ekor/hari" placeholder="contoh 220" />
+      <Field label="Konsumsi Pakan" value={feed} onChange={setFeed} unit="g/ekor/hari" placeholder="contoh 115" />
+      <CalcResult
+        ready={w > 0 && f > 0}
+        value={r.toFixed(2)}
+        note={r >= 1.8 && r <= 2.2 ? "Normal" : r > 2.2 ? "Tinggi — cek suhu/stres/kualitas air" : "Rendah — cek akses air & kualitas"}
+        attention={r < 1.8 || r > 2.2}
       />
-      <Field
-        label="Konsumsi Pakan"
-        value={feed}
-        onChange={setFeed}
-        unit="g/ekor/hari"
-        placeholder="contoh 115"
-      />
-      {resultTag(
-        `${r}`,
-        r === "—"
-          ? null
-          : parseFloat(r) >= 1.8 && parseFloat(r) <= 2.2
-            ? "Normal"
-            : parseFloat(r) > 2.2
-              ? "Tinggi — cek suhu/stres/kualitas air"
-              : "Rendah — cek akses air & kualitas",
-      )}
     </CalculatorCard>
   );
 }
@@ -360,63 +268,29 @@ function VentilationCalc() {
   const b = parseFloat(birds) || 0;
   const w = parseFloat(weight) || 0;
   const t = parseFloat(temp) || 0;
-  // Minimum ventilation: ~0.01 m3/kg/hr per bird per minute rule-of-thumb; tunnel ~ 1 m3/hr/kg hot
-  // Simplified cfm: air needed m3/min = birds * weight(kg) * factor
+  // Rule of thumb: minimum (cold) 0.014 and tunnel (hot) 0.07 m³/min per kg live weight; a 36″ fan moves ≈ 340 m³/min.
   const kg = b * (w / 1000);
-  const minVent = (kg * 0.014).toFixed(1); // m3/min minimum cold
-  const tunnelVent = (kg * 0.07).toFixed(1); // m3/min hot tunnel
-  const fanCapacity = 25000; // m3/hr typical fan -> convert
-  // typical 36" fan ~ 340 m3/min
-  const fansTunnel = tunnelVent > 0 ? Math.ceil(tunnelVent / 340) : 0;
+  const minVent = kg * 0.014;
+  const tunnelVent = kg * 0.07;
+  const fansTunnel = Math.ceil(tunnelVent / 340);
   return (
     <CalculatorCard
       title="Kebutuhan Ventilasi & Jumlah Fan"
       formula="Min vent (m³/min) = berat total (kg) × 0.014 | Tunnel = × 0.07 | Fan 36″ ≈ 340 m³/min"
-      icon="hvac"
-      tone="green"
     >
-      <Field
-        label="Jumlah Ayam"
-        value={birds}
-        onChange={setBirds}
-        unit="ekor"
-        placeholder="contoh 5000"
+      <Field label="Jumlah Ayam" value={birds} onChange={setBirds} unit="ekor" placeholder="contoh 5000" />
+      <Field label="Berat Rata-rata" value={weight} onChange={setWeight} unit="gram" placeholder="contoh 1800" />
+      <Field label="Suhu Lingkungan" value={temp} onChange={setTemp} unit="°C" placeholder="contoh 30" />
+      <CalcResult
+        ready={b > 0 && w > 0}
+        value={`${fansTunnel} fan 36″`}
+        note="Perkiraan; sesuaikan dengan static pressure & design kandang"
+        details={[
+          ["Berat total", `${kg.toFixed(0)} kg`],
+          ["Ventilasi minimum", `${minVent.toFixed(1)} m³/min`],
+          [t > 0 ? `Tunnel (${t}°C)` : "Tunnel", `${tunnelVent.toFixed(1)} m³/min`],
+        ]}
       />
-      <Field
-        label="Berat Rata-rata"
-        value={weight}
-        onChange={setWeight}
-        unit="gram"
-        placeholder="contoh 1800"
-      />
-      <Field
-        label="Suhu Lingkungan"
-        value={temp}
-        onChange={setTemp}
-        unit="°C"
-        placeholder="contoh 30"
-      />
-      <div className="sm:col-span-2 space-y-1.5 text-sm">
-        <div>
-          Berat total: <span className="font-semibold">{kg.toFixed(0)} kg</span>
-        </div>
-        <div>
-          Minimum ventilation:{" "}
-          <span className="font-semibold">{minVent} m³/min</span>
-        </div>
-        <div>
-          Tunnel ventilation ({t}°C):{" "}
-          <span className="font-semibold">{tunnelVent} m³/min</span>
-        </div>
-        <div>
-          Estimasi fan 36″ (tunnel):{" "}
-          <span className="font-semibold">{fansTunnel} unit</span>
-        </div>
-      </div>
-      {resultTag(
-        `${fansTunnel} fan 36″`,
-        "Perkiraan; sesuaikan dengan static pressure & design kandang",
-      )}
     </CalculatorCard>
   );
 }
@@ -429,66 +303,25 @@ function RoiCalc() {
   const o = parseFloat(opexYr) || 0;
   const r = parseFloat(revYr) || 0;
   const margin = r - o;
-  const bep = margin > 0 ? (c / margin).toFixed(1) : "—";
-  const roi = c > 0 && margin > 0 ? ((margin / c) * 100).toFixed(0) : "—";
+  const roi = c > 0 ? (margin / c) * 100 : 0;
   return (
     <CalculatorCard
       title="ROI & Break Even Point"
       formula="Gross Margin = Revenue − OPEX | BEP = CAPEX ÷ Margin | ROI = (Margin ÷ CAPEX) × 100"
-      icon="marginalRoi"
-      tone="orange"
     >
-      <Field
-        label="CAPEX"
-        value={capex}
-        onChange={setCapex}
-        unit="Rp"
-        placeholder="contoh 500000000"
+      <Field label="CAPEX" value={capex} onChange={setCapex} unit="Rp" placeholder="contoh 500000000" />
+      <Field label="OPEX per Tahun" value={opexYr} onChange={setOpexYr} unit="Rp" placeholder="contoh 800000000" />
+      <Field label="Revenue per Tahun" value={revYr} onChange={setRevYr} unit="Rp" placeholder="contoh 1100000000" />
+      <CalcResult
+        ready={c > 0 && o > 0 && r > 0}
+        value={`ROI ${roi.toFixed(0)}%`}
+        note={roi > 20 ? "Menguntungkan — layak investasi" : roi > 0 ? "Marginal — optimalkan biaya" : "Belum profit — evaluasi OPEX/revenue"}
+        attention={roi <= 20}
+        details={[
+          ["Break even", margin > 0 ? `${(c / margin).toFixed(1)} tahun` : "Tidak tercapai"],
+          ["Gross margin", `Rp ${margin.toLocaleString("id-ID")}`],
+        ]}
       />
-      <Field
-        label="OPEX per Tahun"
-        value={opexYr}
-        onChange={setOpexYr}
-        unit="Rp"
-        placeholder="contoh 800000000"
-      />
-      <Field
-        label="Revenue per Tahun"
-        value={revYr}
-        onChange={setRevYr}
-        unit="Rp"
-        placeholder="contoh 1100000000"
-      />
-      <div className="flex items-end">
-        <div className="text-sm text-muted-foreground">
-          Gross Margin:{" "}
-          <span className="font-semibold text-foreground">
-            Rp {margin.toLocaleString("id-ID")}
-          </span>
-        </div>
-      </div>
-      <div className="sm:col-span-2 grid sm:grid-cols-2 gap-3">
-        <div className="rounded-xl bg-muted/50 px-3 py-2.5">
-          <div className="text-xs text-muted-foreground">Break Even</div>
-          <div className="font-bold">{bep} tahun</div>
-        </div>
-        <div className="rounded-xl bg-muted/50 px-3 py-2.5">
-          <div className="text-xs text-muted-foreground">ROI</div>
-          <div className="font-bold">{roi}%</div>
-        </div>
-      </div>
-      {resultTag(
-        `BEP ${bep} thn · ROI ${roi}%`,
-        parseFloat(roi) > 20
-          ? "Menguntungkan — layak investasi"
-          : parseFloat(roi) > 0
-            ? "Marginal — optimalkan biaya"
-            : "Belum profit — evaluasi OPEX/revenue",
-      )}
     </CalculatorCard>
   );
-}
-
-function resultTag(value, note) {
-  return <CalcResult value={value} note={note} />;
 }

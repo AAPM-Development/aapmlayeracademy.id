@@ -7,11 +7,15 @@ import AuthLayout from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { collectErrors, emailError, focusFirstError, passwordError } from "@/lib/authValidation";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  // A refused sign-in marks both fields: the API cannot say which one is wrong.
+  const [credentialsRejected, setCredentialsRejected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(false);
   const returnTo = safeReturnTo();
@@ -25,12 +29,24 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setCredentialsRejected(false);
+    const errors = collectErrors({ email: emailError(email), password: passwordError(password) });
+    setFieldErrors(errors || {});
+    if (errors) {
+      focusFirstError(errors);
+      return;
+    }
     setLoading(true);
     try {
-      await nativeApi.auth.login(email, password);
+      await nativeApi.auth.login(email.trim(), password);
       window.location.href = returnTo;
     } catch (err) {
-      setError(err.message || "Email atau password belum sesuai.");
+      setError(err.message || "Email atau kata sandi tidak sesuai.");
+      if (err.code === "invalid_credentials") {
+        setCredentialsRejected(true);
+        setPassword("");
+        document.getElementById("password")?.focus();
+      }
     } finally {
       setLoading(false);
     }
@@ -48,54 +64,55 @@ export default function Login() {
           Belum punya akun?{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="aapm-auth__link"
+            className="aapm-link"
           >
             Buat akun
           </Link>
         </>
       }
     >
-      {error && <Alert tone="danger" description={error} className="mb-5" />}
+      {error && <Alert tone="danger" description={error} className="aapm-auth__alert" />}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Field id="email" label="Alamat email">
-            <InputGroup
-              leadingIcon="mail"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="nama@perusahaan.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </Field>
-
-        <div className="space-y-2">
-          <PasswordField
-            id="password"
-             label="Kata sandi"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+      <form onSubmit={handleSubmit} noValidate>
+        <Field id="email" label="Alamat email" error={fieldErrors.email}>
+          <InputGroup
+            leadingIcon="mail"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            placeholder="nama@perusahaan.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFieldErrors((current) => ({ ...current, email: "" }));
+              setCredentialsRejected(false);
+            }}
+            aria-invalid={credentialsRejected || undefined}
+            required
           />
-          <div className="flex justify-end pt-1">
-            <Link
-              to="/forgot-password"
-              className="aapm-auth__link"
-            >
-               Lupa kata sandi?
-            </Link>
-          </div>
-        </div>
-
+        </Field>
+        <PasswordField
+          id="password"
+          label="Kata sandi"
+          autoComplete="current-password"
+          placeholder="Masukkan kata sandi"
+          value={password}
+          error={fieldErrors.password}
+          invalid={credentialsRejected}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setFieldErrors((current) => ({ ...current, password: "" }));
+            setCredentialsRejected(false);
+          }}
+          labelAction={<Link to="/forgot-password" className="aapm-link">Lupa kata sandi?</Link>}
+        />
         <Button type="submit" size="lg" block loading={loading}>
           {loading ? "Memeriksa akun…" : "Masuk"}
         </Button>
       </form>
       {googleAvailable && (
         <>
-          <div className="aapm-auth__divider my-6">atau lanjutkan dengan</div>
+          <div className="aapm-auth__divider">atau</div>
           <Button
             type="button"
             variant="secondary"

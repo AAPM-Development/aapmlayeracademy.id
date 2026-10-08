@@ -52,3 +52,7 @@ are separate entries so Recharts and cmdk only load on routes that use them.
 - **Admin** (`AdminShell`): same anatomy with a "Ruang admin" context and
   breadcrumbs by depth (Admin › Manajemen course › Kurikulum › Editor modul).
 - **Auth** (`AuthLayout`): form column + brand media panel for every auth route.
+  The column is top-anchored so the brand and title never move between
+  routes; below 1024px the panel becomes a poster band above the form. Forms
+  set `noValidate` and validate on submit into each Field's `error`
+  (`src/lib/authValidation.js`); links use the shared `.aapm-link`.

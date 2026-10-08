@@ -887,13 +887,13 @@ function app_password_hash(string $password): string
 function password_validation_error(string $password): string
 {
     if (strlen($password) < 8) {
-        return 'Password minimal 8 karakter.';
+        return 'Kata sandi minimal 8 karakter.';
     }
     if (strlen($password) > 128) {
-        return 'Password maksimal 128 karakter.';
+        return 'Kata sandi maksimal 128 karakter.';
     }
     if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
-        return 'Password harus memuat minimal satu huruf dan satu angka.';
+        return 'Kata sandi harus memuat minimal satu huruf dan satu angka.';
     }
 
     return '';
@@ -1005,8 +1005,8 @@ function send_password_reset_email(string $email, string $token): bool
         return false;
     }
 
-    $subject = 'Reset password AAPM Layer Academy';
-    $body = "Halo,\n\nKami menerima permintaan untuk mengganti password akun AAPM Layer Academy Anda.\n\nBuka link berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
+    $subject = 'Atur ulang kata sandi AAPM Layer Academy';
+    $body = "Halo,\n\nKami menerima permintaan untuk mengganti kata sandi akun AAPM Layer Academy Anda.\n\nBuka tautan berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
     $headers = implode("\r\n", [
         'From: ' . $from,
         'Reply-To: ' . $from,

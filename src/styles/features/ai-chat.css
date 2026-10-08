@@ -542,9 +542,10 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 /* Waiting to type reads as unavailable, not as an outlined green pill. */
 .aapm-ai-composer-frame .aapm-ai-send-control:disabled { border-color: transparent; }
 
-/* Desktop pages end above the floating APPI pill, so the last card can always
- * scroll clear of it (phones hide the pill where the bottom bar sits). */
-@media (min-width: 640px) {
+/* Pages end above the floating APPI pill, so the last card can always scroll
+ * clear of it. Below the md shell breakpoint the bottom bar replaces the pill
+ * and main already reserves its height. */
+@media (min-width: 860px) {
   html:has(.aapm-ai-launcher) .aapm-app__main > .aapm-page { padding-bottom: calc(var(--aapm-primitive-space-10) + var(--aapm-component-action-height)); }
 }
 

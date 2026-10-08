@@ -8,7 +8,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 const statusMeta = {
   completed: { label: "Dimiliki", tone: "success", icon: "check" },
   eligible: { label: "Siap diklaim", tone: "attention", icon: "award" },
-  "in-progress": { label: "Berjalan", tone: "info", icon: "pending" },
+  "in-progress": { label: "Berjalan", tone: "attention", icon: "pending" },
   locked: { label: "Terkunci", tone: "outline", icon: "lock" },
 };
 
@@ -32,7 +32,7 @@ export default function CertificationPath({ modules = [], progress = [], certifi
               </ProgressRing>
               <Badge tone={meta.tone} icon={meta.icon}>{meta.label}</Badge>
             </div>
-            <div>
+            <div className="aapm-progress-tile__body">
               <p className="aapm-text-overline m-0">Tingkat {tier.number}</p>
               <h3 className="aapm-progress-tile__title">{tier.name}</h3>
               <p className="aapm-text-caption m-0">{tier.requiresFinal ? "Seluruh modul + ujian akhir" : `${tier.modules.length} modul wajib`}</p>

@@ -15,19 +15,43 @@
   color: var(--aapm-semantic-primary);
   text-align: center;
 }
-.aapm-boot-screen__mark { width: 48px; height: 48px; animation: aapm-pulse 1.6s ease-in-out infinite; }
-.aapm-boot-screen--error { color: var(--aapm-semantic-danger); font-size: var(--aapm-component-type-body-size); }
-
-.aapm-route-loading {
-  display: flex;
-  min-height: 14rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--aapm-primitive-space-3);
-  color: var(--aapm-semantic-muted);
-  font-size: var(--aapm-component-type-support-size);
+.aapm-boot-screen__mark {
+  width: var(--aapm-component-state-icon-frame);
+  height: var(--aapm-component-state-icon-frame);
+  animation: aapm-pulse var(--aapm-primitive-motion-pulse) var(--aapm-primitive-motion-ease-in-out) infinite;
 }
-.aapm-route-loading .aapm-spinner { color: var(--aapm-semantic-primary); }
+/* Visible label: the state is not carried by motion alone. */
+.aapm-boot-screen__label { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
+
+/* In-app navigation to a lazy route runs in a transition, so the old page
+ * stays up until the chunk lands: a thin bar says the click registered. It
+ * fades in after motion-base, so cached routes never flash it. */
+.aapm-route-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: var(--aapm-primitive-layer-floating);
+  height: var(--aapm-component-progress-height-sm);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
+}
+.aapm-route-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--aapm-semantic-primary);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.aapm-route-progress[data-active="true"] { opacity: 1; transition-delay: var(--aapm-primitive-motion-base); }
+.aapm-route-progress[data-active="true"]::before {
+  animation: aapm-route-progress calc(var(--aapm-primitive-motion-chart) * 4) var(--aapm-primitive-motion-ease) var(--aapm-primitive-motion-base) forwards;
+}
+@keyframes aapm-route-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(.9); }
+}
 
 /* Standalone status page (StatusPage): brand at system size over one state. */
 .aapm-status-page {
@@ -81,6 +105,7 @@
 }
 
 .aapm-app__canvas {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -542,24 +567,27 @@
   min-width: 0;
   padding: var(--aapm-primitive-space-8) var(--aapm-primitive-space-6);
 }
+/* Top-anchored, not centred: the brand and title sit in the same place on
+ * every route of the flow, and an Alert only pushes what is below it. */
 .aapm-auth__form {
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
   width: 100%;
-  max-width: 400px;
+  max-width: var(--aapm-component-auth-form-width);
   margin-inline: auto;
+  padding-block-start: var(--aapm-component-auth-top-offset);
 }
 .aapm-auth__brand { display: block; width: var(--aapm-component-brand-width); height: auto; margin-bottom: var(--aapm-primitive-space-8); }
-.aapm-auth__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); }
-.aapm-auth__subtitle { margin: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); }
+.aapm-auth__icon { margin-bottom: var(--aapm-primitive-space-4); }
+.aapm-auth__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; }
+/* The header group sits further from the form than two fields sit apart. */
+.aapm-auth__subtitle { margin: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-8); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); text-wrap: pretty; }
+.aapm-auth__alert { margin-bottom: var(--aapm-primitive-space-5); }
 .aapm-auth__footer { margin-top: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); text-align: center; }
-.aapm-auth__footer a,
-.aapm-auth a.aapm-auth__link { color: var(--aapm-semantic-primary); font-weight: var(--aapm-primitive-weight-label); text-decoration: none; }
-.aapm-auth__footer a:hover,
-.aapm-auth a.aapm-auth__link:hover { text-decoration: underline; text-underline-offset: 3px; }
-.aapm-auth__legal { margin-top: var(--aapm-primitive-space-8); color: var(--aapm-semantic-subtle-text); font-size: var(--aapm-component-type-caption-size); text-align: center; }
+/* Every auth link is the shared .aapm-link at one size. */
+.aapm-auth .aapm-link { gap: var(--aapm-primitive-space-1); font-size: var(--aapm-component-type-support-size); }
+.aapm-auth__legal { margin-top: auto; padding-top: var(--aapm-primitive-space-8); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); text-align: center; }
 .aapm-auth__media {
   position: relative;
   margin: var(--aapm-primitive-space-3);
@@ -573,7 +601,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(10, 30, 14, 0) 40%, rgba(10, 30, 14, .72) 100%);
+  background: var(--aapm-semantic-media-scrim);
 }
 .aapm-auth__quote {
   position: absolute;
@@ -581,27 +609,38 @@
   bottom: var(--aapm-primitive-space-8);
   z-index: 1;
   margin: 0;
-  color: #fff;
+  color: var(--aapm-semantic-on-media);
   font-size: var(--aapm-component-type-section-size);
-  line-height: 1.5;
+  line-height: var(--aapm-component-type-section-line);
   font-style: italic;
   font-weight: var(--aapm-primitive-weight-label);
   text-wrap: balance;
 }
 .aapm-auth__quote footer { margin-top: var(--aapm-primitive-space-3); font-size: var(--aapm-component-type-caption-size); font-style: normal; opacity: .85; }
+/* The shell is the only source of form rhythm: one gap between fields. */
 .aapm-auth__form > form,
-.aapm-auth__stack { display: grid; gap: var(--aapm-primitive-space-4); }
+.aapm-auth__stack { display: grid; gap: var(--aapm-primitive-space-5); }
+.aapm-auth__form > form > .aapm-button[type="submit"] { margin-top: var(--aapm-primitive-space-2); }
 .aapm-auth__form .aapm-input { min-height: var(--aapm-component-action-height-lg); }
 .aapm-auth__form .aapm-button[type="submit"] { min-height: var(--aapm-component-action-height-lg); }
-.aapm-auth__divider { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); color: var(--aapm-semantic-subtle-text); font-size: var(--aapm-component-type-caption-size); }
+.aapm-auth__divider { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); margin-block: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
 .aapm-auth__divider::before,
 .aapm-auth__divider::after { content: ""; flex: 1; height: 1px; background: var(--aapm-semantic-border); }
+/* Below desktop the brand panel reflows into a band above the form instead
+ * of disappearing; the video stays desktop-only (AuthLayout gates it). */
 @media (max-width: 1023px) {
-  .aapm-auth { grid-template-columns: minmax(0, 1fr); }
-  .aapm-auth__media { display: none; }
+  .aapm-auth { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .aapm-auth__media { order: -1; aspect-ratio: 16 / 7; margin-bottom: 0; }
+  .aapm-auth__media > video { object-position: center 30%; }
+  .aapm-auth__quote { inset-inline: var(--aapm-primitive-space-6); bottom: var(--aapm-primitive-space-5); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
+  .aapm-auth__quote footer { display: none; }
+  .aapm-auth__form { padding-block-start: var(--aapm-primitive-space-4); }
 }
 @media (max-width: 639px) {
+  .aapm-auth__media { aspect-ratio: auto; height: var(--aapm-component-auth-media-band); }
+  .aapm-auth__quote { display: none; }
   .aapm-auth__pane { padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-5); }
+  .aapm-auth__form { padding-block-start: 0; }
   .aapm-auth__brand { margin-bottom: var(--aapm-primitive-space-6); }
 }
 

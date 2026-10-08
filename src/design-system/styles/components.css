@@ -239,11 +239,19 @@
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: aapm-spin .7s linear infinite;
+  animation: aapm-spin var(--aapm-primitive-motion-spin) linear infinite;
 }
 .aapm-spinner[data-size="lg"] {
   width: var(--aapm-primitive-icon-xl);
   height: var(--aapm-primitive-icon-xl);
+}
+/* A still spinner reads as a "C": under reduced motion show a full faint
+ * ring with an accent arc instead. */
+@media (prefers-reduced-motion: reduce) {
+  .aapm-spinner {
+    border-color: color-mix(in srgb, currentColor 25%, transparent);
+    border-top-color: currentColor;
+  }
 }
 
 /* --------------------------------------------------------------- Fields */
@@ -1579,5 +1587,8 @@ a.aapm-surface { text-decoration: none; }
  * margin keeps the layout where it was. */
 @media (max-width: 639px) {
   .aapm-page-header__back { min-height: var(--aapm-component-action-height); }
+  /* Header button actions stack full width with the primary on top, instead of ragged wrapped rows. */
+  .aapm-page-header__actions:not(:has(> :not(.aapm-button))) { display: grid; width: 100%; }
+  .aapm-page-header__actions > .aapm-button[data-variant="primary"] { order: -1; }
   .aapm-lesson-row__title { padding-block: 9px; margin-block: -9px; }
 }

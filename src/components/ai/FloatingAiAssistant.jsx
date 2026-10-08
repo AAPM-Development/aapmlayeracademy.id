@@ -820,7 +820,7 @@ export default function FloatingAiAssistant() {
           aria-haspopup="dialog"
         >
           <AiProfileAvatar size="xs" state="idle" label="" />
-          <span className="hidden text-xs font-semibold leading-4 text-foreground sm:inline">Tanya APPI</span>
+          <span className="hidden text-caption font-semibold text-foreground sm:inline">Tanya APPI</span>
         </button>
       )}
     </>

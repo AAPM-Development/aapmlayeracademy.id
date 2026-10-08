@@ -2,21 +2,29 @@ import React, { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import { useAuth } from "@/lib/AuthContext";
-import { Alert, Button, Field, InputGroup } from "@/components/primitives";
+import { Button, Field, InputGroup } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { emailError } from "@/lib/authValidation";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [devResetLink, setDevResetLink] = useState("");
+  const [fieldError, setFieldError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const invalid = emailError(email);
+    setFieldError(invalid);
+    if (invalid) {
+      document.getElementById("email")?.focus();
+      return;
+    }
     setLoading(true);
     try {
-      const result = await nativeApi.auth.requestPasswordReset(email);
+      const result = await nativeApi.auth.requestPasswordReset(email.trim());
       if (result?.devResetToken) {
         setDevResetLink(`${window.location.origin}/reset-password?token=${encodeURIComponent(result.devResetToken)}`);
       }
@@ -31,45 +39,59 @@ export default function ForgotPassword() {
   const { isAuthenticated, isLoadingAuth } = useAuth();
   if (!isLoadingAuth && isAuthenticated) return <Navigate to={"/"} replace />;
 
-  return (
-    <AuthLayout
-      iconName="mail"
-      title="Atur ulang password"
-      subtitle="Kami akan mengirim tautan untuk membuat kata sandi baru."
-      footer={
-          <Link to="/login" className="aapm-auth__link">
-           <AapmIcon name="arrowLeft" />Kembali ke halaman masuk
-        </Link>
-      }
-    >
-      {sent ? (
+  const backToLogin = (
+    <Link to="/login" className="aapm-link">
+      <AapmIcon name="arrowLeft" />Kembali ke halaman masuk
+    </Link>
+  );
+
+  // Once sent, the header itself carries the new state; the only next step
+  // in the app is back to sign-in.
+  if (sent) {
+    return (
+      <AuthLayout
+        iconName="success"
+        title="Periksa email Anda"
+        subtitle="Jika akun dengan email tersebut tersedia, tautan reset sudah kami kirim."
+      >
         <div className="aapm-auth__stack">
-          <Alert tone="success" title="Periksa email Anda" description="Jika akun dengan email tersebut tersedia, tautan reset akan segera dikirim." />
+          <Button asChild variant="secondary" size="lg" block>
+            <Link to="/login"><AapmIcon name="arrowLeft" />Kembali ke halaman masuk</Link>
+          </Button>
           {devResetLink && (
-            <a className="aapm-auth__link" href={devResetLink}>
+            <a className="aapm-link" href={devResetLink}>
               Buka tautan reset
             </a>
           )}
         </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field id="email" label="Alamat email">
-            <InputGroup
-              leadingIcon="mail"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="nama@perusahaan.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </Field>
-          <Button type="submit" size="lg" block loading={loading}>
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout
+      iconName="mail"
+      title="Atur ulang kata sandi"
+      subtitle="Kami akan mengirim tautan untuk membuat kata sandi baru."
+      footer={backToLogin}
+    >
+      <form onSubmit={handleSubmit} noValidate>
+        <Field id="email" label="Alamat email" error={fieldError}>
+          <InputGroup
+            leadingIcon="mail"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            placeholder="nama@perusahaan.com"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setFieldError(""); }}
+            required
+          />
+        </Field>
+        <Button type="submit" size="lg" block loading={loading}>
           {loading ? "Mengirim tautan…" : "Kirim tautan reset"}
         </Button>
-        </form>
-      )}
+      </form>
     </AuthLayout>
   );
 }
