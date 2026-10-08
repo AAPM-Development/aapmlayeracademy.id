@@ -482,6 +482,8 @@ input.aapm-checkbox:checked {
   transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease);
 }
 .aapm-switch[data-state="checked"] { background: var(--aapm-semantic-primary); }
+/* The drawn switch stays 38x22; its hit area reaches 40px tall for touch. */
+.aapm-switch::before { content: ""; position: absolute; inset: -9px -8px; }
 .aapm-switch__thumb {
   display: block;
   width: 18px;

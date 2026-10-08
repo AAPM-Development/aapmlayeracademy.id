@@ -232,7 +232,7 @@
 .aapm-eyebrow {
   display: block;
   color: var(--aapm-semantic-primary);
-  font-size: 10px;
+  font-size: var(--aapm-component-type-overline-size);
   font-weight: var(--aapm-primitive-weight-strong);
   letter-spacing: 0.16em;
   line-height: 1.4;
@@ -332,7 +332,7 @@
   gap: 2px var(--aapm-primitive-space-2);
   margin-top: var(--aapm-primitive-space-1);
   color: var(--aapm-semantic-muted);
-  font-size: 10px;
+  font-size: var(--aapm-component-type-caption-size);
 }
 
 .aapm-ai-editor {
