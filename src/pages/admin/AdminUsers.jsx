@@ -191,7 +191,7 @@ function UserSheet({ user, open, onOpenChange }) {
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="aapm-field-hint">Admin dapat mengelola kurikulum, pengguna, dan pengaturan APPI.</p>
+                  <p className="aapm-field-hint">{role === "admin" ? "Admin dapat mengelola kurikulum, pengguna, dan pengaturan APPI." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
                 </div>
               </FormGrid>
             </FormSection>
