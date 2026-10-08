@@ -156,3 +156,20 @@ What is strong: the quiz feedback and result screens, the final-exam navigator, 
 **Still open:** P2-1 tap targets, P2-2 missing h1, P2-3 duplicate editor IDs, P2-4 KPI validation and copy, P2-5 calculator blank-result hint, P2-6 tool rail scroll cue, P2-7 register while signed in, P2-8 floating APPI launcher overlap, P2-9 editor navigation layers, all P3.
 
 **Decision to confirm:** quiz modules no longer offer "Tandai selesai". Completion comes from passing the quiz, which matches the bounded flow.
+
+---
+
+## Status update: P2 pass
+
+**Fixed**
+- P2-1 Tap targets on phones: buttons, tabs, the lesson stepper and the composer switch reach 40px (the composer switch uses an extended hit area). Auth show-password toggles use the 40px icon size. The auth text links were not re-measured.
+- P2-2 One heading per screen: quiz and exam titles are visually hidden h1s, and the 404 title is an h1.
+- P2-3 Duplicate IDs: the editor's block anchors carry an editor prefix.
+- P2-4 KPI form: inline error under the week field, focus moves to it, the native bubble is off, and labels are Indonesian.
+- P2-5 Calculators: a blank result explains that values must be filled and above 0.
+- P2-6 Calculator tool rail: edge cue while more tools are off-screen.
+- P2-7 Auth pages: signed-in users are sent to the app (login returns to its return path).
+- P2-8 Floating APPI pill: hidden on phones where the bottom bar or a focus footer already holds the space.
+- P2-9 Editor: the duplicated back link is removed. The three navigation layers are not yet merged.
+
+**Still open:** P3 polish, and merging the editor's navigation layers.
