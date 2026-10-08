@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import {
   Badge,
   PageHeader,
@@ -11,7 +10,7 @@ import {
   Button,
 } from "@/design-system";
 import { Page } from "@/design-system/patterns/AppShell";
-import { ContinueCard, CourseCard, LevelSection } from "@/components/academy/CourseElements";
+import { ContinueCard, CourseCard, LearningPath } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useModules, useUserProgress } from "@/lib/useCourseData";
 import { getNextModule, getProgressSummary } from "@/lib/academyData";
@@ -40,7 +39,6 @@ export default function Modules() {
   const nextModule = getNextModule(modules, progress);
   const curriculum = useMemo(() => buildCurriculum(modules, progress), [modules, progress]);
   const levelsDone = curriculum.filter((level) => level.percent === 100).length;
-  const openLevel = curriculum.find((level) => level.hasCurrent) || curriculum[0];
 
   const normalizedQuery = query.trim().toLowerCase();
   const catalog = useMemo(() => curriculum
@@ -102,8 +100,8 @@ export default function Modules() {
           <section aria-labelledby="curriculum-title">
             <SectionHeader
               id="curriculum-title"
-              title={view === "path" ? "Kurikulum per level" : "Katalog modul"}
-              description={view === "path" ? "Buka level untuk melihat modulnya. Level aktif ditandai." : "Cari dan saring modul berdasarkan level."}
+              title={view === "path" ? "Jalur belajar" : "Katalog modul"}
+              description={view === "path" ? "Ikuti jalur dari atas. Penanda Mulai menunjukkan modul Anda berikutnya." : "Cari dan saring modul berdasarkan level."}
               actions={(
                 <SegmentedControl
                   label="Tampilan kurikulum"
@@ -118,9 +116,7 @@ export default function Modules() {
             />
 
             {view === "path" ? (
-              <AccordionPrimitive.Root type="multiple" defaultValue={openLevel ? [`level-${openLevel.number}`] : []} className="grid gap-3">
-                {curriculum.map((level) => <LevelSection key={level.number} level={level} />)}
-              </AccordionPrimitive.Root>
+              <LearningPath curriculum={curriculum} />
             ) : (
               <div className="grid gap-4">
                 <div className="aapm-toolbar">

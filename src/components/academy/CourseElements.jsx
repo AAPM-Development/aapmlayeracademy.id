@@ -1,9 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, Button, ProgressRing, Segments } from "@/design-system";
 import { estimateMinutes, levelVisual, moduleVisual } from "@/lib/academyVisuals";
+import { pathOffset } from "@/lib/learningPath";
 import { cn } from "@/lib/utils";
 
 const stateLabel = {
@@ -83,36 +83,83 @@ export function ModuleRow({ module, state = "available", hue }) {
   );
 }
 
-/** Collapsible level in the learning path (Radix accordion item). */
-export function LevelSection({ level }) {
+/** Inline style carrying the node's horizontal offset on the winding path. */
+const pathOffsetStyle = (offset) => /** @type {React.CSSProperties} */ ({ "--path-offset": offset });
+
+const pathNodeIcon = {
+  completed: "glyphCheck",
+  current: "star",
+  available: "play",
+  locked: "lock",
+};
+
+/** One module on the learning path: a round, tactile node with its title. */
+function PathNode({ module, offset }) {
+  const state = module.state || "available";
+  const quizPercent = module.progress?.quizTotal
+    ? Math.round(((module.progress.quizScore || 0) / module.progress.quizTotal) * 100)
+    : null;
   return (
-    <AccordionPrimitive.Item value={`level-${level.number}`} id={`level-${level.number}`} className="aapm-level" data-hue={level.hue} data-current={level.hasCurrent ? "true" : undefined}>
-      <AccordionPrimitive.Header asChild>
-        <h3 className="m-0">
-          <AccordionPrimitive.Trigger className="aapm-level__header">
-            <ProgressRing value={level.percent} size={48} stroke={5} hue={level.hue} label={`Level ${level.number} ${level.percent}%`}>
-              <AapmIcon name={level.icon} />
-            </ProgressRing>
-            <span className="min-w-0">
-              <span className="aapm-text-overline block">Level {level.number}</span>
-              <span className="aapm-level__title block">{level.name}</span>
-              {level.description ? <span className="aapm-level__description block">{level.description}</span> : null}
-            </span>
-            <span className="aapm-level__aside">
-              <Badge hue={level.percent === 100 ? undefined : level.hue} tone={level.percent === 100 ? "success" : undefined} icon={level.percent === 100 ? "check" : undefined}>
-                {level.completed}/{level.total} modul
-              </Badge>
-              <AapmIcon name="chevronDown" className="aapm-accordion-chevron" />
-            </span>
-          </AccordionPrimitive.Trigger>
-        </h3>
-      </AccordionPrimitive.Header>
-      <AccordionPrimitive.Content className="aapm-accordion-content">
-        <div className="aapm-level__modules">
-          {level.modules.map((module) => <ModuleRow key={module.moduleNumber} module={module} state={module.state} hue={level.hue} />)}
+    <li>
+      <Link
+        to={`/modules/${module.moduleNumber}`}
+        className="aapm-path-node"
+        data-state={state}
+        style={pathOffsetStyle(offset)}
+        aria-label={`Modul ${module.moduleNumber}: ${module.title}. ${stateLabel[state] || ""}`}
+        aria-current={state === "current" ? "step" : undefined}
+      >
+        {state === "current" ? <span className="aapm-path-node__callout" aria-hidden="true">{module.progress ? "Lanjutkan" : "Mulai"}</span> : null}
+        <span className="aapm-path-node__disc" aria-hidden="true"><AapmIcon name={pathNodeIcon[state] || "play"} /></span>
+        <span className="aapm-path-node__label" aria-hidden="true">
+          <span className="aapm-text-overline aapm-path-node__eyebrow">Modul {module.moduleNumber}</span>
+          <span className="aapm-path-node__title">{module.title}</span>
+          <span className="aapm-meta">
+            {quizPercent !== null ? <><AapmIcon name="quiz" />Kuis {quizPercent}%</> : <><AapmIcon name="clock" />±{estimateMinutes(module)} mnt</>}
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+/** A level on the learning path: unit banner, module nodes, level goal. */
+function PathUnit({ level }) {
+  const titleId = `path-level-${level.number}`;
+  const done = level.percent === 100;
+  return (
+    <section id={`level-${level.number}`} className="aapm-path-unit" data-hue={level.hue} data-current={level.hasCurrent ? "true" : undefined} aria-labelledby={titleId}>
+      <header className="aapm-path-unit__banner">
+        <div className="min-w-0">
+          <p className="aapm-text-overline aapm-path-unit__eyebrow">Level {level.number} · {level.completed}/{level.total} modul</p>
+          <h3 id={titleId} className="aapm-path-unit__title">{level.name}</h3>
+          {level.description ? <p className="aapm-path-unit__description">{level.description}</p> : null}
         </div>
-      </AccordionPrimitive.Content>
-    </AccordionPrimitive.Item>
+        <ProgressRing value={level.percent} size={52} stroke={5} hue={level.hue} label={`Level ${level.number} ${level.percent}%`}>
+          <AapmIcon name={done ? "glyphCheck" : level.icon} />
+        </ProgressRing>
+      </header>
+      <ol className="aapm-path-unit__track">
+        {level.modules.map((module, index) => <PathNode key={module.moduleNumber} module={module} offset={pathOffset(index)} />)}
+        <li className="aapm-path-goal" data-done={done ? "true" : undefined} style={pathOffsetStyle(pathOffset(level.modules.length))}>
+          <span className="aapm-path-goal__icon" aria-hidden="true"><AapmIcon name="exam" /></span>
+          <span>{done ? "Level tuntas" : `Tuntaskan ${level.total - level.completed} modul lagi`}</span>
+        </li>
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * Duolingo-style learning path: every level as a unit banner followed by its
+ * modules as round nodes on a winding track. The current module carries the
+ * start callout; node colour follows the learning state.
+ */
+export function LearningPath({ curriculum = [] }) {
+  return (
+    <div className="aapm-path">
+      {curriculum.map((level) => <PathUnit key={level.number} level={level} />)}
+    </div>
   );
 }
 
@@ -143,7 +190,7 @@ export function ContinueCard({ module, completedModules = 0, totalModules = 0, t
 }
 
 /** Stat tile with a colourful icon circle (score, streak, lessons…). */
-export function StatTile({ icon, hue = "green", label, value, className }) {
+export function StatTile({ icon, hue = "green", label, value, className = undefined }) {
   return (
     <div className={cn("aapm-stat", className)} data-hue={hue}>
       <span className="aapm-stat__icon" aria-hidden="true"><AapmIcon name={icon} /></span>

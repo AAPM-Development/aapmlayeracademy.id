@@ -11,6 +11,7 @@ import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/compo
 import { useModules, useQuizQuestions, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, sortModules } from "@/lib/academyData";
 import { buildCurriculum, estimateMinutes, moduleFlowState, moduleVisual } from "@/lib/academyVisuals";
+import { celebrate } from "@/lib/celebrate";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
 
 const OUTLINE_KEY = "aapm-lesson-outline";
@@ -104,6 +105,7 @@ export default function ModuleDetail() {
     if (!module || moduleProgress?.completed) return;
     try {
       await save({ moduleNumber: number, data: { moduleNumber: number, completed: true } });
+      celebrate();
       toast({ title: "Modul diselesaikan", description: next ? `Berikutnya: ${next.title}` : "Semua modul sudah Anda tuntaskan." });
     } catch {
       toast({ title: "Progress belum tersimpan", description: "Coba lagi setelah koneksi kembali normal.", variant: "destructive" });

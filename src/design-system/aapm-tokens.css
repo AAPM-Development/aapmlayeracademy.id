@@ -168,6 +168,7 @@
   --aapm-primitive-motion-ease: cubic-bezier(.2,.8,.2,1);
   --aapm-primitive-motion-ease-in: cubic-bezier(.4,0,1,1);
   --aapm-primitive-motion-ease-in-out: cubic-bezier(.4,0,.2,1);
+  --aapm-primitive-motion-ease-spring: cubic-bezier(.34,1.56,.64,1);
   --aapm-primitive-layer-base: 0;
   --aapm-primitive-layer-sticky: 10;
   --aapm-primitive-layer-header: 20;

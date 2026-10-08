@@ -106,6 +106,16 @@
   transform: translateY(2px);
   box-shadow: var(--aapm-component-action-learn-press);
 }
+/* Waiting for an answer reads as unavailable, not as a faded green
+ * (Duolingo's grey "Periksa"). Loading keeps its colour and spinner. */
+.aapm-button[data-variant="learn"]:disabled:not([data-loading="true"]),
+.aapm-button[data-variant="learn"][aria-disabled="true"] {
+  border-color: var(--aapm-semantic-surface-secondary);
+  background: var(--aapm-semantic-surface-secondary);
+  color: var(--aapm-semantic-muted);
+  box-shadow: 0 3px 0 var(--aapm-semantic-border-strong);
+  opacity: 1;
+}
 
 .aapm-button[data-variant="attention"] {
   background: var(--aapm-semantic-attention);

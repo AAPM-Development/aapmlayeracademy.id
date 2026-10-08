@@ -35,6 +35,7 @@ import {
   getNextModule,
   getProgressSummary,
 } from "../src/lib/academyData.js";
+import { correctRun, formatDuration, pathOffset } from "../src/lib/learningPath.js";
 import {
   EDITORIAL_PRESENTATION_MAX_BYTES,
   EDITORIAL_PRESENTATION_MAX_SLIDES,
@@ -430,6 +431,53 @@ test("progress metrics count only active catalog modules", () => {
     completedSet: new Set([1]),
   });
   assert.equal(getNextModule(modules, progress)?.moduleNumber, 2);
+});
+
+test("learning path winds from the centre and quiz readouts stay honest", () => {
+  assert.equal(pathOffset(0), 0);
+  assert.ok(pathOffset(2) > 0);
+  assert.ok(pathOffset(6) < 0);
+  assert.equal(pathOffset(8), pathOffset(0));
+  assert.ok([...Array(24).keys()].every((index) => Math.abs(pathOffset(index)) <= 1));
+
+  assert.equal(correctRun([true, true, false, true, true, true], 5), 3);
+  assert.equal(correctRun([true, undefined, true], 2), 1);
+  assert.equal(correctRun([true, true, true], 1), 2);
+  assert.equal(correctRun([], 3), 0);
+
+  assert.equal(formatDuration(0), "0:00");
+  assert.equal(formatDuration(65_400), "1:05");
+  assert.equal(formatDuration(-5), "0:00");
+});
+
+test("Duolingo-style learner flow keeps its accessibility and motion contracts", () => {
+  const quiz = readWorkspaceFile("../src/pages/Quiz.jsx");
+  const assessment = readWorkspaceFile("../src/components/academy/AssessmentComponents.jsx");
+  const course = readWorkspaceFile("../src/components/academy/CourseElements.jsx");
+  const celebrate = readWorkspaceFile("../src/lib/celebrate.js");
+  const theme = readWorkspaceFile("../src/lib/useThemeMode.js");
+  const styles = readStyles();
+
+  // The verdict is announced through a live region that exists before the
+  // check, and the action bar takes the verdict tone.
+  assert.match(quiz, /className="aapm-visually-hidden" role="status"/);
+  assert.match(quiz, /footerTone=\{isChecked/);
+  // Enter never double-fires on a focused button or link.
+  assert.match(quiz, /target\?\.closest\("button, a"\) && !target\.closest\("\.aapm-choice"\)/);
+  assert.match(assessment, /aria-keyshortcuts/);
+  // One h1 per result screen: the assessment bar holds it.
+  assert.match(assessment, /<h2 className="aapm-result__title">/);
+  // Path nodes are links with a full name; the current one is the step.
+  assert.match(course, /aria-label=\{`Modul \$\{module\.moduleNumber\}: \$\{module\.title\}/);
+  assert.match(course, /aria-current=\{state === "current" \? "step" : undefined\}/);
+  // Celebration and theme switching respect motion preferences.
+  assert.match(celebrate, /prefers-reduced-motion: reduce/);
+  assert.match(theme, /aapm-theme-switching/);
+  assert.match(styles, /\.aapm-theme-switching \*/);
+  // The winding offset uses `translate`, so the arrival animation's
+  // transform never overrides it.
+  assert.match(styles, /translate: calc\(var\(--path-offset, 0\) \* var\(--path-swing\)\) 0/);
+  assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 
 test("PWA metadata uses the canonical app icon and leaves API responses uncached", () => {

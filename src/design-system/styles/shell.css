@@ -464,7 +464,35 @@
   background: var(--aapm-semantic-surface);
 }
 .aapm-focus__footer-center { min-width: 0; flex: 1; text-align: center; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
+.aapm-focus__footer-center kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 4px;
+  border: 1px solid var(--aapm-semantic-border);
+  border-bottom-width: 2px;
+  border-radius: var(--aapm-primitive-radius-xs);
+  background: var(--aapm-semantic-surface-subtle);
+  font: inherit;
+  font-weight: var(--aapm-primitive-weight-label);
+  text-align: center;
+}
 .aapm-focus__footer-group { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); }
+/* After a quiz check the action bar becomes the verdict (Duolingo-style):
+ * tinted surface, feedback on the left, the continue button in the verdict
+ * colour on the right. */
+.aapm-focus__footer {
+  transition: background-color var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease), border-color var(--aapm-primitive-motion-panel) var(--aapm-primitive-motion-ease);
+}
+.aapm-focus__footer[data-tone="success"] { border-top-color: color-mix(in srgb, var(--aapm-semantic-success) 35%, transparent); background: var(--aapm-semantic-feedback-success-surface); }
+.aapm-focus__footer[data-tone="danger"] { border-top-color: color-mix(in srgb, var(--aapm-semantic-danger) 35%, transparent); background: var(--aapm-semantic-feedback-danger-surface); }
+.aapm-focus__footer[data-tone] { padding-top: var(--aapm-primitive-space-3); padding-bottom: calc(var(--aapm-primitive-space-3) + env(safe-area-inset-bottom)); }
+.aapm-focus__footer[data-tone="danger"] .aapm-button[data-variant="learn"] {
+  border-color: var(--aapm-semantic-danger);
+  background: var(--aapm-semantic-danger);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--aapm-semantic-danger) 70%, var(--aapm-semantic-foreground));
+}
+.dark .aapm-focus__footer[data-tone="danger"] .aapm-button[data-variant="learn"] { box-shadow: 0 3px 0 color-mix(in srgb, var(--aapm-semantic-danger) 60%, var(--aapm-semantic-background)); }
+.aapm-focus__footer[data-tone="danger"] .aapm-button[data-variant="learn"]:active:not(:disabled) { box-shadow: 0 1px 0 color-mix(in srgb, var(--aapm-semantic-danger) 70%, var(--aapm-semantic-foreground)); }
 
 @media (max-width: 1023px) {
   .aapm-focus__body,
@@ -480,6 +508,8 @@
   .aapm-focus__footer-group { flex: 1; }
   .aapm-focus__footer-group:last-child { justify-content: flex-end; }
   .aapm-focus__footer-group:last-child > .aapm-button { flex: 1; }
+  .aapm-focus__footer[data-tone] { flex-wrap: wrap; row-gap: var(--aapm-primitive-space-3); }
+  .aapm-focus__footer[data-tone] .aapm-check-feedback { flex-basis: 100%; }
 }
 
 /* ----------------------------------------------------------- Auth shell */

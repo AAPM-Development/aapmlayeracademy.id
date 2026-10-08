@@ -2,6 +2,7 @@ import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconButton, Segments } from "@/design-system";
 import { StatTile } from "@/components/academy/CourseElements";
+import { formatDuration } from "@/lib/learningPath";
 
 const KEYS = ["A", "B", "C", "D", "E", "F"];
 
@@ -28,10 +29,11 @@ export function AssessmentBar({ onExit, total = 0, current = 0, states = [], lab
 }
 
 /**
- * One question with A/B/C/D choice cards (radiogroup). `result` reveals the
- * correct and chosen-wrong options after checking.
+ * One question with A/B/C/D choice cards (radiogroup). `revealed` shows the
+ * correct and chosen-wrong options after checking. The quiz page maps the
+ * A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
  */
-export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, meta, children }) {
+export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, meta, children = null }) {
   if (!question) return null;
   const titleId = `question-${number}`;
   return (
@@ -57,6 +59,7 @@ export function QuizQuestion({ question, number, total, answer, onAnswer, reveal
               className="aapm-choice"
               data-result={result}
               disabled={revealed}
+              aria-keyshortcuts={KEYS[index] ? `${KEYS[index]} ${index + 1}` : undefined}
               onClick={() => onAnswer(index)}
             >
               <span className="aapm-choice__key" aria-hidden="true">{KEYS[index] || index + 1}</span>
@@ -71,18 +74,32 @@ export function QuizQuestion({ question, number, total, answer, onAnswer, reveal
   );
 }
 
-/** Feedback after checking an answer (Duolingo-style). */
-export function AnswerFeedback({ question, answer }) {
+/** Short screen-reader sentence for a checked answer (feeds a live region). */
+export function checkAnnouncement(question, answer, run = 0) {
+  if (!question || answer === undefined) return "";
+  if (answer !== question.correctIndex) return `Belum tepat. Jawaban benar: ${question.options[question.correctIndex]}.`;
+  return run >= 3 ? `Tepat sekali! ${run} benar beruntun.` : "Tepat sekali!";
+}
+
+/**
+ * Answer feedback inside the action bar after "Periksa" (Duolingo-style):
+ * verdict, the correct answer when wrong, the explanation, and a run of
+ * correct answers from three on. The bar itself carries the tone; the
+ * announcement goes through the page's persistent live region.
+ */
+export function CheckFeedback({ question, answer, run = 0 }) {
   if (!question || answer === undefined) return null;
   const correct = answer === question.correctIndex;
   return (
-    <div className="aapm-feedback-bar" data-tone={correct ? "success" : "danger"} role="status">
-      <AapmIcon name={correct ? "check" : "closeCircle"} />
-      <div className="min-w-0">
-        <p className="font-semibold">{correct ? "Tepat sekali!" : "Belum tepat"}</p>
-        <p className="text-support">
-          {question.explanation || (correct ? "Jawaban Anda benar." : `Jawaban benar: ${question.options[question.correctIndex]}`)}
+    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"}>
+      <span className="aapm-check-feedback__icon" aria-hidden="true"><AapmIcon name={correct ? "glyphCheck" : "close"} /></span>
+      <div className="aapm-check-feedback__body">
+        <p className="aapm-check-feedback__title">
+          {correct ? "Tepat sekali!" : "Belum tepat"}
+          {correct && run >= 3 ? <span className="aapm-check-feedback__run"><AapmIcon name="streak" />{run} benar beruntun</span> : null}
         </p>
+        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[question.correctIndex]}</strong></p> : null}
+        {question.explanation ? <p className="aapm-check-feedback__text">{question.explanation}</p> : null}
       </div>
     </div>
   );
@@ -121,20 +138,27 @@ export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagge
   );
 }
 
-/** Result screen: badge, headline, stat tiles; actions are passed as children. */
-export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, title, description, children }) {
+/**
+ * Result screen: badge, headline, stat tiles; actions are passed as children.
+ * With `duration` (ms) the third tile shows the time taken instead of the
+ * passing grade, like a lesson-complete screen.
+ */
+export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title, description, children }) {
   const percent = total ? Math.round((score / total) * 100) : 0;
   return (
     <div className="aapm-quiz">
       <div className="aapm-result" data-hue={passed ? "green" : "orange"}>
         <div className="aapm-result__badge"><AapmIcon name={passed ? "exam" : "refresh"} /></div>
-        <h1 className="aapm-result__title">{title || (passed ? "Luar biasa!" : "Hampir sampai")}</h1>
+        {/* The assessment bar already holds the screen's h1 (quiz or exam title). */}
+        <h2 className="aapm-result__title">{title || (passed ? "Luar biasa!" : "Hampir sampai")}</h2>
         <p className="aapm-result__text">{description || (passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi.`)}</p>
       </div>
-      <div className="aapm-stat-grid" style={{ "--stat-columns": 3 }}>
+      <div className="aapm-stat-grid aapm-stat-grid--result">
         <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={`${percent}%`} />
         <StatTile icon="check" hue="blue" label="Jawaban benar" value={`${score}/${total}`} />
-        <StatTile icon="flag" hue="violet" label="Nilai lulus" value={`${passingGrade}%`} />
+        {duration !== undefined
+          ? <StatTile icon="timer" hue="violet" label="Waktu" value={formatDuration(duration)} />
+          : <StatTile icon="flag" hue="violet" label="Nilai lulus" value={`${passingGrade}%`} />}
       </div>
       {children}
     </div>
@@ -144,10 +168,13 @@ export function AssessmentResult({ passed = false, score = 0, total = 0, passing
 /** Answer review after submission. */
 export function AnswerReview({ questions = [], answers = {} }) {
   return (
-    <details className="aapm-card mt-6">
-      <summary className="aapm-card__header cursor-pointer">
-        <span className="aapm-card__title">Tinjau jawaban</span>
-        <span className="aapm-card__description">Lihat jawaban yang benar untuk setiap soal.</span>
+    <details className="aapm-card aapm-answer-review mt-6">
+      <summary className="aapm-card__header">
+        <span className="grid min-w-0 gap-0.5">
+          <span className="aapm-card__title">Tinjau jawaban</span>
+          <span className="aapm-card__description">Lihat jawaban yang benar untuk setiap soal.</span>
+        </span>
+        <AapmIcon name="chevronDown" className="aapm-answer-review__chevron" />
       </summary>
       <ol className="aapm-card__content m-0 grid list-none gap-2 p-5 pt-0">
         {questions.map((item, index) => {

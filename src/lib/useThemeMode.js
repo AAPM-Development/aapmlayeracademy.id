@@ -18,8 +18,16 @@ function readStoredTheme() {
 function applyTheme(mode) {
   if (typeof document === "undefined") return;
 
-  document.documentElement.classList.toggle("dark", mode === "dark");
-  document.documentElement.style.colorScheme = mode;
+  // Switch every surface in the same frame. Per-element colour transitions
+  // (different durations on ~90 elements) otherwise repaint the page in
+  // pieces, which reads as the entrance motion replaying.
+  const root = document.documentElement;
+  root.classList.add("aapm-theme-switching");
+  root.classList.toggle("dark", mode === "dark");
+  root.style.colorScheme = mode;
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => root.classList.remove("aapm-theme-switching"));
+  });
 }
 
 function useThemeModeState() {

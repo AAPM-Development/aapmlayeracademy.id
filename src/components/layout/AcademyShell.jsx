@@ -7,7 +7,7 @@ import { getNextModule, getProgressSummary, TOTAL_MODULES } from "@/lib/academyD
 import { preloadRoute } from "@/lib/routePreloaders";
 import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
 import { AiChatProvider } from "@/components/ai/AiChatProvider";
-import { Breadcrumbs, Button, IconButton, ProgressRing } from "@/design-system";
+import { Breadcrumbs, IconButton, ProgressRing } from "@/design-system";
 import {
   AccountMenu,
   AppShell,
@@ -127,11 +127,8 @@ export default function AcademyShell() {
               breadcrumbs={<Breadcrumbs items={[{ label: page.group }, { label: page.label }]} />}
               actions={(
                 <>
-                  {!isAiWorkspace ? (
-                    <Button asChild variant="ai" size="sm" data-desktop-only="">
-                      <Link to="/ai-assistant"><AapmIcon name="ai" /> Tanya APPI</Link>
-                    </Button>
-                  ) : null}
+                  {/* APPI is reached from the sidebar and the floating launcher;
+                      a third topbar entry only repeated them. */}
                   <IconButton
                     label={themeMode === "dark" ? "Mode terang" : "Mode gelap"}
                     icon={themeMode === "dark" ? "themeLight" : "themeDark"}

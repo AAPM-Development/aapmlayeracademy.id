@@ -168,6 +168,7 @@
     "motionEase": "cubic-bezier(.2,.8,.2,1)",
     "motionEaseIn": "cubic-bezier(.4,0,1,1)",
     "motionEaseInOut": "cubic-bezier(.4,0,.2,1)",
+    "motionEaseSpring": "cubic-bezier(.34,1.56,.64,1)",
     "layerBase": "0",
     "layerSticky": "10",
     "layerHeader": "20",

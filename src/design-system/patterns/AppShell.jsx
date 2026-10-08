@@ -238,9 +238,11 @@ export function Topbar({ title, subtitle, breadcrumbs, actions, mobileBrandTo = 
 /**
  * Focus shell for the lesson player and assessments: a slim course bar,
  * optional outline, a single scrolling stage and a persistent action bar.
+ * `footerTone` ("success" | "danger") turns the action bar into the
+ * answer-feedback bar after a quiz check.
  */
 export const FocusShell = React.forwardRef(function FocusShell(
-  { bar, outline, outlineOpen = true, footer, children, className, label = "Konten belajar", resetKey },
+  { bar, outline, outlineOpen = true, footer, footerTone, children, className, label = "Konten belajar", resetKey },
   ref,
 ) {
   const mainRef = React.useRef(null);
@@ -263,7 +265,7 @@ export const FocusShell = React.forwardRef(function FocusShell(
           {children}
         </main>
       </div>
-      {footer ? <div className="aapm-focus__footer">{footer}</div> : null}
+      {footer ? <div className="aapm-focus__footer" data-tone={footerTone || undefined}>{footer}</div> : null}
     </div>
   );
 });
