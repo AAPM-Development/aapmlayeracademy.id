@@ -17,6 +17,8 @@ import {
   useConversationManagement,
 } from "@/components/ai/AiHistoryControls";
 import AiComposer from "@/components/ai/AiComposer";
+import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
+import useModalFocus from "@/components/ai/useModalFocus";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import { Button, ConfirmDialog, IconButton, Table, useToast } from "@/components/primitives";
 import { useAuth } from "@/lib/AuthContext";
@@ -310,8 +312,14 @@ export default function FloatingAiAssistant() {
     clearSelection: clearHistorySelection,
   } = management;
 
+  const historyOverlayRef = useModalFocus({
+    open: historyOpen,
+    onClose: () => setHistoryOpen(false),
+  });
   if (location.pathname === "/ai-assistant") return null;
-  const historySyncLabel = {
+  const historySyncLabel = isStreaming
+    ? "APPI sedang menjawab"
+    : {
     saving: "Menyimpan di akun…",
     saved: "Tersimpan di akun",
     attention: "Periksa riwayat",
@@ -490,7 +498,7 @@ export default function FloatingAiAssistant() {
                     aria-hidden="true"
                   />
                 </div>
-                <p className="aapm-ai-floating-panel__status-line truncate text-xs text-muted-foreground" aria-live="polite">
+                <p className="aapm-ai-floating-panel__status-line truncate text-xs text-muted-foreground">
                   {historySyncLabel}
                 </p>
               </div>
@@ -533,15 +541,18 @@ export default function FloatingAiAssistant() {
             </div>
           </header>
           <div className="aapm-ai-floating-panel__body relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
+            <StreamAnnouncer isStreaming={isStreaming} />
             <div
               ref={chatViewportRef}
               role="log"
+              aria-live="off"
+              aria-busy={isStreaming}
               aria-label="Transkrip percakapan APPI cepat"
               className="aapm-ai-floating-transcript aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
             >
               <div className="flex min-h-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden">
               {historyError && !conversationsError && (
-                <div className="aapm-ai-alert flex min-w-0 items-center justify-between gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[10px] leading-4 text-tint-orange-foreground">
+                <div className="aapm-ai-alert flex min-w-0 items-center justify-between gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[11px] leading-4 text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron.</span>
                   <button type="button" onClick={refreshHistory} className="shrink-0 font-semibold text-brand-orange">Coba lagi</button>
                 </div>
@@ -552,11 +563,10 @@ export default function FloatingAiAssistant() {
                     Tanya APPI tentang {pageContextLabel(location.pathname)}.
                   </p>
                   <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">
-                    KPI aktif dapat ikut dibaca. Percakapan ini tersimpan khusus
-                    di akun Anda.
+                    KPI aktif dapat ikut dibaca. Percakapan ini tersimpan di akun Anda.
                   </p>
                   <div className="aapm-ai-card aapm-ai-quick-actions-card mt-5 divide-y divide-border/60">
-                    <p className="px-3 py-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
+                    <p className="px-3 py-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
                       AKSI CEPAT
                     </p>
                     {bubbleActions.map((action) => (
@@ -573,7 +583,7 @@ export default function FloatingAiAssistant() {
                           <span className="block text-xs font-semibold text-foreground">
                             {action.label}
                           </span>
-                          <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
                             {action.detail}
                           </span>
                         </span>
@@ -651,7 +661,7 @@ export default function FloatingAiAssistant() {
               <button
                 type="button"
                 onClick={jumpToLatest}
-                className="aapm-token-control absolute bottom-[5.7rem] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1 px-2.5 py-1.5 text-[10px] font-semibold text-foreground backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                className="aapm-token-control absolute bottom-[5.7rem] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-foreground backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
               >
                 <AapmIcon name="chevronDown" className="h-3 w-3 text-brand-orange" />
                 Ke terbaru
@@ -660,13 +670,17 @@ export default function FloatingAiAssistant() {
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
+                ref={historyOverlayRef}
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
                 className="aapm-ai-history-sheet aapm-token-sheet absolute inset-0 z-20 flex min-h-0 min-w-0 flex-col overflow-hidden"
               >
                 <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold">Riwayat chat</h3>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">
-                      Tersimpan khusus di akun Anda
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Tersimpan di akun Anda
                     </p>
                   </div>
                   <Button
@@ -797,7 +811,7 @@ export default function FloatingAiAssistant() {
                   pageContext: pageContextForPath(location.pathname),
                 }}
                 onClick={closePanel}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-brand-orange"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-brand-orange"
               >
                 Workspace APPI
                 <AapmIcon

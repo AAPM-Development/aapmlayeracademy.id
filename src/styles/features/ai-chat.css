@@ -361,3 +361,15 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
   flex-wrap: wrap;
   gap: var(--aapm-primitive-space-2);
 }
+
+/* ------------------------------------------- Phone targets and reading size
+ * Phone controls reach the 40px action height. The search field stays at 16px
+ * so iOS does not zoom in when it takes focus. */
+@media (max-width: 639px) {
+  .aapm-chat-jump { min-height: var(--aapm-component-action-height); padding-inline: var(--aapm-primitive-space-4); }
+  .aapm-ai-search-control input { font-size: 16px; }
+  .aapm-history-scope > .aapm-tabs-trigger { min-height: var(--aapm-component-action-height); }
+}
+
+/* Compact status lines were 10px; they now sit on the caption size. */
+.aapm-ai-status-line--compact { font-size: var(--aapm-component-type-caption-size); }

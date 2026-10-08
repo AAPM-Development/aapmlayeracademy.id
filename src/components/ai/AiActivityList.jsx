@@ -60,12 +60,12 @@ export default function AiActivityList({ activity = [], loading = false }) {
               <p className="min-w-0 max-w-full break-words text-xs font-semibold text-foreground">
                 {item.label}
               </p>
-              <time className="max-w-[5.5rem] shrink-0 text-right text-[9px] text-muted-foreground">
+              <time className="max-w-[5.5rem] shrink-0 text-right text-[11px] text-muted-foreground">
                 {formatDate(item.createdAt)}
               </time>
             </div>
             {item.detail && (
-              <p className="mt-1 line-clamp-2 break-words text-[10px] leading-4 text-muted-foreground">
+              <p className="mt-1 line-clamp-2 break-words text-[11px] leading-4 text-muted-foreground">
                 {item.detail}
               </p>
             )}

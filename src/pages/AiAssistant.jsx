@@ -8,6 +8,8 @@ import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
+import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
+import useModalFocus from "@/components/ai/useModalFocus";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
   AiHistoryBulkBar,
@@ -567,6 +569,7 @@ function MobileConversationSheet({
     clearSelection,
   } = management;
 
+  const sheetRef = useModalFocus({ open, onClose });
   if (!open) return null;
 
   return (
@@ -581,13 +584,15 @@ function MobileConversationSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Riwayat percakapan APPI"
+        ref={sheetRef}
+        tabIndex={-1}
         className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border lg:hidden"
       >
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold">Percakapan</h2>
+            <h2 className="text-sm font-semibold">Riwayat</h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Tersimpan khusus di akun Anda
+              Tersimpan di akun Anda
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -747,23 +752,6 @@ function MobileConversationSheet({
   );
 }
 
-function StreamAnnouncer({ isStreaming }) {
-  const [text, setText] = useState("");
-  const wasStreaming = useRef(false);
-  useEffect(() => {
-    if (isStreaming) {
-      wasStreaming.current = true;
-      setText("APPI sedang menjawab.");
-      return;
-    }
-    if (wasStreaming.current) {
-      wasStreaming.current = false;
-      setText("APPI selesai menjawab.");
-    }
-  }, [isStreaming]);
-  return <div className="aapm-visually-hidden" role="status" aria-live="polite">{text}</div>;
-}
-
 export default function AiAssistant() {
   const { toast } = useToast();
   const [includeFarm, setIncludeFarm] = useState(true);
@@ -833,13 +821,19 @@ export default function AiAssistant() {
       ? null
       : conversations.find((item) => String(item.id) === String(activeConversationId));
   const firstPrompt = messages.find((item) => item.role === "user")?.content?.trim() || "";
-  const headerTitle = activeConversation?.title?.trim() || firstPrompt || "Percakapan baru";
-  const historySyncMeta = {
-    idle: { label: "Riwayat akun", icon: "solar:history-2-bold-duotone", className: "bg-surface-subtle text-muted-foreground" },
-    saving: { label: "Menyimpan chat", icon: "loading", className: "bg-tint-orange text-tint-orange-foreground" },
-    saved: { label: "Tersimpan", icon: "solar:check-circle-bold-duotone", className: "bg-tint-green text-tint-green-foreground" },
-    attention: { label: "Periksa riwayat", icon: "solar:info-circle-bold-duotone", className: "bg-tint-orange text-tint-orange-foreground" },
-  }[historySyncState] || { label: "Riwayat akun", icon: "solar:history-2-bold-duotone", className: "bg-surface-subtle text-muted-foreground" };
+  const firstPromptTitle = firstPrompt.length > 60 ? `${firstPrompt.slice(0, 59).trimEnd()}…` : firstPrompt;
+  const headerTitle = activeConversation?.title?.trim() || firstPromptTitle || "Percakapan baru";
+  // The line under the title says what the page is doing right now, so the
+  // header is no longer a fixed label that repeats on every screen.
+  const headerStatus = isLoadingConversation
+    ? "Memuat riwayat…"
+    : isStreaming
+      ? "sedang menjawab"
+      : historySyncState === "saving"
+        ? "menyimpan percakapan…"
+        : historySyncState === "attention"
+          ? "riwayat belum tersinkron"
+          : "tersimpan di akun Anda";
   const lastAssistantMessageIndex = findLastAssistantMessageIndex(messages);
 
   const handleDeleteConversation = async (id) => {
@@ -1023,7 +1017,7 @@ export default function AiAssistant() {
         onRefresh={refreshHistory}
         onLoadMore={loadMoreConversations}
       />
-      <section className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
+      <section aria-label="Ruang chat APPI" className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-default px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
             <AiProfileAvatar
@@ -1031,8 +1025,8 @@ export default function AiAssistant() {
               state={isStreaming ? streamPhase : "idle"}
             />
             <div className="min-w-0">
-              <h1 className="aapm-chat-header__title">{headerTitle}</h1>
-              <p className="aapm-chat-header__meta">APPI · riwayat tersimpan di akun Anda</p>
+              <h1 className="aapm-chat-header__title" title={headerTitle}>{headerTitle}</h1>
+              <p className="aapm-chat-header__meta">APPI · {headerStatus}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -1050,18 +1044,6 @@ export default function AiAssistant() {
               />
               Riwayat
             </Button>
-            {historySyncState === "saving" || historySyncState === "attention" ? (
-              <span
-                role="status"
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${historySyncMeta.className}`}
-              >
-                <AapmIcon
-                  name={historySyncMeta.icon}
-                  className={`h-3 w-3 ${historySyncState === "saving" ? "animate-spin" : ""}`}
-                />
-                {historySyncMeta.label}
-              </span>
-            ) : null}
             <Button
               type="button"
               variant="ghost"

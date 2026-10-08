@@ -35,6 +35,14 @@ export default function AiComposer({
   const textareaRef = useRef(null);
   const hasContent = Boolean(input.trim() || imageAttachment);
 
+  // After a tap on Kirim the focus would fall to the disabled button. Put it back
+  // in the question so the next one can be typed straight away; phones skip this
+  // so the keyboard does not reopen after every send.
+  const handleSendClick = () => {
+    onSubmit();
+    if (window.matchMedia?.("(pointer: fine)").matches) textareaRef.current?.focus();
+  };
+
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -109,17 +117,15 @@ export default function AiComposer({
             <Button
               type="button"
               variant="ghost"
-              size={compact ? "sm" : "icon"}
+              size="sm"
               onClick={() => imageInputRef?.current?.click()}
               disabled={isStreaming || imageLoading}
-              className={compact
-                ? "aapm-ai-attachment-control h-8 shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"
-                : "h-8 w-8 shrink-0 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange"}
+              className="aapm-ai-attachment-control h-10 shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange sm:h-8"
               aria-label="Lampirkan foto farm"
               aria-busy={imageLoading}
               title="Lampirkan foto farm"
             >
-              <AapmIcon name="solar:gallery-add-bold-duotone" className={compact ? "h-[1.125rem] w-[1.125rem]" : "h-4 w-4"} />
+              <AapmIcon name="solar:gallery-add-bold-duotone" className="h-4 w-4" />
               <span className="text-xs font-semibold">Foto</span>
             </Button>
             {contextLabel && (
@@ -159,7 +165,7 @@ export default function AiComposer({
 
           <Button
             type="button"
-            onClick={onSubmit}
+            onClick={handleSendClick}
             disabled={!hasContent || isStreaming}
             className="aapm-ai-send-control h-9 min-w-[4.75rem] shrink-0 gap-1.5 bg-brand-orange px-3 text-white hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
             aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim pertanyaan"}
