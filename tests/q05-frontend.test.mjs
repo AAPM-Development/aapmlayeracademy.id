@@ -106,3 +106,36 @@ test("API errors preserve structured validation and conflict details", async () 
   try { await assert.rejects(nativeApi.admin.modules.previewDraft(12), (error) => error.code === "revision_conflict" && error.details.currentDraftVersion === 9); }
   finally { globalThis.fetch = original; }
 });
+
+test("question cancellation cannot clear or retarget a form while a deferred save is pending", async () => {
+  const { cancelQuestionEdit } = await import("../src/lib/curriculumEditorState.js");
+  let busy = true;
+  let selected = { id: 42 };
+  let form = { question: "Soal yang sedang disimpan" };
+  let cancelled = 0;
+  const cancel = () => { cancelled++; selected = null; form = { question: "" }; };
+  let finishSave;
+  const save = new Promise((resolve) => { finishSave = resolve; });
+  assert.equal(cancelQuestionEdit(busy, cancel), false);
+  assert.equal(cancelled, 0);
+  assert.equal(selected.id, 42);
+  assert.equal(form.question, "Soal yang sedang disimpan");
+  finishSave(); await save; busy = false;
+  assert.equal(cancelQuestionEdit(busy, cancel), true);
+  assert.equal(cancelled, 1);
+  assert.equal(selected, null);
+  assert.equal(form.question, "");
+  // The executable guard must protect the actual header control outside the fieldset.
+  const editor = read("src/pages/admin/AdminModuleEditor.jsx");
+  const header = editor.slice(editor.indexOf('aria-labelledby="question-form-title"'), editor.indexOf('<form onSubmit={save}', editor.indexOf('aria-labelledby="question-form-title"')));
+  assert.match(header, /disabled=\{questionWriteBusy\}/);
+  assert.match(header, /onClick=\{cancelEdit\}/);
+});
+
+test("phone editor gives the complete primary save action its own grid row", () => {
+  const css = read("src/styles/features/editor-workspace.css");
+  const phones = css.slice(css.indexOf("/* Phones:"), css.indexOf("/* Touch and narrow layouts:"));
+  assert.match(phones, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(phones, /\[data-editor-save\]\s*\{\s*grid-column:\s*1\s*\/\s*-1/);
+  assert.match(read("src/components/admin/EditorActionBar.jsx"), /data-editor-save/);
+});

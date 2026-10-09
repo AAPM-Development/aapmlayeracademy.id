@@ -12,7 +12,7 @@ import EditorOutline from "@/components/admin/EditorOutline";
 import EditorActionBar from "@/components/admin/EditorActionBar";
 import CurriculumPublishingPanel from "@/components/admin/CurriculumPublishingPanel";
 import { useQueryClient } from "@tanstack/react-query";
-import { curriculumModule, recoverCurriculumDraft } from "@/lib/curriculumEditorState";
+import { cancelQuestionEdit, curriculumModule, recoverCurriculumDraft } from "@/lib/curriculumEditorState";
 import useModalFocus from "@/components/ai/useModalFocus";
 import { levelVisual } from "@/lib/academyVisuals";
 import {
@@ -688,6 +688,12 @@ function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onE
   formRef.current = form;
   const [questionError, setQuestionError] = useState("");
   const [pendingQuestionDelete, setPendingQuestionDelete] = useState(null);
+  const questionWriteBusy = busy || saveQuestion.isPending || deleteQuestion.isPending;
+  const cancelEdit = () => cancelQuestionEdit(questionWriteBusy, () => {
+    setSelected(null);
+    setForm(emptyQuestion);
+    setQuestionError("");
+  });
   useEffect(() => { setSelected(null); setForm(emptyQuestion); setQuestionError(""); }, [resetKey]);
   useEffect(() => { onDirty(JSON.stringify(form) !== JSON.stringify(emptyQuestion)); }, [form, onDirty]);
   const questions = data?.questions || [];
@@ -848,10 +854,8 @@ function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onE
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => {
-                setSelected(null);
-                setForm(emptyQuestion);
-              }}
+              disabled={questionWriteBusy}
+              onClick={cancelEdit}
             >
               Batal
             </Button>
@@ -949,7 +953,7 @@ function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onE
                 ? "Simpan soal ke draf"
                 : "Tambah soal ke draf"}
           </Button>
-          {JSON.stringify(form) !== JSON.stringify(emptyQuestion) && <Button type="button" variant="secondary" onClick={() => { setSelected(null); setForm(emptyQuestion); setQuestionError(""); }}>Batalkan perubahan soal</Button>}
+          {JSON.stringify(form) !== JSON.stringify(emptyQuestion) && <Button type="button" variant="secondary" disabled={questionWriteBusy} onClick={cancelEdit}>Batalkan perubahan soal</Button>}
           </fieldset>
         </form>
       </section>

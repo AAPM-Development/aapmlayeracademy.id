@@ -26,3 +26,10 @@ export function canPublishCurriculumDraft({ validation, review, draftVersion, di
   return Boolean(!dirty && !conflict && !archived && validation?.valid && review?.valid &&
     validation.draftVersion === draftVersion && review.draftVersion === draftVersion);
 }
+
+/** Keep a pending question write bound to its submitted selection until it settles. */
+export function cancelQuestionEdit(writePending, cancel) {
+  if (writePending) return false;
+  cancel();
+  return true;
+}
