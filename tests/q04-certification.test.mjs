@@ -1,6 +1,6 @@
 // Q04-C..H certificate suite: server-verified issuance, idempotent claims, evidence,
 // legacy preservation, public verification, revocation, and migration. Real API under
-// php -S against disposable SQLite. MySQL and browser cases are NOT_TESTED here.
+// php -S against disposable SQLite or the explicitly configured task-owned native runtime.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -195,7 +195,7 @@ test("C21 a network retry with the same key does not duplicate the certificate",
   });
 });
 
-test("C20/C49 concurrent claims from separate processes issue exactly one certificate", async () => {
+test(`${process.env.AAPM_TEST_MYSQL_CONFIG ? "C20/C49/C50 native MariaDB" : "C20/C49"} concurrent claims from separate processes issue exactly one certificate`, async () => {
   const { site, learnerA } = await setup("c20");
   await withSite(site, async (api) => {
     await tierOneLearner(site, api);
@@ -412,5 +412,5 @@ test("C43 the Q04 schema migration is additive: the generation column defaults e
   assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM assessment_attempts WHERE academic_generation IS NULL")[0].n), 0);
 });
 
-test("C50 MySQL concurrent issuance", { skip: "NOT_TESTED: no disposable MySQL server in this environment" }, () => {});
+if (!process.env.AAPM_TEST_MYSQL_CONFIG) test("C50 MySQL concurrent issuance", { skip: "Default SQLite suite; actual native C20/C49/C50 issuance race runs through npm run test:q03-q04:mysql" }, () => {});
 test("C47 and C48 mobile and desktop certificate workflow in a browser", { skip: "NOT_TESTED: no browser run was executed for Q04 in this session" }, () => {});

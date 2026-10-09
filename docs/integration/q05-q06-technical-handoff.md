@@ -35,6 +35,8 @@ npm run tokens:check
 
 For native database proof, supply the private JSON path through `AAPM_TEST_MYSQL_CONFIG`, then run `npm run test:q05:mysql`. This command refuses a missing configuration rather than falling back to SQLite. The harness accepts only a task-owned loopback runtime with the `aapm_q05_test_` database prefix; each fixture creates a fresh schema. The private JSON contains host/port/testUser/testPassword/databasePrefix/taskOwned. Keep it outside the repository/docroot and never print its contents. Fixture downgrade, failure-trigger and barrier helpers require `task_owned_fixture=true` in their generated private local configuration.
 
+Use `npm run test:q03-q04:mysql` with the same private configuration for the bounded inherited assessment/certificate guarantees: checked answer immutability/idempotency, parallel module answers and answer/submit serialization, concurrent submission, concurrent certificate issuance and complete answer-free certificate evidence. The runner selects those existing/native-compatible cases and the added answer race; it does not claim the entire Q03/Q04 suite ran under MariaDB.
+
 The native Q05 suite covers fresh bootstrap, populated Q04-shaped history upgrade, read-only plan, interrupted recovery, replay, simultaneous initialization, module save/publication races, final-bank races, policy races, forced transactional rollback and lock timeout. Preservation compares digests to avoid dumping account credential fields.
 
 ## Proof boundaries

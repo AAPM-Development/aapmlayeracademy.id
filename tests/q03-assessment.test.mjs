@@ -1,6 +1,7 @@
 // Q03 regression suite: server-authoritative assessment, module completion,
 // final eligibility, and progress integrity. Runs the real API under `php -S`
-// against disposable SQLite databases. Races use separate PHP processes.
+// against disposable SQLite, or task-owned PDOmysql when explicitly configured.
+// Races use separate PHP processes.
 // Nothing here touches staging or production.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
@@ -11,10 +12,11 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { makeSite as makeNativeSite } from "./helpers/site.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(repo, "tests", "fixtures");
-const SQLITE = ["-d", "extension=php_pdo_sqlite.dll", "-d", "extension=php_sqlite3.dll"];
+const SQLITE = ["-d", "extension=php_pdo_sqlite.dll", "-d", "extension=php_sqlite3.dll", "-d", "extension=php_pdo_mysql.dll"];
 const PASSWORD = "Valid-pass1";
 const created = [];
 
@@ -53,6 +55,11 @@ function phpHash(password) {
 
 /** A disposable local site: SQLite, dev token exposure, no mail transport. */
 function makeSite(name, overrides = {}) {
+  if (process.env.AAPM_TEST_MYSQL_CONFIG) {
+    const site = makeNativeSite(name, overrides);
+    created.push(site.root);
+    return site;
+  }
   const root = scratch(name);
   const dbPath = join(root, "app.sqlite");
   writeFileSync(dbPath, "");
@@ -500,6 +507,45 @@ test("A17 concurrent submits from separate processes commit exactly one result",
   });
 });
 
+function answerProcess(site, attemptId, userId, questionId, answerIndex) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("php", [...SQLITE, join(fixtures, "q03/answer-attempt.php"), attemptId, String(userId), String(questionId), String(answerIndex)], { cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
+    let out = ""; let err = "";
+    child.stdout.on("data", chunk => out += chunk); child.stderr.on("data", chunk => err += chunk);
+    child.on("error", reject);
+    child.on("close", code => code === 0 ? resolve(JSON.parse(out.trim())) : reject(new Error(err)));
+  });
+}
+
+test("concurrent module answers lock exactly one checked selection and answer/submit races preserve its grade", async () => {
+  const { site, learnerA } = await setup("answer-races");
+  await withSite(site, async (api) => {
+    const learner = await signIn(api.port, "peserta-a@example.test");
+    const started = await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 11, requestKey: randomUUID() });
+    assert.equal(started.status, 201, started.text);
+    const attempt = started.json.data.attempt;
+    const questionId = attempt.questions[0].id;
+    const key = attemptKey(site, attempt.id).get(questionId);
+    const replies = await Promise.all([answerProcess(site, attempt.id, learnerA, questionId, key.correct), answerProcess(site, attempt.id, learnerA, questionId, wrongIndex(key))]);
+    assert.equal(replies.filter(reply => reply.error?.code === "answer_locked").length, 1);
+    const accepted = replies.find(reply => reply.checked);
+    assert.ok(accepted);
+    const stored = rows(site, "SELECT * FROM assessment_attempt_items WHERE id = ?", [questionId])[0];
+    assert.equal(Number(stored.answer_index), accepted.selectedIndex);
+    assert.ok(stored.checked_at);
+    const again = await answerProcess(site, attempt.id, learnerA, questionId, accepted.selectedIndex);
+    assert.deepEqual(again, accepted, "same checked answer is idempotent");
+    const alternate = accepted.selectedIndex === key.correct ? wrongIndex(key) : key.correct;
+    const [answer, submitted] = await Promise.all([answerProcess(site, attempt.id, learnerA, questionId, alternate), submitProcess(site, attempt.id, learnerA)]);
+    assert.ok(["answer_locked", "attempt_already_submitted"].includes(answer.error?.code));
+    assert.equal(submitted.status, "submitted");
+    assert.equal(submitted.correctAnswers, accepted.selectedIndex === key.correct ? 1 : 0);
+    assert.equal(Number(rows(site, "SELECT answer_index FROM assessment_attempt_items WHERE id = ?", [questionId])[0].answer_index), accepted.selectedIndex);
+    const retry = await submitProcess(site, attempt.id, learnerA);
+    assert.deepEqual(retry, submitted, "retries retain the committed grade and submission time");
+  });
+});
+
 test("A18 an interrupted response is recoverable by reading the attempt", async () => {
   const { site } = await setup("a18");
   await withSite(site, async (api) => {
@@ -832,4 +878,4 @@ test("admin readers count only verified completions; a historical row never coun
 
 test("A41, A42 and A44 browser flows at 390px and on desktop", { skip: "NOT_TESTED: no browser run was executed for Q03" }, () => {});
 
-test("MySQL row locking for answer and submit paths", { skip: "NOT_TESTED: no disposable MySQL server; only the SQLite path was exercised" }, () => {});
+if (!process.env.AAPM_TEST_MYSQL_CONFIG) test("MySQL row locking for answer and submit paths", { skip: "Default SQLite suite; actual native answer/submit races run through npm run test:q03-q04:mysql" }, () => {});
