@@ -1,5 +1,6 @@
 import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { curriculumPrimaryAction } from "@/lib/curriculumEditorState";
 import {
   Button,
   DropdownMenu,
@@ -52,11 +53,13 @@ export default function EditorActionBar({
   onOpenInspector = () => {},
   isSaving = false,
   isDirty = false,
+  isNew = false,
   saveError = "",
   savedAt = null,
   disabled = false,
 }) {
   const status = isSaving ? "saving" : saveError ? "error" : isDirty ? "dirty" : "saved";
+  const primaryAction = curriculumPrimaryAction({ dirty: isDirty, isNew });
   const label = {
     saving: "Menyimpan…",
     error: "Gagal disimpan",
@@ -80,7 +83,7 @@ export default function EditorActionBar({
         <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("block")}><AapmIcon name="widget" />Blok</Button>
         <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("module")}><AapmIcon name="settings" />Modul</Button>
         <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
-        <Button type="button" size="sm" data-editor-save loading={isSaving} disabled={disabled} onClick={onSave} title="Simpan draf (Ctrl/⌘ S)">
+        <Button type="button" size="sm" variant={primaryAction === "save" ? "primary" : "secondary"} data-editor-save loading={isSaving} disabled={disabled} onClick={onSave} title="Simpan draf (Ctrl/⌘ S)">
           {!isSaving ? <AapmIcon name="check" /> : null}Simpan draf
           <Kbd className="aapm-editor-kbd">⌘S</Kbd>
         </Button>

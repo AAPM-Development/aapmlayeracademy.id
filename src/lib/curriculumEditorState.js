@@ -33,3 +33,10 @@ export function cancelQuestionEdit(writePending, cancel) {
   cancel();
   return true;
 }
+
+/** Identify the next workflow action, so clean save and publish never compete. */
+export function curriculumPrimaryAction({ dirty = false, isNew = false, canPublish = false, archived = false } = {}) {
+  if (dirty || isNew) return "save";
+  if (archived) return "restore";
+  return canPublish ? "publish" : "validate";
+}

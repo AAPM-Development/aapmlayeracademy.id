@@ -3,7 +3,7 @@ import { nativeApi } from "@/api/nativeClient";
 import { Button, ConfirmDialog, Label, Surface, Textarea } from "@/components/primitives";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
-import { canPublishCurriculumDraft, curriculumModule } from "@/lib/curriculumEditorState";
+import { canPublishCurriculumDraft, curriculumModule, curriculumPrimaryAction } from "@/lib/curriculumEditorState";
 
 const sectionLabels = { title: "Judul", summary: "Ringkasan", content: "Materi", editorialContent: "Blok materi",
   levelNumber: "Chapter", levelName: "Nama chapter", category: "Kategori", videoUrl: "Video", videoScript: "Naskah video",
@@ -29,6 +29,7 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
   useEffect(() => { setValidation(null); setReview(null); setConfirmation(null); }, [context]);
   const archived = view?.lifecycleStatus === "archived";
   const publishAllowed = canPublishCurriculumDraft({ validation, review, draftVersion, dirty, conflict, archived });
+  const primaryAction = archiveOpen && !dirty ? "archive" : curriculumPrimaryAction({ dirty, canPublish: publishAllowed, archived });
   const unavailable = busy || reading || Boolean(conflict);
 
   const read = async (fn) => {
@@ -75,9 +76,9 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
           {dirty ? " · Ada perubahan lokal belum disimpan" : ""}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" disabled={unavailable || dirty || archived} loading={reading} onClick={validate}>Validasi</Button>
-          <Button type="button" disabled={unavailable || !publishAllowed} onClick={() => setConfirmation("publish")}>Terbitkan</Button>
-          {archived ? <Button type="button" variant="secondary" disabled={unavailable} onClick={() => setConfirmation("restore")}>Pulihkan modul</Button>
+          <Button type="button" variant={primaryAction === "validate" ? "primary" : "secondary"} disabled={unavailable || dirty || archived} loading={reading} onClick={validate}>Validasi</Button>
+          <Button type="button" variant={primaryAction === "publish" ? "primary" : "secondary"} disabled={unavailable || !publishAllowed} onClick={() => setConfirmation("publish")}>Terbitkan</Button>
+          {archived ? <Button type="button" variant={primaryAction === "restore" ? "primary" : "secondary"} disabled={unavailable} onClick={() => setConfirmation("restore")}>Pulihkan modul</Button>
             : view?.lifecycleStatus === "active" ? <Button type="button" variant="secondary" disabled={unavailable} onClick={() => setArchiveOpen(!archiveOpen)}>Arsipkan</Button> : null}
         </div>
       </div>
@@ -102,7 +103,7 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
         <Label htmlFor="archive-reason">Alasan pengarsipan (5–500 karakter)</Label>
         <Textarea id="archive-reason" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
         <p className="text-sm text-muted-foreground">Arsip menyembunyikan modul bagi peserta yang kebijakannya tidak mewajibkan modul ini. Modul wajib tetap dapat diakses sesuai kebijakan peserta. Riwayat dan bukti akademik tetap tersedia.</p>
-        <Button type="button" disabled={unavailable || reason.trim().length < 5} onClick={() => setConfirmation("archive")}>Konfirmasi arsip</Button>
+        <Button type="button" variant={primaryAction === "archive" ? "primary" : "secondary"} disabled={unavailable || reason.trim().length < 5} onClick={() => setConfirmation("archive")}>Konfirmasi arsip</Button>
         <Button type="button" variant="ghost" onClick={() => setArchiveOpen(false)}>Batal</Button>
       </div>}
       <details onToggle={(event) => { if (event.currentTarget.open && history === null) loadHistory(); }}>

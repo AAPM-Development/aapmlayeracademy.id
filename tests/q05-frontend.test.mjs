@@ -139,3 +139,18 @@ test("phone editor gives the complete primary save action its own grid row", () 
   assert.match(phones, /\[data-editor-save\]\s*\{\s*grid-column:\s*1\s*\/\s*-1/);
   assert.match(read("src/components/admin/EditorActionBar.jsx"), /data-editor-save/);
 });
+
+test("curriculum workflow assigns one primary action for local, saved, validated and archived states", async () => {
+  const { curriculumPrimaryAction } = await import("../src/lib/curriculumEditorState.js");
+  assert.equal(curriculumPrimaryAction({ dirty: true, canPublish: true }), "save");
+  assert.equal(curriculumPrimaryAction({ isNew: true }), "save");
+  assert.equal(curriculumPrimaryAction({}), "validate");
+  assert.equal(curriculumPrimaryAction({ canPublish: true }), "publish");
+  assert.equal(curriculumPrimaryAction({ archived: true }), "restore");
+  assert.equal(curriculumPrimaryAction({ archived: true, dirty: true }), "save");
+  const actionbar = read("src/components/admin/EditorActionBar.jsx");
+  assert.match(actionbar, /variant=\{primaryAction === "save" \? "primary" : "secondary"\}/);
+  const panel = read("src/components/admin/CurriculumPublishingPanel.jsx");
+  for (const action of ["validate", "publish"]) assert.match(panel, new RegExp(`variant=\\{primaryAction === "${action}" \\? "primary" : "secondary"\\}`));
+  assert.doesNotMatch(read("src/pages/admin/AdminModuleEditor.jsx"), /pilih Simpan modul/);
+});

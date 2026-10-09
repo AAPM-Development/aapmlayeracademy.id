@@ -377,7 +377,7 @@ function AiModuleDraft({ form, onApply, toast }) {
     if (!draft) return;
     onApply(draft);
     setDraft(null);
-    toast({ title: "Draf APPI diterapkan", description: "Tinjau poin-poinnya sebelum menyimpan modul." });
+    toast({ title: "Draf APPI diterapkan", description: "Periksa perubahan lokal, lalu pilih Simpan draf. Validasi dan terbitkan agar revisi tersedia di Academy." });
   };
 
   const applyRewrite = () => {
@@ -385,7 +385,7 @@ function AiModuleDraft({ form, onApply, toast }) {
     onApply(rewriteDraft);
     setRewriteDraft(null);
     setPendingRewrite(false);
-    toast({ title: "Rewrite APPI diterapkan", description: "Isi lokal berubah sebagai draft. Periksa kembali, lalu pilih Simpan modul." });
+    toast({ title: "Rewrite APPI diterapkan", description: "Isi lokal berubah sebagai draf. Periksa kembali, lalu pilih Simpan draf. Validasi dan terbitkan agar revisi tersedia di Academy." });
   };
 
   return (
@@ -945,6 +945,7 @@ function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onE
           <Button
             className="w-full"
             type="submit"
+            variant={JSON.stringify(form) !== JSON.stringify(emptyQuestion) ? "primary" : "secondary"}
             disabled={busy || Boolean(conflict) || saveQuestion.isPending}
           >
             {saveQuestion.isPending
@@ -1947,6 +1948,7 @@ export default function AdminModuleEditor() {
             onRetry={submitEditorForm}
             isSaving={isSaving}
             isDirty={isDirty}
+            isNew={isNew}
             saveError={saveError}
             savedAt={savedAt}
             disabled={operationBusy || Boolean(conflict)}
