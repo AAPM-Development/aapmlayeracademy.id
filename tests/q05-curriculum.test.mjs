@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
 import {
-  SQLITE, attemptKey, cleanEnv, cleanup, makeSite, passModule, progressRow, repo, rows, run, seedCurriculum, seedAccount, setup, signIn, sql, withSite,
+  SQLITE, attemptKey, cleanEnv, cleanup, makeSite, passAllRequired, passModule, progressRow, repo, rows, run, seedCurriculum, seedAccount, setup, signIn, sql, withSite,
 } from "./helpers/site.mjs";
 
 after(cleanup);
@@ -436,6 +436,42 @@ test("P31 an unpublished draft-only module with no history can be deleted; its n
   });
 });
 
+test("archived-module access follows the assigned policy for catalogue, quiz and new attempts", async () => {
+  const { site } = await setup("archived-access");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const assigned = await signIn(api.port, "peserta-a@example.test");
+    const body = v2Body();
+    body.modules = body.modules.filter((m) => m.moduleNumber !== 8);
+    body.tiers = body.tiers.map((t) => ({ ...t, modules: t.modules.filter((n) => n !== 8) }));
+    await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
+    assert.equal((await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", body)).status, 200);
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
+    const activation = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=ARCHIVE"]);
+    assert.equal(activation.status, 0, activation.stdout + activation.stderr);
+    const registered = await api.mutate("POST", "/api/auth/register", { email: "unassigned@example.test", password: "Valid-pass1", fullName: "Peserta V2" });
+    assert.equal(registered.status, 202);
+    const verified = await api.mutate("POST", "/api/auth/verify-email", { token: registered.json.data.devVerificationToken });
+    assert.equal(verified.status, 200);
+    const unassigned = await signIn(api.port, "unassigned@example.test");
+    assert.equal((await unassigned.get("/api/curriculum/me")).json.data.policyVersion, "academy-v2");
+    assert.equal((await assigned.get("/api/curriculum/me")).json.data.policyVersion, "academy-v1");
+    assert.equal((await admin.mutate("POST", `/api/admin/modules/${moduleIdOf(site, 8)}/archive`, { reason: "Diganti untuk v2", confirm: true })).status, 200);
+    assert.equal((await assigned.get("/api/modules")).json.data.some((m) => m.moduleNumber === 8), true);
+    assert.equal((await assigned.get("/api/quiz?moduleNumber=8")).status, 200);
+    const allowed = await assigned.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 8, requestKey: randomUUID() });
+    assert.equal(allowed.status, 201, allowed.text);
+    assert.equal((await unassigned.get("/api/modules")).json.data.some((m) => m.moduleNumber === 8), false);
+    assert.equal((await unassigned.get("/api/quiz?moduleNumber=8")).status, 404);
+    const before = rows(site, "SELECT * FROM assessment_attempts ORDER BY id");
+    const refused = await unassigned.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 8, requestKey: randomUUID() });
+    assert.equal(refused.status, 404, refused.text);
+    assert.equal(refused.json.error.code, "assessment_not_found");
+    assert.deepEqual(rows(site, "SELECT * FROM assessment_attempts ORDER BY id"), before);
+  });
+});
+
 test("P33 and P34 uploads referenced by a historical revision or by a draft are in the reference set", async () => {
   const { site } = await setup("p33");
   await withSite(site, async (api) => {
@@ -607,9 +643,310 @@ test("P48 and P49 publishing without the right role or without CSRF is refused",
   });
 });
 
+/* -------------------------------------------------- activation consistency */
+
+test("policy activation rejects snapshot/projection drift and invalidated readiness without changing v1", async () => {
+  const { site } = await setup("policy-drift");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
+    await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
+    const requirements = rows(site, "SELECT requirements_json FROM curriculum_policy_versions WHERE policy_version = 'academy-v2'")[0].requirements_json;
+    const snapshot = () => ({
+      policy: rows(site, "SELECT * FROM curriculum_policy_versions WHERE policy_version = 'academy-v1'"),
+      assessment: rows(site, "SELECT * FROM assessment_policies WHERE policy_version = 'academy-v1'"),
+      membership: rows(site, "SELECT * FROM curriculum_policy_modules WHERE policy_version = 'academy-v1' ORDER BY module_number"),
+      tiers: rows(site, "SELECT * FROM certificate_tier_policies WHERE policy_version = 'academy-v1' ORDER BY tier_number"),
+      assignments: rows(site, "SELECT * FROM learner_curriculum_assignments ORDER BY user_id"),
+      activations: rows(site, "SELECT * FROM curriculum_publication_events WHERE event_type = 'policy.activated' ORDER BY id"),
+    });
+    const before = snapshot();
+    const cases = [
+      { change: "UPDATE assessment_policies SET module_pass_percent = 76 WHERE policy_version = 'academy-v2'", restore: "UPDATE assessment_policies SET module_pass_percent = 75 WHERE policy_version = 'academy-v2'", code: "policy_assessment_mismatch" },
+      { change: "UPDATE certificate_tier_policies SET tier_name = 'Changed behind readiness' WHERE policy_version = 'academy-v2' AND tier_number = 1", restore: "UPDATE certificate_tier_policies SET tier_name = 'Layer Poultry Farm Foundation' WHERE policy_version = 'academy-v2' AND tier_number = 1", code: "policy_tier_mismatch" },
+      { change: "UPDATE curriculum_policy_modules SET required = 0 WHERE policy_version = 'academy-v2' AND module_number = 22", restore: "UPDATE curriculum_policy_modules SET required = 1 WHERE policy_version = 'academy-v2' AND module_number = 22", code: "policy_membership_mismatch" },
+      { change: "UPDATE course_modules SET lifecycle_status = 'archived' WHERE module_number = 22", restore: "UPDATE course_modules SET lifecycle_status = 'active' WHERE module_number = 22", code: "module_unpublished" },
+      { change: "UPDATE curriculum_policy_versions SET requirements_json = ? WHERE policy_version = 'academy-v2'", params: [JSON.stringify({ ...JSON.parse(requirements), finalPassPercent: 90 })], restore: "UPDATE curriculum_policy_versions SET requirements_json = ? WHERE policy_version = 'academy-v2'", restoreParams: [requirements], code: "policy_assessment_mismatch" },
+    ];
+    for (const c of cases) {
+      sql(site, c.change, c.params);
+      const validation = await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
+      assert.equal(validation.json.data.valid, false, c.code);
+      assert.ok(validation.json.data.errors.some((e) => e.code === c.code), JSON.stringify(validation.json.data.errors));
+      // Call activation directly: this bypasses the CLI's earlier advisory validation,
+      // proving the authoritative transaction itself rechecks every dependency.
+      const locked = run(site, join(repo, "tests", "fixtures", "q05", "activate-policy.php"), ["academy-v2"]);
+      assert.equal(locked.status, 0, locked.stdout + locked.stderr);
+      assert.equal(JSON.parse(locked.stdout).error, "policy_invalid");
+      const refused = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=DRIFT"]);
+      assert.notEqual(refused.status, 0);
+      assert.deepEqual(snapshot(), before);
+      assert.deepEqual(rows(site, "SELECT policy_version FROM curriculum_policy_versions WHERE status = 'active'"), [{ policy_version: "academy-v1" }]);
+      assert.equal(rows(site, "SELECT status FROM curriculum_policy_versions WHERE policy_version = 'academy-v2'")[0].status, "ready");
+      sql(site, c.restore, c.restoreParams);
+    }
+    // An audit-write failure must roll back activation and projection refresh together.
+    const v2Assessment = rows(site, "SELECT * FROM assessment_policies WHERE policy_version = 'academy-v2'");
+    const v2Tiers = rows(site, "SELECT * FROM certificate_tier_policies WHERE policy_version = 'academy-v2' ORDER BY tier_number");
+    sql(site, "CREATE TRIGGER fail_policy_activate BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'policy.activated' BEGIN SELECT RAISE(ABORT, 'forced activation failure'); END");
+    const failed = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=ROLLBACK"]);
+    assert.notEqual(failed.status, 0);
+    assert.deepEqual(snapshot(), before);
+    assert.deepEqual(rows(site, "SELECT * FROM assessment_policies WHERE policy_version = 'academy-v2'"), v2Assessment);
+    assert.deepEqual(rows(site, "SELECT * FROM certificate_tier_policies WHERE policy_version = 'academy-v2' ORDER BY tier_number"), v2Tiers);
+    assert.equal(rows(site, "SELECT status FROM curriculum_policy_versions WHERE policy_version = 'academy-v2'")[0].status, "ready");
+  });
+});
+
+async function finalDraft(admin) {
+  const reply = await admin.get("/api/admin/curriculum/final-bank");
+  assert.equal(reply.status, 200, reply.text);
+  return reply.json.data;
+}
+
+const finalRows = (site) => rows(site, "SELECT * FROM quiz_questions WHERE module_number = 0 ORDER BY id");
+const finalHistory = (site) => rows(site, "SELECT * FROM question_bank_revisions WHERE scope_type = 'final' AND module_number = 0 ORDER BY id");
+
+test("final-exam bank upgrade backfill preserves existing attempt snapshots and grades", async () => {
+  const { site } = await setup("final-upgrade");
+  // Model the pre-Q05 final-bank state after an actual final attempt has started.
+  // All changes below are restricted to the test-owned disposable SQLite database.
+  await withSite(site, async (api) => {
+    const learner = await signIn(api.port, "peserta-a@example.test");
+    await passAllRequired(learner, site);
+    const started = await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "final_exam", moduleNumber: 0, requestKey: randomUUID() });
+    assert.equal(started.status, 201, started.text);
+  });
+  const attempts = rows(site, "SELECT * FROM assessment_attempts ORDER BY id");
+  const snapshots = rows(site, "SELECT * FROM assessment_attempt_items ORDER BY id");
+  const live = finalRows(site);
+  sql(site, "DELETE FROM question_bank_revision_items WHERE bank_revision_id IN (SELECT id FROM question_bank_revisions WHERE scope_type = 'final')");
+  sql(site, "DELETE FROM question_bank_revisions WHERE scope_type = 'final'");
+  sql(site, "DELETE FROM curriculum_publication_events WHERE module_number = 0");
+  sql(site, "DROP TABLE question_bank_drafts");
+  for (let replay = 0; replay < 2; replay++) {
+    const migrated = run(site, join(repo, "database", "migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
+    assert.equal(migrated.status, 0, migrated.stdout + migrated.stderr);
+    assert.deepEqual(rows(site, "SELECT * FROM assessment_attempts ORDER BY id"), attempts);
+    assert.deepEqual(rows(site, "SELECT * FROM assessment_attempt_items ORDER BY id"), snapshots);
+    assert.deepEqual(finalRows(site), live);
+    assert.equal(finalHistory(site).length, 1);
+    assert.equal(rows(site, "SELECT * FROM curriculum_publication_events WHERE event_type = 'final_bank.published'").length, 1);
+  }
+});
+
+test("final-exam bank draft edits stay isolated and backfill is idempotent", async () => {
+  const { site } = await setup("final-isolation");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const learner = await signIn(api.port, "peserta-a@example.test");
+    const draft = await finalDraft(admin);
+    const before = finalRows(site);
+    const history = finalHistory(site);
+    assert.equal(history.length, 1);
+    assert.equal(Number(history[0].revision_number), 1);
+    const items = rows(site, "SELECT question, options_json, correct_index FROM question_bank_revision_items WHERE bank_revision_id = ? ORDER BY ordinal", [history[0].id]);
+    assert.deepEqual(items, before.map((q) => ({ question: q.question, options_json: q.options, correct_index: q.correct_index })));
+    const saved = await admin.mutate("POST", "/api/admin/curriculum/final-bank", {
+      expectedDraftVersion: draft.draftVersion,
+      questions: draft.questions.map((q, i) => ({ ...q, question: i === 0 ? "Soal akhir draf" : q.question })),
+    });
+    assert.equal(saved.status, 200, saved.text);
+    assert.equal(saved.json.data.draftVersion, draft.draftVersion + 1);
+    assert.deepEqual(finalRows(site), before);
+    assert.deepEqual(finalHistory(site), history);
+    const live = await learner.get("/api/quiz?moduleNumber=0");
+    assert.equal(live.json.data.some((q) => q.question === "Soal akhir draf"), false);
+    assert.equal(live.json.data.some((q) => "correctIndex" in q || "correct_index" in q), false);
+    const replay = run(site, join(repo, "database", "migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
+    assert.equal(replay.status, 0, replay.stdout + replay.stderr);
+    assert.deepEqual(finalHistory(site), history);
+    assert.equal((await finalDraft(admin)).questions[0].question, "Soal akhir draf");
+  });
+});
+
+test("P25 final-exam bank publication preserves an active attempt snapshot and new attempts use the publication", async () => {
+  const { site } = await setup("p25-final-snapshot");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const first = await signIn(api.port, "peserta-a@example.test");
+    const second = await signIn(api.port, "peserta-b@example.test");
+    await passAllRequired(first, site);
+    await passAllRequired(second, site);
+    const started = await first.mutate("POST", "/api/assessments/attempts", { assessmentType: "final_exam", moduleNumber: 0, requestKey: randomUUID() });
+    assert.equal(started.status, 201, started.text);
+    const old = started.json.data.attempt;
+    const snapshots = rows(site, "SELECT i.* FROM assessment_attempt_items i JOIN assessment_attempts a ON a.id = i.attempt_id WHERE a.public_id = ? ORDER BY i.ordinal", [old.id]);
+    const attemptBefore = rows(site, "SELECT * FROM assessment_attempts WHERE public_id = ?", [old.id]);
+    const originalRevision = finalHistory(site)[0];
+    const originalItems = rows(site, "SELECT * FROM question_bank_revision_items WHERE bank_revision_id = ? ORDER BY ordinal", [originalRevision.id]);
+    const draft = await finalDraft(admin);
+    const saved = await admin.mutate("POST", "/api/admin/curriculum/final-bank", {
+      expectedDraftVersion: draft.draftVersion,
+      questions: [{ question: "Soal akhir versi terbit baru", options: ["Baru benar", "Baru salah"], correctIndex: 0 }],
+    });
+    assert.equal(saved.status, 200, saved.text);
+    const published = await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
+    assert.equal(published.status, 200, published.text);
+    assert.equal(published.json.data.revisionNumber, 2);
+    assert.deepEqual(rows(site, "SELECT * FROM assessment_attempts WHERE public_id = ?", [old.id]), attemptBefore);
+    assert.deepEqual(rows(site, "SELECT i.* FROM assessment_attempt_items i JOIN assessment_attempts a ON a.id = i.attempt_id WHERE a.public_id = ? ORDER BY i.ordinal", [old.id]), snapshots);
+    assert.deepEqual(finalHistory(site)[0], originalRevision);
+    assert.deepEqual(rows(site, "SELECT * FROM question_bank_revision_items WHERE bank_revision_id = ? ORDER BY ordinal", [originalRevision.id]), originalItems);
+    const resumed = await first.get(`/api/assessments/attempts/${old.id}`);
+    assert.deepEqual(resumed.json.data.attempt.questions, old.questions);
+    const fresh = await second.mutate("POST", "/api/assessments/attempts", { assessmentType: "final_exam", moduleNumber: 0, requestKey: randomUUID() });
+    assert.equal(fresh.status, 201, fresh.text);
+    assert.equal(fresh.json.data.attempt.questions.length, 1);
+    assert.equal(fresh.json.data.attempt.questions[0].question, "Soal akhir versi terbit baru");
+    assert.equal("correctIndex" in fresh.json.data.attempt.questions[0], false);
+    // Submission grades the old answer key even though its source questions were removed.
+    for (const question of old.questions) {
+      const key = attemptKey(site, old.id).get(question.id);
+      assert.equal((await first.mutate("POST", `/api/assessments/attempts/${old.id}/answers`, { questionId: question.id, answerIndex: key.correct })).status, 200);
+    }
+    const submitted = await first.mutate("POST", `/api/assessments/attempts/${old.id}/submit`, { requestKey: randomUUID() });
+    assert.equal(submitted.status, 200, submitted.text);
+    assert.equal(submitted.json.data.attempt.result.passed, true);
+    assert.equal(submitted.json.data.attempt.totalQuestions, old.totalQuestions);
+  });
+});
+
+test("final-exam bank validation rejects invalid answer indexes, blank choices and an empty required bank", async () => {
+  const { site } = await setup("final-validation");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const draft = await finalDraft(admin);
+    for (const question of [
+      { question: "Indeks salah", options: ["A", "B"], correctIndex: 2 },
+      { question: "Opsi kosong", options: ["A", ""], correctIndex: 0 },
+    ]) {
+      const bad = await admin.mutate("POST", "/api/admin/curriculum/final-bank", { expectedDraftVersion: draft.draftVersion, questions: [question] });
+      assert.equal(bad.status, 422, bad.text);
+      assert.equal((await finalDraft(admin)).draftVersion, draft.draftVersion);
+    }
+    const before = finalRows(site);
+    const saved = await admin.mutate("POST", "/api/admin/curriculum/final-bank", { expectedDraftVersion: draft.draftVersion, questions: [] });
+    assert.equal(saved.status, 200, saved.text);
+    const validated = await admin.mutate("POST", "/api/admin/curriculum/final-bank/validate", { expectedDraftVersion: saved.json.data.draftVersion });
+    assert.equal(validated.status, 200, validated.text);
+    assert.equal(validated.json.data.valid, false);
+    assert.ok(validated.json.data.errors.some((e) => e.code === "final_bank_empty"));
+    const refused = await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
+    assert.equal(refused.status, 422, refused.text);
+    assert.equal(refused.json.error.code, "publish_validation_failed");
+    assert.deepEqual(finalRows(site), before);
+    // Publication also revalidates persisted data instead of trusting an earlier validation.
+    sql(site, "UPDATE question_bank_drafts SET question_payload_json = ? WHERE scope_type = 'final' AND module_number = 0", [JSON.stringify([{ id: -1, question: "Corrupt", options: ["A", "B"], correctIndex: 9 }])]);
+    const corrupt = await admin.mutate("POST", "/api/admin/curriculum/final-bank/validate", { expectedDraftVersion: saved.json.data.draftVersion });
+    assert.equal(corrupt.json.data.valid, false);
+    assert.ok(corrupt.json.data.errors.some((e) => e.code === "correct_index_invalid"));
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true })).status, 422);
+    assert.deepEqual(finalRows(site), before);
+  });
+});
+
+test("final-exam bank requires verified admin, CSRF, version and publish confirmation", async () => {
+  const { site } = await setup("final-auth");
+  seedAccount(site, { email: "unverified-admin@example.test", role: "admin" });
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const learner = await signIn(api.port, "peserta-a@example.test");
+    const unverified = await signIn(api.port, "unverified-admin@example.test");
+    for (const actor of [learner, unverified]) assert.equal((await actor.get("/api/admin/curriculum/final-bank")).status, 403);
+    for (const suffix of ["", "/validate", "/publish"]) {
+      const path = `/api/admin/curriculum/final-bank${suffix}`;
+      const body = { expectedDraftVersion: 1, questions: [], confirm: true };
+      assert.equal((await learner.mutate("POST", path, body)).status, 403);
+      assert.equal((await unverified.mutate("POST", path, body)).status, 403);
+      assert.equal((await admin.raw("POST", path, body)).status, 419);
+    }
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/final-bank", { questions: [] })).status, 422);
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: 1 })).status, 422);
+  });
+});
+
+function finalBankProcess(site, version, operation) {
+  return new Promise((done, reject) => {
+    const child = spawn("php", [...SQLITE, join(repo, "tests", "fixtures", "q05", "final-bank-write.php"), String(version), String(adminIdOf(site)), operation], {
+      cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }),
+    });
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (chunk) => (out += chunk));
+    child.stderr.on("data", (chunk) => (err += chunk));
+    child.on("error", reject);
+    child.on("close", (code) => done({ code, out: out.trim(), err: err.trim() }));
+  });
+}
+
+test("final-exam bank concurrent edits and edit/publication races accept exactly one version", async () => {
+  const { site } = await setup("final-races");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const original = await finalDraft(admin);
+    const liveBefore = finalRows(site);
+    const race = await Promise.all([finalBankProcess(site, original.draftVersion, "Race A"), finalBankProcess(site, original.draftVersion, "Race B")]);
+    for (const result of race) assert.equal(result.code, 0, result.err + result.out);
+    const outcomes = race.map((r) => JSON.parse(r.out));
+    assert.equal(outcomes.filter((r) => r.error?.code === "revision_conflict").length, 1);
+    assert.equal(outcomes.filter((r) => r.draftVersion === original.draftVersion + 1).length, 1);
+    const edited = await finalDraft(admin);
+    assert.equal(edited.questions.length, original.questions.length + 1);
+    assert.deepEqual(finalRows(site), liveBefore);
+    const publishing = await Promise.all([finalBankProcess(site, edited.draftVersion, "Race C"), finalBankProcess(site, edited.draftVersion, "publish")]);
+    for (const result of publishing) assert.equal(result.code, 0, result.err + result.out);
+    const publishedOutcomes = publishing.map((r) => JSON.parse(r.out));
+    assert.equal(publishedOutcomes.filter((r) => r.error?.code === "revision_conflict").length, 1);
+    const current = await finalDraft(admin);
+    assert.equal(current.draftVersion, edited.draftVersion + 1);
+    const published = publishedOutcomes.find((r) => r.revisionId);
+    if (published) {
+      assert.equal(finalHistory(site).length, 2);
+      assert.deepEqual(finalRows(site).map((q) => q.question), edited.questions.map((q) => q.question));
+      assert.equal(current.questions.some((q) => q.question === "Race C"), false);
+    } else {
+      assert.equal(finalHistory(site).length, 1);
+      assert.deepEqual(finalRows(site), liveBefore);
+      assert.equal(current.questions.at(-1).question, "Race C");
+    }
+  });
+});
+
+test("final-exam bank stale edits and publication retries conflict and a failed publish rolls back every write", async () => {
+  const { site } = await setup("final-conflict-rollback");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const other = await signIn(api.port, "pengelola@example.test");
+    const draft = await finalDraft(admin);
+    const saved = await admin.mutate("POST", "/api/admin/curriculum/final-bank", { expectedDraftVersion: draft.draftVersion, operation: "create", question: "Soal tambahan", options: ["A", "B"], correctIndex: 1 });
+    assert.equal(saved.status, 200, saved.text);
+    const stale = await other.mutate("POST", "/api/admin/curriculum/final-bank", { expectedDraftVersion: draft.draftVersion, questions: [] });
+    assert.equal(stale.status, 409, stale.text);
+    assert.equal(stale.json.error.code, "revision_conflict");
+    assert.equal(stale.json.error.details.currentDraftVersion, draft.draftVersion + 1);
+    const before = { live: finalRows(site), revisions: finalHistory(site), events: rows(site, "SELECT * FROM curriculum_publication_events ORDER BY id"), draft: await finalDraft(admin), items: rows(site, "SELECT * FROM question_bank_revision_items ORDER BY id") };
+    sql(site, "CREATE TRIGGER fail_final_publish BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'final_bank.published' BEGIN SELECT RAISE(ABORT, 'forced final publish failure'); END");
+    const failed = await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
+    assert.equal(failed.status, 500, failed.text);
+    assert.deepEqual(finalRows(site), before.live);
+    assert.deepEqual(finalHistory(site), before.revisions);
+    assert.deepEqual(rows(site, "SELECT * FROM curriculum_publication_events ORDER BY id"), before.events);
+    assert.deepEqual(rows(site, "SELECT * FROM question_bank_revision_items ORDER BY id"), before.items);
+    assert.deepEqual(await finalDraft(admin), before.draft);
+    sql(site, "DROP TRIGGER fail_final_publish");
+    const published = await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
+    assert.equal(published.status, 200, published.text);
+    const repeat = await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
+    assert.equal(repeat.status, 409);
+    assert.equal(repeat.json.error.code, "revision_conflict");
+    assert.equal(finalHistory(site).length, 2);
+  });
+});
 /* ------------------------------------------------------------- not run here */
 
-test("P25 the final-exam bank cannot be revised while an attempt is active", { skip: "NOT_TESTED: the final-exam bank draft and publish routes are not implemented in Q05" }, () => {});
 test("P27 APPI drafting cannot publish", { skip: "NOT_TESTED: the APPI model is external; only its absence of a publish path is checked by source review" }, () => {});
 test("P53 and P54 mobile and desktop editor publication workflows", { skip: "NOT_TESTED: no browser run was executed for Q05" }, () => {});
 test("P55 MySQL concurrent publication and activation", { skip: "NOT_TESTED: no disposable MySQL server in this environment" }, () => {});

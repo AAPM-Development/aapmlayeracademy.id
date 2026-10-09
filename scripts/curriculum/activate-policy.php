@@ -73,6 +73,8 @@ $row = aapm_cur_policy_row($pdo, $version);
 if (!$row) {
     activation_fail(4, 'Kebijakan tidak ditemukan.');
 }
+// This is advisory plan output. Apply re-reads and validates the full canonical
+// policy and its dependencies under aapm_cur_policy_activate's transaction locks.
 $errors = aapm_cur_policy_errors($pdo, $version);
 $plan = [
     'environment' => $environment,
@@ -96,8 +98,10 @@ if ($errors !== []) {
 
 try {
     $result = aapm_cur_policy_activate($pdo, $version, null, ['operator' => $operator, 'evidence_ref' => $evidence]);
-} catch (RuntimeException $exception) {
-    activation_fail(5, 'Aktivasi dibatalkan: ' . $exception->getMessage() . '. Tidak ada perubahan.');
+} catch (Throwable $exception) {
+    $reason = $exception instanceof RuntimeException && in_array($exception->getMessage(), ['policy_not_ready', 'policy_invalid'], true)
+        ? $exception->getMessage() : 'activation_failed';
+    activation_fail(5, 'Aktivasi dibatalkan: ' . $reason . '. Tidak ada perubahan.');
 }
 
 echo json_encode(['plan' => $plan, 'changed' => true, 'activated' => $result['version'], 'status' => $result['status']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";

@@ -618,6 +618,35 @@ try {
         json_response(['ok' => true, 'draftVersion' => $result['draftVersion']]);
     }
 
+    if ($path === 'admin/curriculum/final-bank' && $method === 'GET') {
+        $actor = require_admin();
+        json_response(aapm_cur_final_bank_draft(db(), (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/final-bank' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        $questionId = isset($input['questionId']) && is_int($input['questionId']) ? $input['questionId'] : null;
+        json_response(aapm_cur_final_bank_write($input, (string) ($input['operation'] ?? 'replace'), $questionId, (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/final-bank/validate' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_final_bank_validate(aapm_cur_expected_version(request_json()), (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/final-bank/publish' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? false) !== true) {
+            error_response('Konfirmasi penerbitan wajib dikirim.', 422, 'publish_confirmation_required');
+        }
+        json_response(aapm_cur_final_bank_publish(aapm_cur_expected_version($input), (int) $actor['id']));
+    }
+
     if ($path === 'admin/curriculum/policies' && $method === 'GET') {
         require_admin();
         json_response(['policies' => aapm_cur_policy_list()]);
@@ -732,10 +761,13 @@ try {
     if ($path === 'quiz' && $method === 'GET') {
         // Safe projection only: no correct answer, no explanation. Interactive
         // assessment uses the attempt endpoints below.
-        require_user();
+        $user = require_user();
         $moduleNumber = isset($_GET['moduleNumber']) ? (int) $_GET['moduleNumber'] : null;
         if ($moduleNumber === null) {
             error_response('moduleNumber wajib diisi.', 422, 'validation_error');
+        }
+        if ($moduleNumber > 0 && !isset(aapm_module_catalog(db(), (int) $user['id'])[$moduleNumber])) {
+            error_response('Modul tidak ditemukan.', 404, 'assessment_not_found');
         }
         $stmt = db()->prepare('SELECT id, module_number, question, options FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
         $stmt->execute([$moduleNumber]);

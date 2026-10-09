@@ -348,11 +348,12 @@ function aapm_assessment_user_lock(PDO $pdo, int $userId): void
     $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE')->execute([$userId]);
 }
 
-function aapm_module_catalog(PDO $pdo): array
+function aapm_module_catalog(PDO $pdo, int $userId): array
 {
     $catalog = [];
-    // Draft-only modules are not part of anyone's curriculum until published.
-    foreach ($pdo->query("SELECT module_number, level_number, title FROM course_modules WHERE lifecycle_status <> 'draft' ORDER BY sort_order, module_number")->fetchAll() as $row) {
+    // Match the learner catalogue: archived material stays available only when
+    // the account's assigned academic policy still requires that module.
+    foreach (aapm_cur_learner_modules($pdo, $userId) as $row) {
         $catalog[(int) $row['module_number']] = [
             'levelNumber' => (int) $row['level_number'],
             'title' => (string) $row['title'],
@@ -533,7 +534,7 @@ function aapm_grade(array $items, int $passingGrade): array
 function aapm_academic_snapshot(PDO $pdo, int $userId): array
 {
     $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
-    $catalog = aapm_module_catalog($pdo);
+    $catalog = aapm_module_catalog($pdo, $userId);
     $quizCounts = aapm_quiz_counts($pdo);
     $now = aapm_utc_now();
 
@@ -792,6 +793,11 @@ function aapm_assessment_start(array $user, array $input): array
     aapm_tx_begin($pdo);
     try {
         aapm_assessment_user_lock($pdo, $userId);
+        // A publisher and a new final attempt share this lock. Snapshot selection
+        // therefore sees one complete publication; existing attempts keep their items.
+        if ($type === 'final_exam') {
+            aapm_cur_final_bank_locked($pdo, null);
+        }
         $generation = aapm_current_generation($pdo, $userId);
 
         $same = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? AND start_request_key = ? LIMIT 1');
@@ -820,7 +826,7 @@ function aapm_assessment_start(array $user, array $input): array
             }
         }
 
-        $catalog = aapm_module_catalog($pdo);
+        $catalog = aapm_module_catalog($pdo, $userId);
         $quizCounts = aapm_quiz_counts($pdo);
         $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
 
@@ -1129,7 +1135,7 @@ function aapm_acknowledge_module(array $user, int $moduleNumber): array
 {
     $pdo = db();
     $userId = (int) $user['id'];
-    $catalog = aapm_module_catalog($pdo);
+    $catalog = aapm_module_catalog($pdo, $userId);
     if (!isset($catalog[$moduleNumber])) {
         aapm_assessment_fail(404, 'assessment_not_found', 'Modul tidak ditemukan.');
     }
@@ -1159,7 +1165,7 @@ function aapm_record_module_event(array $user, int $moduleNumber, string $eventT
     }
     $pdo = db();
     $userId = (int) $user['id'];
-    $catalog = aapm_module_catalog($pdo);
+    $catalog = aapm_module_catalog($pdo, $userId);
     if (!isset($catalog[$moduleNumber])) {
         aapm_assessment_fail(404, 'assessment_not_found', 'Modul tidak ditemukan.');
     }

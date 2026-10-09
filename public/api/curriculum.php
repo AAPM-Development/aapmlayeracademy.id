@@ -19,6 +19,17 @@ function aapm_cur_ddl(string $driver): array
 {
     if ($driver === 'sqlite') {
         return [
+            'CREATE TABLE IF NOT EXISTS question_bank_drafts (
+                scope_type TEXT NOT NULL,
+                module_number INTEGER NOT NULL,
+                draft_version INTEGER NOT NULL DEFAULT 1,
+                question_payload_json TEXT NOT NULL,
+                published_revision_id INTEGER NULL,
+                edited_by_user_id INTEGER NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(scope_type, module_number)
+            )',
             'CREATE TABLE IF NOT EXISTS module_drafts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 module_id INTEGER NOT NULL UNIQUE,
@@ -116,6 +127,17 @@ function aapm_cur_ddl(string $driver): array
     $suffix = ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
     return [
+        'CREATE TABLE IF NOT EXISTS question_bank_drafts (
+            scope_type VARCHAR(16) NOT NULL,
+            module_number SMALLINT UNSIGNED NOT NULL,
+            draft_version INT UNSIGNED NOT NULL DEFAULT 1,
+            question_payload_json MEDIUMTEXT NOT NULL,
+            published_revision_id BIGINT UNSIGNED NULL,
+            edited_by_user_id BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY (scope_type, module_number)
+        )' . $suffix,
         'CREATE TABLE IF NOT EXISTS module_drafts (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             module_id BIGINT UNSIGNED NOT NULL,
@@ -261,6 +283,7 @@ function aapm_ensure_curriculum_schema(PDO $pdo, string $driver): void
     aapm_cur_seed_v1($pdo);
     aapm_cur_allocate_numbers($pdo);
     aapm_cur_backfill_modules($pdo);
+    aapm_cur_backfill_final_bank($pdo);
     $ready = true;
 }
 
@@ -458,6 +481,220 @@ function aapm_cur_insert_bank(PDO $pdo, string $scope, int $moduleNumber, array 
         ]);
     }
     return $bankId;
+}
+
+/** One stable row serializes all final-bank writes and new final-attempt snapshots. */
+function aapm_cur_final_bank_locked(PDO $pdo, ?int $actorId): array
+{
+    $now = aapm_utc_now();
+    $insert = aapm_database_driver() === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
+    $pdo->prepare($insert . " INTO question_bank_drafts (scope_type, module_number, draft_version, question_payload_json, edited_by_user_id, created_at, updated_at) VALUES ('final', 0, 1, ?, ?, ?, ?)")
+        ->execute([json_encode(aapm_cur_live_questions($pdo, 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $actorId, $now, $now]);
+    $locking = aapm_database_driver() === 'sqlite' ? '' : ' FOR UPDATE';
+    return $pdo->query("SELECT * FROM question_bank_drafts WHERE scope_type = 'final' AND module_number = 0" . $locking)->fetch();
+}
+
+/** Backfill once; retries preserve draft edits, historical revisions and all Q03 evidence. */
+function aapm_cur_backfill_final_bank(PDO $pdo): void
+{
+    aapm_tx_begin($pdo);
+    try {
+        $draft = aapm_cur_final_bank_locked($pdo, null);
+        $questions = aapm_cur_live_questions($pdo, 0);
+        if ($draft['published_revision_id'] === null && $questions !== []) {
+            $existing = $pdo->query("SELECT id FROM question_bank_revisions WHERE scope_type = 'final' AND module_number = 0 ORDER BY revision_number DESC LIMIT 1")->fetchColumn();
+            $now = aapm_utc_now();
+            $bankId = $existing ? (int) $existing : aapm_cur_insert_bank($pdo, 'final', 0, $questions, null, $now);
+            $pdo->prepare("UPDATE question_bank_drafts SET published_revision_id = ?, question_payload_json = CASE WHEN draft_version = 1 THEN ? ELSE question_payload_json END WHERE scope_type = 'final' AND module_number = 0")
+                ->execute([$bankId, json_encode($questions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+            if (!$existing) {
+                aapm_cur_event($pdo, 'final_bank.published', 0, null, 1, null, ['backfill' => true, 'questionCount' => count($questions)]);
+            }
+        }
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
+}
+
+function aapm_cur_final_bank_view(PDO $pdo, array $draft): array
+{
+    $revision = null;
+    if ($draft['published_revision_id'] !== null) {
+        $statement = $pdo->prepare("SELECT id, revision_number, published_at FROM question_bank_revisions WHERE id = ? AND scope_type = 'final' AND module_number = 0");
+        $statement->execute([(int) $draft['published_revision_id']]);
+        $row = $statement->fetch();
+        if ($row) {
+            $revision = ['revisionId' => (int) $row['id'], 'revisionNumber' => (int) $row['revision_number'], 'publishedAt' => (string) $row['published_at']];
+        }
+    }
+    return [
+        'scope' => 'final', 'moduleNumber' => 0, 'draftVersion' => (int) $draft['draft_version'],
+        'questions' => json_decode((string) $draft['question_payload_json'], true) ?: [],
+        'publishedRevision' => $revision,
+    ];
+}
+
+function aapm_cur_final_bank_draft(PDO $pdo, ?int $actorId): array
+{
+    aapm_tx_begin($pdo);
+    try {
+        $view = aapm_cur_final_bank_view($pdo, aapm_cur_final_bank_locked($pdo, $actorId));
+        aapm_tx_commit($pdo);
+        return $view;
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
+}
+
+function aapm_cur_final_bank_errors(array $questions): array
+{
+    $errors = [];
+    if ($questions === []) {
+        $errors[] = ['section' => 'questions', 'field' => 'questions', 'message' => 'Ujian akhir wajib memiliki minimal satu soal.', 'code' => 'final_bank_empty'];
+    }
+    foreach ($questions as $index => $question) {
+        $field = 'questions[' . ($index + 1) . ']';
+        if (!is_array($question) || !is_string($question['question'] ?? null) || trim($question['question']) === '') {
+            $errors[] = ['section' => 'questions', 'field' => $field . '.question', 'message' => 'Teks soal wajib diisi.', 'code' => 'question_text_missing'];
+        }
+        $options = $question['options'] ?? null;
+        if (!is_array($options) || array_values($options) !== $options || count($options) < 2 || count($options) > 6) {
+            $errors[] = ['section' => 'questions', 'field' => $field . '.options', 'message' => 'Soal membutuhkan 2 sampai 6 opsi.', 'code' => 'question_options_invalid'];
+        } else {
+            foreach ($options as $option) {
+                if (!is_string($option) || trim($option) === '') {
+                    $errors[] = ['section' => 'questions', 'field' => $field . '.options', 'message' => 'Semua opsi wajib diisi.', 'code' => 'question_options_invalid'];
+                    break;
+                }
+            }
+        }
+        $correct = $question['correctIndex'] ?? null;
+        if (!is_int($correct) || $correct < 0 || !is_array($options) || $correct >= count($options)) {
+            $errors[] = ['section' => 'questions', 'field' => $field . '.correctIndex', 'message' => 'Jawaban benar tidak valid.', 'code' => 'correct_index_invalid'];
+        }
+    }
+    return $errors;
+}
+
+/** Replace the whole bank or perform a single-question operation, always in the draft. */
+function aapm_cur_final_bank_write(array $input, string $operation, ?int $questionId, int $actorId): array
+{
+    $expected = aapm_cur_expected_version($input);
+    if (!in_array($operation, ['replace', 'create', 'update', 'delete'], true)) {
+        error_response('Operasi draf soal tidak valid.', 422, 'validation_error');
+    }
+    $replacement = [];
+    $item = null;
+    if ($operation === 'replace') {
+        if (!isset($input['questions']) || !is_array($input['questions']) || array_values($input['questions']) !== $input['questions']) {
+            error_response('Daftar soal draf wajib dikirim.', 422, 'validation_error');
+        }
+        if ($input['questions'] !== [] && aapm_cur_final_bank_errors($input['questions']) !== []) {
+            error_response('Pertanyaan, opsi dan jawaban benar wajib valid.', 422, 'validation_error');
+        }
+        $ids = [];
+        foreach ($input['questions'] as $index => $question) {
+            $normal = aapm_cur_normalise_question($question);
+            $id = $question['id'] ?? -($index + 1);
+            if (!is_int($id) || $id === 0 || isset($ids[$id])) {
+                error_response('Identitas soal draf tidak valid atau berulang.', 422, 'validation_error');
+            }
+            $ids[$id] = true;
+            $replacement[] = array_merge($normal, ['id' => $id]);
+        }
+    } elseif ($operation !== 'delete') {
+        if (aapm_cur_final_bank_errors([$input]) !== []) {
+            error_response('Pertanyaan, opsi dan jawaban benar wajib valid.', 422, 'validation_error');
+        }
+        $item = aapm_cur_normalise_question($input);
+    }
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        $draft = aapm_cur_final_bank_locked($pdo, $actorId);
+        if ((int) $draft['draft_version'] !== $expected) {
+            aapm_tx_rollback($pdo);
+            aapm_cur_conflict((int) $draft['draft_version']);
+        }
+        $questions = json_decode((string) $draft['question_payload_json'], true) ?: [];
+        if ($operation === 'replace') {
+            $questions = $replacement;
+        } elseif ($operation === 'create') {
+            $temporary = 0;
+            foreach ($questions as $question) $temporary = min($temporary, (int) $question['id']);
+            $item['id'] = $temporary - 1;
+            $questions[] = $item;
+        } else {
+            $found = false;
+            foreach ($questions as $index => $question) {
+                if ((int) $question['id'] !== $questionId) continue;
+                $found = true;
+                if ($operation === 'delete') {
+                    array_splice($questions, $index, 1);
+                } else {
+                    $questions[$index] = array_merge($item, ['id' => $questionId]);
+                }
+                break;
+            }
+            if (!$found) {
+                aapm_tx_rollback($pdo);
+                error_response('Soal tidak ditemukan dalam draf.', 404, 'not_found');
+            }
+        }
+        $next = $expected + 1;
+        $pdo->prepare("UPDATE question_bank_drafts SET question_payload_json = ?, draft_version = ?, edited_by_user_id = ?, updated_at = ? WHERE scope_type = 'final' AND module_number = 0")
+            ->execute([json_encode(array_values($questions), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $next, $actorId, aapm_utc_now()]);
+        aapm_cur_event($pdo, 'final_bank.draft_saved', 0, null, null, $actorId, ['draftVersion' => $next, 'questionOperation' => $operation]);
+        $view = aapm_cur_final_bank_view($pdo, array_merge($draft, ['draft_version' => $next, 'question_payload_json' => json_encode(array_values($questions))]));
+        aapm_tx_commit($pdo);
+        return $view;
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
+}
+
+function aapm_cur_final_bank_validate(int $expectedVersion, int $actorId): array
+{
+    $pdo = db();
+    $draft = aapm_cur_final_bank_draft($pdo, $actorId);
+    if ($draft['draftVersion'] !== $expectedVersion) aapm_cur_conflict($draft['draftVersion']);
+    $errors = aapm_cur_final_bank_errors($draft['questions']);
+    return ['valid' => $errors === [], 'errors' => $errors, 'draftVersion' => $draft['draftVersion']];
+}
+
+function aapm_cur_final_bank_publish(int $expectedVersion, int $actorId): array
+{
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        $draft = aapm_cur_final_bank_locked($pdo, $actorId);
+        if ((int) $draft['draft_version'] !== $expectedVersion) {
+            aapm_tx_rollback($pdo);
+            aapm_cur_conflict((int) $draft['draft_version']);
+        }
+        $questions = json_decode((string) $draft['question_payload_json'], true) ?: [];
+        $errors = aapm_cur_final_bank_errors($questions);
+        if ($errors !== []) {
+            aapm_tx_rollback($pdo);
+            aapm_assessment_fail(422, 'publish_validation_failed', 'Draf belum dapat diterbitkan. Periksa bagian yang ditandai.', ['errors' => $errors]);
+        }
+        $now = aapm_utc_now();
+        $published = aapm_cur_apply_questions($pdo, 0, $questions);
+        $bankId = aapm_cur_insert_bank($pdo, 'final', 0, $published, $actorId, $now);
+        $revision = (int) $pdo->query('SELECT revision_number FROM question_bank_revisions WHERE id = ' . $bankId)->fetchColumn();
+        $pdo->prepare("UPDATE question_bank_drafts SET question_payload_json = ?, draft_version = draft_version + 1, published_revision_id = ?, edited_by_user_id = ?, updated_at = ? WHERE scope_type = 'final' AND module_number = 0")
+            ->execute([json_encode($published, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $bankId, $actorId, $now]);
+        aapm_cur_event($pdo, 'final_bank.published', 0, null, $revision, $actorId, ['questionCount' => count($published)]);
+        aapm_tx_commit($pdo);
+        return ['revisionId' => $bankId, 'revisionNumber' => $revision, 'publishedAt' => $now, 'draftVersion' => $expectedVersion + 1];
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
 }
 
 function aapm_cur_insert_revision(PDO $pdo, int $moduleId, int $moduleNumber, array $payload, ?int $bankId, ?int $actorId, string $now): int
@@ -1161,6 +1398,16 @@ function aapm_cur_policy_row(PDO $pdo, string $version): ?array
     return $statement->fetch() ?: null;
 }
 
+function aapm_cur_policy_lock(PDO $pdo, string $version): ?array
+{
+    if (aapm_database_driver() !== 'sqlite') {
+        $statement = $pdo->prepare('SELECT id FROM curriculum_policy_versions WHERE policy_version = ? FOR UPDATE');
+        $statement->execute([$version]);
+        $statement->fetchAll();
+    }
+    return aapm_cur_policy_row($pdo, $version);
+}
+
 function aapm_cur_active_policy_version(PDO $pdo): string
 {
     $statement = $pdo->query("SELECT policy_version FROM curriculum_policy_versions WHERE status = 'active' ORDER BY activated_at DESC, id DESC LIMIT 1");
@@ -1288,7 +1535,7 @@ function aapm_cur_policy_update(string $version, array $input, int $actorId): ar
     }
     aapm_tx_begin($pdo);
     try {
-        $locked = aapm_cur_policy_row($pdo, $version);
+        $locked = aapm_cur_policy_lock($pdo, $version);
         if (!$locked || !in_array((string) $locked['status'], ['draft', 'ready'], true)) {
             aapm_tx_rollback($pdo);
             error_response('Kebijakan yang sudah aktif atau digantikan tidak dapat diubah.', 409, 'policy_immutable');
@@ -1309,6 +1556,7 @@ function aapm_cur_policy_update(string $version, array $input, int $actorId): ar
         }
         $requirements = [
             'courseId' => (string) $locked['course_id'],
+            'modules' => $normal['modules'],
             'required' => array_values(array_unique($required)),
             'modulePassPercent' => $normal['modulePassPercent'],
             'finalPassPercent' => $normal['finalPassPercent'],
@@ -1336,11 +1584,34 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
         return [['section' => 'policy', 'field' => 'version', 'message' => 'Kebijakan tidak ditemukan.']];
     }
     $errors = [];
+    $snapshot = json_decode((string) $row['requirements_json'], true);
+    if (!is_array($snapshot) || !is_array($snapshot['required'] ?? null) || !is_array($snapshot['tiers'] ?? null)
+        || !is_int($snapshot['modulePassPercent'] ?? null) || !is_int($snapshot['finalPassPercent'] ?? null)
+        || ($snapshot['courseId'] ?? null) !== (string) $row['course_id']) {
+        return [['section' => 'policy', 'field' => 'requirements', 'message' => 'Snapshot kebijakan tidak valid.', 'code' => 'policy_snapshot_invalid']];
+    }
+    $snapshotRequired = array_map('intval', $snapshot['required']);
+    sort($snapshotRequired);
     $members = $pdo->prepare('SELECT m.module_number, m.required, cm.lifecycle_status, cm.published_revision_id FROM curriculum_policy_modules m LEFT JOIN course_modules cm ON cm.module_number = m.module_number WHERE m.policy_version = ? ORDER BY m.module_number ASC');
     $members->execute([$version]);
     $requiredSet = [];
-    $seenSort = [];
-    foreach ($members->fetchAll() as $member) {
+    $memberRows = $members->fetchAll();
+    $snapshotMembers = $snapshot['modules'] ?? array_map(static fn (int $number): array => ['moduleNumber' => $number, 'required' => true], $snapshotRequired);
+    $expectedMembers = [];
+    foreach ((array) $snapshotMembers as $member) {
+        if (!is_array($member) || !is_int($member['moduleNumber'] ?? null) || !is_bool($member['required'] ?? null)) {
+            $errors[] = ['section' => 'policy', 'field' => 'modules', 'message' => 'Snapshot keanggotaan modul tidak valid.', 'code' => 'policy_snapshot_invalid'];
+            continue;
+        }
+        $expectedMembers[] = ['moduleNumber' => $member['moduleNumber'], 'required' => $member['required']];
+    }
+    usort($expectedMembers, static fn (array $a, array $b): int => $a['moduleNumber'] <=> $b['moduleNumber']);
+    $actualMembers = array_map(static fn (array $member): array => ['moduleNumber' => (int) $member['module_number'], 'required' => (int) $member['required'] === 1], $memberRows);
+    $memberRequired = array_column(array_filter($actualMembers, static fn (array $member): bool => $member['required']), 'moduleNumber');
+    if ($expectedMembers !== $actualMembers || $snapshotRequired !== $memberRequired) {
+        $errors[] = ['section' => 'policy', 'field' => 'modules', 'message' => 'Keanggotaan modul tidak sama dengan snapshot kebijakan.', 'code' => 'policy_membership_mismatch'];
+    }
+    foreach ($memberRows as $member) {
         $number = (int) $member['module_number'];
         if ($member['lifecycle_status'] === null) {
             $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Modul $number tidak ada di katalog.", 'code' => 'module_missing'];
@@ -1353,10 +1624,12 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
             $requiredSet[] = $number;
             if (count(aapm_cur_live_questions($pdo, $number)) === 0) {
                 $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Modul wajib $number belum memiliki soal yang valid.", 'code' => 'required_quiz_missing'];
+            } elseif (aapm_cur_final_bank_errors(aapm_cur_live_questions($pdo, $number)) !== []) {
+                $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Soal modul wajib $number tidak valid.", 'code' => 'required_quiz_invalid'];
             }
         }
     }
-    $assessment = $pdo->prepare('SELECT required_modules_json, module_pass_percent, final_pass_percent FROM assessment_policies WHERE policy_version = ?');
+    $assessment = $pdo->prepare('SELECT course_id, required_modules_json, module_pass_percent, final_pass_percent FROM assessment_policies WHERE policy_version = ?');
     $assessment->execute([$version]);
     $assessmentRow = $assessment->fetch();
     if (!$assessmentRow) {
@@ -1369,8 +1642,14 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
         if ($assessed !== $sortedRequired) {
             $errors[] = ['section' => 'assessment', 'field' => 'required', 'message' => 'Modul wajib kebijakan tidak sama dengan modul yang dinilai.', 'code' => 'assessment_requirement_mismatch'];
         }
+        if ($assessed !== $snapshotRequired || (string) $assessmentRow['course_id'] !== $snapshot['courseId']) {
+            $errors[] = ['section' => 'assessment', 'field' => 'required', 'message' => 'Aturan penilaian tidak sama dengan snapshot kebijakan.', 'code' => 'policy_assessment_mismatch'];
+        }
         foreach (['module_pass_percent' => 'modulePassPercent', 'final_pass_percent' => 'finalPassPercent'] as $column => $label) {
             $value = (int) $assessmentRow[$column];
+            if ($value !== $snapshot[$label]) {
+                $errors[] = ['section' => 'assessment', 'field' => $label, 'message' => 'Ambang kelulusan tidak sama dengan snapshot kebijakan.', 'code' => 'policy_assessment_mismatch'];
+            }
             if ($value < 50 || $value > 100) {
                 $errors[] = ['section' => 'assessment', 'field' => $label, 'message' => 'Ambang kelulusan harus antara 50 dan 100.', 'code' => 'threshold_out_of_bounds'];
             }
@@ -1380,6 +1659,22 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
     $tiers = $pdo->prepare('SELECT tier_number, tier_name, required_modules_json, requires_final FROM certificate_tier_policies WHERE policy_version = ? ORDER BY tier_number ASC');
     $tiers->execute([$version]);
     $tierRows = $tiers->fetchAll();
+    $projectedTiers = array_map(static fn (array $tier): array => [
+        'tierNumber' => (int) $tier['tier_number'], 'tierName' => (string) $tier['tier_name'],
+        'modules' => array_map('intval', json_decode((string) $tier['required_modules_json'], true) ?: []),
+        'requiresFinal' => (int) $tier['requires_final'] === 1,
+    ], $tierRows);
+    $snapshotTiers = $snapshot['tiers'];
+    foreach ($snapshotTiers as $tier) {
+        if (!is_array($tier) || !is_int($tier['tierNumber'] ?? null) || !is_string($tier['tierName'] ?? null)
+            || !is_array($tier['modules'] ?? null) || !is_bool($tier['requiresFinal'] ?? null)) {
+            return [['section' => 'policy', 'field' => 'tiers', 'message' => 'Snapshot tingkat sertifikat tidak valid.', 'code' => 'policy_snapshot_invalid']];
+        }
+    }
+    usort($snapshotTiers, static fn (array $a, array $b): int => $a['tierNumber'] <=> $b['tierNumber']);
+    if ($projectedTiers !== $snapshotTiers) {
+        $errors[] = ['section' => 'certificates', 'field' => 'tiers', 'message' => 'Tingkat sertifikat tidak sama dengan snapshot kebijakan.', 'code' => 'policy_tier_mismatch'];
+    }
     $numbers = array_map(static fn (array $tier): int => (int) $tier['tier_number'], $tierRows);
     if ($numbers !== [1, 2, 3, 4, 5, 6]) {
         $errors[] = ['section' => 'certificates', 'field' => 'tiers', 'message' => 'Pemetaan tingkat sertifikat harus lengkap (tingkat 1 sampai 6).', 'code' => 'tier_map_incomplete'];
@@ -1400,6 +1695,8 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
         }
         if ((int) $tier['requires_final'] === 1 && $finalBank === 0) {
             $errors[] = ['section' => 'certificates', 'field' => "tiers[$number].requiresFinal", 'message' => 'Ujian akhir belum memiliki soal.', 'code' => 'final_bank_missing'];
+        } elseif ((int) $tier['requires_final'] === 1 && aapm_cur_final_bank_errors(aapm_cur_live_questions($pdo, 0)) !== []) {
+            $errors[] = ['section' => 'certificates', 'field' => "tiers[$number].requiresFinal", 'message' => 'Soal ujian akhir tidak valid.', 'code' => 'final_bank_invalid'];
         }
     }
     return $errors;
@@ -1408,17 +1705,20 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
 function aapm_cur_policy_validate(string $version, int $actorId): array
 {
     $pdo = db();
-    $errors = aapm_cur_policy_errors($pdo, $version);
-    if ($errors === []) {
-        aapm_tx_begin($pdo);
-        try {
+    aapm_tx_begin($pdo);
+    try {
+        aapm_cur_policy_lock($pdo, $version);
+        $errors = aapm_cur_policy_errors($pdo, $version);
+        if ($errors === []) {
             $pdo->prepare('UPDATE curriculum_policy_versions SET validated_at = ? WHERE policy_version = ?')->execute([aapm_utc_now(), $version]);
             aapm_cur_event($pdo, 'policy.validated', null, $version, null, $actorId, []);
-            aapm_tx_commit($pdo);
-        } catch (Throwable $exception) {
-            aapm_tx_rollback($pdo);
-            throw $exception;
+        } else {
+            $pdo->prepare('UPDATE curriculum_policy_versions SET validated_at = NULL WHERE policy_version = ? AND status = ?')->execute([$version, 'draft']);
         }
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
     }
     return ['valid' => $errors === [], 'errors' => $errors];
 }
@@ -1447,7 +1747,17 @@ function aapm_cur_policy_activate(PDO $pdo, string $version, ?int $actorId, arra
     aapm_tx_begin($pdo);
     try {
         if (aapm_database_driver() !== 'sqlite') {
-            $pdo->query('SELECT id FROM curriculum_policy_versions WHERE policy_version = ' . $pdo->quote($version) . ' FOR UPDATE')->fetchAll();
+            // All activations share a deterministic lock order, including the
+            // previous active version. Lock every validation dependency before reads.
+            $pdo->query('SELECT id FROM curriculum_policy_versions ORDER BY id FOR UPDATE')->fetchAll();
+            $pdo->query('SELECT id FROM course_modules ORDER BY id FOR UPDATE')->fetchAll();
+            foreach (['curriculum_policy_modules', 'assessment_policies', 'certificate_tier_policies'] as $table) {
+                $lock = $pdo->prepare('SELECT policy_version FROM ' . $table . ' WHERE policy_version = ? FOR UPDATE');
+                $lock->execute([$version]);
+                $lock->fetchAll();
+            }
+            aapm_cur_final_bank_locked($pdo, $actorId);
+            $pdo->query('SELECT id FROM quiz_questions ORDER BY id FOR UPDATE')->fetchAll();
         }
         $row = aapm_cur_policy_row($pdo, $version);
         if (!$row || (string) $row['status'] !== 'ready') {
@@ -1460,6 +1770,15 @@ function aapm_cur_policy_activate(PDO $pdo, string $version, ?int $actorId, arra
             throw new RuntimeException('policy_invalid');
         }
         $now = aapm_utc_now();
+        // Refresh only this new version, from the canonical validated snapshot.
+        // Existing v1 rows, assignments and attempt/certificate evidence are untouched.
+        $snapshot = json_decode((string) $row['requirements_json'], true);
+        $pdo->prepare('UPDATE assessment_policies SET course_id = ?, required_modules_json = ?, module_pass_percent = ?, final_pass_percent = ? WHERE policy_version = ?')
+            ->execute([$snapshot['courseId'], json_encode($snapshot['required']), $snapshot['modulePassPercent'], $snapshot['finalPassPercent'], $version]);
+        $tierUpdate = $pdo->prepare('UPDATE certificate_tier_policies SET tier_name = ?, required_modules_json = ?, requires_final = ? WHERE policy_version = ? AND tier_number = ?');
+        foreach ($snapshot['tiers'] as $tier) {
+            $tierUpdate->execute([$tier['tierName'], json_encode($tier['modules']), $tier['requiresFinal'] ? 1 : 0, $version, $tier['tierNumber']]);
+        }
         $pdo->prepare("UPDATE curriculum_policy_versions SET status = 'superseded' WHERE status = 'active' AND policy_version <> ?")->execute([$version]);
         $pdo->prepare("UPDATE curriculum_policy_versions SET status = 'active', activated_at = ? WHERE policy_version = ?")->execute([$now, $version]);
         aapm_cur_event($pdo, 'policy.activated', null, $version, null, $actorId, $evidence);
@@ -1537,6 +1856,7 @@ function aapm_cur_schema_status(PDO $pdo): array
         'module_drafts' => aapm_table_exists($pdo, 'module_drafts'),
         'module_revisions' => aapm_table_exists($pdo, 'module_revisions'),
         'question_bank_revisions' => aapm_table_exists($pdo, 'question_bank_revisions'),
+        'question_bank_drafts' => aapm_table_exists($pdo, 'question_bank_drafts'),
         'question_bank_revision_items' => aapm_table_exists($pdo, 'question_bank_revision_items'),
         'curriculum_policy_versions' => aapm_table_exists($pdo, 'curriculum_policy_versions'),
         'curriculum_policy_modules' => aapm_table_exists($pdo, 'curriculum_policy_modules'),
