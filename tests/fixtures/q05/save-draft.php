@@ -13,6 +13,11 @@ require __DIR__ . '/../../../public/api/bootstrap.php';
 $moduleId = (int) ($argv[1] ?? 0);
 $expected = (int) ($argv[2] ?? 0);
 $actor = (int) ($argv[3] ?? 0);
+if (($argv[5] ?? '') === 'publish') {
+    echo json_encode(aapm_cur_publish($moduleId, $expected, $actor));
+    exit;
+}
+
 $module = aapm_cur_module_or_fail(db(), $moduleId);
 $draft = aapm_cur_draft_locked(db(), $module, $actor);
 $payload = json_decode((string) $draft['content_payload_json'], true) ?: [];

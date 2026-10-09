@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 export const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const fixtures = join(repo, "tests", "fixtures");
-export const SQLITE = ["-d", "extension=php_pdo_sqlite.dll", "-d", "extension=php_sqlite3.dll"];
+export const SQLITE = ["-d", "extension=php_pdo_sqlite.dll", "-d", "extension=php_sqlite3.dll", "-d", "extension=php_pdo_mysql.dll"];
 export const PASSWORD = "Valid-pass1";
 export const created = [];
 export function cleanup() {
@@ -53,8 +53,23 @@ export function makeSite(name, overrides = {}) {
   const root = scratch(name);
   const dbPath = join(root, "app.sqlite");
   writeFileSync(dbPath, "");
+  let mysql = {};
+  if (process.env.AAPM_TEST_MYSQL_CONFIG) {
+    const privatePath = process.env.AAPM_TEST_MYSQL_CONFIG;
+    const privateConfig = JSON.parse(readFileSync(privatePath, "utf8"));
+    assert.equal(privateConfig.taskOwned, true, "Only a task-owned database runtime is allowed");
+    assert.equal(privateConfig.host, "127.0.0.1");
+    assert.match(privateConfig.databasePrefix, /^aapm_q05_test_$/);
+    const database = privateConfig.databasePrefix + randomUUID().replaceAll("-", "");
+    const createdDb = spawnSync("php", [...SQLITE, join(fixtures, "q05", "mysql-create.php"), database], {
+      cwd: repo, encoding: "utf8", env: cleanEnv({ AAPM_TEST_MYSQL_CONFIG: privatePath }),
+    });
+    assert.equal(createdDb.status, 0, "Task database creation failed (credentials withheld)");
+    mysql = { db_driver: "mysql", db_host: privateConfig.host, db_port: privateConfig.port, db_name: database, db_user: privateConfig.testUser, db_password: privateConfig.testPassword };
+  }
   const settings = {
     environment: "local",
+    task_owned_fixture: true,
     db_driver: "sqlite",
     db_path: forward(dbPath),
     app_url: "http://127.0.0.1",
@@ -62,12 +77,13 @@ export function makeSite(name, overrides = {}) {
     mail_from: "",
     environment_marker_required: false,
     admin_emails: "",
+    ...mysql,
     ...overrides,
   };
   const body = Object.entries(settings).map(([key, value]) => `    '${key}' => ${phpLiteral(value)},`).join("\n");
   const config = join(root, "config.php");
   writeFileSync(config, `<?php\nreturn [\n${body}\n];\n`);
-  return { root, dbPath, config };
+  return { root, dbPath, config, driver: settings.db_driver };
 }
 
 export function run(site, script, args) {

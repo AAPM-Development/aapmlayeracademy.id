@@ -1447,6 +1447,11 @@ export default function AdminModuleEditor() {
     });
   };
   const submitEditorForm = () => {
+    if (questionDirty && !isDirty) {
+      setActiveTab("assessment");
+      window.requestAnimationFrame(() => document.getElementById("question-text")?.focus());
+      return;
+    }
     if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
   };
   const handleInvalidField = (event) => {
@@ -1947,7 +1952,7 @@ export default function AdminModuleEditor() {
             onSave={submitEditorForm}
             onRetry={submitEditorForm}
             isSaving={isSaving}
-            isDirty={isDirty}
+            isDirty={isDirty || questionDirty}
             isNew={isNew}
             saveError={saveError}
             savedAt={savedAt}

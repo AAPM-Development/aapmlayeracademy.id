@@ -8,6 +8,7 @@ export function ModuleLifecycleStatus({ module }) {
   </div>;
 }
 
+/** @param {{ counts?: { draft?: number, published?: number, unpublished?: number, archived?: number } }} props */
 export function CourseLifecycleCounts({ counts = {} }) {
   return <div className="flex flex-wrap gap-2" aria-label="Jumlah modul menurut status">
     <Badge tone="warning">Draf: {counts.draft || 0}</Badge>

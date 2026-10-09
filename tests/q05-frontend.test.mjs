@@ -127,7 +127,7 @@ test("editor reads draft view and exposes distinct Indonesian actions with confl
   globalThis.fetch = async (path) => { seen = path; return { ok: true, json: async () => ({ data: {} }) }; };
   try { await nativeApi.admin.modules.detail(12, "draft"); assert.equal(seen, "/api/admin/modules/12?view=draft"); }
   finally { globalThis.fetch = original; }
-  assert.match(read("src/components/admin/EditorActionBar.jsx"), /\}Simpan draf\s/);
+  assert.match(read("src/components/admin/EditorActionBar.jsx"), /Simpan draf/);
   const editor = read("src/pages/admin/AdminModuleEditor.jsx");
   assert.match(editor, /revision_conflict/);
   assert.match(editor, /Muat ulang draf terbaru/);

@@ -487,8 +487,7 @@ function migration_record(PDO $pdo, string $driver, string $key, string $checksu
         throw new RuntimeException("Checksum migration {$key} berbeda dari catatan sebelumnya.");
     }
     if ($stored !== false) {
-        $update = $pdo->prepare('UPDATE schema_migrations SET applied_at = CURRENT_TIMESTAMP WHERE migration_key = ?');
-        $update->execute([$key]);
+        // A successful replay validates the checksum, preserving the original application evidence.
         return;
     }
     $insert = $pdo->prepare(

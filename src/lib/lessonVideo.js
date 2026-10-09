@@ -2,12 +2,15 @@
 export const YOUTUBE_API_URL = "https://www.youtube.com/iframe_api";
 const apiLoads = new WeakMap();
 
+/** @typedef {{ Player: new (target: HTMLElement, options: object) => object }} YouTubeApi */
+/** @typedef {Window & { YT?: YouTubeApi, onYouTubeIframeAPIReady?: () => void }} YouTubeWindow */
+/** @param {YouTubeWindow} win */
 export function loadYouTubeApi(win = window, doc = document, timeoutMs = 15000) {
   if (win.YT?.Player) return Promise.resolve(win.YT);
   if (apiLoads.has(win)) return apiLoads.get(win);
   const promise = new Promise((resolve, reject) => {
     const previous = win.onYouTubeIframeAPIReady;
-    let script = doc.querySelector(`script[src="${YOUTUBE_API_URL}"]`);
+    let script = /** @type {HTMLScriptElement | null} */ (doc.querySelector(`script[src="${YOUTUBE_API_URL}"]`));
     const owned = !script;
     if (!script) {
       script = doc.createElement("script");

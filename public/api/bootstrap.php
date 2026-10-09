@@ -2908,3 +2908,37 @@ function present_ai_activity(array $row): array
         'createdAt' => $row['created_at'] ?? null,
     ];
 }
+
+/** Provision only a verified server-fetched Google profile; client policy fields are ignored.
+ * Kept separate from the network callback so its persistence contract can be tested offline.
+ */
+function aapm_provision_google_account(PDO $pdo, array $profile): int
+{
+    $email = normalize_email($profile['email'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($profile['email_verified'])) {
+        throw new InvalidArgumentException('Verified Google email required');
+    }
+    $find = $pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+    $find->execute([$email]);
+    $existing = $find->fetch();
+    if ($existing) return (int) $existing['id'];
+    $name = trim(substr(preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? '')), 0, 160));
+    if ($name === '') $name = ucfirst((string) strtok($email, '@'));
+    aapm_tx_begin($pdo);
+    try {
+        $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, email_verified_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)')
+            ->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $name, 'user', aapm_utc_now()]);
+        $id = (int) $pdo->lastInsertId();
+        aapm_assign_new_learner_policy($pdo, $id, 'oauth_registration');
+        aapm_tx_commit($pdo);
+        return $id;
+    } catch (PDOException $exception) {
+        aapm_tx_rollback($pdo);
+        if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) throw $exception;
+        $find->execute([$email]);
+        return (int) ($find->fetch()['id'] ?? 0);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
+}

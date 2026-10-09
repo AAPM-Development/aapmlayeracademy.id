@@ -1,17 +1,21 @@
 // Q05 curriculum publishing: draft isolation, immutable revisions, concurrency control,
 // archive and delete protection, media references, versioned policies, and operator
-// activation. Real API and CLI under disposable SQLite. Browser and MySQL cases are skipped.
+// activation. Real API and CLI under disposable SQLite, or task-owned MariaDB when
+// AAPM_TEST_MYSQL_CONFIG is set. Actual browser evidence is recorded separately.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   SQLITE, attemptKey, cleanEnv, cleanup, makeSite, passAllRequired, passModule, progressRow, repo, rows, run, seedCurriculum, seedAccount, setup, signIn, sql, withSite,
 } from "./helpers/site.mjs";
 
 after(cleanup);
+
+const snapshotDigest = value => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const assertSnapshot = (actual, expected, message) => assert.equal(snapshotDigest(actual), snapshotDigest(expected), message);
 
 const moduleIdOf = (site, number) => Number(rows(site, "SELECT id FROM course_modules WHERE module_number = ?", [number])[0].id);
 const adminIdOf = (site) => Number(rows(site, "SELECT id FROM users WHERE email = 'pengelola@example.test'")[0].id);
@@ -41,9 +45,9 @@ async function publish(admin, moduleId, version) {
   return admin.mutate("POST", `/api/admin/modules/${moduleId}/publish`, { expectedDraftVersion: version, confirm: true });
 }
 
-function saveDraftProcess(site, moduleId, expected, actorId, title) {
+function saveDraftProcess(site, moduleId, expected, actorId, title, operation = "save") {
   return new Promise((done, reject) => {
-    const child = spawn("php", [...SQLITE, join(repo, "tests", "fixtures", "q05", "save-draft.php"), String(moduleId), String(expected), String(actorId), title], {
+    const child = spawn("php", [...SQLITE, join(repo, "tests", "fixtures", "q05", "save-draft.php"), String(moduleId), String(expected), String(actorId), title, operation], {
       cwd: repo,
       env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }),
     });
@@ -107,14 +111,130 @@ test("P35 the v1 academic policy is identical after a migration replay", async (
   assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM schema_migrations WHERE migration_key = ?", ["20261101_curriculum_publishing_v1"])[0].n), 1);
 });
 
-test("P51 a fresh installation migrates with the curriculum schema present and replays cleanly", async () => {
+test("P51 a fresh installation migrates with the curriculum schema present and replays cleanly", async (t) => {
   const site = makeSite("p51");
-  seedCurriculum(site);
+  // The supported fresh-install path creates base tables through native bootstrap.
+  assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM course_modules")[0].n), 0);
+  if (site.driver === "mysql") {
+    const runtime = rows(site, "SELECT VERSION() AS version, @@tx_isolation AS isolation")[0];
+    assert.equal(runtime.isolation, "REPEATABLE-READ");
+    const engines = rows(site, "SELECT TABLE_NAME AS name, ENGINE AS engine FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE()");
+    assert.ok(engines.length > 0 && engines.every(table => table.engine === "InnoDB"));
+    t.diagnostic(`Native PDOmysql runtime: ${runtime.version}; ${runtime.isolation}; ${engines.length} InnoDB tables`);
+  }
+
+  const plan = run(site, join(repo, "database/migrate.php"), ["--plan"]);
+  assert.equal(plan.status, 0, plan.stdout + plan.stderr);
   const first = run(site, join(repo, "database", "migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
   assert.equal(first.status, 0, first.stdout + first.stderr);
   assert.match(first.stdout, /Curriculum schema: present/);
   const second = run(site, join(repo, "database", "migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
   assert.equal(second.status, 0, second.stdout + second.stderr);
+});
+
+test("populated Q04-shaped upgrade, interrupted backfill recovery, and replay preserve fields, media, policies, attempts and certificates", async () => {
+  const { site } = await setup("q04-populated-recovery");
+  await withSite(site, async (api) => {
+    const learner = await signIn(api.port, "peserta-a@example.test");
+    for (const number of [1, 2, 3]) await passModule(learner, site, number);
+    assert.equal((await learner.mutate("POST", "/api/certificates/claims", { tierNumber: 1, requestKey: randomUUID() })).status, 201);
+    const open = await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 4, requestKey: randomUUID() });
+    assert.equal(open.status, 201, open.text);
+  });
+  const migrate = () => run(site, join(repo, "database/migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
+  assert.equal(migrate().status, 0);
+  const fixture = mode => {
+    const result = run(site, join(repo, "tests/fixtures/q05/q04-upgrade.php"), [mode]);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    return JSON.parse(result.stdout);
+  };
+  const legacy = fixture("prepare");
+  assert.equal(legacy.q05Marker.length, 0);
+  assert.ok(legacy.assessment_attempts.length >= 4);
+  assert.equal(legacy.certificate_issuances.length, 1);
+  const plan = run(site, join(repo, "database/migrate.php"), ["--plan"]);
+  assert.equal(plan.status, 1, "read-only plan reports missing Q05 schema before apply");
+  assert.doesNotMatch(plan.stderr, /Migration gagal/);
+  assertSnapshot(fixture("inspect"), legacy, "read-only migration plan never creates Q05 tables or changes Q04 evidence");
+  fixture("interrupt");
+  const interrupted = migrate();
+  assert.equal(interrupted.status, 1, interrupted.stdout + interrupted.stderr);
+  const partial = fixture("inspect");
+  assert.equal(partial.q05Marker.length, 0, "marker is never recorded after partial backfill");
+  assert.equal(partial.revisions.length, 1, "first complete module is durable; failed second module rolled back");
+  fixture("recover");
+  const recovered = migrate();
+  assert.equal(recovered.status, 0, recovered.stdout + recovered.stderr);
+  const after = fixture("inspect");
+  for (const [table, expected] of Object.entries(legacy)) {
+    if (table === "q05Marker") continue;
+    const actual = after[table].map(row => Object.fromEntries(Object.keys(expected[0] || row).map(key => [key, row[key]])));
+    assertSnapshot(actual, expected, `preserved Q04 ${table}`);
+  }
+  assert.equal(after.q05Marker.length, 1);
+  assert.equal(after.revisions.length, legacy.course_modules.length);
+  assert.ok(after.revisions.every(row => Number(row.revision_number) === 1 && row.published_by_user_id === null));
+  const sealed = Object.fromEntries(["module_revisions", "question_bank_revisions", "question_bank_revision_items", "curriculum_policy_versions", "curriculum_policy_modules", "learner_curriculum_assignments", "curriculum_publication_events"].map(table => [table, rows(site, `SELECT * FROM ${table}`)]));
+  for (let replay = 0; replay < 2; replay++) {
+    assert.equal(migrate().status, 0);
+    assertSnapshot(fixture("inspect"), after, "migration replay preserves the complete fixture digest");
+    for (const [table, expected] of Object.entries(sealed)) assertSnapshot(rows(site, `SELECT * FROM ${table}`), expected, `replay ${table}`);
+  }
+});
+
+test("concurrent first-request Q04 upgrades create exactly one initial revision and event per module", async () => {
+  const { site } = await setup("bootstrap-concurrent");
+  const migrated = run(site, join(repo, "database/migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
+  assert.equal(migrated.status, 0, migrated.stderr);
+  const prepared = run(site, join(repo, "tests/fixtures/q05/q04-upgrade.php"), ["prepare"]);
+  assert.equal(prepared.status, 0, prepared.stderr);
+  const release = join(site.root, "bootstrap-release");
+  const starts = [join(site.root, "bootstrap-a-ready"), join(site.root, "bootstrap-b-ready")];
+  const writers = starts.map(ready => new Promise((resolve, reject) => {
+    const child = spawn("php", [...SQLITE, join(repo, "tests/fixtures/q05/bootstrap-race.php"), ready, release], { cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
+    let out = ""; let err = "";
+    child.stdout.on("data", chunk => out += chunk); child.stderr.on("data", chunk => err += chunk);
+    child.on("error", reject); child.on("close", code => resolve({ code, out, err }));
+  }));
+  const deadline = Date.now() + 10000;
+  while (!starts.every(ready => existsSync(ready))) {
+    assert.ok(Date.now() < deadline, "both fixture workers reach the barrier");
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  writeFileSync(release, "release");
+  const results = await Promise.all(writers);
+  for (const result of results) assert.equal(result.code, 0, result.err + result.out);
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM module_revisions")[0].n, 22);
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM module_revisions WHERE revision_number <> 1")[0].n, 0);
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM question_bank_revisions WHERE scope_type = 'module'")[0].n, 22);
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM curriculum_publication_events WHERE event_type = 'module.published'")[0].n, 22);
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM question_bank_revisions WHERE scope_type = 'final'")[0].n, 1);
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM curriculum_publication_events WHERE event_type = 'final_bank.published'")[0].n, 1);
+});
+
+if (process.env.AAPM_TEST_MYSQL_CONFIG) test("MariaDB initialization lock timeout leaves Q05 marker absent and preserves the other connection lock", async () => {
+  const { site } = await setup("schema-lock-timeout");
+  assert.equal(run(site, join(repo, "database/migrate.php"), ["--apply", "--verify", "--expect-environment=local"]).status, 0);
+  assert.equal(run(site, join(repo, "tests/fixtures/q05/q04-upgrade.php"), ["prepare"]).status, 0);
+  const ready = join(site.root, "lock-ready"); const release = join(site.root, "lock-release");
+  const child = spawn("php", [...SQLITE, join(repo, "tests/fixtures/q05/schema-lock.php"), ready, release], { cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
+  let out = ""; let err = "";
+  child.stdout.on("data", chunk => out += chunk); child.stderr.on("data", chunk => err += chunk);
+  const result = new Promise((resolve, reject) => { child.on("error", reject); child.on("close", code => resolve({ code, out, err })); });
+  try {
+    const deadline = Date.now() + 10000;
+    while (!existsSync(ready)) { assert.ok(Date.now() < deadline); await new Promise(resolve => setTimeout(resolve, 10)); }
+    const failed = run(site, join(repo, "database/migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
+    assert.equal(failed.status, 1);
+    assert.match(failed.stderr, /Curriculum initialization lock unavailable/);
+    const inspected = run(site, join(repo, "tests/fixtures/q05/q04-upgrade.php"), ["inspect"]);
+    assert.equal(inspected.status, 0, inspected.stderr);
+    assert.equal(JSON.parse(inspected.stdout).q05Marker.length, 0);
+  } finally { writeFileSync(release, "release"); }
+  const completed = await result;
+  assert.equal(completed.code, 0, completed.err);
+  assert.deepEqual(JSON.parse(completed.out), { stillOwned: true });
+  assert.equal(run(site, join(repo, "database/migrate.php"), ["--apply", "--verify", "--expect-environment=local"]).status, 0);
 });
 
 /* ------------------------------------------------------------ draft isolation */
@@ -241,6 +361,37 @@ test("P10 two concurrent saves from the same version: one wins, one conflicts, n
   void expected;
 });
 
+test("concurrent module publications and save/publication races consume exactly one draft version", async () => {
+  const { site } = await setup("module-publish-races");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const id = moduleIdOf(site, 6);
+    const saved = await saveDraft(admin, id, { title: "Published race revision" });
+    assert.equal(saved.status, 200, saved.text);
+    const version = saved.json.data.draft.version;
+    const outcomes = await Promise.all([0, 1].map(() => saveDraftProcess(site, id, version, adminIdOf(site), "", "publish")));
+    for (const result of outcomes) assert.equal(result.code, 0, result.err);
+    const replies = outcomes.map(result => JSON.parse(result.out));
+    assert.equal(replies.filter(result => result.error?.code === "revision_conflict").length, 1);
+    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM module_revisions WHERE module_id = ?", [id])[0].n), 2);
+    assert.equal(rows(site, "SELECT title FROM course_modules WHERE id = ?", [id])[0].title, "Published race revision");
+    const current = await loadDraft(admin, id);
+    const before = rows(site, "SELECT * FROM module_revisions WHERE module_id = ? ORDER BY id", [id]);
+    const racing = await Promise.all([
+      saveDraftProcess(site, id, current.version, adminIdOf(site), "Unpublished race edit"),
+      saveDraftProcess(site, id, current.version, adminIdOf(site), "", "publish"),
+    ]);
+    for (const result of racing) assert.equal(result.code, 0, result.err);
+    const racingReplies = racing.map(result => JSON.parse(result.out));
+    assert.equal(racingReplies.filter(result => result.error?.code === "revision_conflict").length, 1);
+    assert.equal((await loadDraft(admin, id)).version, current.version + 1);
+    assert.equal(rows(site, "SELECT title FROM course_modules WHERE id = ?", [id])[0].title, "Published race revision");
+    const after = rows(site, "SELECT * FROM module_revisions WHERE module_id = ? ORDER BY id", [id]);
+    assertSnapshot(after.slice(0, before.length), before, "historical publication remains unchanged");
+    assert.equal(after.length, before.length + (racingReplies[0].error ? 1 : 0));
+  });
+});
+
 test("P11 a repeated publish with the same version is refused and creates no second revision", async () => {
   const { site } = await setup("p11");
   await withSite(site, async (api) => {
@@ -281,7 +432,9 @@ test("P09 a failed publish leaves no partial publication", async () => {
     const revisions = Number(rows(site, "SELECT COUNT(*) AS n FROM module_revisions WHERE module_id = ?", [id])[0].n);
     const { version } = await loadDraft(admin, id);
     await saveDraft(admin, id, { title: "Judul Gagal Terbit" });
-    sql(site, "CREATE TRIGGER fail_publish BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'module.published' BEGIN SELECT RAISE(ABORT, 'forced publish failure'); END");
+    sql(site, site.driver === "mysql"
+      ? "CREATE TRIGGER fail_publish BEFORE INSERT ON curriculum_publication_events FOR EACH ROW BEGIN IF NEW.event_type = 'module.published' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'forced publish failure'; END IF; END"
+      : "CREATE TRIGGER fail_publish BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'module.published' BEGIN SELECT RAISE(ABORT, 'forced publish failure'); END");
     const reply = await publish(admin, id, version + 1);
     assert.equal(reply.status, 500, reply.text);
     assert.equal(rows(site, "SELECT title FROM course_modules WHERE id = ?", [id])[0].title, liveTitle, "live lesson unchanged");
@@ -600,10 +753,29 @@ test("P40, P41, P43 and P44 activation affects new accounts only; existing learn
     const verify = await api.get(`/api/public/certificates/verify/${publicId}`);
     assert.equal(verify.json.data.valid, true, "P44: an issued certificate stays valid");
 
-    const newcomer = await api.mutate("POST", "/api/auth/register", { email: "baru@example.test", password: "Valid-pass1", fullName: "Peserta Baru" });
+    const newcomer = await api.mutate("POST", "/api/auth/register", { email: "baru@example.test", password: "Valid-pass1", fullName: "Peserta Baru", policyVersion: "academy-v1", curriculumPolicyVersion: "academy-v1" });
     assert.equal(newcomer.status, 202, newcomer.text);
     const newId = Number(rows(site, "SELECT id FROM users WHERE email = 'baru@example.test'")[0].id);
     assert.equal(rows(site, "SELECT policy_version FROM learner_curriculum_assignments WHERE user_id = ?", [newId])[0].policy_version, "academy-v2", "P40: new accounts receive the activated policy");
+    const created = await admin.mutate("POST", "/api/admin/users", { email: "admin-provision@example.test", password: "Valid-pass1", fullName: "Created", role: "learner", policyVersion: "academy-v1" });
+    assert.equal(created.status, 201, created.text);
+    const adminCreatedId = Number(rows(site, "SELECT id FROM users WHERE email = 'admin-provision@example.test'")[0].id);
+    assert.equal(rows(site, "SELECT policy_version FROM learner_curriculum_assignments WHERE user_id = ?", [adminCreatedId])[0].policy_version, "academy-v2");
+    const googleProfile = { email: "google-provision@example.test", email_verified: true, name: "Offline Google profile", policyVersion: "academy-v1", role: "admin" };
+    const provision = () => run(site, join(repo, "tests/fixtures/q05/google-provision.php"), [JSON.stringify(googleProfile)]);
+    const google = provision();
+    assert.equal(google.status, 0, google.stdout + google.stderr);
+    const googleId = JSON.parse(google.stdout).userId;
+    assert.ok(googleId > 0);
+    assert.equal(rows(site, "SELECT policy_version FROM learner_curriculum_assignments WHERE user_id = ?", [googleId])[0].policy_version, "academy-v2");
+    assert.equal(rows(site, "SELECT role FROM users WHERE id = ?", [googleId])[0].role, "user");
+    const googleAssignment = rows(site, "SELECT * FROM learner_curriculum_assignments WHERE user_id = ?", [googleId]);
+    assert.equal(JSON.parse(provision().stdout).userId, googleId);
+    assert.deepEqual(rows(site, "SELECT * FROM learner_curriculum_assignments WHERE user_id = ?", [googleId]), googleAssignment);
+    const rejected = run(site, join(repo, "tests/fixtures/q05/google-provision.php"), [JSON.stringify({ email: "unverified-google@example.test", email_verified: false })]);
+    assert.deepEqual(JSON.parse(rejected.stdout), { rejected: true });
+    assert.equal(rows(site, "SELECT id FROM users WHERE email = 'unverified-google@example.test'").length, 0);
+
   });
 });
 
@@ -698,7 +870,9 @@ test("policy activation rejects snapshot/projection drift and invalidated readin
     // An audit-write failure must roll back activation and projection refresh together.
     const v2Assessment = rows(site, "SELECT * FROM assessment_policies WHERE policy_version = 'academy-v2'");
     const v2Tiers = rows(site, "SELECT * FROM certificate_tier_policies WHERE policy_version = 'academy-v2' ORDER BY tier_number");
-    sql(site, "CREATE TRIGGER fail_policy_activate BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'policy.activated' BEGIN SELECT RAISE(ABORT, 'forced activation failure'); END");
+    sql(site, site.driver === "mysql"
+      ? "CREATE TRIGGER fail_policy_activate BEFORE INSERT ON curriculum_publication_events FOR EACH ROW BEGIN IF NEW.event_type = 'policy.activated' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'forced activation failure'; END IF; END"
+      : "CREATE TRIGGER fail_policy_activate BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'policy.activated' BEGIN SELECT RAISE(ABORT, 'forced activation failure'); END");
     const failed = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=ROLLBACK"]);
     assert.notEqual(failed.status, 0);
     assert.deepEqual(snapshot(), before);
@@ -950,7 +1124,9 @@ test("final-exam bank stale edits and publication retries conflict and a failed 
     assert.equal(stale.json.error.code, "revision_conflict");
     assert.equal(stale.json.error.details.currentDraftVersion, draft.draftVersion + 1);
     const before = { live: finalRows(site), revisions: finalHistory(site), events: rows(site, "SELECT * FROM curriculum_publication_events ORDER BY id"), draft: await finalDraft(admin), items: rows(site, "SELECT * FROM question_bank_revision_items ORDER BY id") };
-    sql(site, "CREATE TRIGGER fail_final_publish BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'final_bank.published' BEGIN SELECT RAISE(ABORT, 'forced final publish failure'); END");
+    sql(site, site.driver === "mysql"
+      ? "CREATE TRIGGER fail_final_publish BEFORE INSERT ON curriculum_publication_events FOR EACH ROW BEGIN IF NEW.event_type = 'final_bank.published' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'forced final publish failure'; END IF; END"
+      : "CREATE TRIGGER fail_final_publish BEFORE INSERT ON curriculum_publication_events WHEN NEW.event_type = 'final_bank.published' BEGIN SELECT RAISE(ABORT, 'forced final publish failure'); END");
     const failed = await admin.mutate("POST", "/api/admin/curriculum/final-bank/publish", { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
     assert.equal(failed.status, 500, failed.text);
     assert.deepEqual(finalRows(site), before.live);
@@ -969,6 +1145,21 @@ test("final-exam bank stale edits and publication retries conflict and a failed 
 });
 /* ------------------------------------------------------------- not run here */
 
-test("P27 APPI drafting cannot publish", { skip: "NOT_TESTED: the APPI model is external; only its absence of a publish path is checked by source review" }, () => {});
-test("P53 and P54 mobile and desktop editor publication workflows", { skip: "NOT_TESTED: no browser run was executed for Q05" }, () => {});
-test("P55 MySQL concurrent publication and activation", { skip: "NOT_TESTED: no disposable MySQL server in this environment" }, () => {});
+test("P27 APPI rejects publication and policy activation actions before any provider call or database mutation", async () => {
+  const { site } = await setup("appi-boundary");
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const learner = await signIn(api.port, "peserta-a@example.test");
+    const before = Object.fromEntries(["course_modules", "module_drafts", "module_revisions", "question_bank_revisions", "curriculum_policy_versions", "curriculum_publication_events"].map(table => [table, rows(site, `SELECT * FROM ${table}`)]));
+    for (const action of ["publish", "module_publish", "activate_policy", "final_bank_publish"]) {
+      const body = { action, message: "Terbitkan sekarang", module: { id: moduleIdOf(site, 2), confirm: true, expectedDraftVersion: 1 }, policyVersion: "academy-v2" };
+      const denied = await admin.mutate("POST", "/api/admin/ai/module-companion", body);
+      assert.equal(denied.status, 422, denied.text);
+      assert.equal(denied.json.error.code, "invalid_ai_companion_action");
+      assert.equal((await learner.mutate("POST", "/api/admin/ai/module-companion", body)).status, 403);
+      assert.equal((await admin.raw("POST", "/api/admin/ai/module-companion", body)).status, 419);
+    }
+    for (const [table, value] of Object.entries(before)) assert.deepEqual(rows(site, `SELECT * FROM ${table}`), value, table);
+  });
+});
+test("P53 and P54 desktop and mobile publication workflows (manual browser evidence)", { skip: "Not automated in this Node suite; actual controller CUA evidence is in browser-evidence.md" }, () => {});

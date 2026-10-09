@@ -145,7 +145,7 @@ export function useUpdateAdminModule() {
 export function useArchiveAdminModule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, reason }) => nativeApi.admin.modules.archive(moduleId, reason),
+    mutationFn: (/** @type {{ moduleId: number, reason?: string }} */ { moduleId, reason }) => nativeApi.admin.modules.archive(moduleId, reason),
     onSuccess: (_, variables) => {
       invalidateCourseData(queryClient);
       queryClient.invalidateQueries({ queryKey: ["admin", "modules", String(variables.moduleId)] });

@@ -276,17 +276,34 @@ function aapm_ensure_curriculum_schema(PDO $pdo, string $driver): void
     if ($ready || !aapm_table_exists($pdo, 'course_modules') || !aapm_table_exists($pdo, 'assessment_policies')) {
         return;
     }
-    aapm_cur_add_module_columns($pdo, $driver);
-    foreach (aapm_cur_ddl($driver) as $sql) {
-        $pdo->exec($sql);
+    // DDL and one-time policy/number enrichment are not covered by a row transaction.
+    // Serialize first-request initialization per schema on InnoDB, including recovery.
+    $schemaLock = null;
+    if ($driver === 'mysql') {
+        if ($pdo->inTransaction()) throw new RuntimeException('Curriculum initialization must precede application transactions');
+        $schemaLock = 'aapm-cur-' . substr(hash('sha256', (string) $pdo->query('SELECT DATABASE()')->fetchColumn()), 0, 48);
+        $acquire = $pdo->prepare('SELECT GET_LOCK(?, 15)');
+        $acquire->execute([$schemaLock]);
+        if ((int) $acquire->fetchColumn() !== 1) throw new RuntimeException('Curriculum initialization lock unavailable');
     }
-    aapm_cur_add_policy_columns($pdo, $driver);
-    aapm_cur_seed_v1($pdo);
-    aapm_cur_allocate_numbers($pdo);
-    aapm_cur_backfill_modules($pdo);
-    aapm_cur_backfill_final_bank($pdo);
-    aapm_cur_backfill_policy_modes($pdo);
-    $ready = true;
+    try {
+        aapm_cur_add_module_columns($pdo, $driver);
+        foreach (aapm_cur_ddl($driver) as $sql) {
+            $pdo->exec($sql);
+        }
+        aapm_cur_add_policy_columns($pdo, $driver);
+        aapm_cur_seed_v1($pdo);
+        aapm_cur_allocate_numbers($pdo);
+        aapm_cur_backfill_modules($pdo);
+        aapm_cur_backfill_final_bank($pdo);
+        aapm_cur_backfill_policy_modes($pdo);
+        $ready = true;
+    } finally {
+        if ($schemaLock !== null) {
+            $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+            $release->execute([$schemaLock]);
+        }
+    }
 }
 
 /** Additive policy contract upgrade, including previously installed Q05 databases. */
@@ -416,13 +433,20 @@ function aapm_cur_backfill_modules(PDO $pdo): void
     foreach ($pending as $row) {
         aapm_tx_begin($pdo);
         try {
+            // The pending list is advisory: another bootstrap or publisher may have
+            // completed this identity while this worker waited for the transaction.
+            $row = aapm_cur_lock_module($pdo, (int) $row['id']);
+            if (!$row || $row['lifecycle_status'] !== 'active' || $row['published_revision_id'] !== null) {
+                aapm_tx_commit($pdo);
+                continue;
+            }
             $now = aapm_utc_now();
             $questions = aapm_cur_live_questions($pdo, (int) $row['module_number']);
             $bankId = $questions === [] ? null : aapm_cur_insert_bank($pdo, 'module', (int) $row['module_number'], $questions, null, $now);
             $payload = aapm_cur_payload_from_row($row);
             aapm_cur_insert_revision($pdo, (int) $row['id'], (int) $row['module_number'], $payload, $bankId, null, $now);
             $revision = (int) $pdo->query('SELECT MAX(revision_number) FROM module_revisions WHERE module_id = ' . (int) $row['id'])->fetchColumn();
-            $pdo->prepare('UPDATE course_modules SET published_revision_id = (SELECT id FROM module_revisions WHERE module_id = ? AND revision_number = ?) WHERE id = ?')
+            $pdo->prepare('UPDATE course_modules SET published_revision_id = (SELECT id FROM module_revisions WHERE module_id = ? AND revision_number = ?), updated_at = updated_at WHERE id = ?')
                 ->execute([(int) $row['id'], $revision, (int) $row['id']]);
             aapm_cur_event($pdo, 'module.published', (int) $row['module_number'], null, $revision, null, ['backfill' => true, 'questionCount' => count($questions)]);
             aapm_tx_commit($pdo);
@@ -1983,7 +2007,10 @@ function aapm_cur_schema_status(PDO $pdo): array
         'learner_curriculum_assignments' => aapm_table_exists($pdo, 'learner_curriculum_assignments'),
         'curriculum_publication_events' => aapm_table_exists($pdo, 'curriculum_publication_events'),
         'lifecycle_column' => aapm_column_exists($pdo, 'course_modules', 'lifecycle_status'),
-        'every_active_module_published' => (int) $pdo->query("SELECT COUNT(*) FROM course_modules WHERE lifecycle_status = 'active' AND published_revision_id IS NULL")->fetchColumn() === 0,
-        'policy_v1_active' => (int) $pdo->query("SELECT COUNT(*) FROM curriculum_policy_versions WHERE policy_version = 'academy-v1'")->fetchColumn() === 1,
+        'every_active_module_published' => aapm_column_exists($pdo, 'course_modules', 'lifecycle_status')
+            && aapm_column_exists($pdo, 'course_modules', 'published_revision_id')
+            && (int) $pdo->query("SELECT COUNT(*) FROM course_modules WHERE lifecycle_status = 'active' AND published_revision_id IS NULL")->fetchColumn() === 0,
+        'policy_v1_active' => aapm_table_exists($pdo, 'curriculum_policy_versions')
+            && (int) $pdo->query("SELECT COUNT(*) FROM curriculum_policy_versions WHERE policy_version = 'academy-v1'")->fetchColumn() === 1,
     ];
 }

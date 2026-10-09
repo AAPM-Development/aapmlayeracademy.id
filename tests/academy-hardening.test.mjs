@@ -708,7 +708,7 @@ test("editorial document players keep a shared reading-stage contract", () => {
   assert.match(styles, /\.aapm-pdf-canvas/);
 });
 
-test("native cPanel APPI companion stays provider-backed and preview-first", () => {
+test("native cPanel APPI companion stays provider-backed in the module draft editor and preview-first", () => {
   const client = readWorkspaceFile("../src/api/nativeClient.js");
   const api = readWorkspaceFile("../public/api/index.php");
   const provider = readWorkspaceFile("../public/api/openrouter.php");
@@ -729,7 +729,8 @@ test("native cPanel APPI companion stays provider-backed and preview-first", () 
   assert.match(companion, /onApplyModule/);
   assert.match(companion, /onApplyOrder/);
   assert.match(moduleEditor, /AdminModuleCompanion/);
-  assert.match(courseEditor, /scope="course"/);
+  assert.match(courseEditor, /APPI membantu isi draf melalui editor modul/);
+  assert.doesNotMatch(courseEditor, /scope="course"|onApplyOrder|AdminModuleCompanion/);
 });
 
 test("PDF player has a recovery path when embedded cPanel rendering fails", () => {

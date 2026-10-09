@@ -90,30 +90,7 @@ try {
             redirect_response($baseUrl . '/login?oauth=unverified');
         }
 
-        $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
-        if (!$user) {
-            $fullName = trim(substr(preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? '')), 0, 160));
-            if ($fullName === '') {
-                $fullName = ucfirst((string) strtok($email, '@'));
-            }
-            try {
-                $insert = db()->prepare('INSERT INTO users (email, password_hash, full_name, role, email_verified_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)');
-                $insert->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $fullName, 'user', aapm_utc_now()]);
-                $userId = (int) db()->lastInsertId();
-                aapm_assign_new_learner_policy(db(), $userId, 'oauth_registration');
-            } catch (PDOException $exception) {
-                if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
-                    throw $exception;
-                }
-                $retry = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-                $retry->execute([$email]);
-                $userId = (int) ($retry->fetch()['id'] ?? 0);
-            }
-        } else {
-            $userId = (int) $user['id'];
-        }
+        $userId = aapm_provision_google_account(db(), $profile);
 
         if ($userId < 1) {
             redirect_response($baseUrl . '/login?oauth=error');
