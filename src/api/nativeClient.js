@@ -2,11 +2,12 @@ const API_ROOT = "/api";
 let csrfToken = null;
 
 class ApiError extends Error {
-  constructor(message, status, code) {
+  constructor(message, status, code, details = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -78,6 +79,7 @@ async function request(path, options = /** @type {any} */ ({})) {
       error.message || "Permintaan gagal.",
       response.status,
       error.code,
+      error.details,
     );
   }
 
@@ -472,9 +474,24 @@ export const nativeApi = {
       revoke: (publicId, body) => request(`/admin/certificates/${encodeURIComponent(publicId)}/revoke`, json({ ...body, confirm: true })),
     },
     modules: {
-      detail: (moduleId) =>
-        request(`/admin/modules/${encodeURIComponent(moduleId)}`),
+      detail: (moduleId, view = "published") =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}?view=${encodeURIComponent(view)}`),
       create: (data) => request("/admin/modules", json(data)),
+      saveDraft: (moduleId, data, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
+          method: "PUT", body: JSON.stringify({ ...data, expectedDraftVersion }),
+        }),
+      previewDraft: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/preview`),
+      validateDraft: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/validate`, json({})),
+      publishPreview: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/publish-preview`),
+      publishDraft: (moduleId, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/publish`, json({ expectedDraftVersion, confirm: true })),
+      revisions: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/revisions`),
+      revision: (moduleId, revisionId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/revisions/${encodeURIComponent(revisionId)}`),
+      copyRevisionToDraft: (moduleId, revisionId, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/revisions/${encodeURIComponent(revisionId)}/copy-to-draft`, json({ expectedDraftVersion })),
+      archive: (moduleId, reason) => request(`/admin/modules/${encodeURIComponent(moduleId)}/archive`, json({ reason, confirm: true })),
+      restore: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/restore`, json({})),
       update: (moduleId, data) =>
         request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
           method: "PUT",
@@ -497,17 +514,17 @@ export const nativeApi = {
         }),
       questions: (moduleId) =>
         request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`),
-      createQuestion: (moduleId, data) =>
-        request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`, json(data)),
-      updateQuestion: (moduleId, questionId, data) =>
+      createQuestion: (moduleId, data, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`, json({ ...data, expectedDraftVersion })),
+      updateQuestion: (moduleId, questionId, data, expectedDraftVersion) =>
         request(
           `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
-          { method: "PUT", body: JSON.stringify(data) },
+          { method: "PUT", body: JSON.stringify({ ...data, expectedDraftVersion }) },
         ),
-      deleteQuestion: (moduleId, questionId) =>
+      deleteQuestion: (moduleId, questionId, expectedDraftVersion) =>
         request(
           `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
-          { method: "DELETE" },
+          { method: "DELETE", body: JSON.stringify({ expectedDraftVersion }) },
         ),
     },
     media: {

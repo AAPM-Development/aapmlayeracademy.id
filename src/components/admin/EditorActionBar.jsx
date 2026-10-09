@@ -54,6 +54,7 @@ export default function EditorActionBar({
   isDirty = false,
   saveError = "",
   savedAt = null,
+  disabled = false,
 }) {
   const status = isSaving ? "saving" : saveError ? "error" : isDirty ? "dirty" : "saved";
   const label = {
@@ -79,8 +80,8 @@ export default function EditorActionBar({
         <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("block")}><AapmIcon name="widget" />Blok</Button>
         <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("module")}><AapmIcon name="settings" />Modul</Button>
         <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
-        <Button type="button" size="sm" loading={isSaving} onClick={onSave} title="Simpan modul (Ctrl/⌘ S)">
-          {!isSaving ? <AapmIcon name="check" /> : null}Simpan
+        <Button type="button" size="sm" loading={isSaving} disabled={disabled} onClick={onSave} title="Simpan draf (Ctrl/⌘ S)">
+          {!isSaving ? <AapmIcon name="check" /> : null}Simpan draf
           <Kbd className="aapm-editor-kbd">⌘S</Kbd>
         </Button>
       </div>

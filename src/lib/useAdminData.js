@@ -95,7 +95,8 @@ export function useResetAdminUserProgress() {
 export function useAdminModule(moduleId) {
   return useQuery({
     queryKey: ["admin", "modules", moduleId],
-    queryFn: () => nativeApi.admin.modules.detail(moduleId),
+    queryFn: () => nativeApi.admin.modules.detail(moduleId, "draft"),
+    refetchOnWindowFocus: false,
     enabled: Boolean(moduleId),
   });
 }
@@ -133,10 +134,10 @@ export function useCreateAdminModule() {
 export function useUpdateAdminModule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, data }) => nativeApi.admin.modules.update(moduleId, data),
-    onSuccess: (_, variables) => {
-      invalidateCourseData(queryClient);
-      queryClient.invalidateQueries({ queryKey: ["admin", "modules", variables.moduleId] });
+    mutationFn: (/** @type {{moduleId: string | number, data: any, expectedDraftVersion: number}} */ { moduleId, data, expectedDraftVersion }) => nativeApi.admin.modules.saveDraft(moduleId, data, expectedDraftVersion),
+    onSuccess: (result, variables) => {
+      queryClient.setQueryData(["admin", "modules", variables.moduleId], result);
+      queryClient.invalidateQueries({ queryKey: ["admin", "courses"] });
     },
   });
 }
@@ -172,10 +173,10 @@ export function useRenameAdminChapter() {
 export function useSaveAdminQuestion() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, questionId, data }) =>
+    mutationFn: (/** @type {{moduleId: string | number, questionId?: number, data: any, expectedDraftVersion: number}} */ { moduleId, questionId, data, expectedDraftVersion }) =>
       questionId
-        ? nativeApi.admin.modules.updateQuestion(moduleId, questionId, data)
-        : nativeApi.admin.modules.createQuestion(moduleId, data),
+        ? nativeApi.admin.modules.updateQuestion(moduleId, questionId, data, expectedDraftVersion)
+        : nativeApi.admin.modules.createQuestion(moduleId, data, expectedDraftVersion),
     onSuccess: (_, variables) =>
       queryClient.invalidateQueries({
         queryKey: ["admin", "modules", variables.moduleId, "questions"],
@@ -186,8 +187,8 @@ export function useSaveAdminQuestion() {
 export function useDeleteAdminQuestion() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, questionId }) =>
-      nativeApi.admin.modules.deleteQuestion(moduleId, questionId),
+    mutationFn: (/** @type {{moduleId: string | number, questionId: number, expectedDraftVersion: number}} */ { moduleId, questionId, expectedDraftVersion }) =>
+      nativeApi.admin.modules.deleteQuestion(moduleId, questionId, expectedDraftVersion),
     onSuccess: (_, variables) =>
       queryClient.invalidateQueries({
         queryKey: ["admin", "modules", variables.moduleId, "questions"],
