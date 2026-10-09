@@ -567,8 +567,7 @@
   min-width: 0;
   padding: var(--aapm-primitive-space-8) var(--aapm-primitive-space-6);
 }
-/* Top-anchored, not centred: the brand and title sit in the same place on
- * every route of the flow, and an Alert only pushes what is below it. */
+/* Shared centered auth content; forms keep their full column width. */
 .aapm-auth__form {
   display: flex;
   flex: 1;
@@ -577,13 +576,15 @@
   max-width: var(--aapm-component-auth-form-width);
   margin-inline: auto;
   padding-block-start: var(--aapm-component-auth-top-offset);
+  align-items: center;
+  text-align: center;
 }
-.aapm-auth__brand { display: block; width: var(--aapm-component-brand-width); height: auto; margin-bottom: var(--aapm-primitive-space-8); }
-.aapm-auth__icon { margin-bottom: var(--aapm-primitive-space-4); }
+.aapm-auth__brand { display: block; width: min(var(--aapm-component-brand-width), 9rem); height: auto; margin: 0 auto var(--aapm-primitive-space-8); }
+.aapm-auth__icon { align-self: center; margin-bottom: var(--aapm-primitive-space-4); }
 .aapm-auth__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; }
 /* The header group sits further from the form than two fields sit apart. */
 .aapm-auth__subtitle { margin: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-8); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); text-wrap: pretty; }
-.aapm-auth__alert { margin-bottom: var(--aapm-primitive-space-5); }
+.aapm-auth__alert { width: 100%; margin-bottom: var(--aapm-primitive-space-5); text-align: center; }
 .aapm-auth__footer { margin-top: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); text-align: center; }
 /* Every auth link is the shared .aapm-link at one size. */
 .aapm-auth .aapm-link { gap: var(--aapm-primitive-space-1); font-size: var(--aapm-component-type-support-size); }
@@ -619,7 +620,11 @@
 .aapm-auth__quote footer { margin-top: var(--aapm-primitive-space-3); font-size: var(--aapm-component-type-caption-size); font-style: normal; opacity: .85; }
 /* The shell is the only source of form rhythm: one gap between fields. */
 .aapm-auth__form > form,
-.aapm-auth__stack { display: grid; gap: var(--aapm-primitive-space-5); }
+.aapm-auth__stack { display: grid; width: 100%; gap: var(--aapm-primitive-space-5); }
+.aapm-auth__form .aapm-field { text-align: center; }
+.aapm-auth__form .aapm-label { justify-content: center; }
+.aapm-auth__form .aapm-field > div:first-child { justify-content: center; }
+.aapm-auth__divider { width: 100%; }
 .aapm-auth__form > form > .aapm-button[type="submit"] { margin-top: var(--aapm-primitive-space-2); }
 .aapm-auth__form .aapm-input { min-height: var(--aapm-component-action-height-lg); }
 .aapm-auth__form .aapm-button[type="submit"] { min-height: var(--aapm-component-action-height-lg); }

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import AppBrand from "@/components/AppBrand";
 import { IconTile } from "@/design-system";
 
 const academyInsights = [
@@ -100,7 +99,14 @@ function AuthLayout({ title, subtitle, footer, children, iconName = null, iconHu
     <div className="aapm-auth">
       <main className="aapm-auth__pane">
         <div className="aapm-auth__form">
-          <AppBrand product="aapm" variant="logo" className="aapm-auth__brand" alt="AAPM Layer Academy" />
+          <img
+            src="/brand/academy/auth-wordmark-motion.svg"
+            alt="AAPM Layer Academy"
+            className="aapm-auth__brand"
+            width="103"
+            height="85"
+            decoding="async"
+          />
           {iconName ? <IconTile icon={iconName} hue={iconHue} size="lg" shape="circle" className="aapm-auth__icon" /> : null}
           <h1 className="aapm-auth__title">{title}</h1>
           {subtitle ? <p className="aapm-auth__subtitle">{subtitle}</p> : null}
