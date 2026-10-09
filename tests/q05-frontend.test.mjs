@@ -5,6 +5,28 @@ import { nativeApi } from "../src/api/nativeClient.js";
 import { curriculumModule, recoverCurriculumDraft, canPublishCurriculumDraft } from "../src/lib/curriculumEditorState.js";
 import { reconcileSavedModule } from "../src/lib/editorSaveState.js";
 
+test("course lifecycle labels distinguish draft, published, pending changes and archive", async () => {
+  const { moduleLifecycleLabels, curriculumStructureRecovery } = await import("../src/lib/curriculumState.js");
+  assert.deepEqual(moduleLifecycleLabels({ lifecycleStatus: "draft" }).map((item) => item.label), ["Draf"]);
+  assert.deepEqual(moduleLifecycleLabels({ lifecycleStatus: "draft", draft: { hasUnpublishedChanges: true } }).map((item) => item.label), ["Draf"]);
+  assert.deepEqual(moduleLifecycleLabels({ lifecycleStatus: "active", publishedRevisionId: 1 }).map((item) => item.label), ["Terbit"]);
+  assert.deepEqual(moduleLifecycleLabels({ lifecycleStatus: "active", publishedRevisionId: 1, draft: { hasUnpublishedChanges: true } }).map((item) => item.label), ["Terbit", "Perubahan belum terbit"]);
+  assert.deepEqual(moduleLifecycleLabels({ lifecycleStatus: "archived", publishedRevisionId: 1, draft: { hasUnpublishedChanges: true } }).map((item) => item.label), ["Arsip", "Perubahan belum terbit"]);
+  const blocked = { code: "curriculum_structure_draft_required", message: "Nama chapter diubah melalui draf modul." };
+  assert.deepEqual(curriculumStructureRecovery(blocked, "/admin/courses/academy-native/modules/12"), { message: blocked.message, to: "/admin/courses/academy-native/modules/12", label: "Buka draf modul" });
+  assert.equal(curriculumStructureRecovery(blocked).to, "/admin/curriculum/policies");
+  const detail = read("src/pages/admin/AdminCourseDetail.jsx");
+  assert.doesNotMatch(detail, /purgeProgress|Hapus bersama progres|DragDropContext|Naikkan urutan|ChapterRenameDialog|persistOrder/);
+  assert.match(detail, /Kebijakan kurikulum/);
+  assert.match(detail, /Bank ujian akhir/);
+  assert.match(detail, /Edit draf/);
+  assert.match(detail, /Ya, arsipkan/);
+  assert.match(detail, /Ya, pulihkan/);
+  assert.match(detail, /Alasan pengarsipan/);
+  assert.match(read("src/lib/useAdminData.js"), /nativeApi\.admin\.modules\.archive/);
+  assert.match(read("src/lib/useAdminData.js"), /nativeApi\.admin\.modules\.restore/);
+});
+
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("draft and question writes carry the shared expected version; publication is explicit", async () => {

@@ -1632,22 +1632,51 @@ function admin_attach_progress_totals(array $rows): array
     }, $rows);
 }
 
-function admin_course_data(): array
+/** Read-only editorial projection; never initialise drafts while listing a course. */
+function admin_course_module_rows(): array
 {
-    $modules = admin_module_rows();
+    $pdo = db();
+    $rows = $pdo->query('SELECT cm.*, md.draft_version, md.content_payload_json, md.question_payload_json, md.updated_at AS draft_updated_at
+        FROM course_modules cm LEFT JOIN module_drafts md ON md.module_id = cm.id
+        ORDER BY cm.sort_order ASC, cm.module_number ASC')->fetchAll();
+    foreach ($rows as &$row) {
+        $payload = $row['content_payload_json'] === null ? null : json_decode((string) $row['content_payload_json'], true);
+        $questions = $row['question_payload_json'] === null ? null : json_decode((string) $row['question_payload_json'], true);
+        $row['has_unpublished_changes'] = is_array($payload) && (
+            aapm_cur_checksum($payload) !== aapm_cur_checksum(aapm_cur_payload_from_row($row))
+            || aapm_cur_checksum(aapm_cur_question_content(is_array($questions) ? $questions : [])) !== aapm_cur_checksum(aapm_cur_question_content(aapm_cur_live_questions($pdo, (int) $row['module_number'])))
+        );
+        $row['editorial_title'] = is_array($payload) && isset($payload['title']) ? (string) $payload['title'] : (string) $row['title'];
+    }
+    unset($row);
+    return $rows;
+}
+
+function admin_course_data(?array $moduleRows = null): array
+{
+    $modules = $moduleRows ?? admin_course_module_rows();
     $learnerCount = count(admin_learner_metric_rows());
     $latestUpdate = null;
+    $counts = ['draft' => 0, 'published' => 0, 'unpublished' => 0, 'archived' => 0];
     foreach ($modules as $module) {
-        $updatedAt = $module['updated_at'] ?? null;
-        if ($updatedAt && ($latestUpdate === null || strcmp((string) $updatedAt, (string) $latestUpdate) > 0)) {
-            $latestUpdate = $updatedAt;
+        $state = (string) $module['lifecycle_status'];
+        if ($state === 'archived') $counts['archived']++;
+        elseif ($state === 'draft' || $module['published_revision_id'] === null) $counts['draft']++;
+        else $counts['published']++;
+        // This count overlaps Terbit/Arsip; a brand-new draft already has the Draf label.
+        if ($module['published_revision_id'] !== null && $module['has_unpublished_changes']) $counts['unpublished']++;
+        foreach ([$module['updated_at'] ?? null, $module['draft_updated_at'] ?? null] as $updatedAt) {
+            if ($updatedAt && ($latestUpdate === null || strcmp((string) $updatedAt, (string) $latestUpdate) > 0)) {
+                $latestUpdate = $updatedAt;
+            }
         }
     }
 
     return [
         'id' => admin_course_id(),
         'title' => 'Layer Poultry Farm Management',
-        'status' => count($modules) ? 'published' : 'unavailable',
+        'status' => $counts['published'] ? 'published' : ($counts['draft'] ? 'draft' : ($counts['archived'] ? 'archived' : 'unavailable')),
+        'lifecycleCounts' => $counts,
         'moduleCount' => count($modules),
         'learnerCount' => $learnerCount,
         'updatedAt' => $latestUpdate,
@@ -1655,9 +1684,10 @@ function admin_course_data(): array
             'create' => true,
             'edit' => true,
             'publish' => true,
-            'reorder' => true,
+            'reorder' => false,
+            'renameChapter' => false,
         ],
-        'availabilityNote' => 'Kurikulum Academy dikelola langsung dari katalog modul native. Perubahan modul dan bank soal tersedia untuk admin; nomor modul tidak dapat diganti setelah learner menyimpan progres agar riwayat tetap konsisten.',
+        'availabilityNote' => 'Perubahan materi dan bank soal disimpan sebagai draf sebelum validasi dan penerbitan. Urutan serta persyaratan akademik dikelola melalui draf kebijakan kurikulum. Nomor modul tetap; riwayat, nilai, progres, dan sertifikat peserta dipertahankan.',
     ];
 }
 
@@ -1727,8 +1757,8 @@ function admin_overview_data(): array
 
 function admin_course_detail_data(): array
 {
-    $course = admin_course_data();
-    $modules = admin_module_rows();
+    $modules = admin_course_module_rows();
+    $course = admin_course_data($modules);
     $levels = [];
     foreach ($modules as $module) {
         $levelNumber = (int) $module['level_number'];
@@ -1742,11 +1772,20 @@ function admin_course_detail_data(): array
         $levels[$levelNumber]['modules'][] = [
             'id' => (int) $module['id'],
             'moduleNumber' => (int) $module['module_number'],
-            'title' => (string) $module['title'],
+            'title' => (string) $module['editorial_title'],
+            'publishedTitle' => $module['published_revision_id'] === null ? null : (string) $module['title'],
             'category' => (string) $module['category'],
             'summary' => (string) $module['summary'],
             'order' => (int) $module['sort_order'],
             'updatedAt' => $module['updated_at'] ?? null,
+            'lifecycleStatus' => (string) $module['lifecycle_status'],
+            'publishedRevisionId' => $module['published_revision_id'] === null ? null : (int) $module['published_revision_id'],
+            'archivedAt' => $module['archived_at'] ?? null,
+            'archiveReason' => $module['archive_reason'] ?? null,
+            'draft' => [
+                'version' => $module['draft_version'] === null ? null : (int) $module['draft_version'],
+                'hasUnpublishedChanges' => (bool) $module['has_unpublished_changes'],
+            ],
         ];
     }
 

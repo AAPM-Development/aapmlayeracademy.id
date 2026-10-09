@@ -20,3 +20,23 @@ export function filterCurriculum(levels = [], query = "") {
         : matches([module.title, module.category, module.summary, `Modul ${module.moduleNumber}`])),
   })).filter((level) => level.modules?.length);
 }
+
+export function moduleLifecycleLabels(module = {}) {
+  const primary = module.lifecycleStatus === "archived"
+    ? { label: "Arsip", tone: "neutral" }
+    : module.lifecycleStatus === "draft" || !module.publishedRevisionId
+      ? { label: "Draf", tone: "warning" }
+      : { label: "Terbit", tone: "success" };
+  return module.publishedRevisionId && module.draft?.hasUnpublishedChanges
+    ? [primary, { label: "Perubahan belum terbit", tone: "warning" }]
+    : [primary];
+}
+
+export function curriculumStructureRecovery(error, modulePath) {
+  if (error?.code !== "curriculum_structure_draft_required") return null;
+  return {
+    message: error.message,
+    to: modulePath || "/admin/curriculum/policies",
+    label: modulePath ? "Buka draf modul" : "Kebijakan kurikulum",
+  };
+}

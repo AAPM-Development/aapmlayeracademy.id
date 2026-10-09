@@ -142,31 +142,25 @@ export function useUpdateAdminModule() {
   });
 }
 
-export function useDeleteAdminModule() {
+export function useArchiveAdminModule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, purgeProgress = false }) =>
-      nativeApi.admin.modules.delete(moduleId, { purgeProgress }),
-    onSuccess: () => invalidateCourseData(queryClient),
-  });
-}
-
-export function useReorderAdminModules() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (items) => nativeApi.admin.modules.reorder(items),
-    onSuccess: (result) => {
-      if (result?.course?.id) queryClient.setQueryData(["admin", "courses", result.course.id], result.course);
+    mutationFn: ({ moduleId, reason }) => nativeApi.admin.modules.archive(moduleId, reason),
+    onSuccess: (_, variables) => {
       invalidateCourseData(queryClient);
+      queryClient.invalidateQueries({ queryKey: ["admin", "modules", String(variables.moduleId)] });
     },
   });
 }
 
-export function useRenameAdminChapter() {
+export function useRestoreAdminModule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ levelNumber, levelName }) => nativeApi.admin.modules.renameChapter(levelNumber, levelName),
-    onSuccess: () => invalidateCourseData(queryClient),
+    mutationFn: ({ moduleId }) => nativeApi.admin.modules.restore(moduleId),
+    onSuccess: (_, variables) => {
+      invalidateCourseData(queryClient);
+      queryClient.invalidateQueries({ queryKey: ["admin", "modules", String(variables.moduleId)] });
+    },
   });
 }
 
