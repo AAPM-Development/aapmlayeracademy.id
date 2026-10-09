@@ -457,6 +457,7 @@ export const nativeApi = {
       resetProgress: (userId) =>
         request(`/admin/users/${encodeURIComponent(userId)}/progress`, {
           method: "DELETE",
+          body: JSON.stringify({ confirm: true }),
         }),
     },
     modules: {

@@ -409,6 +409,11 @@ try {
         json_response(['learners' => admin_learner_list((string) ($_GET['search'] ?? ''))]);
     }
 
+    if (preg_match('#^admin/learners/(\\d+)/assessment-history$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_admin_assessment_history(db(), (int) $matches[1]));
+    }
+
     if (preg_match('#^admin/learners/(\\d+)$#', $path, $matches) && $method === 'GET') {
         require_admin();
         $learner = admin_learner_detail((int) $matches[1]);
@@ -444,9 +449,9 @@ try {
     }
 
     if (preg_match('#^admin/users/(\\d+)/progress$#', $path, $matches) && $method === 'DELETE') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['reset' => admin_reset_user_progress((int) $matches[1])]);
+        json_response(['reset' => admin_reset_user_progress($actor, (int) $matches[1], request_json())]);
     }
 
     if ($path === 'admin/media/images' && $method === 'POST') {
@@ -704,8 +709,8 @@ try {
     if ($path === 'certificates' && $method === 'POST') {
         require_user();
         require_csrf();
-        // Client-authored certificate records are disabled until Q04 installs verified issuance.
-        error_response('Penerbitan sertifikat belum tersedia. Sistem sertifikat yang aman sedang disiapkan.', 503, 'certificate_upgrade_required');
+        // The client-authored endpoint is permanently retired. Certificates are claimed through /certificates/claims.
+        error_response('Endpoint penerbitan sertifikat ini sudah dihentikan. Gunakan klaim sertifikat di halaman Sertifikasi.', 410, 'certificate_endpoint_retired');
     }
 
     if ($path === 'farm-data' && $method === 'GET') {

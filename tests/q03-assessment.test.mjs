@@ -185,6 +185,7 @@ class Api {
 
   async mutate(method, path, body) {
     const csrf = await this.raw("GET", "/api/auth/csrf");
+    if (!csrf.json?.data?.csrfToken) throw new Error(`csrf failed: ${csrf.status} ${csrf.text.slice(0, 400)}`);
     return this.raw(method, path, body, { "x-csrf-token": csrf.json.data.csrfToken });
   }
 }
@@ -696,8 +697,8 @@ test("A33 and A34 the insecure certificate endpoint is disabled and existing rea
   await withSite(site, async (api) => {
     const learner = await signIn(api.port, "peserta-a@example.test");
     const issued = await learner.mutate("POST", "/api/certificates", { levelNumber: 1, levelName: "Palsu", score: 100, examType: "final" });
-    assert.equal(issued.status, 503);
-    assert.equal(issued.json.error.code, "certificate_upgrade_required");
+    assert.equal(issued.status, 410);
+    assert.equal(issued.json.error.code, "certificate_endpoint_retired");
     assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM certificates")[0].n), 0, "no certificate was created");
     const list = await learner.get("/api/certificates");
     assert.equal(list.status, 200);
@@ -776,7 +777,7 @@ test("the 70% module boundary: 6 of 10 fails and 7 of 10 passes", async () => {
   });
 });
 
-test("admin readers count only verified completions; a historical row never counts; reset clears the evidence", async () => {
+test("admin readers count only verified completions; a historical row never counts; reset keeps the evidence", async () => {
   const { site, learnerA } = await setup("admin-read");
   const legacyId = seedAccount(site, { email: "lama-admin@example.test", verified: true });
   sql(site, "INSERT INTO user_progress (user_id, module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes) VALUES (?, 1, 1, 1, 1, 1, 42)", [legacyId]);
@@ -796,17 +797,18 @@ test("admin readers count only verified completions; a historical row never coun
     assert.equal(legacyRow.completed, false);
     assert.equal(legacyRow.timeSpentMinutes, 42, "historical study time is preserved");
 
-    const reset = await admin.mutate("DELETE", `/api/admin/users/${learnerA}/progress`);
+    const reset = await admin.mutate("DELETE", `/api/admin/users/${learnerA}/progress`, { confirm: true });
     assert.equal(reset.status, 200, reset.text);
-    assert.equal(reset.json.data.reset.deletedAttempts, 1);
-    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM assessment_attempts WHERE user_id = ?", [learnerA])[0].n), 0, "attempts are cleared, so the pass cannot survive a reset");
-    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM module_learning_events WHERE user_id = ?", [learnerA])[0].n), 0);
+    assert.equal(reset.json.data.reset.generationTo, 2);
+    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM assessment_attempts WHERE user_id = ?", [learnerA])[0].n), 1, "the passing attempt is kept as history");
     const afterReset = await admin.get("/api/admin/learners");
     assert.equal(Object.fromEntries(afterReset.json.data.learners.map((row) => [row.email, row]))["peserta-a@example.test"].completedModules, 0);
 
-    const legacyReset = await admin.mutate("DELETE", `/api/admin/users/${legacyId}/progress`);
+    const legacyReset = await admin.mutate("DELETE", `/api/admin/users/${legacyId}/progress`, { confirm: true });
     assert.equal(legacyReset.status, 200, legacyReset.text);
-    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM user_progress WHERE user_id = ?", [legacyId])[0].n), 0);
+    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM user_progress WHERE user_id = ?", [legacyId])[0].n), 1, "imported rows are retained, not deleted");
+    const legacyDetail = await admin.get(`/api/admin/learners/${legacyId}`);
+    assert.equal(legacyDetail.json.data.progress.length, 0, "a later generation starts without the historical rows");
   });
 });
 

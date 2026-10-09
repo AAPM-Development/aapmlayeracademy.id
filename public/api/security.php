@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 const AAPM_VERIFICATION_TTL_SECONDS = 86400;
 const AAPM_AUTH_SCHEMA_KEY = '20261010_auth_verification_security_v1';
-const AAPM_AUDIT_METADATA_KEYS = ['reason', 'source', 'channel', 'operator', 'evidence_ref', 'role_from', 'role_to', 'identity', 'count'];
+const AAPM_AUDIT_METADATA_KEYS = ['reason', 'source', 'channel', 'operator', 'evidence_ref', 'role_from', 'role_to', 'identity', 'count', 'generation_from', 'generation_to', 'tier', 'certificate'];
 
 function aapm_utc_now(): string
 {
