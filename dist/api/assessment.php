@@ -213,6 +213,7 @@ function aapm_ensure_assessment_schema(PDO $pdo, string $driver): void
     foreach (aapm_assessment_ddl($driver) as $sql) {
         $pdo->exec($sql);
     }
+    aapm_ensure_generation_schema($pdo, $driver);
     aapm_seed_assessment_policy($pdo);
     $ready = true;
 }
@@ -259,6 +260,83 @@ function aapm_assessment_policy(PDO $pdo): array
         'modulePass' => (int) $policy['module_pass_percent'],
         'finalPass' => (int) $policy['final_pass_percent'],
     ];
+}
+
+/**
+ * Academic generations (Q04). A reset advances a learner's generation instead of
+ * deleting anything: attempts and events keep the generation they were recorded in,
+ * and current progress reads only the active one. Additive and idempotent.
+ */
+function aapm_ensure_generation_schema(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS learner_academic_state (
+            user_id INTEGER NOT NULL PRIMARY KEY,
+            current_generation INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )');
+        $columnType = 'INTEGER NOT NULL DEFAULT 1';
+    } else {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS learner_academic_state (
+            user_id BIGINT UNSIGNED NOT NULL,
+            current_generation INT UNSIGNED NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY (user_id),
+            CONSTRAINT learner_academic_state_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+        $columnType = 'INT UNSIGNED NOT NULL DEFAULT 1';
+    }
+    foreach (['assessment_attempts', 'module_learning_events'] as $table) {
+        if (aapm_column_exists($pdo, $table, 'academic_generation')) {
+            continue;
+        }
+        try {
+            $pdo->exec('ALTER TABLE ' . $table . ' ADD COLUMN academic_generation ' . $columnType);
+        } catch (PDOException $exception) {
+            // A concurrent request added it first.
+            if (!aapm_column_exists($pdo, $table, 'academic_generation')) {
+                throw $exception;
+            }
+        }
+    }
+}
+
+/** The learner's active generation. No state row means the original generation, 1. */
+function aapm_current_generation(PDO $pdo, int $userId): int
+{
+    $statement = $pdo->prepare('SELECT current_generation FROM learner_academic_state WHERE user_id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    $value = $statement->fetchColumn();
+
+    return $value === false ? 1 : max(1, (int) $value);
+}
+
+/** True when an attempt belongs to an earlier generation or was marked superseded by a reset. */
+function aapm_attempt_superseded(PDO $pdo, int $userId, array $attempt): bool
+{
+    return (string) $attempt['status'] === 'superseded'
+        || (int) ($attempt['academic_generation'] ?? 1) !== aapm_current_generation($pdo, $userId);
+}
+
+/**
+ * Advances the learner to the next generation and supersedes open attempts.
+ * Nothing is deleted. The caller owns the transaction and the user lock.
+ */
+function aapm_reset_learner_progress(PDO $pdo, int $userId): array
+{
+    $from = aapm_current_generation($pdo, $userId);
+    $to = $from + 1;
+    $now = aapm_utc_now();
+    $update = $pdo->prepare('UPDATE learner_academic_state SET current_generation = ?, updated_at = ? WHERE user_id = ?');
+    $update->execute([$to, $now, $userId]);
+    if ($update->rowCount() < 1) {
+        $pdo->prepare('INSERT INTO learner_academic_state (user_id, current_generation, updated_at) VALUES (?, ?, ?)')->execute([$userId, $to, $now]);
+    }
+    $superseded = $pdo->prepare("UPDATE assessment_attempts SET status = 'superseded', updated_at = ? WHERE user_id = ? AND status = 'in_progress' AND academic_generation = ?");
+    $superseded->execute([$now, $userId, $from]);
+
+    return ['generationFrom' => $from, 'generationTo' => $to, 'supersededAttempts' => $superseded->rowCount()];
 }
 
 /** Lock point for every learner write. SQLite is already serialized by BEGIN IMMEDIATE. */
@@ -461,15 +539,17 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     $attemptStatement = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? ORDER BY id ASC');
     $attemptStatement->execute([$userId]);
     $attempts = $attemptStatement->fetchAll();
+    $generation = aapm_current_generation($pdo, $userId);
 
-    $eventStatement = $pdo->prepare('SELECT module_number, event_type, amount, created_at FROM module_learning_events WHERE user_id = ? ORDER BY id ASC');
-    $eventStatement->execute([$userId]);
+    $eventStatement = $pdo->prepare('SELECT module_number, event_type, amount, created_at FROM module_learning_events WHERE user_id = ? AND academic_generation = ? ORDER BY id ASC');
+    $eventStatement->execute([$userId, $generation]);
     $events = $eventStatement->fetchAll();
 
     $legacyStatement = $pdo->prepare('SELECT module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes, updated_at FROM user_progress WHERE user_id = ?');
     $legacyStatement->execute([$userId]);
     $legacyRows = [];
-    foreach ($legacyStatement->fetchAll() as $row) {
+    // Historical rows belong to generation 1; a later generation starts without them.
+    foreach ($generation === 1 ? $legacyStatement->fetchAll() : [] as $row) {
         $legacyRows[(int) $row['module_number']] = $row;
     }
 
@@ -498,6 +578,9 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
 
     foreach ($attempts as $attempt) {
         $attempt = aapm_expire_if_due_snapshot($attempt, $now);
+        if ((int) ($attempt['academic_generation'] ?? 1) !== $generation) {
+            continue;
+        }
         $number = (int) $attempt['module_number'];
         if (!isset($modules[$number])) {
             continue;
@@ -601,10 +684,12 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     $lastSubmittedFailed = false;
     $recentStarts = [];
     foreach ($finalAttempts as $attempt) {
-        if ($attempt['status'] === 'in_progress') {
+        // Status follows the active generation; the rolling attempt limit counts every generation.
+        $isCurrent = (int) ($attempt['academic_generation'] ?? 1) === $generation;
+        if ($isCurrent && $attempt['status'] === 'in_progress') {
             $active = $attempt;
         }
-        if ($attempt['status'] === 'submitted') {
+        if ($isCurrent && $attempt['status'] === 'submitted') {
             if ((int) $attempt['passed'] === 1) {
                 $passed = true;
             }
@@ -635,6 +720,7 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     }
 
     return [
+        'generation' => $generation,
         'policy' => $policy,
         'modules' => $modules,
         'eligibility' => [
@@ -705,19 +791,24 @@ function aapm_assessment_start(array $user, array $input): array
     aapm_tx_begin($pdo);
     try {
         aapm_assessment_user_lock($pdo, $userId);
+        $generation = aapm_current_generation($pdo, $userId);
 
         $same = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? AND start_request_key = ? LIMIT 1');
         $same->execute([$userId, (string) $requestKey]);
         $existing = $same->fetch();
         if ($existing) {
+            if ((int) ($existing['academic_generation'] ?? 1) !== $generation) {
+                aapm_tx_rollback($pdo);
+                aapm_assessment_fail(409, 'attempt_superseded', 'Ujian ini berasal dari siklus belajar sebelumnya. Mulai ujian baru.');
+            }
             $existing = aapm_expire_if_due($pdo, $existing);
             aapm_tx_commit($pdo);
 
             return ['attempt' => aapm_attempt_view($pdo, $existing), 'created' => false];
         }
 
-        $active = $pdo->prepare("SELECT * FROM assessment_attempts WHERE user_id = ? AND assessment_type = ? AND module_number = ? AND status = 'in_progress' ORDER BY id DESC LIMIT 1");
-        $active->execute([$userId, $type, $moduleNumber]);
+        $active = $pdo->prepare("SELECT * FROM assessment_attempts WHERE user_id = ? AND assessment_type = ? AND module_number = ? AND status = 'in_progress' AND academic_generation = ? ORDER BY id DESC LIMIT 1");
+        $active->execute([$userId, $type, $moduleNumber, $generation]);
         $activeRow = $active->fetch();
         if ($activeRow) {
             $activeRow = aapm_expire_if_due($pdo, $activeRow);
@@ -770,7 +861,7 @@ function aapm_assessment_start(array $user, array $input): array
         $now = aapm_utc_now();
         $publicId = bin2hex(random_bytes(24));
         $passing = $type === 'final_exam' ? $policy['finalPass'] : $policy['modulePass'];
-        $pdo->prepare('INSERT INTO assessment_attempts (public_id, user_id, assessment_type, module_number, policy_version, passing_grade, status, total_questions, started_at, expires_at, start_request_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        $pdo->prepare('INSERT INTO assessment_attempts (public_id, user_id, assessment_type, module_number, policy_version, passing_grade, status, total_questions, started_at, expires_at, start_request_key, created_at, updated_at, academic_generation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
             ->execute([
                 $publicId,
                 $userId,
@@ -785,6 +876,7 @@ function aapm_assessment_start(array $user, array $input): array
                 (string) $requestKey,
                 $now,
                 $now,
+                $generation,
             ]);
         $attemptId = (int) $pdo->lastInsertId();
         $insertItem = $pdo->prepare('INSERT INTO assessment_attempt_items (attempt_id, ordinal, source_question_id, question_snapshot_json) VALUES (?, ?, ?, ?)');
@@ -853,6 +945,10 @@ function aapm_assessment_answer(array $user, string $publicId, array $input): ar
         if (!$attempt) {
             aapm_tx_rollback($pdo);
             aapm_assessment_fail(404, 'assessment_not_found', 'Ujian tidak ditemukan.');
+        }
+        if ($attempt['status'] !== 'submitted' && aapm_attempt_superseded($pdo, $userId, $attempt)) {
+            aapm_tx_rollback($pdo);
+            aapm_assessment_fail(409, 'attempt_superseded', 'Ujian ini berasal dari siklus belajar sebelumnya. Mulai ujian baru.');
         }
         $attempt = aapm_expire_if_due($pdo, $attempt);
         if ($attempt['status'] === 'submitted') {
@@ -948,6 +1044,10 @@ function aapm_assessment_submit(array $user, string $publicId, array $input): ar
 
             return aapm_attempt_view($pdo, $attempt);
         }
+        if (aapm_attempt_superseded($pdo, $userId, $attempt)) {
+            aapm_tx_rollback($pdo);
+            aapm_assessment_fail(409, 'attempt_superseded', 'Ujian ini berasal dari siklus belajar sebelumnya. Mulai ujian baru.');
+        }
         $attempt = aapm_expire_if_due($pdo, $attempt);
         if ($attempt['status'] !== 'in_progress') {
             aapm_tx_rollback($pdo);
@@ -1018,6 +1118,7 @@ function aapm_assessment_history(array $user, array $query): array
             'totalQuestions' => (int) $row['total_questions'],
             'startedAt' => (string) $row['started_at'],
             'submittedAt' => $row['submitted_at'],
+            'generation' => (int) ($row['academic_generation'] ?? 1),
         ];
     }, $statement->fetchAll());
 }
@@ -1034,8 +1135,9 @@ function aapm_acknowledge_module(array $user, int $moduleNumber): array
     aapm_tx_begin($pdo);
     try {
         aapm_assessment_user_lock($pdo, $userId);
-        $pdo->prepare('INSERT INTO module_learning_events (user_id, module_number, event_type, idempotency_key, amount, created_at) VALUES (?, ?, ?, ?, 0, ?)')
-            ->execute([$userId, $moduleNumber, 'material_acknowledged', 'ack-' . $moduleNumber, aapm_utc_now()]);
+        $generation = aapm_current_generation($pdo, $userId);
+        $pdo->prepare('INSERT INTO module_learning_events (user_id, module_number, event_type, idempotency_key, amount, created_at, academic_generation) VALUES (?, ?, ?, ?, 0, ?, ?)')
+            ->execute([$userId, $moduleNumber, 'material_acknowledged', 'ack-' . $moduleNumber . ($generation > 1 ? '-g' . $generation : ''), aapm_utc_now(), $generation]);
         aapm_tx_commit($pdo);
     } catch (PDOException $exception) {
         aapm_tx_rollback($pdo);
@@ -1074,8 +1176,9 @@ function aapm_record_module_event(array $user, int $moduleNumber, string $eventT
     aapm_tx_begin($pdo);
     try {
         aapm_assessment_user_lock($pdo, $userId);
-        $pdo->prepare('INSERT INTO module_learning_events (user_id, module_number, event_type, idempotency_key, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-            ->execute([$userId, $moduleNumber, $eventType, (string) $input['requestKey'], $amount, aapm_utc_now()]);
+        $generation = aapm_current_generation($pdo, $userId);
+        $pdo->prepare('INSERT INTO module_learning_events (user_id, module_number, event_type, idempotency_key, amount, created_at, academic_generation) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$userId, $moduleNumber, $eventType, (string) $input['requestKey'], $amount, aapm_utc_now(), $generation]);
         aapm_tx_commit($pdo);
     } catch (PDOException $exception) {
         aapm_tx_rollback($pdo);
@@ -1218,34 +1321,61 @@ function aapm_module_evidence_count(PDO $pdo, int $moduleNumber): int
     return $count;
 }
 
-/** Removes one module's learner evidence. The caller owns the transaction. Snapshots are kept as audit history. */
-function aapm_delete_module_evidence(PDO $pdo, int $moduleNumber): void
+/**
+ * Academic history for one module: attempts, learning events, and certificate evidence.
+ * A module with any of these can never be hard-deleted.
+ */
+function aapm_module_academic_history_count(PDO $pdo, int $moduleNumber): int
 {
-    $pdo->prepare('DELETE FROM assessment_attempt_items WHERE attempt_id IN (SELECT id FROM assessment_attempts WHERE module_number = ?)')->execute([$moduleNumber]);
-    $pdo->prepare('DELETE FROM assessment_attempts WHERE module_number = ?')->execute([$moduleNumber]);
-    $pdo->prepare('DELETE FROM module_learning_events WHERE module_number = ?')->execute([$moduleNumber]);
-    $pdo->prepare('DELETE FROM user_progress WHERE module_number = ?')->execute([$moduleNumber]);
+    $queries = [
+        'SELECT COUNT(*) FROM assessment_attempts WHERE module_number = ?',
+        'SELECT COUNT(*) FROM module_learning_events WHERE module_number = ?',
+    ];
+    if (aapm_table_exists($pdo, 'certificate_evidence')) {
+        $queries[] = 'SELECT COUNT(*) FROM certificate_evidence WHERE module_number = ?';
+    }
+    $count = 0;
+    foreach ($queries as $sql) {
+        $statement = $pdo->prepare($sql);
+        $statement->execute([$moduleNumber]);
+        $count += (int) $statement->fetchColumn();
+    }
+
+    return $count;
 }
 
 /**
- * Removes one learner's academic evidence: attempts, events, and legacy rows.
- * Certificates, farm data, and conversations are untouched. The caller owns the transaction.
+ * Removes only the historical imported rows of a module that has no academic history.
+ * Their values stay in legacy_progress_snapshots. The caller owns the transaction.
  */
-function aapm_delete_learner_evidence(PDO $pdo, int $userId): array
+function aapm_delete_module_evidence(PDO $pdo, int $moduleNumber): void
 {
-    $items = $pdo->prepare('DELETE FROM assessment_attempt_items WHERE attempt_id IN (SELECT id FROM assessment_attempts WHERE user_id = ?)');
-    $items->execute([$userId]);
-    $attempts = $pdo->prepare('DELETE FROM assessment_attempts WHERE user_id = ?');
-    $attempts->execute([$userId]);
-    $events = $pdo->prepare('DELETE FROM module_learning_events WHERE user_id = ?');
-    $events->execute([$userId]);
-    $legacy = $pdo->prepare('DELETE FROM user_progress WHERE user_id = ?');
-    $legacy->execute([$userId]);
+    $pdo->prepare('DELETE FROM user_progress WHERE module_number = ?')->execute([$moduleNumber]);
+}
+
+/** Every attempt across all generations, for authorized historical reporting. */
+function aapm_admin_assessment_history(PDO $pdo, int $userId): array
+{
+    $statement = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? ORDER BY id DESC LIMIT 500');
+    $statement->execute([$userId]);
 
     return [
-        'legacyEntries' => $legacy->rowCount(),
-        'attempts' => $attempts->rowCount(),
-        'events' => $events->rowCount(),
+        'currentGeneration' => aapm_current_generation($pdo, $userId),
+        'attempts' => array_map(static function (array $row): array {
+            return [
+                'id' => (string) $row['public_id'],
+                'generation' => (int) ($row['academic_generation'] ?? 1),
+                'assessmentType' => (string) $row['assessment_type'],
+                'moduleNumber' => (int) $row['module_number'],
+                'status' => (string) $row['status'],
+                'passed' => $row['passed'] === null ? null : (bool) (int) $row['passed'],
+                'scorePercent' => $row['score_percent'] === null ? null : (int) $row['score_percent'],
+                'correctAnswers' => $row['correct_answers'] === null ? null : (int) $row['correct_answers'],
+                'totalQuestions' => (int) $row['total_questions'],
+                'startedAt' => (string) $row['started_at'],
+                'submittedAt' => $row['submitted_at'],
+            ];
+        }, $statement->fetchAll()),
     ];
 }
 
