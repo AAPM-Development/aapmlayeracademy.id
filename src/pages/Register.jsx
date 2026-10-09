@@ -16,6 +16,12 @@ import {
   newPasswordError,
 } from "@/lib/authValidation";
 
+// Development builds may receive a verification token so the flow can be exercised
+// locally. Deployed responses never include one, and this link is never rendered for them.
+function devVerificationLink(token) {
+  return token ? `${window.location.origin}/verify-email#token=${encodeURIComponent(token)}` : "";
+}
+
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +30,9 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [devLink, setDevLink] = useState("");
+  const [resendNote, setResendNote] = useState("");
 
   useEffect(() => {
     nativeApi.auth.providers().then((providers) => {
@@ -46,8 +55,10 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await nativeApi.auth.register({ email: email.trim(), password });
-      window.location.href = safeReturnTo();
+      // The server acknowledges every valid request the same way and never signs the browser in.
+      const result = await nativeApi.auth.register({ email: email.trim(), password });
+      setDevLink(devVerificationLink(result?.devVerificationToken));
+      setSubmitted(true);
     } catch (err) {
       setError(err.message || "Pendaftaran belum berhasil.");
     } finally {
@@ -55,10 +66,46 @@ export default function Register() {
     }
   };
 
+  const handleResend = async () => {
+    setResendNote("");
+    try {
+      const result = await nativeApi.auth.resendVerification({ email: email.trim(), password });
+      setDevLink(devVerificationLink(result?.devVerificationToken) || devLink);
+      setResendNote("Jika akun tersebut menunggu verifikasi, instruksi baru akan dikirim.");
+    } catch {
+      setResendNote("Instruksi belum dapat dikirim. Coba lagi.");
+    }
+  };
+
   const clearError = (field) => setFieldErrors((current) => ({ ...current, [field]: "" }));
 
   const { isAuthenticated, isLoadingAuth } = useAuth();
   if (!isLoadingAuth && isAuthenticated) return <Navigate to={"/"} replace />;
+
+  if (submitted) {
+    return (
+      <AuthLayout
+        title="Periksa email Anda"
+        subtitle="Jika alamat email dapat digunakan, instruksi verifikasi akan dikirim."
+        footer={
+          <Link to="/login" className="aapm-link">
+            Kembali ke masuk
+          </Link>
+        }
+      >
+        <Alert tone="info" description="Buka tautan di email untuk mengaktifkan akun. Tautan berlaku 24 jam dan hanya dapat dipakai sekali." className="aapm-auth__alert" />
+        {devLink && (
+          <p className="aapm-text-caption">
+            Mode pengembangan: <a className="aapm-link" href={devLink}>buka tautan verifikasi</a>
+          </p>
+        )}
+        {resendNote && <p className="aapm-text-caption">{resendNote}</p>}
+        <Button type="button" variant="secondary" size="lg" block onClick={handleResend}>
+          Kirim ulang instruksi
+        </Button>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout

@@ -22,6 +22,8 @@ const sessionExpiryExcludedPaths = new Set([
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/logout",
+  "/auth/verify-email",
+  "/auth/resend-verification",
 ]);
 
 function notifySessionExpired(path, status) {
@@ -271,6 +273,12 @@ async function upload(path, formData, options = {}) {
 
 const json = (body) => ({ method: "POST", body: JSON.stringify(body) });
 
+/** Idempotency key for one learner action: 8–80 characters from [A-Za-z0-9_-]. */
+export function newRequestKey() {
+  const id = globalThis.crypto?.randomUUID?.();
+  return id || `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export const nativeApi = {
   auth: {
     async csrf() {
@@ -286,6 +294,12 @@ export const nativeApi = {
     async login(email, password) {
       await this.csrf();
       return request("/auth/login", json({ email, password }));
+    },
+    async verifyEmail(token) {
+      return request("/auth/verify-email", json({ token }));
+    },
+    async resendVerification(payload = {}) {
+      return request("/auth/resend-verification", json(payload));
     },
     async register(data) {
       await this.csrf();
@@ -310,14 +324,26 @@ export const nativeApi = {
     list: (moduleNumber) =>
       request(`/quiz?moduleNumber=${encodeURIComponent(moduleNumber)}`),
   },
+  // Academic results are decided on the server. Learners start, answer and
+  // submit assessments and record learning activity; they never write
+  // completion, scores, or certificates.
+  assessments: {
+    start: (data) => request("/assessments/attempts", json(data)),
+    get: (attemptId) => request(`/assessments/attempts/${encodeURIComponent(attemptId)}`),
+    answer: (attemptId, data) => request(`/assessments/attempts/${encodeURIComponent(attemptId)}/answers`, json(data)),
+    submit: (attemptId, data) => request(`/assessments/attempts/${encodeURIComponent(attemptId)}/submit`, json(data)),
+    finalEligibility: () => request("/assessments/final-eligibility"),
+  },
+  learning: {
+    acknowledge: (moduleNumber) => request(`/modules/${encodeURIComponent(moduleNumber)}/acknowledge`, json({})),
+    practice: (moduleNumber, data) => request(`/modules/${encodeURIComponent(moduleNumber)}/practice`, json(data)),
+    studyTime: (moduleNumber, data) => request(`/modules/${encodeURIComponent(moduleNumber)}/study-time`, json(data)),
+  },
   userProgress: {
     list: () => request("/progress"),
-    upsert: (moduleNumber, data) =>
-      request("/progress", json({ moduleNumber, ...data })),
   },
   certificates: {
     list: () => request("/certificates"),
-    create: (data) => request("/certificates", json(data)),
   },
   profile: {
     get: () => request("/profile"),
@@ -431,6 +457,7 @@ export const nativeApi = {
       resetProgress: (userId) =>
         request(`/admin/users/${encodeURIComponent(userId)}/progress`, {
           method: "DELETE",
+          body: JSON.stringify({ confirm: true }),
         }),
     },
     modules: {

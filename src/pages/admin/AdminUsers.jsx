@@ -344,6 +344,17 @@ export default function AdminUsers() {
                 render: (user) => <Badge variant={user.role === "admin" ? "warning" : "success"}>{user.role === "admin" ? "Admin" : "Learner"}</Badge>,
               },
               {
+                key: "verification",
+                header: "Verifikasi",
+                overflow: "nowrap",
+                render: (user) => {
+                  // Server-computed state. Admin access needs verified identity; legacy accounts keep learner access.
+                  if (user.emailVerificationStatus === "verified") return <Badge variant="success">Terverifikasi</Badge>;
+                  if (user.emailVerificationStatus === "pending") return <Badge variant="soft">Menunggu verifikasi</Badge>;
+                  return <Badge variant="soft">Verifikasi lama</Badge>;
+                },
+              },
+              {
                 key: "progress",
                 header: "Progress",
                 overflow: "wrap",

@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/assessment.php';
+
 /**
  * Shared native API bootstrap.
  *
@@ -8,17 +11,63 @@ declare(strict_types=1);
  * the React UI can run on cPanel without a hosted application platform.
  */
 
-function app_config(): array
-{
-    static $config = null;
+const AAPM_ENVIRONMENTS = ['production', 'staging', 'local', 'test'];
+const AAPM_DEPLOYED_ENVIRONMENTS = ['production', 'staging'];
+const AAPM_LOCAL_ENVIRONMENTS = ['local', 'test'];
+const AAPM_RELEASE_MANIFEST_SCHEMA = 'aapm-release-manifest/1';
 
-    if ($config !== null) {
-        return $config;
+/**
+ * A configuration problem with a fixed, non-sensitive code. Messages name the
+ * rule or key that failed, never a filesystem path, DSN, or credential.
+ */
+final class AppConfigException extends RuntimeException
+{
+    private $safeCode;
+
+    public function __construct(string $safeCode, string $message)
+    {
+        parent::__construct($message);
+        $this->safeCode = $safeCode;
     }
 
-    $config = [
-        'app_env' => getenv('AAPLAYERACADEMY_ENV') ?: 'local',
-        'db_driver' => getenv('AAPLAYERACADEMY_DB_DRIVER') ?: 'sqlite',
+    public function safeCode(): string
+    {
+        return $this->safeCode;
+    }
+}
+
+function aapm_environment_is_deployed(string $environment): bool
+{
+    return in_array($environment, AAPM_DEPLOYED_ENVIRONMENTS, true);
+}
+
+function aapm_is_absolute_path(string $path): bool
+{
+    return (bool) preg_match('#^([A-Za-z]:[\\\\/]|/)#', $path);
+}
+
+function aapm_path_key(string $path): string
+{
+    $real = realpath($path);
+    $value = str_replace('\\', '/', $real !== false ? $real : $path);
+
+    return DIRECTORY_SEPARATOR === '\\' ? strtolower($value) : $value;
+}
+
+function aapm_path_is_within(string $path, string $root): bool
+{
+    $child = rtrim(aapm_path_key($path), '/') . '/';
+    $parent = rtrim(aapm_path_key($root), '/') . '/';
+
+    return strncmp($child, $parent, strlen($parent)) === 0;
+}
+
+/** Environment-variable defaults. Trusted server configuration, never request data. */
+function aapm_default_config_values(): array
+{
+    return [
+        'environment' => '',
+        'db_driver' => (string) (getenv('AAPLAYERACADEMY_DB_DRIVER') ?: ''),
         'db_host' => getenv('AAPLAYERACADEMY_DB_HOST') ?: '127.0.0.1',
         'db_port' => getenv('AAPLAYERACADEMY_DB_PORT') ?: '3306',
         'db_name' => getenv('AAPLAYERACADEMY_DB_NAME') ?: '',
@@ -42,62 +91,171 @@ function app_config(): array
         'ai_allow_local' => getenv('AAPLAYERACADEMY_AI_ALLOW_LOCAL') ?: '',
         'ai_settings_encryption_key' => getenv('AAPLAYERACADEMY_AI_SETTINGS_ENCRYPTION_KEY') ?: '',
         'expose_dev_reset_token' => false,
+        'environment_marker_required' => false,
     ];
+}
 
-    $configuredPath = getenv('AAPLAYERACADEMY_CONFIG');
-    // cPanel deploys main to the account root's public_html and staging one
-    // directory deeper. Resolve the shared private file from both layouts
-    // before checking domain-local fallbacks; otherwise production can silently
-    // fall back to SQLite while staging reads MySQL.
-    $sharedConfigRoots = array_values(array_unique([
-        dirname(__DIR__, 3),
-        dirname(__DIR__, 2),
-        dirname(__DIR__, 1),
-        dirname(__DIR__, 4),
-    ]));
-    $sharedConfigPaths = array_map(
-        static fn (string $root): string => $root . '/aapmlayeracademy-config.php',
-        $sharedConfigRoots
-    );
-    $candidatePaths = array_filter(array_merge(
-        [$configuredPath ?: null],
-        $sharedConfigPaths,
-        [
-            dirname(__DIR__, 2) . '/config.php',
-            dirname(__DIR__, 2) . '/config.local.php',
-            dirname(__DIR__, 1) . '/config.php',
-            dirname(__DIR__, 1) . '/config.local.php',
-        ]
-    ));
+/**
+ * Deployment selector written by scripts/deploy/cpanel-deploy.php into each
+ * target's api directory. It only names the environment and the private file.
+ * Direct web requests receive a 404 because the constant is set here only.
+ *
+ * @return array{environment:string,config_path:string}
+ */
+function aapm_load_deployment_selector(string $file): array
+{
+    if (!defined('AAPM_DEPLOYMENT_SELECTOR_LOADING')) {
+        define('AAPM_DEPLOYMENT_SELECTOR_LOADING', true);
+    }
+    $selector = (static function (string $__file) {
+        return require $__file;
+    })($file);
 
-    foreach ($candidatePaths as $path) {
-        if (!is_file($path)) {
-            continue;
-        }
-
-        $fileConfig = require $path;
-        if (is_array($fileConfig)) {
-            $config = array_merge($config, $fileConfig);
-        }
-        break;
+    if (
+        !is_array($selector)
+        || !isset($selector['environment'], $selector['config_path'])
+        || !is_string($selector['environment'])
+        || !is_string($selector['config_path'])
+        || !in_array($selector['environment'], AAPM_ENVIRONMENTS, true)
+        || !aapm_is_absolute_path($selector['config_path'])
+    ) {
+        throw new AppConfigException('selector_invalid', 'Penanda deployment tidak valid.');
     }
 
-    // The same private config intentionally serves both public hosts. Keep
-    // the runtime label host-aware so production does not inherit a staging
-    // label from the shared file while both environments still use one DB.
-    $requestHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
-    $requestHost = (string) preg_replace('/:\\d+$/', '', $requestHost);
-    if (in_array($requestHost, ['aapmlayeracademy.id', 'www.aapmlayeracademy.id'], true)) {
-        $config['app_env'] = 'production';
-    } elseif ($requestHost === 'staging.aapmlayeracademy.id') {
-        $config['app_env'] = 'staging';
+    return ['environment' => $selector['environment'], 'config_path' => $selector['config_path']];
+}
+
+/**
+ * Chooses the private config file. Order: explicit server variable, then the
+ * deployment selector, then local-development files beside the repository.
+ * The request host is never consulted.
+ *
+ * @return array{path:string,source:string,selector:?array}
+ */
+function aapm_resolve_config_source(): array
+{
+    $explicit = trim((string) getenv('AAPLAYERACADEMY_CONFIG'));
+    if ($explicit !== '') {
+        return ['path' => $explicit, 'source' => 'environment_variable', 'selector' => null];
     }
 
-    if ($config['db_driver'] === 'sqlite' && !$config['db_path']) {
+    $selectorFile = __DIR__ . '/deployment.php';
+    if (is_file($selectorFile)) {
+        $selector = aapm_load_deployment_selector($selectorFile);
+
+        return ['path' => $selector['config_path'], 'source' => 'deployment_selector', 'selector' => $selector];
+    }
+
+    foreach ([dirname(__DIR__, 2) . '/config.php', dirname(__DIR__, 2) . '/config.local.php'] as $candidate) {
+        if (is_file($candidate)) {
+            return ['path' => $candidate, 'source' => 'local_development', 'selector' => null];
+        }
+    }
+
+    throw new AppConfigException('config_missing', 'Konfigurasi privat untuk lingkungan ini belum tersedia.');
+}
+
+function aapm_load_private_config(string $file): array
+{
+    $loaded = (static function (string $__file) {
+        return require $__file;
+    })($file);
+
+    if (!is_array($loaded)) {
+        throw new AppConfigException('config_invalid', 'Format konfigurasi privat tidak valid.');
+    }
+
+    return $loaded;
+}
+
+function app_config(): array
+{
+    static $config = null;
+
+    if ($config !== null) {
+        return $config;
+    }
+
+    $source = aapm_resolve_config_source();
+    $configPath = (string) $source['path'];
+    if (!aapm_is_absolute_path($configPath) || !is_file($configPath)) {
+        throw new AppConfigException('config_missing', 'Konfigurasi privat untuk lingkungan ini belum tersedia.');
+    }
+    if (aapm_path_is_within($configPath, dirname(__DIR__))) {
+        throw new AppConfigException('config_inside_docroot', 'Konfigurasi privat tidak boleh berada di dalam document root.');
+    }
+
+    $fileConfig = aapm_load_private_config($configPath);
+    $environment = strtolower(trim((string) ($fileConfig['environment'] ?? '')));
+    if (!in_array($environment, AAPM_ENVIRONMENTS, true)) {
+        throw new AppConfigException('environment_invalid', 'Kunci environment wajib diisi dengan production, staging, local, atau test.');
+    }
+
+    $environmentVariable = strtolower(trim((string) (getenv('AAPLAYERACADEMY_ENV') ?: '')));
+    if ($environmentVariable !== '' && $environmentVariable !== $environment) {
+        throw new AppConfigException('environment_conflict', 'Variabel lingkungan tidak cocok dengan konfigurasi privat.');
+    }
+    if ($source['selector'] !== null && $source['selector']['environment'] !== $environment) {
+        throw new AppConfigException('environment_conflict', 'Penanda deployment tidak cocok dengan konfigurasi privat.');
+    }
+    if ($source['source'] === 'local_development' && !in_array($environment, AAPM_LOCAL_ENVIRONMENTS, true)) {
+        throw new AppConfigException('local_config_not_allowed', 'Konfigurasi lokal hanya boleh untuk lingkungan local atau test.');
+    }
+
+    $deployed = aapm_environment_is_deployed($environment);
+    $config = array_merge(aapm_default_config_values(), $fileConfig);
+    $config['environment'] = $environment;
+    $config['db_driver'] = strtolower(trim((string) $config['db_driver']));
+    if (!in_array($config['db_driver'], ['mysql', 'sqlite'], true)) {
+        throw new AppConfigException('db_driver_invalid', 'Kunci db_driver wajib diisi dengan mysql atau sqlite.');
+    }
+
+    if ($deployed) {
+        foreach ($fileConfig as $key => $value) {
+            if (is_string($value) && strpos(trim($value), 'REPLACE_') === 0) {
+                throw new AppConfigException('placeholder_value', "Kunci {$key} masih berisi nilai contoh.");
+            }
+        }
+    }
+
+    if ($deployed) {
+        if ($config['db_driver'] !== 'mysql') {
+            throw new AppConfigException('sqlite_not_allowed', 'Lingkungan deployment wajib memakai MySQL/MariaDB, bukan SQLite.');
+        }
+        foreach (['db_name', 'db_user', 'app_url'] as $key) {
+            if (trim((string) ($config[$key] ?? '')) === '') {
+                throw new AppConfigException('required_key_missing', "Kunci {$key} wajib diisi untuk lingkungan deployment.");
+            }
+        }
+        $appUrl = rtrim(trim((string) $config['app_url']), '/');
+        if (!preg_match('#^https://[a-z0-9.-]+(?::[0-9]{1,5})?(?:/[^\s]*)?$#i', $appUrl)) {
+            throw new AppConfigException('app_url_invalid', 'Kunci app_url wajib berupa URL https untuk lingkungan deployment.');
+        }
+        $config['expose_dev_reset_token'] = false;
+    } elseif ($config['db_driver'] === 'sqlite' && trim((string) $config['db_path']) === '') {
         $config['db_path'] = dirname(__DIR__, 2) . '/storage/aapmlayeracademy.sqlite';
     }
 
+    $config['environment_marker_required'] = $deployed || !empty($fileConfig['environment_marker_required']);
+
     return $config;
+}
+
+/** Read-only check of the database's environment marker. Runs before any schema statement. */
+function aapm_verify_environment_marker(PDO $connection, string $environment): void
+{
+    try {
+        $rows = $connection->query('SELECT environment FROM aapm_environment_marker WHERE id = 1')->fetchAll();
+    } catch (PDOException $exception) {
+        throw new AppConfigException('environment_marker_missing', 'Penanda lingkungan database belum dibuat.');
+    }
+
+    if (count($rows) !== 1) {
+        throw new AppConfigException('environment_marker_missing', 'Penanda lingkungan database belum dibuat.');
+    }
+    if (strtolower(trim((string) $rows[0]['environment'])) !== $environment) {
+        throw new AppConfigException('environment_marker_mismatch', 'Database tidak cocok dengan lingkungan konfigurasi.');
+    }
 }
 
 function db(): PDO
@@ -110,35 +268,157 @@ function db(): PDO
     }
 
     $config = app_config();
-    $driver = strtolower((string) $config['db_driver']);
+    $driver = (string) $config['db_driver'];
 
-    if ($driver === 'sqlite') {
-        $path = (string) $config['db_path'];
-        $directory = dirname($path);
-        if (!is_dir($directory)) {
-            @mkdir($directory, 0775, true);
+    try {
+        if ($driver === 'sqlite') {
+            $path = (string) $config['db_path'];
+            $directory = dirname($path);
+            if (!is_dir($directory)) {
+                @mkdir($directory, 0775, true);
+            }
+            $connection = new PDO('sqlite:' . $path);
+            $connection->exec('PRAGMA foreign_keys = ON');
+            $connection->exec('PRAGMA busy_timeout = 5000');
+        } else {
+            $dsn = sprintf(
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                $config['db_host'],
+                $config['db_port'],
+                $config['db_name']
+            );
+            $connection = new PDO($dsn, (string) $config['db_user'], (string) $config['db_password']);
         }
-        $pdo = new PDO('sqlite:' . $path);
-        $pdo->exec('PRAGMA foreign_keys = ON');
-    } else {
-        $dsn = sprintf(
-            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
-            $config['db_host'],
-            $config['db_port'],
-            $config['db_name']
-        );
-        $pdo = new PDO($dsn, (string) $config['db_user'], (string) $config['db_password']);
+    } catch (PDOException $exception) {
+        // The driver message can contain the host or path; it is never returned.
+        error_log('[aapm-native-api] database connection failed (' . $driver . ')');
+        throw new AppConfigException('database_unavailable', 'Database tidak dapat dijangkau.');
     }
 
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+    // Verify identity before any schema statement, so a misdirected config
+    // cannot change another environment's database.
+    if (!empty($config['environment_marker_required'])) {
+        aapm_verify_environment_marker($connection, (string) $config['environment']);
+    }
 
     if (!$schemaReady) {
-        ensure_schema($pdo, $driver);
+        ensure_schema($connection, $driver);
+        aapm_ensure_auth_security_schema($connection, $driver);
+        aapm_ensure_assessment_schema($connection, $driver);
         $schemaReady = true;
     }
 
+    $pdo = $connection;
+
     return $pdo;
+}
+
+/**
+ * Build identity written by scripts/release/build-artifact.mjs. Only public
+ * fields are returned; a missing file is reported as unversioned, not as ok.
+ *
+ * @return array<string,string>
+ */
+function aapm_build_identity(): array
+{
+    static $identity = null;
+
+    if ($identity !== null) {
+        return $identity;
+    }
+
+    $file = dirname(__DIR__) . '/build-manifest.json';
+    if (!is_file($file)) {
+        return $identity = ['status' => 'unversioned'];
+    }
+
+    $decoded = json_decode((string) file_get_contents($file), true);
+    if (!is_array($decoded) || ($decoded['schema'] ?? null) !== AAPM_RELEASE_MANIFEST_SCHEMA) {
+        return $identity = ['status' => 'invalid'];
+    }
+
+    foreach (['channel', 'artifactId', 'sourceCommit', 'sourceTreeFingerprint', 'builtAt'] as $key) {
+        if (!isset($decoded[$key]) || !is_string($decoded[$key])) {
+            return $identity = ['status' => 'invalid'];
+        }
+    }
+
+    return $identity = [
+        'status' => 'ok',
+        'channel' => $decoded['channel'],
+        'artifactId' => $decoded['artifactId'],
+        'sourceCommit' => $decoded['sourceCommit'],
+        'sourceTreeFingerprint' => $decoded['sourceTreeFingerprint'],
+        'builtAt' => $decoded['builtAt'],
+    ];
+}
+
+function aapm_assert_runtime_identity(array $config): void
+{
+    if (!aapm_environment_is_deployed((string) $config['environment'])) {
+        return;
+    }
+
+    $identity = aapm_build_identity();
+    if ($identity['status'] !== 'ok' || $identity['channel'] !== $config['environment']) {
+        throw new AppConfigException('build_identity_mismatch', 'Artefak build tidak cocok dengan lingkungan ini.');
+    }
+}
+
+function aapm_schema_status(PDO $connection): array
+{
+    try {
+        $row = $connection->query('SELECT migration_key FROM schema_migrations ORDER BY applied_at DESC, migration_key DESC LIMIT 1')->fetch();
+    } catch (PDOException $exception) {
+        return ['status' => 'not_recorded'];
+    }
+
+    if (!is_array($row) || !isset($row['migration_key'])) {
+        return ['status' => 'not_recorded'];
+    }
+
+    return ['status' => 'recorded', 'latestMigration' => (string) $row['migration_key']];
+}
+
+/** Health endpoint. Reports accurately; any configuration or identity problem is a 503. */
+function aapm_health_response(): void
+{
+    $body = [
+        'ok' => false,
+        'app' => 'aapm-layer-academy-native',
+        'environment' => null,
+        'build' => ['status' => 'unknown'],
+        'schema' => ['status' => 'unknown'],
+        'environmentMarker' => ['status' => 'unknown'],
+    ];
+    $status = 200;
+
+    try {
+        $config = app_config();
+        $body['environment'] = $config['environment'];
+        $body['build'] = aapm_build_identity();
+        aapm_assert_runtime_identity($config);
+        $connection = db();
+        $body['environmentMarker'] = ['status' => $config['environment_marker_required'] ? 'verified' : 'not_required'];
+        $body['schema'] = aapm_schema_status($connection);
+        $body['ok'] = true;
+    } catch (AppConfigException $exception) {
+        $status = 503;
+        $body['error'] = ['code' => $exception->safeCode()];
+    } catch (Throwable $exception) {
+        error_log('[aapm-native-api] health check failed: ' . get_class($exception));
+        $status = 503;
+        $body['error'] = ['code' => 'database_unavailable'];
+    }
+
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 function ensure_schema(PDO $pdo, string $driver): void
@@ -806,16 +1086,39 @@ function current_user(): ?array
         return null;
     }
 
-    $stmt = db()->prepare('SELECT u.id, u.email, u.full_name, u.role, u.created_at, COALESCE(p.avatar_data, \'\') AS avatar_data FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
+    $stmt = db()->prepare('SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version, COALESCE(p.avatar_data, \'\') AS avatar_data FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
     $stmt->execute([(int) $_SESSION['user_id']]);
     $user = $stmt->fetch();
-    return $user ? present_authenticated_user($user) : null;
+    if (!$user) {
+        return null;
+    }
+
+    // A session from before the account's current authorization version is
+    // revoked. The flag lets require_user() return the stable session_revoked code.
+    if (!isset($_SESSION['auth_version']) || (int) $_SESSION['auth_version'] !== (int) $user['auth_version']) {
+        if (empty($GLOBALS['aapm_session_revoked'])) {
+            $GLOBALS['aapm_session_revoked'] = true;
+            aapm_audit('auth.session_revoked', 'revoked', null, (int) $user['id'], ['reason' => 'authorization_changed']);
+        }
+        return null;
+    }
+
+    // A pending new account never holds an application session.
+    if (aapm_verification_status($user) === 'pending') {
+        unset($_SESSION['user_id']);
+        return null;
+    }
+
+    return present_authenticated_user($user);
 }
 
 function require_user(): array
 {
     $user = current_user();
     if (!$user) {
+        if (!empty($GLOBALS['aapm_session_revoked'])) {
+            error_response('Sesi Anda telah berakhir. Silakan masuk kembali.', 401, 'session_revoked');
+        }
         error_response('Silakan login terlebih dahulu.', 401, 'auth_required');
     }
     return $user;
@@ -826,31 +1129,44 @@ function require_user(): array
  * exposes only the bounded learner/admin role contract while preserving every
  * existing account and schema value.
  */
-function configured_admin_emails(): array
+/**
+ * Diagnostics only. Configured emails are listed for the provisioning
+ * preflight as migration candidates and never grant any privilege.
+ */
+function legacy_config_admin_emails(): array
 {
     $value = (string) (app_config()['admin_emails'] ?? '');
     $emails = array_filter(array_map('normalize_email', explode(',', $value)));
     return array_values(array_unique($emails));
 }
 
+/**
+ * Administrator capability requires the stored admin role AND a verified
+ * identity. Configuration, email matching, and request data never grant it.
+ */
 function effective_user_role(array $user): string
 {
-    if (strtolower(trim((string) ($user['role'] ?? ''))) === 'admin') {
+    $storedRole = strtolower(trim((string) ($user['role'] ?? '')));
+    if ($storedRole === 'admin' && aapm_verification_status($user) === 'verified') {
         return 'admin';
     }
 
-    return in_array(normalize_email($user['email'] ?? ''), configured_admin_emails(), true)
-        ? 'admin'
-        : 'learner';
+    return 'learner';
 }
 
 function present_authenticated_user(array $user): array
 {
+    $role = effective_user_role($user);
+    $status = aapm_verification_status($user);
+
     return [
         'id' => (int) ($user['id'] ?? 0),
         'email' => (string) ($user['email'] ?? ''),
         'full_name' => (string) ($user['full_name'] ?? ''),
-        'role' => effective_user_role($user),
+        'role' => $role,
+        'emailVerified' => $status === 'verified',
+        'emailVerificationStatus' => $status,
+        'canAccessAdmin' => $role === 'admin',
         'avatar' => (string) ($user['avatar_data'] ?? $user['avatar'] ?? ''),
         'created_at' => $user['created_at'] ?? null,
     ];
@@ -887,13 +1203,13 @@ function app_password_hash(string $password): string
 function password_validation_error(string $password): string
 {
     if (strlen($password) < 8) {
-        return 'Password minimal 8 karakter.';
+        return 'Kata sandi minimal 8 karakter.';
     }
     if (strlen($password) > 128) {
-        return 'Password maksimal 128 karakter.';
+        return 'Kata sandi maksimal 128 karakter.';
     }
     if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
-        return 'Password harus memuat minimal satu huruf dan satu angka.';
+        return 'Kata sandi harus memuat minimal satu huruf dan satu angka.';
     }
 
     return '';
@@ -963,11 +1279,18 @@ function rate_limit_clear(string $scope, string $identity = ''): void
 
 function app_base_url(): string
 {
-    $configured = rtrim(trim((string) (app_config()['app_url'] ?? '')), '/');
+    $config = app_config();
+    $configured = rtrim(trim((string) ($config['app_url'] ?? '')), '/');
     if ($configured !== '') {
         return $configured;
     }
 
+    if (aapm_environment_is_deployed((string) $config['environment'])) {
+        // Reset and OAuth links must never be built from a request header.
+        throw new AppConfigException('app_url_missing', 'URL aplikasi belum dikonfigurasi.');
+    }
+
+    // Local and test environments only: convenience fallback for the dev server.
     $host = trim((string) ($_SERVER['HTTP_HOST'] ?? ''));
     if (!preg_match('/\A[a-z0-9.-]+(?::[0-9]+)?\z/i', $host)) {
         return '';
@@ -1005,8 +1328,8 @@ function send_password_reset_email(string $email, string $token): bool
         return false;
     }
 
-    $subject = 'Reset password AAPM Layer Academy';
-    $body = "Halo,\n\nKami menerima permintaan untuk mengganti password akun AAPM Layer Academy Anda.\n\nBuka link berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
+    $subject = 'Atur ulang kata sandi AAPM Layer Academy';
+    $body = "Halo,\n\nKami menerima permintaan untuk mengganti kata sandi akun AAPM Layer Academy Anda.\n\nBuka tautan berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
     $headers = implode("\r\n", [
         'From: ' . $from,
         'Reply-To: ' . $from,
@@ -1259,78 +1582,50 @@ function bounded_progress_percent(int $completed, int $total): int
     return max(0, min(100, (int) round(($completed / $total) * 100)));
 }
 
-/**
- * Keep all admin progress projections scoped to modules that still exist.
- * user_progress intentionally has no module foreign key because module
- * numbers are also used by the final exam (module 0). The inner join here
- * prevents orphaned rows from inflating progress after a module is removed.
- */
-function admin_progress_aggregate_sql(): string
-{
-    return 'SELECT p.user_id,
-        COUNT(DISTINCT p.module_number) AS progress_entries,
-        COUNT(DISTINCT CASE WHEN p.completed = 1 THEN p.module_number END) AS completed_modules,
-        COUNT(DISTINCT CASE WHEN p.practical_done = 1 THEN p.module_number END) AS practical_modules,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN
-            CASE WHEN p.quiz_score IS NULL OR p.quiz_score < 0 THEN 0
-                 WHEN p.quiz_score > p.quiz_total THEN p.quiz_total
-                 ELSE p.quiz_score END
-            ELSE 0 END) AS quiz_score_sum,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN p.quiz_total ELSE 0 END) AS quiz_total_sum,
-        SUM(CASE WHEN p.time_spent_minutes IS NOT NULL AND p.time_spent_minutes > 0 THEN p.time_spent_minutes ELSE 0 END) AS minutes,
-        MAX(p.updated_at) AS last_activity
-        FROM user_progress p
-        INNER JOIN course_modules m ON m.module_number = p.module_number
-        GROUP BY p.user_id';
-}
-
 function admin_progress_summary(int $userId, ?int $totalModules = null): array
 {
     $moduleTotal = $totalModules === null ? count(admin_module_rows()) : max(0, $totalModules);
-    $statement = db()->prepare('SELECT
-        COUNT(DISTINCT p.module_number) AS entries,
-        COUNT(DISTINCT CASE WHEN p.completed = 1 THEN p.module_number END) AS completed_modules,
-        COUNT(DISTINCT CASE WHEN p.practical_done = 1 THEN p.module_number END) AS practical_modules,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN
-            CASE WHEN p.quiz_score IS NULL OR p.quiz_score < 0 THEN 0
-                 WHEN p.quiz_score > p.quiz_total THEN p.quiz_total
-                 ELSE p.quiz_score END
-            ELSE 0 END) AS quiz_score_sum,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN p.quiz_total ELSE 0 END) AS quiz_total_sum,
-        SUM(CASE WHEN p.time_spent_minutes IS NOT NULL AND p.time_spent_minutes > 0 THEN p.time_spent_minutes ELSE 0 END) AS minutes,
-        MAX(p.updated_at) AS last_activity
-        FROM user_progress p
-        INNER JOIN course_modules m ON m.module_number = p.module_number
-        WHERE p.user_id = ?');
-    $statement->execute([$userId]);
-    $row = $statement->fetch() ?: [];
-    $completed = (int) ($row['completed_modules'] ?? 0);
+    $totals = aapm_learner_progress_aggregates(db(), [$userId])[$userId];
+    $completed = (int) $totals['completed_modules'];
 
     return [
-        'entries' => (int) ($row['entries'] ?? 0),
+        'entries' => (int) $totals['progress_entries'],
         'completedModules' => $completed,
         'progressPercent' => bounded_progress_percent($completed, $moduleTotal),
-        'practicalModules' => (int) ($row['practical_modules'] ?? 0),
-        'quizScoreSum' => (float) ($row['quiz_score_sum'] ?? 0),
-        'quizTotalSum' => (float) ($row['quiz_total_sum'] ?? 0),
-        'timeSpentMinutes' => (int) ($row['minutes'] ?? 0),
-        'lastActivity' => $row['last_activity'] ?? null,
+        'practicalModules' => (int) $totals['practical_modules'],
+        'quizScoreSum' => (float) $totals['quiz_score_sum'],
+        'quizTotalSum' => (float) $totals['quiz_total_sum'],
+        'timeSpentMinutes' => (int) $totals['minutes'],
+        'lastActivity' => $totals['last_activity'],
     ];
 }
 
 function admin_learner_metric_rows(): array
 {
-    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at,
-        COALESCE(p.progress_entries, 0) AS progress_entries,
-        COALESCE(p.completed_modules, 0) AS completed_modules,
-        p.last_activity
-        FROM users u
-        LEFT JOIN (' . admin_progress_aggregate_sql() . ') p ON p.user_id = u.id';
-    $rows = db()->query($sql)->fetchAll();
-
-    return array_values(array_filter($rows, static function (array $row): bool {
+    $rows = db()->query('SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u')->fetchAll();
+    $learners = array_values(array_filter($rows, static function (array $row): bool {
         return effective_user_role($row) !== 'admin';
     }));
+
+    return admin_attach_progress_totals($learners);
+}
+
+/**
+ * Adds the derived progress columns the admin lists show. Every value comes
+ * from the learner's academic snapshot, never from the legacy table alone.
+ */
+function admin_attach_progress_totals(array $rows): array
+{
+    $totals = aapm_learner_progress_aggregates(db(), array_map(static fn (array $row): int => (int) $row['id'], $rows));
+
+    return array_map(static function (array $row) use ($totals): array {
+        $aggregate = $totals[(int) $row['id']];
+        $row['progress_entries'] = $aggregate['progress_entries'];
+        $row['completed_modules'] = $aggregate['completed_modules'];
+        $row['last_activity'] = $aggregate['last_activity'];
+
+        return $row;
+    }, $rows);
 }
 
 function admin_course_data(): array
@@ -1380,7 +1675,7 @@ function admin_overview_data(): array
     // learner population, not only users who have already started.
     $averageCompletion = $totalLearners ? (int) round($completionTotal / $totalLearners) : 0;
 
-    $registrationCandidates = db()->query('SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at DESC, id DESC LIMIT 25')->fetchAll();
+    $registrationCandidates = db()->query('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users ORDER BY created_at DESC, id DESC LIMIT 25')->fetchAll();
     $recentRegistrations = [];
     foreach ($registrationCandidates as $candidate) {
         if (effective_user_role($candidate) === 'admin') {
@@ -1392,7 +1687,7 @@ function admin_overview_data(): array
         }
     }
 
-    $completionCandidates = db()->query('SELECT p.user_id, u.full_name, u.email, u.role, p.module_number, m.title AS module_title, p.updated_at FROM user_progress p INNER JOIN users u ON u.id = p.user_id INNER JOIN course_modules m ON m.module_number = p.module_number WHERE p.completed = 1 ORDER BY p.updated_at DESC, p.id DESC LIMIT 25')->fetchAll();
+    $completionCandidates = admin_recent_completions(db(), 25);
     $recentCompletions = [];
     foreach ($completionCandidates as $candidate) {
         if (effective_user_role($candidate) === 'admin') {
@@ -1466,13 +1761,9 @@ function admin_learner_list(string $search = ''): array
 function admin_account_list(string $search = ''): array
 {
     $search = trim($search);
-    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at,
-        COALESCE(p.progress_entries, 0) AS progress_entries,
-        COALESCE(p.completed_modules, 0) AS completed_modules,
-        p.last_activity,
+    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version,
         COALESCE(c.certificate_count, 0) AS certificate_count
         FROM users u
-        LEFT JOIN (' . admin_progress_aggregate_sql() . ') p ON p.user_id = u.id
         LEFT JOIN (SELECT user_id, COUNT(*) AS certificate_count FROM certificates GROUP BY user_id) c ON c.user_id = u.id';
     $params = [];
     if ($search !== '') {
@@ -1483,6 +1774,7 @@ function admin_account_list(string $search = ''): array
     $sql .= ' ORDER BY u.created_at DESC, u.id DESC LIMIT 200';
     $statement = db()->prepare($sql);
     $statement->execute($params);
+    $rows = admin_attach_progress_totals($statement->fetchAll());
     $totalModules = count(admin_module_rows());
 
     return array_map(static function (array $row) use ($totalModules): array {
@@ -1495,12 +1787,12 @@ function admin_account_list(string $search = ''): array
             'lastActivity' => $row['last_activity'] ?? null,
             'certificateCount' => (int) ($row['certificate_count'] ?? 0),
         ]);
-    }, $statement->fetchAll());
+    }, $rows);
 }
 
 function admin_learner_detail(int $learnerId): ?array
 {
-    $statement = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+    $statement = db()->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $statement->execute([$learnerId]);
     $row = $statement->fetch();
     if (!$row) {
@@ -1508,9 +1800,7 @@ function admin_learner_detail(int $learnerId): ?array
     }
 
     $moduleRows = admin_module_rows();
-    $progressStatement = db()->prepare('SELECT p.module_number, p.completed, p.quiz_score, p.quiz_total, p.practical_done, p.time_spent_minutes, p.created_at, p.updated_at, m.title AS module_title, m.level_number, m.level_name FROM user_progress p INNER JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? ORDER BY p.updated_at DESC, p.module_number ASC');
-    $progressStatement->execute([$learnerId]);
-    $progressRows = $progressStatement->fetchAll();
+    $progressRows = admin_learner_progress_rows(db(), $learnerId);
     $certificateStatement = db()->prepare('SELECT id, level_number, level_name, score, exam_type, holder_name, issued_at FROM certificates WHERE user_id = ? ORDER BY issued_at DESC, id DESC');
     $certificateStatement->execute([$learnerId]);
     $certificates = $certificateStatement->fetchAll();
@@ -1671,7 +1961,7 @@ function update_profile_data(array $user, array $input): array
 
 function hall_of_fame_data(): array
 {
-    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
+    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
     $entries = [];
     foreach ($rows as $row) {
         $user = present_authenticated_user($row);
@@ -1711,13 +2001,10 @@ function admin_user_list(string $search = ''): array
 
 function admin_effective_admin_count(): int
 {
-    $rows = db()->query('SELECT id, email, full_name, role, created_at FROM users')->fetchAll();
-    return count(array_filter($rows, static function (array $row): bool {
-        return effective_user_role($row) === 'admin';
-    }));
+    return aapm_verified_admin_count(db());
 }
 
-function admin_create_user(array $input): array
+function admin_create_user(array $actor, array $input): array
 {
     $email = normalize_email($input['email'] ?? '');
     $password = (string) ($input['password'] ?? '');
@@ -1741,59 +2028,115 @@ function admin_create_user(array $input): array
     if ($existing->fetch()) {
         error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
     }
-    db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)')->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user']);
-    $id = (int) db()->lastInsertId();
-    $created = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+
+    // An admin role on a new account stays inert until identity verification completes.
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)')
+            ->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user', aapm_utc_now()]);
+        $id = (int) $pdo->lastInsertId();
+        $token = aapm_issue_verification_token($pdo, $id);
+        aapm_audit('admin.user_created', 'ok', (int) $actor['id'], $id, ['role_to' => $requestedRole === 'admin' ? 'admin' : 'learner']);
+        aapm_tx_commit($pdo);
+    } catch (PDOException $exception) {
+        aapm_tx_rollback($pdo);
+        if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
+            error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+        }
+        throw $exception;
+    }
+    aapm_audit('auth.verification_sent', aapm_send_verification_email($email, $token) ? 'sent' : 'delivery_failed', null, $id, ['channel' => 'email']);
+
+    $created = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $created->execute([$id]);
     return present_authenticated_user($created->fetch() ?: []);
 }
 
 function admin_update_user(array $actor, int $userId, array $input): array
 {
-    $statement = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
-    $statement->execute([$userId]);
-    $target = $statement->fetch();
-    if (!$target) {
-        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        aapm_lock_admin_rows($pdo);
+        $statement = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
+        $statement->execute([$userId]);
+        $target = $statement->fetch();
+        if (!$target) {
+            aapm_tx_rollback($pdo);
+            error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+        }
+        $fullName = array_key_exists('fullName', $input) || array_key_exists('full_name', $input)
+            ? profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160)
+            : (string) $target['full_name'];
+        if ($fullName === '') {
+            aapm_tx_rollback($pdo);
+            error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
+        }
+
+        $storedBefore = strtolower(trim((string) $target['role'])) === 'admin' ? 'admin' : 'user';
+        $storedAfter = $storedBefore;
+        if (array_key_exists('role', $input)) {
+            $requested = strtolower(trim((string) $input['role']));
+            if (!in_array($requested, ['learner', 'admin'], true)) {
+                aapm_tx_rollback($pdo);
+                error_response('Role pengguna tidak valid.', 422, 'validation_error');
+            }
+            $storedAfter = $requested === 'admin' ? 'admin' : 'user';
+            if ((int) $actor['id'] === $userId && $storedAfter !== 'admin') {
+                aapm_tx_rollback($pdo);
+                error_response('Anda tidak dapat menurunkan role admin pada akun sendiri.', 422, 'self_demotion');
+            }
+            if (effective_user_role($target) === 'admin' && $storedAfter !== 'admin' && aapm_verified_admin_count($pdo) <= 1) {
+                aapm_tx_rollback($pdo);
+                error_response('Minimal satu admin terverifikasi harus tetap tersedia.', 422, 'last_admin');
+            }
+        }
+
+        $pdo->prepare('UPDATE users SET full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            ->execute([$fullName, $storedAfter, $userId]);
+        if ($storedAfter !== $storedBefore) {
+            aapm_bump_auth_version($pdo, $userId);
+            aapm_audit('admin.role_changed', 'ok', (int) $actor['id'], $userId, [
+                'role_from' => $storedBefore === 'admin' ? 'admin' : 'learner',
+                'role_to' => $storedAfter === 'admin' ? 'admin' : 'learner',
+            ]);
+        }
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
     }
-    $fullName = array_key_exists('fullName', $input) || array_key_exists('full_name', $input) ? profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160) : (string) $target['full_name'];
-    if ($fullName === '') {
-        error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
-    }
-    $newRole = effective_user_role($target);
-    if (array_key_exists('role', $input)) {
-        $newRole = strtolower(trim((string) $input['role']));
-        if (!in_array($newRole, ['learner', 'admin'], true)) {
-            error_response('Role pengguna tidak valid.', 422, 'validation_error');
-        }
-        if ($newRole !== 'admin' && in_array(normalize_email($target['email']), configured_admin_emails(), true)) {
-            error_response('Role admin untuk email ini diatur melalui konfigurasi server.', 422, 'role_managed_by_config');
-        }
-        if ($newRole !== 'admin' && effective_user_role($target) === 'admin' && admin_effective_admin_count() <= 1) {
-            error_response('Minimal satu admin harus tetap tersedia.', 422, 'last_admin');
-        }
-        if ((int) $actor['id'] === $userId && $newRole !== 'admin') {
-            error_response('Anda tidak dapat menurunkan role admin pada akun sendiri.', 422, 'self_demotion');
-        }
-    }
-    db()->prepare('UPDATE users SET full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([$fullName, $newRole === 'admin' ? 'admin' : 'user', $userId]);
-    $fresh = db()->prepare('SELECT id, email, full_name, role, created_at FROM users WHERE id = ? LIMIT 1');
+
+    $fresh = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $fresh->execute([$userId]);
     return present_authenticated_user($fresh->fetch() ?: []);
 }
 
-function admin_reset_user_password(int $userId, string $password): void
+function admin_reset_user_password(array $actor, int $userId, string $password): void
 {
     $passwordError = password_validation_error($password);
     if ($passwordError !== '') {
         error_response($passwordError, 422, 'validation_error');
     }
-    $exists = db()->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
-    $exists->execute([$userId]);
-    if (!$exists->fetch()) {
-        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        $exists = $pdo->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
+        $exists->execute([$userId]);
+        if (!$exists->fetch()) {
+            aapm_tx_rollback($pdo);
+            error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+        }
+        $pdo->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            ->execute([app_password_hash($password), $userId]);
+        aapm_audit('admin.password_reset', 'ok', (int) $actor['id'], $userId, []);
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
     }
-    db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), $userId]);
 }
 
 function admin_reset_user_progress(int $userId): array
@@ -1806,9 +2149,8 @@ function admin_reset_user_progress(int $userId): array
 
     db()->beginTransaction();
     try {
-        $delete = db()->prepare('DELETE FROM user_progress WHERE user_id = ?');
-        $delete->execute([$userId]);
-        $deletedEntries = $delete->rowCount();
+        $removed = aapm_delete_learner_evidence(db(), $userId);
+        $deletedEntries = $removed['legacyEntries'];
         db()->commit();
     } catch (Throwable $exception) {
         if (db()->inTransaction()) {
@@ -1820,6 +2162,8 @@ function admin_reset_user_progress(int $userId): array
     return [
         'userId' => $userId,
         'deletedEntries' => $deletedEntries,
+        'deletedAttempts' => $removed['attempts'],
+        'deletedEvents' => $removed['events'],
         'preservedCertificates' => true,
         'preservedFarmData' => true,
         'preservedConversations' => true,
@@ -2442,9 +2786,7 @@ function admin_update_module(int $moduleId, array $input): array
         if ($duplicate->fetch()) {
             error_response('Nomor modul sudah digunakan.', 409, 'module_number_exists');
         }
-        $progress = db()->prepare('SELECT COUNT(*) FROM user_progress WHERE module_number = ?');
-        $progress->execute([(int) $existing['module_number']]);
-        if ((int) $progress->fetchColumn() > 0) {
+        if (aapm_module_evidence_count(db(), (int) $existing['module_number']) > 0) {
             error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
         }
     }
@@ -2472,9 +2814,7 @@ function admin_delete_module(int $moduleId, bool $purgeProgress = false): array
     if (!$module) {
         error_response('Modul tidak ditemukan.', 404, 'not_found');
     }
-    $progress = db()->prepare('SELECT COUNT(*) FROM user_progress WHERE module_number = ?');
-    $progress->execute([(int) $module['module_number']]);
-    $progressCount = (int) $progress->fetchColumn();
+    $progressCount = aapm_module_evidence_count(db(), (int) $module['module_number']);
     if ($progressCount > 0 && !$purgeProgress) {
         error_response('Modul memiliki progres learner. Konfirmasi penghapusan bersama progres untuk melanjutkan.', 422, 'module_has_progress');
     }
@@ -2482,7 +2822,7 @@ function admin_delete_module(int $moduleId, bool $purgeProgress = false): array
     try {
         db()->prepare('DELETE FROM quiz_questions WHERE module_number = ?')->execute([(int) $module['module_number']]);
         if ($progressCount > 0) {
-            db()->prepare('DELETE FROM user_progress WHERE module_number = ?')->execute([(int) $module['module_number']]);
+            aapm_delete_module_evidence(db(), (int) $module['module_number']);
         }
         db()->prepare('DELETE FROM course_modules WHERE id = ?')->execute([$moduleId]);
         db()->commit();

@@ -13,7 +13,12 @@ declare(strict_types=1);
  *   php database/migrate.php --plan
  *   php database/migrate.php --verify        # plan + data integrity checks
  *   php database/migrate.php --apply         # apply additive columns and indexes
- *   php database/migrate.php --apply --verify
+ *   php database/migrate.php --apply --verify --expect-environment=<env>
+ *   php database/migrate.php --init-environment-marker --expect-environment=<env>
+ *
+ * Select the private config with AAPLAYERACADEMY_CONFIG. --apply and
+ * --init-environment-marker must name the expected environment, which is
+ * compared with the config before any database connection is opened.
  *
  * No command in this file deletes or rewrites learner, course, quiz, or AI
  * records. DDL can still acquire a short metadata lock, so run --apply on
@@ -31,8 +36,13 @@ require_once __DIR__ . '/../public/api/bootstrap.php';
 const AAPM_SCHEMA_MIGRATION_KEY = '20260909_ai_conversation_archiving_v1';
 
 $arguments = array_slice($argv, 1);
-$allowedArguments = ['--apply', '--plan', '--verify', '--json'];
+$allowedArguments = ['--apply', '--plan', '--verify', '--json', '--init-environment-marker'];
+$expectedEnvironment = null;
 foreach ($arguments as $argument) {
+    if (strpos($argument, '--expect-environment=') === 0) {
+        $expectedEnvironment = strtolower(trim(substr($argument, strlen('--expect-environment='))));
+        continue;
+    }
     if (!in_array($argument, $allowedArguments, true)) {
         fwrite(STDERR, "Argumen tidak dikenal: {$argument}\n");
         exit(2);
@@ -45,14 +55,48 @@ if ($apply && $explicitPlan) {
     fwrite(STDERR, "Gunakan --apply atau --plan, bukan keduanya.\n");
     exit(2);
 }
+$initMarker = in_array('--init-environment-marker', $arguments, true);
+if ($initMarker && ($apply || $explicitPlan)) {
+    fwrite(STDERR, "--init-environment-marker tidak dapat digabung dengan --apply atau --plan.\n");
+    exit(2);
+}
 $verify = in_array('--verify', $arguments, true) || $apply;
 $jsonOutput = in_array('--json', $arguments, true);
 
 try {
     $config = app_config();
     $driver = strtolower(trim((string) ($config['db_driver'] ?? '')));
+    $environment = (string) $config['environment'];
+    $markerRequired = !empty($config['environment_marker_required']);
+    // Target guard: decided from the private config before any connection.
+    if ($expectedEnvironment !== null && $expectedEnvironment !== $environment) {
+        fwrite(STDERR, "Target tidak cocok: konfigurasi memakai lingkungan {$environment}, --expect-environment={$expectedEnvironment}. Tidak ada perubahan.\n");
+        exit(2);
+    }
+    if (($apply || $initMarker) && $expectedEnvironment === null) {
+        fwrite(STDERR, "--expect-environment=<lingkungan> wajib untuk --apply dan --init-environment-marker. Tidak ada perubahan.\n");
+        exit(2);
+    }
     $pdo = migration_connection($config, $driver);
     $databaseName = migration_database_name($pdo, $driver);
+    $markerStatus = migration_environment_marker_status($pdo, $environment);
+    if ($initMarker) {
+        $markerResult = migration_initialise_environment_marker($pdo, $driver, $environment);
+        migration_output([
+            'mode' => 'init-environment-marker',
+            'target' => ['environment' => $environment, 'driver' => $driver, 'database' => $databaseName],
+            'environmentMarker' => $markerResult,
+            'applied' => false,
+            'missingTables' => [],
+            'columns' => [],
+            'indexes' => [],
+            'health' => [],
+        ], $jsonOutput);
+        exit(0);
+    }
+    if ($apply && $markerRequired && $markerStatus !== 'verified') {
+        throw new RuntimeException('Penanda lingkungan database belum valid (' . $markerStatus . '). Jalankan --init-environment-marker terlebih dahulu. Tidak ada perubahan.');
+    }
     $expectedIndexes = migration_expected_indexes();
     $expectedColumns = migration_expected_columns();
     $checksum = hash(
@@ -99,6 +143,9 @@ try {
         'columns' => $columnPlan,
         'indexes' => $indexPlan,
         'applied' => false,
+        'target' => ['environment' => $environment, 'driver' => $driver, 'database' => $databaseName],
+        'environmentMarker' => $markerStatus,
+        'markerRequired' => $markerRequired,
         'health' => [],
     ];
 
@@ -138,11 +185,20 @@ try {
             $pdo->exec("CREATE INDEX {$name} ON {$table} ({$columns})");
         }
         migration_record($pdo, $driver, AAPM_SCHEMA_MIGRATION_KEY, $checksum);
+        // Q02 adds its own recorded key; the Q01 key above is never repurposed.
+        aapm_ensure_auth_security_schema($pdo, $driver);
+        migration_record($pdo, $driver, AAPM_AUTH_SCHEMA_KEY, hash('sha256', AAPM_AUTH_SCHEMA_KEY . ':users+tokens+audit'));
+        // Q03 has its own key. It adds the assessment tables, installs policy academy-v1, and snapshots legacy progress once.
+        aapm_ensure_assessment_schema($pdo, $driver);
+        aapm_snapshot_legacy_progress($pdo);
+        migration_record($pdo, $driver, AAPM_ASSESSMENT_SCHEMA_KEY, hash('sha256', AAPM_ASSESSMENT_SCHEMA_KEY . ':attempts+items+events+policy+legacy-snapshot'));
         $result['applied'] = true;
         $result['columns'] = migration_column_plan($pdo, $driver, $expectedColumns);
         $result['indexes'] = migration_index_plan($pdo, $driver, $expectedIndexes);
     }
 
+    $result['authSchema'] = aapm_auth_schema_status($pdo);
+    $result['assessmentSchema'] = aapm_assessment_schema_status($pdo);
     if ($verify) {
         $result['health'] = migration_health_checks($pdo, $driver);
     }
@@ -167,7 +223,7 @@ function migration_connection(array $config, string $driver): PDO
     if ($driver === 'sqlite') {
         $path = trim((string) ($config['db_path'] ?? ''));
         if ($path === '') {
-            $path = dirname(__DIR__) . '/storage/aapmlayeracademy.sqlite';
+            throw new RuntimeException('Jalur database SQLite belum dikonfigurasi.');
         }
         if (!is_file($path)) {
             throw new RuntimeException("Database SQLite tidak ditemukan: {$path}");
@@ -189,6 +245,48 @@ function migration_connection(array $config, string $driver): PDO
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     return $pdo;
+}
+
+/** Read-only: verified, missing, or mismatch. Never creates anything. */
+function migration_environment_marker_status(PDO $pdo, string $environment): string
+{
+    try {
+        $rows = $pdo->query('SELECT environment FROM aapm_environment_marker WHERE id = 1')->fetchAll();
+    } catch (PDOException $exception) {
+        return 'missing';
+    }
+    if (count($rows) !== 1) {
+        return 'missing';
+    }
+
+    return strtolower(trim((string) $rows[0]['environment'])) === $environment ? 'verified' : 'mismatch';
+}
+
+/** Creates the marker only when absent. An existing marker for another environment is never overwritten. */
+function migration_initialise_environment_marker(PDO $pdo, string $driver, string $environment): string
+{
+    $suffix = $driver === 'mysql' ? ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci' : '';
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS aapm_environment_marker (
+            id INTEGER NOT NULL,
+            environment VARCHAR(32) NOT NULL,
+            provisioned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        )' . $suffix
+    );
+
+    $status = migration_environment_marker_status($pdo, $environment);
+    if ($status === 'verified') {
+        return 'already_verified';
+    }
+    if ($status === 'mismatch') {
+        throw new RuntimeException('Penanda lingkungan sudah terisi untuk lingkungan lain. Penanda tidak diubah.');
+    }
+
+    $insert = $pdo->prepare('INSERT INTO aapm_environment_marker (id, environment) VALUES (1, ?)');
+    $insert->execute([$environment]);
+
+    return 'created';
 }
 
 function migration_database_name(PDO $pdo, string $driver): string
@@ -536,6 +634,19 @@ function migration_output(array $result, bool $jsonOutput): void
     echo "AAPM database {$result['mode']}\n";
     echo "Driver: {$result['driver']}\n";
     echo "Database: {$result['database']}\n";
+    if (isset($result['target'])) {
+        echo "Environment: {$result['target']['environment']}\n";
+    }
+    if (isset($result['environmentMarker'])) {
+        echo "Environment marker: {$result['environmentMarker']}\n";
+    }
+    if (isset($result['assessmentSchema'])) {
+        echo 'Assessment schema: ' . (in_array(false, $result['assessmentSchema'], true) ? 'missing' : 'present') . "
+";
+    }
+    if (isset($result['authSchema'])) {
+        echo 'Auth schema: ' . (in_array(false, $result['authSchema'], true) ? 'missing' : 'present') . "\n";
+    }
     echo "Migration: {$result['migration']}\n";
     if ($result['missingTables']) {
         echo 'Missing tables: ' . implode(', ', $result['missingTables']) . "\n";
@@ -579,6 +690,9 @@ function migration_output(array $result, bool $jsonOutput): void
 /** @param array<string,mixed> $result */
 function migration_exit_code(array $result): int
 {
+    if (isset($result['authSchema']) && in_array(false, $result['authSchema'], true)) return 1;
+    if (isset($result['assessmentSchema']) && in_array(false, $result['assessmentSchema'], true)) return 1;
+    if (!empty($result['markerRequired']) && ($result['environmentMarker'] ?? '') !== 'verified') return 1;
     if (!empty($result['missingTables'])) return 1;
     foreach ($result['columns'] as $column) {
         if (in_array($column['status'], ['missing', 'missing_table'], true)) return 1;

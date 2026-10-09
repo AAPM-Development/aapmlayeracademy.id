@@ -284,12 +284,9 @@ function ai_account_context_for_user(int $userId): array
     $userStatement->execute([$userId]);
     $profile = $userStatement->fetch() ?: [];
 
-    $progressStatement = db()->prepare('SELECT p.module_number, p.completed, p.quiz_score, p.quiz_total, p.practical_done, p.time_spent_minutes, p.updated_at, m.title AS module_title, m.level_name FROM user_progress p LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? ORDER BY p.updated_at DESC, p.module_number ASC LIMIT 16');
-    $progressStatement->execute([$userId]);
-
     return [
         'profile' => $profile,
-        'progress' => $progressStatement->fetchAll(),
+        'progress' => array_slice(admin_learner_progress_rows(db(), $userId), 0, 16),
     ];
 }
 

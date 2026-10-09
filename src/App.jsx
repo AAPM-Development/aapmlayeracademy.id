@@ -33,6 +33,7 @@ const Login = lazy(() => loadRouteModule('login'));
 const Register = lazy(() => loadRouteModule('register'));
 const ForgotPassword = lazy(() => loadRouteModule('forgotPassword'));
 const ResetPassword = lazy(() => loadRouteModule('resetPassword'));
+const VerifyEmail = lazy(() => loadRouteModule('verifyEmail'));
 const AdminOverview = lazy(() => loadRouteModule('adminOverview'));
 const AdminCourses = lazy(() => loadRouteModule('adminCourses'));
 const AdminCourseDetail = lazy(() => loadRouteModule('adminCourseDetail'));
@@ -102,6 +103,7 @@ const AuthenticatedApp = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />

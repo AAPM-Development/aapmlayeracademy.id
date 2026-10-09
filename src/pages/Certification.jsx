@@ -5,10 +5,9 @@ import { StatTile } from "@/components/academy/CourseElements";
 import { hueFor } from "@/design-system/components/display";
 import CertificationPath from "@/components/academy/CertificationPath";
 import { Button, IconButton, IconTile, PageHeader, SectionHeader, useToast } from "@/components/primitives";
-import { useCertificates, useIssueCertificate, useModules, useUserProgress } from "@/lib/useCourseData";
+import { useCertificates, useFinalEligibility, useModules, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, TOTAL_MODULES } from "@/lib/academyData";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { useAuth } from "@/lib/AuthContext";
 
 async function downloadCertificatePdf(certificate) {
   const { jsPDF } = await import("jspdf");
@@ -46,13 +45,11 @@ async function downloadCertificatePdf(certificate) {
 }
 
 export default function Certification() {
-  const { user } = useAuth();
   const [downloadingId, setDownloadingId] = useState(null);
   const { data: modules = [], isLoading: modulesLoading } = useModules();
   const { data: progress = [] } = useUserProgress();
   const { data: certificates = [] } = useCertificates();
-  const issue = useIssueCertificate();
-  const issueCertificate = /** @type {any} */ (issue.mutateAsync);
+  const { data: eligibility } = useFinalEligibility();
   const { toast } = useToast();
   const progressSummary = getProgressSummary(
     modules,
@@ -61,16 +58,14 @@ export default function Certification() {
   );
   const completedModules = progressSummary.completed;
   const totalModules = progressSummary.total;
-  const finalExamPassed = progress.some((item) => Number(item?.moduleNumber) === 0 && item.completed);
+  // The final exam's outcome is decided on the server (module 0 is never a curriculum completion).
+  const finalExamPassed = eligibility?.finalStatus === "passed";
   const curriculumPercent = progressSummary.percent;
 
-  const claim = async (tier) => {
-    try {
-      await issueCertificate({ levelNumber: tier.number, levelName: tier.name, score: 100, examType: "level", holderName: user?.full_name || user?.email || "Peserta Layer Farm Academy" });
-      toast({ title: "Sertifikat diterbitkan", description: `${tier.name} siap dilihat di profil Anda.` });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Sertifikat belum diterbitkan", description: error.message });
-    }
+  // Certificates are not issued from the browser. Issuance moves to a verified
+  // server path; until then a claim only explains the state.
+  const claim = () => {
+    toast({ title: "Sertifikat belum dapat diklaim", description: "Penerbitan sertifikat yang aman sedang disiapkan. Progress Anda tetap tersimpan." });
   };
 
   const download = async (certificate) => {
@@ -105,7 +100,7 @@ export default function Certification() {
           description="Status tingkat mengikuti progress yang tersimpan di akun Anda."
           actions={!finalExamPassed ? <Button asChild variant="secondary" size="sm"><Link to="/final-exam"><AapmIcon name="exam" />Ujian akhir</Link></Button> : null}
         />
-        <CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} claiming={issue.isPending} />
+        <CertificationPath modules={modules} progress={progress} certificates={certificates} onClaim={claim} />
       </section>
 
       {certificates.length > 0 ? (

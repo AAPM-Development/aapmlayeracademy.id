@@ -30,10 +30,11 @@ export function AssessmentBar({ onExit, total = 0, current = 0, states = [], lab
 
 /**
  * One question with A/B/C/D choice cards (radiogroup). `revealed` shows the
- * correct and chosen-wrong options after checking. The quiz page maps the
- * A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
+ * correct and chosen-wrong options after checking; `correctIndex` is the
+ * server's answer for that check, never a value the page holds. The quiz page
+ * maps the A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
  */
-export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, meta, children = null }) {
+export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, correctIndex = null, meta, children = null }) {
   if (!question) return null;
   const titleId = `question-${number}`;
   return (
@@ -49,7 +50,7 @@ export function QuizQuestion({ question, number, total, answer, onAnswer, reveal
       <div className="aapm-choices aapm-motion-stack" role="radiogroup" aria-labelledby={titleId}>
         {question.options.map((option, index) => {
           const selected = answer === index;
-          const result = revealed ? (index === question.correctIndex ? "correct" : selected ? "wrong" : undefined) : undefined;
+          const result = revealed ? (index === correctIndex ? "correct" : selected ? "wrong" : undefined) : undefined;
           return (
             <button
               key={`${option}-${index}`}
@@ -75,9 +76,9 @@ export function QuizQuestion({ question, number, total, answer, onAnswer, reveal
 }
 
 /** Short screen-reader sentence for a checked answer (feeds a live region). */
-export function checkAnnouncement(question, answer, run = 0) {
-  if (!question || answer === undefined) return "";
-  if (answer !== question.correctIndex) return `Belum tepat. Jawaban benar: ${question.options[question.correctIndex]}.`;
+export function checkAnnouncement(question, feedback, run = 0) {
+  if (!question || !feedback) return "";
+  if (!feedback.isCorrect) return `Belum tepat. Jawaban benar: ${question.options[feedback.correctIndex]}.`;
   return run >= 3 ? `Tepat sekali! ${run} benar beruntun.` : "Tepat sekali!";
 }
 
@@ -87,9 +88,9 @@ export function checkAnnouncement(question, answer, run = 0) {
  * correct answers from three on. The bar itself carries the tone; the
  * announcement goes through the page's persistent live region.
  */
-export function CheckFeedback({ question, answer, run = 0 }) {
-  if (!question || answer === undefined) return null;
-  const correct = answer === question.correctIndex;
+export function CheckFeedback({ question, feedback, run = 0 }) {
+  if (!question || !feedback) return null;
+  const correct = feedback.isCorrect;
   return (
     <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"}>
       <span className="aapm-check-feedback__icon" aria-hidden="true"><AapmIcon name={correct ? "glyphCheck" : "close"} /></span>
@@ -98,8 +99,8 @@ export function CheckFeedback({ question, answer, run = 0 }) {
           {correct ? "Tepat sekali!" : "Belum tepat"}
           {correct && run >= 3 ? <span className="aapm-check-feedback__run"><AapmIcon name="streak" />{run} benar beruntun</span> : null}
         </p>
-        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[question.correctIndex]}</strong></p> : null}
-        {question.explanation ? <p className="aapm-check-feedback__text">{question.explanation}</p> : null}
+        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[feedback.correctIndex]}</strong></p> : null}
+        {feedback.explanation ? <p className="aapm-check-feedback__text">{feedback.explanation}</p> : null}
       </div>
     </div>
   );
@@ -165,8 +166,11 @@ export function AssessmentResult({ passed = false, score = 0, total = 0, passing
   );
 }
 
-/** Answer review after submission. */
-export function AnswerReview({ questions = [], answers = {} }) {
+/**
+ * Answer review after submission. Each item is a checked attempt question
+ * with the server's `feedback`; the final exam never renders this.
+ */
+export function AnswerReview({ questions = [] }) {
   return (
     <details className="aapm-card aapm-disclosure mt-6">
       <summary className="aapm-card__header">
@@ -178,13 +182,13 @@ export function AnswerReview({ questions = [], answers = {} }) {
       </summary>
       <ol className="aapm-card__content m-0 grid list-none gap-2 p-5 pt-0">
         {questions.map((item, index) => {
-          const correct = answers[index] === item.correctIndex;
+          const correct = Boolean(item.feedback?.isCorrect);
           return (
             <li key={item.id || index} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-[var(--aapm-primitive-radius-panel)] bg-[var(--aapm-semantic-surface-subtle)] p-3">
               <span className="aapm-icon-tile" data-size="xs" data-shape="circle" data-hue={correct ? "green" : "rose"}><AapmIcon name={correct ? "check" : "closeCircle"} /></span>
               <div className="min-w-0">
                 <p className="m-0 text-body font-medium">{index + 1}. {item.question}</p>
-                <p className="m-0 text-caption text-muted-foreground">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.correctIndex]}`}</p>
+                <p className="m-0 text-caption text-muted-foreground">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.feedback?.correctIndex]}`}</p>
               </div>
             </li>
           );
