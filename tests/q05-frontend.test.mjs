@@ -42,6 +42,9 @@ test("curriculum phone actions clear the retained shell navigation and policy co
   assert.match(bar.bottom, /var\(--aapm-component-bottom-nav-height\).*env\(safe-area-inset-bottom\)/, "bar clears the actual shell height plus device safe area");
   assert.equal(declarations(".aapm-curriculum-actionbar__desktop").display, "none", "the phone bar cannot wrap the complete desktop action group into a tall stack");
   assert.equal(declarations(".aapm-curriculum-actionbar__mobile").display, "flex");
+  const touchTarget = declarations(".aapm-curriculum-actionbar__mobile :is(.aapm-button, .aapm-icon-button)");
+  assert.equal(touchTarget["min-height"], "44px");
+  assert.equal(touchTarget["min-width"], "44px");
   assert.equal(declarations(".aapm-page > .aapm-curriculum-editor").animation, "none", "entrance transforms cannot anchor the fixed action bar to the form");
   assert.ok(declarations(".aapm-curriculum-editor")["padding-bottom"], "last form controls can scroll clear of the fixed action bar");
   let selectorGrid;

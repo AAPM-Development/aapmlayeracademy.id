@@ -27,6 +27,7 @@
   }
   .aapm-curriculum-actionbar__desktop { display: none; }
   .aapm-curriculum-actionbar__mobile { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); }
+  .aapm-curriculum-actionbar__mobile :is(.aapm-button, .aapm-icon-button) { min-height: 44px; min-width: 44px; }
   .aapm-curriculum-actionbar__primary { flex: 1; min-width: 0; }
   .aapm-curriculum-actionbar__status { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
