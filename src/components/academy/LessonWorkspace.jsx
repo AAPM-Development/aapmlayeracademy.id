@@ -2,6 +2,7 @@ import React from "react";
 import { Alert, Badge, CheckboxField, IconTile } from "@/design-system";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 
 export const lessonSections = [
   { id: "content", label: "Materi", icon: "lesson" },
@@ -91,19 +92,15 @@ export function LessonMedia({ module = null } = {}) {
     // An embed can be blocked (network, extensions, region); the original link
     // is always one tap away instead of a dead grey frame.
     const provider = /vimeo/.test(source.src) ? "Vimeo" : "YouTube";
+    const youtubeId = source.kind === "embed" && provider === "YouTube"
+      ? new URL(source.src).pathname.split("/").pop()
+      : null;
+    if (source.kind === "file" || youtubeId) {
+      return <LessonVideoPlayer key={source.src} src={source.src} videoId={youtubeId} title={`Video ${module.title || "materi"}`} fallbackUrl={mediaUrl} />;
+    }
     return (
       <>
       <div className="aapm-lesson-media">
-        {source.kind === "file" ? (
-          <video
-            className="absolute inset-0 h-full w-full object-contain"
-            controls
-            playsInline
-            preload="metadata"
-            src={source.src}
-          />
-        ) : (
-          <>
             {loadedEmbedSource !== source.src && <div className="aapm-lesson-media__loading" aria-live="polite"><span className="aapm-spinner" aria-hidden="true" />Memuat video…</div>}
             <iframe
               className="absolute inset-0 h-full w-full"
@@ -115,8 +112,6 @@ export function LessonMedia({ module = null } = {}) {
               allowFullScreen
               onLoad={() => setLoadedEmbedSource(source.src)}
             />
-          </>
-        )}
       </div>
       {source.kind === "embed" ? (
         <p className="aapm-lesson-media__fallback">
