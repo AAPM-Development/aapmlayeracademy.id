@@ -621,9 +621,7 @@
 /* The shell is the only source of form rhythm: one gap between fields. */
 .aapm-auth__form > form,
 .aapm-auth__stack { display: grid; width: 100%; gap: var(--aapm-primitive-space-5); }
-.aapm-auth__form .aapm-field { text-align: center; }
-.aapm-auth__form .aapm-label { justify-content: center; }
-.aapm-auth__form .aapm-field > div:first-child { justify-content: center; }
+.aapm-auth__form .aapm-field { text-align: left; }
 .aapm-auth__divider { width: 100%; }
 .aapm-auth__form > form > .aapm-button[type="submit"] { margin-top: var(--aapm-primitive-space-2); }
 .aapm-auth__form .aapm-input { min-height: var(--aapm-component-action-height-lg); }
