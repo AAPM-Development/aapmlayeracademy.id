@@ -195,6 +195,10 @@ try {
         // Q04 adds academic generations, tier policies, certificate issuances, immutable evidence, and audit events. Additive only.
         aapm_ensure_certification_schema($pdo, $driver);
         migration_record($pdo, $driver, AAPM_CERT_SCHEMA_KEY, hash('sha256', AAPM_CERT_SCHEMA_KEY . ':generations+tiers+issuances+evidence+events'));
+        // Q05 backfills existing modules as published revisions, creates policy academy-v1, and assigns every existing account to it, once.
+        aapm_ensure_curriculum_schema($pdo, $driver);
+        $result['curriculumAssigned'] = aapm_cur_assign_existing_learners($pdo);
+        migration_record($pdo, $driver, AAPM_CUR_SCHEMA_KEY, hash('sha256', AAPM_CUR_SCHEMA_KEY . ':revisions+banks+policies+assignments+events'));
         $result['applied'] = true;
         $result['columns'] = migration_column_plan($pdo, $driver, $expectedColumns);
         $result['indexes'] = migration_index_plan($pdo, $driver, $expectedIndexes);
@@ -203,6 +207,7 @@ try {
     $result['authSchema'] = aapm_auth_schema_status($pdo);
     $result['assessmentSchema'] = aapm_assessment_schema_status($pdo);
     $result['certificationSchema'] = aapm_certification_schema_status($pdo);
+    $result['curriculumSchema'] = aapm_cur_schema_status($pdo);
     if ($verify) {
         $result['health'] = migration_health_checks($pdo, $driver);
     }
@@ -652,6 +657,10 @@ function migration_output(array $result, bool $jsonOutput): void
         echo 'Certification schema: ' . (in_array(false, $result['certificationSchema'], true) ? 'missing' : 'present') . "
 ";
     }
+    if (isset($result['curriculumSchema'])) {
+        echo 'Curriculum schema: ' . (in_array(false, $result['curriculumSchema'], true) ? 'missing' : 'present') . "
+";
+    }
     if (isset($result['authSchema'])) {
         echo 'Auth schema: ' . (in_array(false, $result['authSchema'], true) ? 'missing' : 'present') . "\n";
     }
@@ -701,6 +710,7 @@ function migration_exit_code(array $result): int
     if (isset($result['authSchema']) && in_array(false, $result['authSchema'], true)) return 1;
     if (isset($result['assessmentSchema']) && in_array(false, $result['assessmentSchema'], true)) return 1;
     if (isset($result['certificationSchema']) && in_array(false, $result['certificationSchema'], true)) return 1;
+    if (isset($result['curriculumSchema']) && in_array(false, $result['curriculumSchema'], true)) return 1;
     if (!empty($result['markerRequired']) && ($result['environmentMarker'] ?? '') !== 'verified') return 1;
     if (!empty($result['missingTables'])) return 1;
     foreach ($result['columns'] as $column) {

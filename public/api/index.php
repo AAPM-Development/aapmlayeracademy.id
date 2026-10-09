@@ -102,6 +102,7 @@ try {
                 $insert = db()->prepare('INSERT INTO users (email, password_hash, full_name, role, email_verified_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)');
                 $insert->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $fullName, 'user', aapm_utc_now()]);
                 $userId = (int) db()->lastInsertId();
+                aapm_assign_new_learner_policy(db(), $userId, 'oauth_registration');
             } catch (PDOException $exception) {
                 if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
                     throw $exception;
@@ -207,6 +208,7 @@ try {
                 $insert = $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)');
                 $insert->execute([$email, app_password_hash($password), $fullName, 'user', aapm_utc_now()]);
                 $userId = (int) $pdo->lastInsertId();
+                aapm_assign_new_learner_policy($pdo, $userId, 'registration');
                 $token = aapm_issue_verification_token($pdo, $userId);
                 aapm_tx_commit($pdo);
             } catch (PDOException $exception) {
@@ -489,69 +491,166 @@ try {
     }
 
     if ($path === 'admin/modules' && $method === 'POST') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['module' => admin_create_module(request_json())], 201);
+        json_response(aapm_cur_create_module(request_json(), (int) $actor['id']), 201);
     }
 
     if ($path === 'admin/modules/reorder' && $method === 'PUT') {
         require_admin();
         require_csrf();
-        $input = request_json();
-        json_response(['course' => admin_reorder_modules($input['items'] ?? [])]);
+        // Curriculum order is an academic structure: it changes through a policy draft, never the live catalogue.
+        error_response('Urutan kurikulum diubah melalui draf kebijakan kurikulum. Perubahan langsung ke modul terbit sudah dinonaktifkan.', 409, 'curriculum_structure_draft_required');
     }
 
     if (preg_match('#^admin/chapters/(\\d+)$#', $path, $matches) && $method === 'PUT') {
         require_admin();
         require_csrf();
-        $input = request_json();
-        json_response(['course' => admin_rename_chapter((int) $matches[1], (string) ($input['levelName'] ?? ''))]);
+        error_response('Nama chapter diubah melalui draf modul. Perubahan langsung ke modul terbit sudah dinonaktifkan.', 409, 'curriculum_structure_draft_required');
     }
 
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'GET') {
         require_admin();
-        $module = admin_module_from_id((int) $matches[1]);
-        if (!$module) {
-            error_response('Modul tidak ditemukan.', 404, 'not_found');
-        }
-        json_response(['module' => present_module($module)]);
+        $view = ($_GET['view'] ?? 'published') === 'draft' ? 'draft' : 'published';
+        json_response(aapm_cur_admin_module_view(aapm_cur_module_or_fail(db(), (int) $matches[1]), $view));
     }
 
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'PUT') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['module' => admin_update_module((int) $matches[1], request_json())]);
+        json_response(aapm_cur_save_draft((int) $matches[1], request_json(), (int) $actor['id']));
     }
 
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
+        $actor = require_admin();
+        require_csrf();
+        aapm_cur_delete((int) $matches[1], (int) $actor['id']);
+        json_response(['ok' => true, 'deleted' => true]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/preview$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        $module = (int) $matches[1];
+        json_response(aapm_cur_admin_module_view(aapm_cur_module_or_fail(db(), $module), 'draft') + ['validation' => aapm_cur_validate_module($module)]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/validate$#', $path, $matches) && $method === 'POST') {
         require_admin();
         require_csrf();
-        $purgeProgress = bool_value($_GET['purgeProgress'] ?? false) === 1;
-        json_response(['ok' => true, 'deleted' => admin_delete_module((int) $matches[1], $purgeProgress)]);
+        json_response(aapm_cur_validate_module((int) $matches[1]));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/publish-preview$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_cur_publish_preview((int) $matches[1]));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/publish$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? null) !== true) {
+            error_response('Konfirmasi penerbitan wajib dikirim.', 422, 'confirmation_required');
+        }
+        json_response(aapm_cur_publish((int) $matches[1], aapm_cur_expected_version($input), (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/archive$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? null) !== true) {
+            error_response('Konfirmasi pengarsipan wajib dikirim.', 422, 'confirmation_required');
+        }
+        json_response(aapm_cur_archive((int) $matches[1], (string) ($input['reason'] ?? ''), (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/restore$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_restore((int) $matches[1], (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/revisions$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(['revisions' => aapm_cur_revisions((int) $matches[1])]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/revisions/(\\d+)$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_cur_revision_detail((int) $matches[1], (int) $matches[2]));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/revisions/(\\d+)/copy-to-draft$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_copy_revision_to_draft((int) $matches[1], (int) $matches[2], aapm_cur_expected_version(request_json()), (int) $actor['id']));
     }
 
     if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'GET') {
         require_admin();
-        json_response(['questions' => admin_module_questions((int) $matches[1])]);
+        $view = aapm_cur_admin_module_view(aapm_cur_module_or_fail(db(), (int) $matches[1]), ($_GET['view'] ?? 'draft') === 'published' ? 'published' : 'draft');
+        json_response(['questions' => $view['questions'], 'draftVersion' => $view['draft']['version']]);
     }
 
     if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'POST') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['question' => admin_create_question((int) $matches[1], request_json())], 201);
+        $result = aapm_cur_question_write((int) $matches[1], 'create', request_json(), null, (int) $actor['id']);
+        json_response(['question' => $result['question'], 'draftVersion' => $result['draftVersion']], 201);
     }
 
-    if (preg_match('#^admin/modules/(\\d+)/questions/(\\d+)$#', $path, $matches) && $method === 'PUT') {
-        require_admin();
+    if (preg_match('#^admin/modules/(\\d+)/questions/(-?\\d+)$#', $path, $matches) && $method === 'PUT') {
+        $actor = require_admin();
         require_csrf();
-        json_response(['question' => admin_update_question((int) $matches[1], (int) $matches[2], request_json())]);
+        $result = aapm_cur_question_write((int) $matches[1], 'update', request_json(), (int) $matches[2], (int) $actor['id']);
+        json_response(['question' => $result['question'], 'draftVersion' => $result['draftVersion']]);
     }
 
-    if (preg_match('#^admin/modules/(\\d+)/questions/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
-        require_admin();
+    if (preg_match('#^admin/modules/(\\d+)/questions/(-?\\d+)$#', $path, $matches) && $method === 'DELETE') {
+        $actor = require_admin();
         require_csrf();
-        admin_delete_question((int) $matches[1], (int) $matches[2]);
-        json_response(['ok' => true]);
+        $input = request_json();
+        if (!array_key_exists('expectedDraftVersion', $input) && isset($_GET['expectedDraftVersion'])) {
+            $input['expectedDraftVersion'] = $_GET['expectedDraftVersion'];
+        }
+        $result = aapm_cur_question_write((int) $matches[1], 'delete', $input, (int) $matches[2], (int) $actor['id']);
+        json_response(['ok' => true, 'draftVersion' => $result['draftVersion']]);
+    }
+
+    if ($path === 'admin/curriculum/policies' && $method === 'GET') {
+        require_admin();
+        json_response(['policies' => aapm_cur_policy_list()]);
+    }
+
+    if ($path === 'admin/curriculum/policies' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['policy' => aapm_cur_policy_create((string) ($input['version'] ?? 'academy-v2'), (int) $actor['id'])], 201);
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(['policy' => aapm_cur_policy_detail($matches[1])]);
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})$#', $path, $matches) && $method === 'PUT') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(['policy' => aapm_cur_policy_update($matches[1], request_json(), (int) $actor['id'])]);
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})/validate$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_policy_validate($matches[1], (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})/ready$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(['policy' => aapm_cur_policy_mark_ready($matches[1], (int) $actor['id'])]);
     }
 
     if ($path === 'admin/ai-settings' && $method === 'GET') {
@@ -621,9 +720,13 @@ try {
     }
 
     if ($path === 'modules' && $method === 'GET') {
-        require_user();
-        $rows = db()->query('SELECT * FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();
-        json_response(array_map('present_module', $rows));
+        $user = require_user();
+        json_response(array_map('present_module', aapm_cur_learner_modules(db(), (int) $user['id'])));
+    }
+
+    if ($path === 'curriculum/me' && $method === 'GET') {
+        $user = require_user();
+        json_response(['policyVersion' => aapm_learner_policy_version(db(), (int) $user['id'])]);
     }
 
     if ($path === 'quiz' && $method === 'GET') {

@@ -14,8 +14,8 @@ $spec = json_decode($argv[1] ?? '{}', true) ?: [];
 $pdo = db();
 
 $moduleInsert = $pdo->prepare(
-    'INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, video_script, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order, lifecycle_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 foreach ($spec['modules'] ?? [] as $module) {
     $moduleInsert->execute([
@@ -32,6 +32,7 @@ foreach ($spec['modules'] ?? [] as $module) {
         '[]',
         '',
         (int) ($module['sort_order'] ?? $module['module_number']),
+        (string) ($module['lifecycle_status'] ?? 'active'),
     ]);
 }
 

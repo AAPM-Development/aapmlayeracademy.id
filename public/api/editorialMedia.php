@@ -217,6 +217,24 @@ function editorial_referenced_uploads(): ?array
                 }
             }
         }
+        // Q05: a draft and every published revision keep their media referenced. Archived or replaced lessons keep their history.
+        foreach (['module_drafts', 'module_revisions'] as $table) {
+            if (!aapm_table_exists(db(), $table)) {
+                continue;
+            }
+            foreach (db()->query('SELECT content_payload_json FROM ' . $table)->fetchAll() as $row) {
+                $source = str_replace('\\/', '/', (string) $row['content_payload_json']);
+                if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf))#i', $source, $matches)) {
+                    continue;
+                }
+                foreach ($matches[0] as $url) {
+                    $relative = editorial_managed_upload_relative_path((string) $url);
+                    if ($relative !== null) {
+                        $references[$relative] = true;
+                    }
+                }
+            }
+        }
     } catch (Throwable $error) {
         error_log('Editorial media cleanup skipped: unable to read references.');
         return null;

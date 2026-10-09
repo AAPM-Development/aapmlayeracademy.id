@@ -245,10 +245,10 @@ function aapm_seed_assessment_policy(PDO $pdo): void
     }
 }
 
-function aapm_assessment_policy(PDO $pdo): array
+function aapm_assessment_policy(PDO $pdo, string $version = AAPM_ASSESSMENT_POLICY_VERSION): array
 {
     $row = $pdo->prepare('SELECT policy_version, required_modules_json, module_pass_percent, final_pass_percent FROM assessment_policies WHERE policy_version = ? LIMIT 1');
-    $row->execute([AAPM_ASSESSMENT_POLICY_VERSION]);
+    $row->execute([$version]);
     $policy = $row->fetch();
     if (!$policy) {
         throw new RuntimeException('assessment policy missing');
@@ -351,7 +351,8 @@ function aapm_assessment_user_lock(PDO $pdo, int $userId): void
 function aapm_module_catalog(PDO $pdo): array
 {
     $catalog = [];
-    foreach ($pdo->query('SELECT module_number, level_number, title FROM course_modules ORDER BY sort_order, module_number')->fetchAll() as $row) {
+    // Draft-only modules are not part of anyone's curriculum until published.
+    foreach ($pdo->query("SELECT module_number, level_number, title FROM course_modules WHERE lifecycle_status <> 'draft' ORDER BY sort_order, module_number")->fetchAll() as $row) {
         $catalog[(int) $row['module_number']] = [
             'levelNumber' => (int) $row['level_number'],
             'title' => (string) $row['title'],
@@ -531,7 +532,7 @@ function aapm_grade(array $items, int $passingGrade): array
  */
 function aapm_academic_snapshot(PDO $pdo, int $userId): array
 {
-    $policy = aapm_assessment_policy($pdo);
+    $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
     $catalog = aapm_module_catalog($pdo);
     $quizCounts = aapm_quiz_counts($pdo);
     $now = aapm_utc_now();
@@ -821,7 +822,7 @@ function aapm_assessment_start(array $user, array $input): array
 
         $catalog = aapm_module_catalog($pdo);
         $quizCounts = aapm_quiz_counts($pdo);
-        $policy = aapm_assessment_policy($pdo);
+        $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
 
         if ($type === 'module_quiz' && !isset($catalog[$moduleNumber])) {
             aapm_tx_rollback($pdo);

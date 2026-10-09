@@ -118,7 +118,7 @@ test("PRE-04.4/.5 a new pass restores completion, and the earlier score stays in
 
 test("PRE-03 (C04) a module with academic history cannot be deleted, even with purgeProgress", async () => {
   const { site } = await setup("pre3");
-  bulk(site, { modules: [{ module_number: 97, sort_order: 97 }] });
+  bulk(site, { modules: [{ module_number: 97, sort_order: 97, lifecycle_status: "draft" }] });
   await withSite(site, async (api) => {
     const learner = await signIn(api.port, "peserta-a@example.test");
     const admin = await signIn(api.port, "pengelola@example.test");
