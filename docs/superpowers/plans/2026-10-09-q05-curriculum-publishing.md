@@ -170,3 +170,22 @@
 - Initial `npm run lint`: PASS. Initial `npm run typecheck`: nonzero baseline errors across existing Profile, Quiz, Register, and ResetPassword components; compare after changes. Initial `npm run tokens:check`: stale generated `aapm-tokens.css` baseline; do not rewrite unrelated generated tokens merely to hide it.
 - SQLite supported; MySQL/MariaDB not yet verified. No staging/production operations authorized.
 - At recovery, Q05 tests had 27 pass / 0 fail / 4 skipped. Skipped cases were final exam, APPI external runtime, browser, and MySQL; Task 1 implements final exam and Tasks 2/4 supply remaining evidence.
+
+### Task 5: Complete curriculum-policy draft review and final-bank administration
+
+Added 2026-10-09 by the owner's renewed ECO-ACA-001 execution directive. Execute after Task 3 and before Task 4 verification.
+
+**Files:** native client/admin hooks; existing admin course routes and navigation; focused AAPM admin components/pages as appropriate; frontend/API tests.
+
+**Requirements:**
+- Provide verified-admin UI to list immutable academy-v1/current active policy and later drafts, create a subsequent policy draft, inspect/edit supported membership and assessment requirements through the existing canonical API, validate and prepare readiness. Show inherited learner assignment and certificate impact clearly. No browser activation endpoint or activation control; controlled audited server-side operator activation remains separate.
+- Require expected version where backend supports it, preserve unsaved edits on conflicts, and expose validation errors accessibly. Fix backend policy draft concurrency if needed to prevent silent overwrite. Never accept client-supplied learner assignments.
+- Expose final-exam bank draft/save/validate/publish review using Task1 versioned APIs. Use AAPM primitives and existing question-editor patterns, explicit confirmation and immutable-attempt warning. Draft changes never reach learners until publish.
+- Test real API contract behavior, authorization/CSRF negatives and concurrent stale writes; frontend tests supplement browser workflow proof.
+- Preserve current design system, editorial composer/APPI, and every Global Constraint above. No Q07 redesign. No remote operations.
+
+**Completion:** focused tests and lint; self-review; descriptive local source commit; report with exact contracts and limitations. Task4 must include policy/final-bank browser flows and the owner's staging artifact sequence.
+
+## Renewed owner artifact requirements
+
+Task4 must build the staging distribution from clean committed source, verify manifest, PHP/Node parity and LF export, then commit dist separately. Local review runtime remains disposable. Remote develop was reverified via GitHub connector as fahziputraj at 7a6e21c7c4190dce2a902328de88110a49800d12 on 2026-10-09; gh CLI itself has no authenticated account. No GitHub writes or local integration are authorized.
