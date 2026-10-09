@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/assessment.php';
 
 /**
  * Shared native API bootstrap.
@@ -306,6 +307,7 @@ function db(): PDO
     if (!$schemaReady) {
         ensure_schema($connection, $driver);
         aapm_ensure_auth_security_schema($connection, $driver);
+        aapm_ensure_assessment_schema($connection, $driver);
         $schemaReady = true;
     }
 
@@ -1580,78 +1582,50 @@ function bounded_progress_percent(int $completed, int $total): int
     return max(0, min(100, (int) round(($completed / $total) * 100)));
 }
 
-/**
- * Keep all admin progress projections scoped to modules that still exist.
- * user_progress intentionally has no module foreign key because module
- * numbers are also used by the final exam (module 0). The inner join here
- * prevents orphaned rows from inflating progress after a module is removed.
- */
-function admin_progress_aggregate_sql(): string
-{
-    return 'SELECT p.user_id,
-        COUNT(DISTINCT p.module_number) AS progress_entries,
-        COUNT(DISTINCT CASE WHEN p.completed = 1 THEN p.module_number END) AS completed_modules,
-        COUNT(DISTINCT CASE WHEN p.practical_done = 1 THEN p.module_number END) AS practical_modules,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN
-            CASE WHEN p.quiz_score IS NULL OR p.quiz_score < 0 THEN 0
-                 WHEN p.quiz_score > p.quiz_total THEN p.quiz_total
-                 ELSE p.quiz_score END
-            ELSE 0 END) AS quiz_score_sum,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN p.quiz_total ELSE 0 END) AS quiz_total_sum,
-        SUM(CASE WHEN p.time_spent_minutes IS NOT NULL AND p.time_spent_minutes > 0 THEN p.time_spent_minutes ELSE 0 END) AS minutes,
-        MAX(p.updated_at) AS last_activity
-        FROM user_progress p
-        INNER JOIN course_modules m ON m.module_number = p.module_number
-        GROUP BY p.user_id';
-}
-
 function admin_progress_summary(int $userId, ?int $totalModules = null): array
 {
     $moduleTotal = $totalModules === null ? count(admin_module_rows()) : max(0, $totalModules);
-    $statement = db()->prepare('SELECT
-        COUNT(DISTINCT p.module_number) AS entries,
-        COUNT(DISTINCT CASE WHEN p.completed = 1 THEN p.module_number END) AS completed_modules,
-        COUNT(DISTINCT CASE WHEN p.practical_done = 1 THEN p.module_number END) AS practical_modules,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN
-            CASE WHEN p.quiz_score IS NULL OR p.quiz_score < 0 THEN 0
-                 WHEN p.quiz_score > p.quiz_total THEN p.quiz_total
-                 ELSE p.quiz_score END
-            ELSE 0 END) AS quiz_score_sum,
-        SUM(CASE WHEN p.quiz_total IS NOT NULL AND p.quiz_total > 0 THEN p.quiz_total ELSE 0 END) AS quiz_total_sum,
-        SUM(CASE WHEN p.time_spent_minutes IS NOT NULL AND p.time_spent_minutes > 0 THEN p.time_spent_minutes ELSE 0 END) AS minutes,
-        MAX(p.updated_at) AS last_activity
-        FROM user_progress p
-        INNER JOIN course_modules m ON m.module_number = p.module_number
-        WHERE p.user_id = ?');
-    $statement->execute([$userId]);
-    $row = $statement->fetch() ?: [];
-    $completed = (int) ($row['completed_modules'] ?? 0);
+    $totals = aapm_learner_progress_aggregates(db(), [$userId])[$userId];
+    $completed = (int) $totals['completed_modules'];
 
     return [
-        'entries' => (int) ($row['entries'] ?? 0),
+        'entries' => (int) $totals['progress_entries'],
         'completedModules' => $completed,
         'progressPercent' => bounded_progress_percent($completed, $moduleTotal),
-        'practicalModules' => (int) ($row['practical_modules'] ?? 0),
-        'quizScoreSum' => (float) ($row['quiz_score_sum'] ?? 0),
-        'quizTotalSum' => (float) ($row['quiz_total_sum'] ?? 0),
-        'timeSpentMinutes' => (int) ($row['minutes'] ?? 0),
-        'lastActivity' => $row['last_activity'] ?? null,
+        'practicalModules' => (int) $totals['practical_modules'],
+        'quizScoreSum' => (float) $totals['quiz_score_sum'],
+        'quizTotalSum' => (float) $totals['quiz_total_sum'],
+        'timeSpentMinutes' => (int) $totals['minutes'],
+        'lastActivity' => $totals['last_activity'],
     ];
 }
 
 function admin_learner_metric_rows(): array
 {
-    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version,
-        COALESCE(p.progress_entries, 0) AS progress_entries,
-        COALESCE(p.completed_modules, 0) AS completed_modules,
-        p.last_activity
-        FROM users u
-        LEFT JOIN (' . admin_progress_aggregate_sql() . ') p ON p.user_id = u.id';
-    $rows = db()->query($sql)->fetchAll();
-
-    return array_values(array_filter($rows, static function (array $row): bool {
+    $rows = db()->query('SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u')->fetchAll();
+    $learners = array_values(array_filter($rows, static function (array $row): bool {
         return effective_user_role($row) !== 'admin';
     }));
+
+    return admin_attach_progress_totals($learners);
+}
+
+/**
+ * Adds the derived progress columns the admin lists show. Every value comes
+ * from the learner's academic snapshot, never from the legacy table alone.
+ */
+function admin_attach_progress_totals(array $rows): array
+{
+    $totals = aapm_learner_progress_aggregates(db(), array_map(static fn (array $row): int => (int) $row['id'], $rows));
+
+    return array_map(static function (array $row) use ($totals): array {
+        $aggregate = $totals[(int) $row['id']];
+        $row['progress_entries'] = $aggregate['progress_entries'];
+        $row['completed_modules'] = $aggregate['completed_modules'];
+        $row['last_activity'] = $aggregate['last_activity'];
+
+        return $row;
+    }, $rows);
 }
 
 function admin_course_data(): array
@@ -1713,7 +1687,7 @@ function admin_overview_data(): array
         }
     }
 
-    $completionCandidates = db()->query('SELECT p.user_id, u.full_name, u.email, u.role, p.module_number, m.title AS module_title, p.updated_at FROM user_progress p INNER JOIN users u ON u.id = p.user_id INNER JOIN course_modules m ON m.module_number = p.module_number WHERE p.completed = 1 ORDER BY p.updated_at DESC, p.id DESC LIMIT 25')->fetchAll();
+    $completionCandidates = admin_recent_completions(db(), 25);
     $recentCompletions = [];
     foreach ($completionCandidates as $candidate) {
         if (effective_user_role($candidate) === 'admin') {
@@ -1788,12 +1762,8 @@ function admin_account_list(string $search = ''): array
 {
     $search = trim($search);
     $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version,
-        COALESCE(p.progress_entries, 0) AS progress_entries,
-        COALESCE(p.completed_modules, 0) AS completed_modules,
-        p.last_activity,
         COALESCE(c.certificate_count, 0) AS certificate_count
         FROM users u
-        LEFT JOIN (' . admin_progress_aggregate_sql() . ') p ON p.user_id = u.id
         LEFT JOIN (SELECT user_id, COUNT(*) AS certificate_count FROM certificates GROUP BY user_id) c ON c.user_id = u.id';
     $params = [];
     if ($search !== '') {
@@ -1804,6 +1774,7 @@ function admin_account_list(string $search = ''): array
     $sql .= ' ORDER BY u.created_at DESC, u.id DESC LIMIT 200';
     $statement = db()->prepare($sql);
     $statement->execute($params);
+    $rows = admin_attach_progress_totals($statement->fetchAll());
     $totalModules = count(admin_module_rows());
 
     return array_map(static function (array $row) use ($totalModules): array {
@@ -1816,7 +1787,7 @@ function admin_account_list(string $search = ''): array
             'lastActivity' => $row['last_activity'] ?? null,
             'certificateCount' => (int) ($row['certificate_count'] ?? 0),
         ]);
-    }, $statement->fetchAll());
+    }, $rows);
 }
 
 function admin_learner_detail(int $learnerId): ?array
@@ -1829,9 +1800,7 @@ function admin_learner_detail(int $learnerId): ?array
     }
 
     $moduleRows = admin_module_rows();
-    $progressStatement = db()->prepare('SELECT p.module_number, p.completed, p.quiz_score, p.quiz_total, p.practical_done, p.time_spent_minutes, p.created_at, p.updated_at, m.title AS module_title, m.level_number, m.level_name FROM user_progress p INNER JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? ORDER BY p.updated_at DESC, p.module_number ASC');
-    $progressStatement->execute([$learnerId]);
-    $progressRows = $progressStatement->fetchAll();
+    $progressRows = admin_learner_progress_rows(db(), $learnerId);
     $certificateStatement = db()->prepare('SELECT id, level_number, level_name, score, exam_type, holder_name, issued_at FROM certificates WHERE user_id = ? ORDER BY issued_at DESC, id DESC');
     $certificateStatement->execute([$learnerId]);
     $certificates = $certificateStatement->fetchAll();
@@ -2180,9 +2149,8 @@ function admin_reset_user_progress(int $userId): array
 
     db()->beginTransaction();
     try {
-        $delete = db()->prepare('DELETE FROM user_progress WHERE user_id = ?');
-        $delete->execute([$userId]);
-        $deletedEntries = $delete->rowCount();
+        $removed = aapm_delete_learner_evidence(db(), $userId);
+        $deletedEntries = $removed['legacyEntries'];
         db()->commit();
     } catch (Throwable $exception) {
         if (db()->inTransaction()) {
@@ -2194,6 +2162,8 @@ function admin_reset_user_progress(int $userId): array
     return [
         'userId' => $userId,
         'deletedEntries' => $deletedEntries,
+        'deletedAttempts' => $removed['attempts'],
+        'deletedEvents' => $removed['events'],
         'preservedCertificates' => true,
         'preservedFarmData' => true,
         'preservedConversations' => true,
@@ -2816,9 +2786,7 @@ function admin_update_module(int $moduleId, array $input): array
         if ($duplicate->fetch()) {
             error_response('Nomor modul sudah digunakan.', 409, 'module_number_exists');
         }
-        $progress = db()->prepare('SELECT COUNT(*) FROM user_progress WHERE module_number = ?');
-        $progress->execute([(int) $existing['module_number']]);
-        if ((int) $progress->fetchColumn() > 0) {
+        if (aapm_module_evidence_count(db(), (int) $existing['module_number']) > 0) {
             error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
         }
     }
@@ -2846,9 +2814,7 @@ function admin_delete_module(int $moduleId, bool $purgeProgress = false): array
     if (!$module) {
         error_response('Modul tidak ditemukan.', 404, 'not_found');
     }
-    $progress = db()->prepare('SELECT COUNT(*) FROM user_progress WHERE module_number = ?');
-    $progress->execute([(int) $module['module_number']]);
-    $progressCount = (int) $progress->fetchColumn();
+    $progressCount = aapm_module_evidence_count(db(), (int) $module['module_number']);
     if ($progressCount > 0 && !$purgeProgress) {
         error_response('Modul memiliki progres learner. Konfirmasi penghapusan bersama progres untuk melanjutkan.', 422, 'module_has_progress');
     }
@@ -2856,7 +2822,7 @@ function admin_delete_module(int $moduleId, bool $purgeProgress = false): array
     try {
         db()->prepare('DELETE FROM quiz_questions WHERE module_number = ?')->execute([(int) $module['module_number']]);
         if ($progressCount > 0) {
-            db()->prepare('DELETE FROM user_progress WHERE module_number = ?')->execute([(int) $module['module_number']]);
+            aapm_delete_module_evidence(db(), (int) $module['module_number']);
         }
         db()->prepare('DELETE FROM course_modules WHERE id = ?')->execute([$moduleId]);
         db()->commit();

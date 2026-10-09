@@ -475,21 +475,36 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 
-test("progress saves are partial and record practice and study time", () => {
+test("progress writes are retired; academic results and study time are server-recorded", () => {
   const api = readWorkspaceFile("../public/api/index.php");
+  const assessment = readWorkspaceFile("../public/api/assessment.php");
   const lesson = readWorkspaceFile("../src/pages/ModuleDetail.jsx");
   const quiz = readWorkspaceFile("../src/pages/Quiz.jsx");
+  const finalExam = readWorkspaceFile("../src/pages/FinalExam.jsx");
+  const hooks = readWorkspaceFile("../src/lib/useCourseData.js");
+  const client = readWorkspaceFile("../src/api/nativeClient.js");
   const studyTime = readWorkspaceFile("../src/lib/useStudyTime.js");
 
-  // A field the client did not send keeps its stored value.
-  assert.match(api, /array_key_exists\('completed', \$input\) \? bool_value\(\$input\['completed'\]\) : \(int\) \(\$row\['completed'\] \?\? 0\)/);
-  assert.match(api, /array_key_exists\('practicalDone', \$input\)/);
-  assert.match(api, /array_key_exists\('quizScore', \$input\)/);
-  // Study time accumulates, at most four hours per save.
-  assert.match(api, /min\(240, max\(0, \(int\) \$input\['timeSpentDeltaMinutes'\]\)\)/);
-  assert.match(lesson, /useStudyTime\(module\?\.moduleNumber/);
-  assert.match(lesson, /practicalDone: done/);
-  assert.match(quiz, /timeSpentDeltaMinutes: minutes/);
+  // Client writes to /progress are refused and name the academic fields; nothing is stored.
+  assert.match(api, /aapm_reject_progress_write\(request_json\(\)\)/);
+  assert.match(assessment, /'academic_field_forbidden'/);
+  assert.match(assessment, /'progress_write_retired'/);
+  // Study time arrives as capped increments with their own keys; long sessions are split on the page.
+  assert.match(assessment, /AAPM_STUDY_INCREMENT_MAX_MINUTES/);
+  assert.match(lesson, /useStudyTimeIncrement\(\)/);
+  assert.match(lesson, /Math\.min\(15, remaining\)/);
+  assert.match(lesson, /practice\.mutateAsync\(\{ moduleNumber: number, attested: done \}\)/);
+  assert.match(lesson, /acknowledge\.mutateAsync\(number\)/);
+  // The quiz and the final exam take their state from the server attempt and never score on the client.
+  assert.match(quiz, /useAnswerAssessment\(\)/);
+  assert.match(finalExam, /useFinalEligibility\(\)/);
+  for (const page of [quiz, finalExam]) {
+    assert.doesNotMatch(page, /(?:item|question)\??\.correctIndex/);
+    assert.doesNotMatch(page, /timeSpentDeltaMinutes|quizScore: /);
+  }
+  assert.doesNotMatch(finalExam, /useIssueCertificate|certificates\.create/);
+  assert.doesNotMatch(hooks, /useSaveProgress|useIssueCertificate/);
+  assert.doesNotMatch(client, /userProgress\.upsert|create: \(data\) => request\("\/certificates"/);
   // Idle tabs do not count: only visible time with recent activity.
   assert.match(studyTime, /document\.visibilityState === "visible" && Date\.now\(\) - lastActivity < IDLE_AFTER_MS/);
 });

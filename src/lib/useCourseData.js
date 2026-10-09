@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { nativeApi } from '@/api/nativeClient';
+import { nativeApi, newRequestKey } from '@/api/nativeClient';
 
 // Fetch all course modules
 export function useModules() {
@@ -23,7 +23,7 @@ export function useQuizQuestions(moduleNumber) {
   });
 }
 
-// Fetch user progress for current user
+// Fetch user progress for current user (server-derived)
 export function useUserProgress() {
   return useQuery({
     queryKey: ['userProgress'],
@@ -31,14 +31,73 @@ export function useUserProgress() {
   });
 }
 
-// Upsert progress for a module
-export function useSaveProgress() {
+// Final-exam gate and status (server-derived)
+export function useFinalEligibility() {
+  return useQuery({
+    queryKey: ['finalEligibility'],
+    queryFn: () => nativeApi.assessments.finalEligibility(),
+  });
+}
+
+function refreshAcademic(qc) {
+  qc.invalidateQueries({ queryKey: ['userProgress'] });
+  qc.invalidateQueries({ queryKey: ['finalEligibility'] });
+}
+
+// Start or resume an assessment attempt. The server returns the questions
+// without answer keys; a repeated start resumes the active attempt.
+export function useStartAssessment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleNumber, data }) => nativeApi.userProgress.upsert(moduleNumber, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['userProgress'] });
-    },
+    mutationFn: (/** @type {any} */ { assessmentType, moduleNumber }) =>
+      nativeApi.assessments.start({ assessmentType, moduleNumber, requestKey: newRequestKey() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finalEligibility'] }),
+  });
+}
+
+// Save one answer. Module answers are checked by the server and return feedback.
+export function useAnswerAssessment() {
+  return useMutation({
+    mutationFn: (/** @type {any} */ { attemptId, questionId, answerIndex }) =>
+      nativeApi.assessments.answer(attemptId, { questionId, answerIndex }),
+  });
+}
+
+// Submit an attempt. The server grades it and records the academic outcome.
+export function useSubmitAssessment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {any} */ { attemptId }) => nativeApi.assessments.submit(attemptId, { requestKey: newRequestKey() }),
+    onSuccess: () => refreshAcademic(qc),
+  });
+}
+
+// Record that the learner worked through a module without a quiz.
+export function useAcknowledgeModule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {any} */ moduleNumber) => nativeApi.learning.acknowledge(moduleNumber),
+    onSuccess: () => refreshAcademic(qc),
+  });
+}
+
+// Self-attested practice. Attestation never changes academic completion.
+export function usePracticeAttestation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {any} */ { moduleNumber, attested }) =>
+      nativeApi.learning.practice(moduleNumber, { attested, requestKey: newRequestKey() }),
+    onSuccess: () => refreshAcademic(qc),
+  });
+}
+
+// One study-time increment, at most 15 minutes, with its own key.
+export function useStudyTimeIncrement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {any} */ { moduleNumber, minutes }) =>
+      nativeApi.learning.studyTime(moduleNumber, { minutes, requestKey: newRequestKey() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['userProgress'] }),
   });
 }
 
@@ -47,17 +106,6 @@ export function useCertificates() {
   return useQuery({
     queryKey: ['certificates'],
     queryFn: () => nativeApi.certificates.list(),
-  });
-}
-
-// Issue certificate
-export function useIssueCertificate() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data) => nativeApi.certificates.create(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['certificates'] });
-    },
   });
 }
 

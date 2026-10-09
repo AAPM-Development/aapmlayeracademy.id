@@ -8,7 +8,7 @@ import { LessonStructuredContent } from "@/components/academy/LessonStructuredCo
 import { LessonHeader, LessonMedia, LessonSection, LessonToc, lessonSections } from "@/components/academy/LessonWorkspace";
 import { CourseOutline, ModuleFlow } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
-import { useModules, useQuizQuestions, useSaveProgress, useUserProgress } from "@/lib/useCourseData";
+import { useAcknowledgeModule, useModules, usePracticeAttestation, useQuizQuestions, useStudyTimeIncrement, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, sortModules } from "@/lib/academyData";
 import { buildCurriculum, estimateMinutes, moduleFlowState, moduleVisual } from "@/lib/academyVisuals";
 import { celebrate } from "@/lib/celebrate";
@@ -41,8 +41,9 @@ export default function ModuleDetail() {
   const { data: modules = [], isLoading: modulesLoading, isError: modulesError, refetch: refetchModules } = useModules();
   const { data: progress = [], isLoading: progressLoading, isError: progressError, refetch: refetchProgress } = useUserProgress();
   const { data: questions = [] } = useQuizQuestions(Number.isFinite(number) ? number : null);
-  const saveProgress = useSaveProgress();
-  const save = /** @type {any} */ (saveProgress.mutateAsync);
+  const practice = usePracticeAttestation();
+  const acknowledge = useAcknowledgeModule();
+  const studyTime = useStudyTimeIncrement();
   const [activeSection, setActiveSection] = useState("content");
   const [outlineOpen, setOutlineOpen] = useState(readOutlinePreference);
   const [outlineSheet, setOutlineSheet] = useState(false);
@@ -109,14 +110,22 @@ export default function ModuleDetail() {
   };
 
   // Active reading time goes to "Waktu belajar" when the learner leaves the lesson.
-  useStudyTime(module?.moduleNumber, (moduleNumber, minutes) => {
-    save({ moduleNumber, data: { moduleNumber, timeSpentDeltaMinutes: minutes } }).catch(() => {});
-  });
+  // The server accepts at most 15 minutes per increment, so a longer session is sent in parts.
+  const recordStudyTime = async (moduleNumber, minutes) => {
+    for (let remaining = minutes; remaining > 0; remaining -= 15) {
+      try {
+        await studyTime.mutateAsync({ moduleNumber, minutes: Math.min(15, remaining) });
+      } catch {
+        return;
+      }
+    }
+  };
+  useStudyTime(module?.moduleNumber, recordStudyTime);
 
   const togglePracticeDone = async (done) => {
     setPracticeOverride(done);
     try {
-      await save({ moduleNumber: number, data: { moduleNumber: number, practicalDone: done } });
+      await practice.mutateAsync({ moduleNumber: number, attested: done });
     } catch {
       setPracticeOverride(null);
       toast({ title: "Status praktik belum tersimpan", description: "Coba lagi setelah koneksi kembali normal.", variant: "destructive" });
@@ -126,7 +135,7 @@ export default function ModuleDetail() {
   const markComplete = async () => {
     if (!module || moduleProgress?.completed) return;
     try {
-      await save({ moduleNumber: number, data: { moduleNumber: number, completed: true } });
+      await acknowledge.mutateAsync(number);
       celebrate();
       toast({ title: "Modul diselesaikan", description: next ? `Berikutnya: ${next.title}` : "Semua modul sudah Anda tuntaskan." });
     } catch {
@@ -174,7 +183,7 @@ export default function ModuleDetail() {
     const quizLabel = flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Kerjakan kuis";
     primaryAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
   } else {
-    primaryAction = <Button variant="learn" loading={saveProgress.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
+    primaryAction = <Button variant="learn" loading={acknowledge.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
   }
 
   return (
@@ -252,7 +261,7 @@ export default function ModuleDetail() {
                   label="Saya sudah mengerjakan praktik ini"
                   description={flow.practicalDone ? "Tercatat di progress dan poin belajar Anda." : "Centang setelah tugas di kandang selesai. Bisa dibatalkan."}
                   checked={flow.practicalDone}
-                  disabled={saveProgress.isPending}
+                  disabled={practice.isPending}
                   onChange={(event) => togglePracticeDone(event.target.checked)}
                 />
               )}
@@ -260,7 +269,15 @@ export default function ModuleDetail() {
           )}
 
           <section className="aapm-lesson-section" aria-label="Langkah berikutnya">
-            {saveProgress.isError ? <Alert tone="danger" title="Progress belum tersimpan" description="Silakan coba tombol selesai lagi." className="mb-4" /> : null}
+            {practice.isError || acknowledge.isError ? <Alert tone="danger" title="Progress belum tersimpan" description="Silakan coba lagi." className="mb-4" /> : null}
+            {moduleProgress?.verificationStatus === "legacy_unverified" ? (
+              <Alert
+                tone="warning"
+                title="Penyelesaian lama perlu diverifikasi"
+                description={flow.hasQuiz ? "Modul ini ditandai selesai sebelum sistem kuis baru. Ulangi kuis untuk mencatatnya secara resmi." : "Modul ini ditandai selesai sebelum sistem baru. Tandai selesai lagi untuk mencatatnya secara resmi."}
+                className="mb-4"
+              />
+            ) : null}
             <div className="aapm-callout" data-hue={flow.completed ? "green" : "orange"}>
               <div className="aapm-callout__head">
                 <span className="aapm-icon-tile" data-hue={flow.completed ? "green" : "orange"} data-variant="badge" data-shape="circle"><AapmIcon name={flow.completed ? "check" : flow.hasQuiz ? "quiz" : "flag"} /></span>

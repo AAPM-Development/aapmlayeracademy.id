@@ -381,7 +381,7 @@ test("environment marker: missing, provisioned, verified, then mismatch is refus
   await withSite(docroot, {}, async (port) => {
     const recorded = await getJson(port, "/api/health");
     assert.equal(recorded.json.schema.status, "recorded");
-    assert.equal(recorded.json.schema.latestMigration, "20261010_auth_verification_security_v1");
+    assert.equal(recorded.json.schema.latestMigration, "20261015_assessment_authority_v1");
   });
 
   assert.equal(spawnSync("php", [...SQLITE_ARGS, join(fixtures, "set-marker.php"), dbPath, "production"], { encoding: "utf8" }).status, 0);

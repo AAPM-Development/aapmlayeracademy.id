@@ -606,72 +606,92 @@ try {
     }
 
     if ($path === 'quiz' && $method === 'GET') {
+        // Safe projection only: no correct answer, no explanation. Interactive
+        // assessment uses the attempt endpoints below.
         require_user();
         $moduleNumber = isset($_GET['moduleNumber']) ? (int) $_GET['moduleNumber'] : null;
         if ($moduleNumber === null) {
             error_response('moduleNumber wajib diisi.', 422, 'validation_error');
         }
-        $stmt = db()->prepare('SELECT * FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
+        $stmt = db()->prepare('SELECT id, module_number, question, options FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
         $stmt->execute([$moduleNumber]);
-        json_response(array_map('present_question', $stmt->fetchAll()));
+        json_response(array_map(static function (array $row): array {
+            $options = json_decode((string) $row['options'], true);
+            return [
+                'id' => (int) $row['id'],
+                'moduleNumber' => (int) $row['module_number'],
+                'question' => (string) $row['question'],
+                'options' => array_values(is_array($options) ? $options : []),
+            ];
+        }, $stmt->fetchAll()));
     }
 
     if ($path === 'progress' && $method === 'GET') {
         $user = require_user();
-        // Module 0 is reserved for the final exam. All other progress rows
-        // must still point to a live catalog module so deleted modules cannot
-        // keep showing up in the learner view.
-        $stmt = db()->prepare('SELECT p.* FROM user_progress p LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? AND (p.module_number = 0 OR m.id IS NOT NULL) ORDER BY p.module_number ASC');
-        $stmt->execute([(int) $user['id']]);
-        json_response(array_map('present_progress', $stmt->fetchAll()));
+        json_response(aapm_progress_rows($user));
     }
 
     if ($path === 'progress' && ($method === 'POST' || $method === 'PUT')) {
+        require_user();
+        require_csrf();
+        aapm_reject_progress_write(request_json());
+    }
+
+    if ($path === 'assessments/attempts' && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $result = aapm_assessment_start($user, request_json());
+        json_response(['attempt' => $result['attempt'], 'created' => $result['created']], $result['created'] ? 201 : 200);
+    }
+
+    if (preg_match('#^assessments/attempts/([a-f0-9]{48})$#', $path, $matches) && $method === 'GET') {
+        $user = require_user();
+        json_response(['attempt' => aapm_assessment_read($user, $matches[1])]);
+    }
+
+    if (preg_match('#^assessments/attempts/([a-f0-9]{48})/answers$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(aapm_assessment_answer($user, $matches[1], request_json()));
+    }
+
+    if (preg_match('#^assessments/attempts/([a-f0-9]{48})/submit$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(['attempt' => aapm_assessment_submit($user, $matches[1], request_json())]);
+    }
+
+    if ($path === 'assessments/history' && $method === 'GET') {
+        $user = require_user();
+        json_response(aapm_assessment_history($user, $_GET));
+    }
+
+    if ($path === 'assessments/final-eligibility' && $method === 'GET') {
+        $user = require_user();
+        json_response(aapm_final_eligibility_payload(db(), (int) $user['id']));
+    }
+
+    if (preg_match('#^modules/(\\d+)/acknowledge$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(['progress' => aapm_acknowledge_module($user, (int) $matches[1])]);
+    }
+
+    if (preg_match('#^modules/(\\d+)/practice$#', $path, $matches) && $method === 'POST') {
         $user = require_user();
         require_csrf();
         $input = request_json();
-        $moduleNumber = (int) ($input['moduleNumber'] ?? 0);
-        if ($moduleNumber < 0 || ($moduleNumber !== 0 && !admin_module_number_exists($moduleNumber))) {
-            error_response('Nomor modul tidak valid.', 422, 'validation_error');
+        if (!is_bool($input['attested'] ?? null)) {
+            error_response('Status latihan wajib berupa true atau false.', 422, 'validation_error');
         }
+        $eventType = $input['attested'] ? 'practice_attested' : 'practice_unattested';
+        json_response(['progress' => aapm_record_module_event($user, (int) $matches[1], $eventType, $input)]);
+    }
 
-        $existing = db()->prepare('SELECT * FROM user_progress WHERE user_id = ? AND module_number = ? LIMIT 1');
-        $existing->execute([(int) $user['id'], $moduleNumber]);
-        $row = $existing->fetch();
-
-        // Partial update: a field the client did not send keeps its stored
-        // value, so "mark complete" no longer clears a quiz score and a quiz
-        // submit no longer clears a finished practice. timeSpentDeltaMinutes
-        // adds study time (one save counts at most 4 hours).
-        $values = [
-            'completed' => array_key_exists('completed', $input) ? bool_value($input['completed']) : (int) ($row['completed'] ?? 0),
-            'quiz_score' => array_key_exists('quizScore', $input)
-                ? ($input['quizScore'] !== null ? (int) $input['quizScore'] : null)
-                : ($row && $row['quiz_score'] !== null ? (int) $row['quiz_score'] : null),
-            'quiz_total' => array_key_exists('quizTotal', $input)
-                ? ($input['quizTotal'] !== null ? (int) $input['quizTotal'] : null)
-                : ($row && $row['quiz_total'] !== null ? (int) $row['quiz_total'] : null),
-            'practical_done' => array_key_exists('practicalDone', $input) ? bool_value($input['practicalDone']) : (int) ($row['practical_done'] ?? 0),
-            'time_spent_minutes' => array_key_exists('timeSpentMinutes', $input)
-                ? ($input['timeSpentMinutes'] !== null ? max(0, (int) $input['timeSpentMinutes']) : null)
-                : ($row && $row['time_spent_minutes'] !== null ? (int) $row['time_spent_minutes'] : null),
-        ];
-        if (array_key_exists('timeSpentDeltaMinutes', $input)) {
-            $delta = min(240, max(0, (int) $input['timeSpentDeltaMinutes']));
-            $values['time_spent_minutes'] = (int) ($values['time_spent_minutes'] ?? 0) + $delta;
-        }
-        if ($row) {
-            $update = db()->prepare('UPDATE user_progress SET completed = ?, quiz_score = ?, quiz_total = ?, practical_done = ?, time_spent_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-            $update->execute([$values['completed'], $values['quiz_score'], $values['quiz_total'], $values['practical_done'], $values['time_spent_minutes'], (int) $row['id']]);
-            $id = (int) $row['id'];
-        } else {
-            $insert = db()->prepare('INSERT INTO user_progress (user_id, module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            $insert->execute([(int) $user['id'], $moduleNumber, $values['completed'], $values['quiz_score'], $values['quiz_total'], $values['practical_done'], $values['time_spent_minutes']]);
-            $id = (int) db()->lastInsertId();
-        }
-        $stmt = db()->prepare('SELECT * FROM user_progress WHERE id = ? LIMIT 1');
-        $stmt->execute([$id]);
-        json_response(present_progress($stmt->fetch()));
+    if (preg_match('#^modules/(\\d+)/study-time$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(['progress' => aapm_record_module_event($user, (int) $matches[1], 'study_time_increment', request_json())]);
     }
 
     if ($path === 'certificates' && $method === 'GET') {
@@ -682,30 +702,10 @@ try {
     }
 
     if ($path === 'certificates' && $method === 'POST') {
-        $user = require_user();
+        require_user();
         require_csrf();
-        $input = request_json();
-        $levelNumber = (int) ($input['levelNumber'] ?? 0);
-        $levelName = trim((string) ($input['levelName'] ?? ''));
-        $examType = trim((string) ($input['examType'] ?? 'level'));
-        $score = nullable_number($input, 'score');
-        if ($levelNumber < 1 || $levelName === '' || !in_array($examType, ['module', 'level', 'final'], true)) {
-            error_response('Data sertifikat tidak lengkap.', 422, 'validation_error');
-        }
-        $holderName = trim((string) ($input['holderName'] ?? '')) ?: ((string) $user['full_name'] ?: (string) $user['email']);
-        try {
-            $insert = db()->prepare('INSERT INTO certificates (user_id, level_number, level_name, score, exam_type, holder_name) VALUES (?, ?, ?, ?, ?, ?)');
-            $insert->execute([(int) $user['id'], $levelNumber, $levelName, $score === null ? 0 : $score, $examType, $holderName]);
-            $id = (int) db()->lastInsertId();
-        } catch (PDOException $exception) {
-            if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
-                error_response('Sertifikat untuk level ini sudah ada.', 409, 'certificate_exists');
-            }
-            throw $exception;
-        }
-        $stmt = db()->prepare('SELECT * FROM certificates WHERE id = ? LIMIT 1');
-        $stmt->execute([$id]);
-        json_response(present_certificate($stmt->fetch()), 201);
+        // Client-authored certificate records are disabled until Q04 installs verified issuance.
+        error_response('Penerbitan sertifikat belum tersedia. Sistem sertifikat yang aman sedang disiapkan.', 503, 'certificate_upgrade_required');
     }
 
     if ($path === 'farm-data' && $method === 'GET') {
