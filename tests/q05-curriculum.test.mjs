@@ -5,6 +5,7 @@ import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   SQLITE, attemptKey, cleanEnv, cleanup, makeSite, passAllRequired, passModule, progressRow, repo, rows, run, seedCurriculum, seedAccount, setup, signIn, sql, withSite,
@@ -708,6 +709,20 @@ async function finalDraft(admin) {
 
 const finalRows = (site) => rows(site, "SELECT * FROM quiz_questions WHERE module_number = 0 ORDER BY id");
 const finalHistory = (site) => rows(site, "SELECT * FROM question_bank_revisions WHERE scope_type = 'final' AND module_number = 0 ORDER BY id");
+
+test("final-exam bank MySQL lock source contract excludes duplicate-insert shared-lock upgrades and pre-lock bank reads", () => {
+  // Source-level regression only: real InnoDB lock/isolation behavior is NOT_TESTED.
+  // The runtime SQLite tests below cover the actual API behavior separately.
+  const source = readFileSync(join(repo, "public", "api", "curriculum.php"), "utf8");
+  const helper = source.slice(source.indexOf("function aapm_cur_final_bank_locked("), source.indexOf("function aapm_cur_backfill_final_bank("));
+  assert.doesNotMatch(helper, /['"]INSERT IGNORE['"]/, "InnoDB duplicate INSERT IGNORE takes a shared lock before FOR UPDATE");
+  assert.match(helper, /ON DUPLICATE KEY UPDATE/, "missing-row creation must acquire the exclusive coordination lock without an upgrade");
+  const insertion = helper.indexOf("->execute(");
+  const bankRead = helper.indexOf("aapm_cur_live_questions(");
+  assert.ok(insertion >= 0 && bankRead > insertion, "no ordinary bank SELECT may establish a repeatable-read view before serialization");
+  const lockingRead = helper.indexOf("->fetch()");
+  assert.ok(lockingRead > insertion && bankRead > lockingRead, "initialize from the bank only after the exclusive row has been acquired/read");
+});
 
 test("final-exam bank upgrade backfill preserves existing attempt snapshots and grades", async () => {
   const { site } = await setup("final-upgrade");

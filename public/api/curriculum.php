@@ -487,11 +487,26 @@ function aapm_cur_insert_bank(PDO $pdo, string $scope, int $moduleNumber, array 
 function aapm_cur_final_bank_locked(PDO $pdo, ?int $actorId): array
 {
     $now = aapm_utc_now();
-    $insert = aapm_database_driver() === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
-    $pdo->prepare($insert . " INTO question_bank_drafts (scope_type, module_number, draft_version, question_payload_json, edited_by_user_id, created_at, updated_at) VALUES ('final', 0, 1, ?, ?, ?, ?)")
-        ->execute([json_encode(aapm_cur_live_questions($pdo, 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $actorId, $now, $now]);
-    $locking = aapm_database_driver() === 'sqlite' ? '' : ' FOR UPDATE';
-    return $pdo->query("SELECT * FROM question_bank_drafts WHERE scope_type = 'final' AND module_number = 0" . $locking)->fetch();
+    $sqlite = aapm_database_driver() === 'sqlite';
+    $insert = $sqlite ? 'INSERT OR IGNORE' : 'INSERT';
+    // InnoDB's duplicate INSERT IGNORE takes a shared lock, which concurrent
+    // callers could deadlock upgrading to FOR UPDATE. A no-op duplicate UPDATE
+    // takes the exclusive primary-key lock directly, including initialization.
+    $duplicate = $sqlite ? '' : ' ON DUPLICATE KEY UPDATE draft_version = question_bank_drafts.draft_version';
+    // The JSON null is only an uninitialized sentinel inside this transaction.
+    // Do not SELECT the live bank before serialization: that would establish a
+    // REPEATABLE READ view before a publisher we are waiting behind commits.
+    $pdo->prepare($insert . " INTO question_bank_drafts (scope_type, module_number, draft_version, question_payload_json, edited_by_user_id, created_at, updated_at) VALUES ('final', 0, 1, 'null', ?, ?, ?)" . $duplicate)
+        ->execute([$actorId, $now, $now]);
+    $locking = $sqlite ? '' : ' FOR UPDATE';
+    $draft = $pdo->query("SELECT * FROM question_bank_drafts WHERE scope_type = 'final' AND module_number = 0" . $locking)->fetch();
+    if ((string) $draft['question_payload_json'] === 'null') {
+        $payload = json_encode(aapm_cur_live_questions($pdo, 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $pdo->prepare("UPDATE question_bank_drafts SET question_payload_json = ? WHERE scope_type = 'final' AND module_number = 0")
+            ->execute([$payload]);
+        $draft['question_payload_json'] = $payload;
+    }
+    return $draft;
 }
 
 /** Backfill once; retries preserve draft edits, historical revisions and all Q03 evidence. */
