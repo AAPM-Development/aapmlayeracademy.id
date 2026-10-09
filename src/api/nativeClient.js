@@ -344,6 +344,12 @@ export const nativeApi = {
   },
   certificates: {
     list: () => request("/certificates"),
+    detail: (id) => request(`/certificates/${encodeURIComponent(id)}`),
+    claim: (tierNumber, requestKey) => request("/certificates/claims", json({ tierNumber, requestKey })),
+    eligibility: () => request("/certification/eligibility"),
+  },
+  publicCertificates: {
+    verify: (publicId) => request(`/public/certificates/verify/${encodeURIComponent(publicId)}`),
   },
   profile: {
     get: () => request("/profile"),
@@ -459,6 +465,11 @@ export const nativeApi = {
           method: "DELETE",
           body: JSON.stringify({ confirm: true }),
         }),
+    },
+    certificates: {
+      list: (query = {}) => request(`/admin/certificates?${new URLSearchParams(query).toString()}`),
+      detail: (publicId) => request(`/admin/certificates/${encodeURIComponent(publicId)}`),
+      revoke: (publicId, body) => request(`/admin/certificates/${encodeURIComponent(publicId)}/revoke`, json({ ...body, confirm: true })),
     },
     modules: {
       detail: (moduleId) =>

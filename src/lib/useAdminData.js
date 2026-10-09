@@ -221,3 +221,29 @@ export function useDiscoverAdminAiModels() {
     mutationFn: (data) => nativeApi.admin.aiSettings.discoverModels(data),
   });
 }
+
+export function useAdminCertificates(filters = {}) {
+  return useQuery({
+    queryKey: ["admin", "certificates", filters],
+    queryFn: () => nativeApi.admin.certificates.list(filters),
+  });
+}
+
+export function useAdminCertificate(publicId) {
+  return useQuery({
+    queryKey: ["admin", "certificates", "detail", publicId],
+    queryFn: () => nativeApi.admin.certificates.detail(publicId),
+    enabled: Boolean(publicId),
+  });
+}
+
+export function useRevokeAdminCertificate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {any} */ { publicId, reason }) => nativeApi.admin.certificates.revoke(publicId, { reason }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "certificates"] });
+      queryClient.invalidateQueries({ queryKey: ["certificationEligibility"] });
+    },
+  });
+}

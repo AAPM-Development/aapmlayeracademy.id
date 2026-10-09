@@ -192,6 +192,9 @@ try {
         aapm_ensure_assessment_schema($pdo, $driver);
         aapm_snapshot_legacy_progress($pdo);
         migration_record($pdo, $driver, AAPM_ASSESSMENT_SCHEMA_KEY, hash('sha256', AAPM_ASSESSMENT_SCHEMA_KEY . ':attempts+items+events+policy+legacy-snapshot'));
+        // Q04 adds academic generations, tier policies, certificate issuances, immutable evidence, and audit events. Additive only.
+        aapm_ensure_certification_schema($pdo, $driver);
+        migration_record($pdo, $driver, AAPM_CERT_SCHEMA_KEY, hash('sha256', AAPM_CERT_SCHEMA_KEY . ':generations+tiers+issuances+evidence+events'));
         $result['applied'] = true;
         $result['columns'] = migration_column_plan($pdo, $driver, $expectedColumns);
         $result['indexes'] = migration_index_plan($pdo, $driver, $expectedIndexes);
@@ -199,6 +202,7 @@ try {
 
     $result['authSchema'] = aapm_auth_schema_status($pdo);
     $result['assessmentSchema'] = aapm_assessment_schema_status($pdo);
+    $result['certificationSchema'] = aapm_certification_schema_status($pdo);
     if ($verify) {
         $result['health'] = migration_health_checks($pdo, $driver);
     }
@@ -644,6 +648,10 @@ function migration_output(array $result, bool $jsonOutput): void
         echo 'Assessment schema: ' . (in_array(false, $result['assessmentSchema'], true) ? 'missing' : 'present') . "
 ";
     }
+    if (isset($result['certificationSchema'])) {
+        echo 'Certification schema: ' . (in_array(false, $result['certificationSchema'], true) ? 'missing' : 'present') . "
+";
+    }
     if (isset($result['authSchema'])) {
         echo 'Auth schema: ' . (in_array(false, $result['authSchema'], true) ? 'missing' : 'present') . "\n";
     }
@@ -692,6 +700,7 @@ function migration_exit_code(array $result): int
 {
     if (isset($result['authSchema']) && in_array(false, $result['authSchema'], true)) return 1;
     if (isset($result['assessmentSchema']) && in_array(false, $result['assessmentSchema'], true)) return 1;
+    if (isset($result['certificationSchema']) && in_array(false, $result['certificationSchema'], true)) return 1;
     if (!empty($result['markerRequired']) && ($result['environmentMarker'] ?? '') !== 'verified') return 1;
     if (!empty($result['missingTables'])) return 1;
     foreach ($result['columns'] as $column) {

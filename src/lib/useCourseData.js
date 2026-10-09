@@ -143,3 +143,24 @@ export function useAiAssistant() {
     mutationFn: ({ message, farmContext }) => nativeApi.ai.assistant({ message, farmContext }),
   });
 }
+
+// Certification eligibility for all six tiers (server-derived)
+export function useCertificationEligibility() {
+  return useQuery({
+    queryKey: ['certificationEligibility'],
+    queryFn: () => nativeApi.certificates.eligibility(),
+  });
+}
+
+// Claim one tier. Success is shown only after the server confirms issuance; a lost
+// response is recovered by re-reading eligibility and certificates, never by re-claiming blindly.
+export function useClaimCertificate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {any} */ { tierNumber, requestKey }) => nativeApi.certificates.claim(tierNumber, requestKey),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['certificationEligibility'] });
+      qc.invalidateQueries({ queryKey: ['certificates'] });
+    },
+  });
+}
