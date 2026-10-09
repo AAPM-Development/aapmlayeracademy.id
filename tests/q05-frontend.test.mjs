@@ -29,6 +29,28 @@ test("course lifecycle labels distinguish draft, published, pending changes and 
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("curriculum phone actions clear the retained shell navigation and policy controls reserve full selector width", async () => {
+  const { default: postcss } = await import("postcss");
+  const result = await postcss([]).process(read("src/styles/features/curriculum.css"), { from: undefined });
+  const mobileRules = [];
+  result.root.walkRules((rule) => {
+    if (rule.parent.type === "atrule" && rule.parent.params === "(max-width: 859px)") mobileRules.push(rule);
+  });
+  const declarations = (selector) => Object.fromEntries(mobileRules.find((rule) => rule.selector === selector).nodes.map(({ prop, value }) => [prop, value]));
+  const bar = declarations(".aapm-curriculum-actionbar");
+  assert.equal(bar.position, "fixed", "primary action is visible before scrolling to the final form row");
+  assert.match(bar.bottom, /var\(--aapm-component-bottom-nav-height\).*env\(safe-area-inset-bottom\)/, "bar clears the actual shell height plus device safe area");
+  assert.equal(declarations(".aapm-curriculum-actionbar__desktop").display, "none", "the phone bar cannot wrap the complete desktop action group into a tall stack");
+  assert.equal(declarations(".aapm-curriculum-actionbar__mobile").display, "flex");
+  assert.equal(declarations(".aapm-page > .aapm-curriculum-editor").animation, "none", "entrance transforms cannot anchor the fixed action bar to the form");
+  assert.ok(declarations(".aapm-curriculum-editor")["padding-bottom"], "last form controls can scroll clear of the fixed action bar");
+  let selectorGrid;
+  result.root.walkRules((rule) => {
+    if (rule.selector === ".aapm-curriculum-policy-controls" && rule.parent.params === "(max-width: 639px)") selectorGrid = rule;
+  });
+  assert.equal(selectorGrid.nodes.find((node) => node.prop === "grid-template-columns").value, "minmax(0, 1fr)");
+});
+
 test("deferred archive failure retains its retry reason and a successful retry clears stale feedback", async () => {
   const { runCurriculumLifecycleMutation } = await import("../src/lib/curriculumState.js");
   let error = null;

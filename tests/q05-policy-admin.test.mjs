@@ -92,6 +92,7 @@ test('policy tokens guard save, validation and readiness; stale requests preserv
     sql(site, "UPDATE course_modules SET lifecycle_status = 'archived' WHERE module_number = 22");
     assert.equal((await admin.mutate('POST', `${route}/ready`, { expectedDraftVersion: 2 })).json.error.code, 'policy_not_validated');
     sql(site, "UPDATE course_modules SET lifecycle_status = 'active' WHERE module_number = 22");
+    assert.equal((await admin.mutate('POST', `${route}/validate`, { expectedDraftVersion: 2 })).json.data.valid, true);
     const ready = await admin.mutate('POST', `${route}/ready`, { expectedDraftVersion: 2 }); assert.equal(ready.status, 200, ready.text);
     const edited = await save(admin, ready.json.data.policy, { finalPassPercent: 82 });
     assert.equal(edited.status, 'draft'); assert.equal(edited.validatedAt, null); assert.equal(edited.draftVersion, 3);
@@ -116,6 +117,61 @@ test('policy admin reads and every mutation enforce admin/verification/CSRF; cli
     assert.deepEqual(rows(site, 'SELECT * FROM learner_curriculum_assignments ORDER BY user_id'), assignments);
     sql(site, "UPDATE users SET email_verified_at = NULL, verification_required_at = CURRENT_TIMESTAMP WHERE email = 'pengelola@example.test'");
     assert.equal((await admin.get(route)).status, 401);
+  });
+});
+
+test('failed dependency validation revokes previous validation and readiness without consuming the draft token', async () => {
+  const { site } = await setup('policy-invalidated-readiness');
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, 'pengelola@example.test');
+    const policy = await create(admin);
+    const body = { expectedDraftVersion: policy.draftVersion };
+    const v1 = rows(site, "SELECT * FROM curriculum_policy_versions WHERE policy_version = 'academy-v1'");
+    const assertInvalidated = async () => {
+      const current = (await admin.get(route)).json.data.policy;
+      assert.equal(current.status, 'draft');
+      assert.equal(current.validatedAt, null);
+      assert.equal(current.draftVersion, policy.draftVersion);
+      assert.deepEqual(rows(site, "SELECT * FROM curriculum_policy_versions WHERE policy_version = 'academy-v1'"), v1);
+    };
+    for (const readyFirst of [false, true]) {
+      assert.equal((await admin.mutate('POST', `${route}/validate`, body)).json.data.valid, true);
+      if (readyFirst) assert.equal((await admin.mutate('POST', `${route}/ready`, body)).status, 200);
+      sql(site, "UPDATE course_modules SET lifecycle_status = 'archived' WHERE module_number = 22");
+      const invalid = await admin.mutate('POST', `${route}/validate`, body);
+      assert.equal(invalid.status, 200);
+      assert.equal(invalid.json.data.valid, false);
+      assert.ok(invalid.json.data.errors.some((error) => error.code === 'module_unpublished'));
+      await assertInvalidated();
+      sql(site, "UPDATE course_modules SET lifecycle_status = 'active' WHERE module_number = 22");
+      assert.equal((await admin.mutate('POST', `${route}/ready`, body)).json.error.code, 'policy_not_validated');
+    }
+    assert.equal((await admin.mutate('POST', `${route}/validate`, body)).json.data.valid, true);
+    assert.equal((await admin.mutate('POST', `${route}/ready`, body)).status, 200);
+    sql(site, "UPDATE course_modules SET lifecycle_status = 'archived' WHERE module_number = 22");
+    assert.equal((await admin.mutate('POST', `${route}/ready`, body)).json.error.code, 'policy_not_validated');
+    await assertInvalidated();
+  });
+});
+
+test('unrelated final-bank edits and publication preserve all valid difficulties including the existing expert seed', async () => {
+  const { site } = await setup('final-bank-difficulty');
+  await withSite(site, async (api) => {
+    const admin = await signIn(api.port, 'pengelola@example.test');
+    const path = '/api/admin/curriculum/final-bank';
+    const initial = (await admin.get(path)).json.data;
+    assert.equal(initial.questions[4].difficulty, 'expert', 'legacy seed and backfill retain the fifth question value');
+    const first = await admin.mutate('POST', path, { expectedDraftVersion: initial.draftVersion, questions: initial.questions.map((question, index) => ({ ...question, difficulty: index === 0 ? 'hard' : index === 1 ? 'easy' : question.difficulty })) });
+    assert.equal(first.status, 200, first.text);
+    assert.equal(first.json.data.questions[4].difficulty, 'expert', 'saving another question cannot silently rewrite legitimate seeded difficulty');
+    const draft = first.json.data;
+    const expectedDifficulties = draft.questions.map((question) => question.difficulty);
+    const saved = await admin.mutate('POST', path, { expectedDraftVersion: draft.draftVersion, questions: draft.questions.map((question, index) => index === 0 ? { ...question, learningObjective: 'Objective-only editorial change' } : question) });
+    assert.equal(saved.status, 200, saved.text);
+    assert.deepEqual(saved.json.data.questions.map((question) => question.difficulty), expectedDifficulties);
+    const published = await admin.mutate('POST', `${path}/publish`, { expectedDraftVersion: saved.json.data.draftVersion, confirm: true });
+    assert.equal(published.status, 200, published.text);
+    assert.deepEqual(rows(site, 'SELECT difficulty FROM quiz_questions WHERE module_number = 0 ORDER BY id').map((question) => question.difficulty), expectedDifficulties);
   });
 });
 

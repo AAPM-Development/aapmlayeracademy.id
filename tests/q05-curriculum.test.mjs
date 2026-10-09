@@ -678,20 +678,22 @@ test("policy activation rejects snapshot/projection drift and invalidated readin
     ];
     for (const c of cases) {
       sql(site, c.change, c.params);
-      const validation = await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
-      assert.equal(validation.json.data.valid, false, c.code);
-      assert.ok(validation.json.data.errors.some((e) => e.code === c.code), JSON.stringify(validation.json.data.errors));
       // Call activation directly: this bypasses the CLI's earlier advisory validation,
       // proving the authoritative transaction itself rechecks every dependency.
       const locked = run(site, join(repo, "tests", "fixtures", "q05", "activate-policy.php"), ["academy-v2"]);
       assert.equal(locked.status, 0, locked.stdout + locked.stderr);
       assert.equal(JSON.parse(locked.stdout).error, "policy_invalid");
+      const validation = await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
+      assert.equal(validation.json.data.valid, false, c.code);
+      assert.ok(validation.json.data.errors.some((e) => e.code === c.code), JSON.stringify(validation.json.data.errors));
       const refused = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=DRIFT"]);
       assert.notEqual(refused.status, 0);
       assert.deepEqual(snapshot(), before);
       assert.deepEqual(rows(site, "SELECT policy_version FROM curriculum_policy_versions WHERE status = 'active'"), [{ policy_version: "academy-v1" }]);
-      assert.equal(rows(site, "SELECT status FROM curriculum_policy_versions WHERE policy_version = 'academy-v2'")[0].status, "ready");
+      assert.deepEqual(rows(site, "SELECT status, validated_at FROM curriculum_policy_versions WHERE policy_version = 'academy-v2'"), [{ status: "draft", validated_at: null }]);
       sql(site, c.restore, c.restoreParams);
+      assert.equal((await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
+      assert.equal((await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
     }
     // An audit-write failure must roll back activation and projection refresh together.
     const v2Assessment = rows(site, "SELECT * FROM assessment_policies WHERE policy_version = 'academy-v2'");

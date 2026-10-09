@@ -1,0 +1,37 @@
+/* Policy and final-bank editors retain the AdminShell phone navigation. */
+.aapm-curriculum-actionbar {
+  position: sticky;
+  bottom: var(--aapm-primitive-space-3);
+  z-index: var(--aapm-primitive-layer-sticky);
+  display: grid;
+  gap: var(--aapm-primitive-space-1);
+  padding: var(--aapm-primitive-space-3);
+}
+.aapm-curriculum-actionbar__desktop { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); }
+.aapm-curriculum-actionbar__mobile { display: none; }
+.aapm-curriculum-policy-controls { display: flex; align-items: end; gap: var(--aapm-primitive-space-3); }
+.aapm-curriculum-policy-controls > :first-child { flex: 1; min-width: 0; }
+
+@media (max-width: 859px) {
+  /* Match the existing editor exception: entrance transforms must not
+     turn the form into the containing block of viewport-fixed controls. */
+  .aapm-page > .aapm-curriculum-editor { animation: none; }
+  .aapm-curriculum-editor { padding-bottom: 7rem; }
+  .aapm-curriculum-editor :is(input, textarea, button) {
+    scroll-margin-bottom: calc(7rem + var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom));
+  }
+  .aapm-curriculum-actionbar {
+    position: fixed;
+    inset-inline: var(--aapm-component-page-inset-compact);
+    bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-2));
+  }
+  .aapm-curriculum-actionbar__desktop { display: none; }
+  .aapm-curriculum-actionbar__mobile { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); }
+  .aapm-curriculum-actionbar__primary { flex: 1; min-width: 0; }
+  .aapm-curriculum-actionbar__status { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+}
+
+@media (max-width: 639px) {
+  .aapm-curriculum-policy-controls { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .aapm-curriculum-policy-controls > :last-child { justify-self: start; }
+}

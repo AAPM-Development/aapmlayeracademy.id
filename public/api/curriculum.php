@@ -1828,7 +1828,16 @@ function aapm_cur_policy_validate(string $version, int $actorId, int $expected, 
         }
         aapm_cur_policy_dependencies_lock($pdo);
         $errors = aapm_cur_policy_errors($pdo, $version);
-        if ($ready && ($row['validated_at'] === null || $errors !== [])) {
+        if ($errors !== []) {
+            // A dependency can change without consuming the policy content token.
+            // Revoke the old review stamp, including a previously ready state.
+            $pdo->prepare("UPDATE curriculum_policy_versions SET validated_at = NULL, status = 'draft' WHERE policy_version = ?")->execute([$version]);
+            aapm_cur_event($pdo, 'policy.validated', null, $version, null, $actorId, ['valid' => false, 'ready' => false, 'draftVersion' => $expected]);
+            if ($ready) {
+                aapm_tx_commit($pdo);
+                error_response('Validasi ulang kebijakan dan materi sebelum menandai siap.', 409, 'policy_not_validated');
+            }
+        } elseif ($ready && $row['validated_at'] === null) {
             aapm_tx_rollback($pdo); error_response('Validasi ulang kebijakan dan materi sebelum menandai siap.', 409, 'policy_not_validated');
         }
         if ($errors === []) {

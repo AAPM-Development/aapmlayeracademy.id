@@ -593,8 +593,8 @@ function migration_health_checks(PDO $pdo, string $driver): array
         [
             'name' => 'quiz_invalid_difficulty_non_global',
             'severity' => 'error',
-            'sql' => "SELECT COUNT(*) FROM quiz_questions WHERE module_number <> 0 AND difficulty NOT IN ('easy', 'medium', 'hard')",
-            'note' => 'Soal modul learner harus memakai easy, medium, atau hard; bank global boleh memiliki level tambahan.',
+            'sql' => "SELECT COUNT(*) FROM quiz_questions WHERE module_number <> 0 AND difficulty NOT IN ('easy', 'medium', 'hard', 'expert')",
+            'note' => 'Soal modul learner harus memakai easy, medium, hard, atau expert; bank global boleh memiliki level tambahan.',
         ],
     ];
 

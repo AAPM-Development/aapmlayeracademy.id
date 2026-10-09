@@ -2820,7 +2820,7 @@ function admin_question_input(array $input, int $moduleNumber): array
     if ($question === '' || count($options) < 2 || $correctIndex < 0 || $correctIndex >= count($options)) {
         error_response('Pertanyaan, minimal dua opsi, dan jawaban benar wajib valid.', 422, 'validation_error');
     }
-    if (!in_array($difficulty, ['easy', 'medium', 'hard'], true)) {
+    if (!in_array($difficulty, ['easy', 'medium', 'hard', 'expert'], true)) {
         $difficulty = 'medium';
     }
     if ($type !== 'mcq') {
