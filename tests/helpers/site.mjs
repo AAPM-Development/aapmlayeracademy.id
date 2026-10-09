@@ -198,7 +198,7 @@ export async function startSite(site) {
     stdio: ["ignore", "ignore", "pipe"],
   });
   child.stderr.on("data", (chunk) => (stderr += chunk));
-  for (let attempt = 0; attempt < 100; attempt++) {
+  for (let attempt = 0; attempt < 300; attempt++) {
     if (child.exitCode !== null) throw new Error(`php server exited: ${stderr}`);
     try {
       await new Api(port).get("/api/health");

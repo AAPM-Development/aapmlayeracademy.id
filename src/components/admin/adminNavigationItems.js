@@ -5,6 +5,7 @@ export const adminNavigationGroups = [
       { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
       { to: "/admin/courses", label: "Course", icon: "course" },
       { to: "/admin/learners", label: "Peserta", icon: "graduation" },
+      { to: "/admin/certificates", label: "Sertifikat", icon: "certificate" },
       { to: "/admin/users", label: "Pengguna", icon: "users" },
     ],
   },

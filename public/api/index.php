@@ -399,6 +399,22 @@ try {
         json_response(admin_course_detail_data());
     }
 
+    if ($path === 'admin/certificates' && $method === 'GET') {
+        require_admin();
+        json_response(aapm_admin_certificate_list($_GET));
+    }
+
+    if (preg_match('#^admin/certificates/([a-f0-9]{32})$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_admin_certificate_detail($matches[1]));
+    }
+
+    if (preg_match('#^admin/certificates/([a-f0-9]{32})/revoke$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_admin_certificate_revoke($actor, $matches[1], request_json()));
+    }
+
     if ($path === 'admin/security-audit' && $method === 'GET') {
         require_admin();
         json_response(aapm_security_audit_page((int) ($_GET['limit'] ?? 50), (int) ($_GET['offset'] ?? 0)));
@@ -701,9 +717,7 @@ try {
 
     if ($path === 'certificates' && $method === 'GET') {
         $user = require_user();
-        $stmt = db()->prepare('SELECT * FROM certificates WHERE user_id = ? ORDER BY level_number ASC, issued_at ASC');
-        $stmt->execute([(int) $user['id']]);
-        json_response(array_map('present_certificate', $stmt->fetchAll()));
+        json_response(aapm_certificate_list($user));
     }
 
     if ($path === 'certificates' && $method === 'POST') {
@@ -711,6 +725,27 @@ try {
         require_csrf();
         // The client-authored endpoint is permanently retired. Certificates are claimed through /certificates/claims.
         error_response('Endpoint penerbitan sertifikat ini sudah dihentikan. Gunakan klaim sertifikat di halaman Sertifikasi.', 410, 'certificate_endpoint_retired');
+    }
+
+    if ($path === 'certification/eligibility' && $method === 'GET') {
+        $user = require_user();
+        json_response(aapm_certification_eligibility($user));
+    }
+
+    if ($path === 'certificates/claims' && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $result = aapm_certificate_claim($user, request_json());
+        json_response(['certificate' => $result['certificate'], 'created' => $result['created']], $result['created'] ? 201 : 200);
+    }
+
+    if (preg_match('#^certificates/([A-Za-z0-9]{1,40})$#', $path, $matches) && $method === 'GET') {
+        $user = require_user();
+        json_response(['certificate' => aapm_certificate_detail($user, $matches[1])]);
+    }
+
+    if (preg_match('#^public/certificates/verify/([a-f0-9]{32})$#', $path, $matches) && $method === 'GET') {
+        json_response(aapm_certificate_public_verify($matches[1]));
     }
 
     if ($path === 'farm-data' && $method === 'GET') {

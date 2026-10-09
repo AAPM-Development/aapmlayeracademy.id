@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/assessment.php';
+require_once __DIR__ . '/certification.php';
 
 /**
  * Shared native API bootstrap.
@@ -308,6 +309,7 @@ function db(): PDO
         ensure_schema($connection, $driver);
         aapm_ensure_auth_security_schema($connection, $driver);
         aapm_ensure_assessment_schema($connection, $driver);
+        aapm_ensure_certification_schema($connection, $driver);
         $schemaReady = true;
     }
 
@@ -2139,31 +2141,41 @@ function admin_reset_user_password(array $actor, int $userId, string $password):
     }
 }
 
-function admin_reset_user_progress(int $userId): array
+function admin_reset_user_progress(array $actor, int $userId, array $input): array
 {
-    $exists = db()->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
+    if (($input['confirm'] ?? null) !== true) {
+        error_response('Konfirmasi reset progress wajib dikirim.', 422, 'confirmation_required');
+    }
+    $pdo = db();
+    $exists = $pdo->prepare('SELECT id FROM users WHERE id = ? LIMIT 1');
     $exists->execute([$userId]);
     if (!$exists->fetch()) {
         error_response('Pengguna tidak ditemukan.', 404, 'not_found');
     }
 
-    db()->beginTransaction();
+    // A reset starts a new academic generation. Attempts, events, scores, and
+    // certificates are all kept; only current progress starts over.
+    aapm_tx_begin($pdo);
     try {
-        $removed = aapm_delete_learner_evidence(db(), $userId);
-        $deletedEntries = $removed['legacyEntries'];
-        db()->commit();
+        aapm_assessment_user_lock($pdo, $userId);
+        $result = aapm_reset_learner_progress($pdo, $userId);
+        aapm_audit('admin.progress_reset', 'success', (int) $actor['id'], $userId, [
+            'generation_from' => $result['generationFrom'],
+            'generation_to' => $result['generationTo'],
+            'count' => $result['supersededAttempts'],
+        ]);
+        aapm_tx_commit($pdo);
     } catch (Throwable $exception) {
-        if (db()->inTransaction()) {
-            db()->rollBack();
-        }
+        aapm_tx_rollback($pdo);
         throw $exception;
     }
 
     return [
         'userId' => $userId,
-        'deletedEntries' => $deletedEntries,
-        'deletedAttempts' => $removed['attempts'],
-        'deletedEvents' => $removed['events'],
+        'generationFrom' => $result['generationFrom'],
+        'generationTo' => $result['generationTo'],
+        'supersededAttempts' => $result['supersededAttempts'],
+        'preservedAssessmentHistory' => true,
         'preservedCertificates' => true,
         'preservedFarmData' => true,
         'preservedConversations' => true,
@@ -2813,6 +2825,9 @@ function admin_delete_module(int $moduleId, bool $purgeProgress = false): array
     $module = admin_module_from_id($moduleId);
     if (!$module) {
         error_response('Modul tidak ditemukan.', 404, 'not_found');
+    }
+    if (aapm_module_academic_history_count(db(), (int) $module['module_number']) > 0) {
+        error_response('Modul ini memiliki riwayat akademik (ujian, aktivitas belajar, atau bukti sertifikat) dan tidak dapat dihapus. Modul harus diarsipkan melalui alur arsip modul.', 409, 'module_has_academic_history');
     }
     $progressCount = aapm_module_evidence_count(db(), (int) $module['module_number']);
     if ($progressCount > 0 && !$purgeProgress) {

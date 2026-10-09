@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/assessment.php';
+require_once __DIR__ . '/certification.php';
 
 /**
  * Shared native API bootstrap.
@@ -308,6 +309,7 @@ function db(): PDO
         ensure_schema($connection, $driver);
         aapm_ensure_auth_security_schema($connection, $driver);
         aapm_ensure_assessment_schema($connection, $driver);
+        aapm_ensure_certification_schema($connection, $driver);
         $schemaReady = true;
     }
 
