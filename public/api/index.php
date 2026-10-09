@@ -673,13 +673,13 @@ try {
     if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})/validate$#', $path, $matches) && $method === 'POST') {
         $actor = require_admin();
         require_csrf();
-        json_response(aapm_cur_policy_validate($matches[1], (int) $actor['id']));
+        json_response(aapm_cur_policy_validate($matches[1], (int) $actor['id'], aapm_cur_expected_version(request_json())));
     }
 
     if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})/ready$#', $path, $matches) && $method === 'POST') {
         $actor = require_admin();
         require_csrf();
-        json_response(['policy' => aapm_cur_policy_mark_ready($matches[1], (int) $actor['id'])]);
+        json_response(['policy' => aapm_cur_policy_mark_ready($matches[1], (int) $actor['id'], aapm_cur_expected_version(request_json()))]);
     }
 
     if ($path === 'admin/ai-settings' && $method === 'GET') {
@@ -768,6 +768,9 @@ try {
         }
         if ($moduleNumber > 0 && !isset(aapm_module_catalog(db(), (int) $user['id'])[$moduleNumber])) {
             error_response('Modul tidak ditemukan.', 404, 'assessment_not_found');
+        }
+        if ($moduleNumber > 0 && aapm_module_catalog(db(), (int) $user['id'])[$moduleNumber]['assessmentMode'] !== 'quiz') {
+            json_response([]);
         }
         $stmt = db()->prepare('SELECT id, module_number, question, options FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
         $stmt->execute([$moduleNumber]);

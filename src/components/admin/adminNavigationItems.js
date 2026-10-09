@@ -12,6 +12,8 @@ export const adminNavigationGroups = [
   {
     label: "Ruang kerja",
     items: [
+      { to: "/admin/curriculum/policies", label: "Kebijakan kurikulum", icon: "roadmap" },
+      { to: "/admin/curriculum/final-bank", label: "Bank ujian akhir", icon: "quiz" },
       { to: "/admin/ai-settings", label: "Pengaturan APPI", icon: "ai", accent: "ai" },
       { to: "/admin/workspace-status", label: "Status ruang kerja", icon: "workspace" },
     ],
@@ -53,6 +55,7 @@ export function getAdminNavigationMeta(pathname = "/admin") {
 
 // Mirrors the admin routes in App.jsx; anything else is the in-shell 404.
 const knownAdminPaths = [
+  /^\/admin\/curriculum\/(?:policies|final-bank)\/?$/,
   /^\/admin\/?$/,
   /^\/admin\/courses(?:\/[^/]+(?:\/modules\/[^/]+)?)?\/?$/,
   /^\/admin\/learners(?:\/[^/]+)?\/?$/,

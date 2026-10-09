@@ -468,6 +468,22 @@ export const nativeApi = {
           body: JSON.stringify({ confirm: true }),
         }),
     },
+    curriculum: {
+      policies: {
+        list: () => request('/admin/curriculum/policies'),
+        detail: (version) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}`),
+        create: (version) => request('/admin/curriculum/policies', json({ version })),
+        save: (version, data, expectedDraftVersion) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}`, { method: 'PUT', body: JSON.stringify({ ...data, expectedDraftVersion }) }),
+        validate: (version, expectedDraftVersion) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}/validate`, json({ expectedDraftVersion })),
+        ready: (version, expectedDraftVersion) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}/ready`, json({ expectedDraftVersion })),
+      },
+      finalBank: {
+        get: () => request('/admin/curriculum/final-bank'),
+        save: (questions, expectedDraftVersion) => request('/admin/curriculum/final-bank', json({ questions, expectedDraftVersion })),
+        validate: (expectedDraftVersion) => request('/admin/curriculum/final-bank/validate', json({ expectedDraftVersion })),
+        publish: (expectedDraftVersion) => request('/admin/curriculum/final-bank/publish', json({ expectedDraftVersion, confirm: true })),
+      },
+    },
     certificates: {
       list: (query = {}) => request(`/admin/certificates?${new URLSearchParams(query).toString()}`),
       detail: (publicId) => request(`/admin/certificates/${encodeURIComponent(publicId)}`),

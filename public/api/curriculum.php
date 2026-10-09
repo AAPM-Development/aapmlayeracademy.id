@@ -280,11 +280,67 @@ function aapm_ensure_curriculum_schema(PDO $pdo, string $driver): void
     foreach (aapm_cur_ddl($driver) as $sql) {
         $pdo->exec($sql);
     }
+    aapm_cur_add_policy_columns($pdo, $driver);
     aapm_cur_seed_v1($pdo);
     aapm_cur_allocate_numbers($pdo);
     aapm_cur_backfill_modules($pdo);
     aapm_cur_backfill_final_bank($pdo);
+    aapm_cur_backfill_policy_modes($pdo);
     $ready = true;
+}
+
+/** Additive policy contract upgrade, including previously installed Q05 databases. */
+function aapm_cur_add_policy_columns(PDO $pdo, string $driver): void
+{
+    foreach (['curriculum_policy_versions' => ['draft_version', 'INTEGER NOT NULL DEFAULT 1'],
+        'curriculum_policy_modules' => ['assessment_mode', "VARCHAR(24) NULL"]] as $table => $column) {
+        if (!aapm_column_exists($pdo, $table, $column[0])) {
+            try { $pdo->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $column[0] . ' ' . $column[1]); }
+            catch (PDOException $exception) {
+                if (!aapm_column_exists($pdo, $table, $column[0])) throw $exception;
+            }
+        }
+    }
+}
+
+/** Capture pre-Q05 membership/mode once. Later content edits never refresh this contract. */
+function aapm_cur_backfill_policy_modes(PDO $pdo): void
+{
+    if ((int) $pdo->query('SELECT COUNT(*) FROM course_modules')->fetchColumn() === 0) return;
+    aapm_tx_begin($pdo);
+    try {
+        $versions = $pdo->query('SELECT policy_version FROM curriculum_policy_versions ORDER BY id')->fetchAll();
+        foreach ($versions as $versionRow) {
+            $version = (string) $versionRow['policy_version'];
+            $row = aapm_cur_policy_lock($pdo, $version);
+            $snapshot = json_decode((string) $row['requirements_json'], true);
+            if (!is_array($snapshot) || !is_array($snapshot['required'] ?? null)) throw new RuntimeException('policy_snapshot_invalid');
+            if (isset($snapshot['modeSnapshotVersion'])) continue;
+            // Enrich the old contract; never silently adopt a divergent required projection.
+            $previous = $pdo->prepare('SELECT module_number, required FROM curriculum_policy_modules WHERE policy_version = ? ORDER BY sort_order, module_number');
+            $previous->execute([$version]);
+            $previousMembers = $previous->fetchAll();
+            $required = array_map('intval', array_column(array_filter($previousMembers, static fn (array $m): bool => (int) $m['required'] === 1), 'module_number'));
+            $expectedRequired = $snapshot['required']; sort($required); sort($expectedRequired);
+            if ($required !== $expectedRequired) throw new RuntimeException('policy_membership_mismatch');
+            if (isset($snapshot['modules'])) {
+                $projected = array_map(static fn (array $m): array => ['moduleNumber' => (int) $m['module_number'], 'required' => (int) $m['required'] === 1], $previousMembers);
+                $canonical = array_map(static fn (array $m): array => ['moduleNumber' => $m['moduleNumber'], 'required' => $m['required']], $snapshot['modules']);
+                if ($canonical !== $projected) throw new RuntimeException('policy_membership_mismatch');
+            }
+            if ($version === AAPM_CUR_POLICY_V1) {
+                // Preserve legitimate optional Q04 content at the migration boundary.
+                $pdo->prepare("INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required) SELECT ?, cm.module_number, cm.id, cm.level_number, cm.sort_order, 0 FROM course_modules cm WHERE cm.lifecycle_status <> 'draft' AND EXISTS (SELECT 1 FROM module_revisions r WHERE r.module_id = cm.id AND r.revision_number = 1 AND r.published_by_user_id IS NULL) AND cm.module_number NOT IN (SELECT module_number FROM curriculum_policy_modules WHERE policy_version = ?)")->execute([$version, $version]);
+            }
+            $pdo->prepare("UPDATE curriculum_policy_modules SET assessment_mode = CASE WHEN EXISTS (SELECT 1 FROM quiz_questions q WHERE q.module_number = curriculum_policy_modules.module_number) THEN 'quiz' ELSE 'acknowledgement' END WHERE policy_version = ? AND assessment_mode IS NULL")->execute([$version]);
+            $members = $pdo->prepare('SELECT module_number, required, assessment_mode FROM curriculum_policy_modules WHERE policy_version = ? ORDER BY sort_order, module_number');
+            $members->execute([$version]);
+            $snapshot['modules'] = array_map(static fn (array $m): array => ['moduleNumber' => (int) $m['module_number'], 'required' => (int) $m['required'] === 1, 'assessmentMode' => $m['assessment_mode']], $members->fetchAll());
+            $snapshot['modeSnapshotVersion'] = 1;
+            $pdo->prepare('UPDATE curriculum_policy_versions SET requirements_json = ? WHERE policy_version = ?')->execute([json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $version]);
+        }
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) { aapm_tx_rollback($pdo); throw $exception; }
 }
 
 /**
@@ -983,10 +1039,10 @@ function aapm_cur_question_write(int $moduleId, string $operation, array $input,
     }
 }
 
-/** True when any policy that learners may be assigned requires this module number. */
-function aapm_cur_required_by_policy(PDO $pdo, int $moduleNumber): bool
+/** Immutable quiz-mode membership requires a retained bank, even for optional modules. */
+function aapm_cur_quiz_required_by_policy(PDO $pdo, int $moduleNumber): bool
 {
-    $statement = $pdo->prepare("SELECT COUNT(*) FROM curriculum_policy_modules m INNER JOIN curriculum_policy_versions v ON v.policy_version = m.policy_version WHERE m.module_number = ? AND m.required = 1 AND v.status IN ('active', 'superseded')");
+    $statement = $pdo->prepare("SELECT COUNT(*) FROM curriculum_policy_modules m INNER JOIN curriculum_policy_versions v ON v.policy_version = m.policy_version WHERE m.module_number = ? AND m.assessment_mode = 'quiz' AND v.status IN ('active', 'superseded')");
     $statement->execute([$moduleNumber]);
     return (int) $statement->fetchColumn() > 0;
 }
@@ -1029,14 +1085,8 @@ function aapm_cur_validate_draft(PDO $pdo, array $module, array $payload, array 
     }
 
     $moduleNumber = (int) $module['module_number'];
-    $liveHasQuiz = count(aapm_cur_live_questions($pdo, $moduleNumber)) > 0;
-    $draftHasQuiz = $questions !== [];
-    if (aapm_cur_required_by_policy($pdo, $moduleNumber)) {
-        if (!$draftHasQuiz) {
-            $errors[] = ['section' => 'questions', 'field' => 'questions', 'message' => 'Modul yang wajib dalam kebijakan kurikulum harus memiliki minimal satu soal.', 'code' => 'assessment_bank_empty'];
-        } elseif ($liveHasQuiz !== $draftHasQuiz) {
-            $errors[] = ['section' => 'questions', 'field' => 'questions', 'message' => 'Modul wajib tidak dapat berubah antara berkuis dan tanpa kuis di bawah kebijakan yang sama.', 'code' => 'assessment_mode_locked'];
-        }
+    if ($questions === [] && aapm_cur_quiz_required_by_policy($pdo, $moduleNumber)) {
+        $errors[] = ['section' => 'questions', 'field' => 'questions', 'message' => 'Kebijakan yang telah aktif mensyaratkan kuis untuk modul ini; bank soal harus dipertahankan.', 'code' => 'assessment_bank_empty'];
     }
     return $errors;
 }
@@ -1307,6 +1357,12 @@ function aapm_cur_delete(int $moduleId, int $actorId): void
             aapm_tx_rollback($pdo);
             error_response('Modul yang pernah diterbitkan tidak dapat dihapus. Arsipkan modul sebagai gantinya.', 409, 'module_published_archive_required');
         }
+        $legacy->execute([$number]);
+        $membership->execute([$moduleId]);
+        if ((int) $legacy->fetchColumn() > 0 || (int) $membership->fetchColumn() > 0 || aapm_module_academic_history_count($pdo, $number) > 0) {
+            aapm_tx_rollback($pdo);
+            error_response('Modul masih dirujuk oleh riwayat atau kebijakan.', 409, 'module_has_academic_history');
+        }
         $pdo->prepare('DELETE FROM module_drafts WHERE module_id = ?')->execute([$moduleId]);
         $pdo->prepare('DELETE FROM quiz_questions WHERE module_number = ?')->execute([$number]);
         $pdo->prepare('DELETE FROM course_modules WHERE id = ?')->execute([$moduleId]);
@@ -1459,7 +1515,7 @@ function aapm_assign_new_learner_policy(PDO $pdo, int $userId, string $source): 
 function aapm_cur_learner_modules(PDO $pdo, int $userId): array
 {
     $version = aapm_learner_policy_version($pdo, $userId);
-    $statement = $pdo->prepare("SELECT cm.* FROM course_modules cm WHERE cm.lifecycle_status = 'active' OR (cm.lifecycle_status = 'archived' AND cm.module_number IN (SELECT m.module_number FROM curriculum_policy_modules m WHERE m.policy_version = ? AND m.required = 1)) ORDER BY cm.sort_order ASC, cm.module_number ASC");
+    $statement = $pdo->prepare("SELECT cm.*, m.assessment_mode, m.sort_order AS sort_order FROM curriculum_policy_modules m INNER JOIN course_modules cm ON cm.module_number = m.module_number WHERE m.policy_version = ? AND (cm.lifecycle_status = 'active' OR (cm.lifecycle_status = 'archived' AND m.required = 1)) ORDER BY m.sort_order ASC, cm.module_number ASC");
     $statement->execute([$version]);
     return $statement->fetchAll();
 }
@@ -1472,7 +1528,11 @@ function aapm_cur_normalise_policy_input(array $input): array
         if (!is_array($entry) || !is_int($entry['moduleNumber'] ?? null)) {
             error_response('Daftar modul kebijakan tidak valid.', 422, 'validation_error');
         }
-        $modules[] = ['moduleNumber' => (int) $entry['moduleNumber'], 'required' => (bool) ($entry['required'] ?? true)];
+        if (!in_array($entry['assessmentMode'] ?? null, ['quiz', 'acknowledgement'], true)
+            || $entry['moduleNumber'] < 1 || in_array($entry['moduleNumber'], array_column($modules, 'moduleNumber'), true)) {
+            error_response('Mode asesmen atau identitas modul tidak valid/berulang.', 422, 'validation_error');
+        }
+        $modules[] = ['moduleNumber' => $entry['moduleNumber'], 'required' => (bool) ($entry['required'] ?? true), 'assessmentMode' => $entry['assessmentMode']];
     }
     $tiers = [];
     foreach ((array) ($input['tiers'] ?? []) as $tier) {
@@ -1501,18 +1561,24 @@ function aapm_cur_policy_create(string $version, int $actorId): array
     if (!preg_match('/\Aacademy-v[0-9]{1,3}\z/', $version)) {
         error_response('Versi kebijakan tidak valid.', 422, 'validation_error');
     }
-    $source = aapm_cur_active_policy_version($pdo);
     aapm_tx_begin($pdo);
     try {
+        // Same policy lock ordering as activation; clone the active source under lock.
+        if (aapm_database_driver() !== 'sqlite') $pdo->query('SELECT id FROM curriculum_policy_versions ORDER BY id FOR UPDATE')->fetchAll();
         $exists = aapm_cur_policy_row($pdo, $version);
         if ($exists) {
             aapm_tx_rollback($pdo);
             error_response('Versi kebijakan sudah ada.', 409, 'policy_exists');
         }
+        if ((int) substr($version, 9) <= (int) $pdo->query('SELECT MAX(SUBSTR(policy_version, 10) + 0) FROM curriculum_policy_versions')->fetchColumn()) {
+            aapm_tx_rollback($pdo);
+            error_response('Gunakan nomor versi kebijakan yang lebih baru.', 422, 'policy_version_not_subsequent');
+        }
+        $source = aapm_cur_active_policy_version($pdo);
         $now = aapm_utc_now();
         $pdo->prepare("INSERT INTO curriculum_policy_versions (policy_version, course_id, status, parent_policy_version, requirements_json, created_by_user_id, created_at, validated_at, activated_at) SELECT ?, course_id, 'draft', ?, requirements_json, ?, ?, NULL, NULL FROM curriculum_policy_versions WHERE policy_version = ?")
             ->execute([$version, $source, $actorId, $now, $source]);
-        $pdo->prepare('INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required) SELECT ?, module_number, module_id, chapter_number, sort_order, required FROM curriculum_policy_modules WHERE policy_version = ?')
+        $pdo->prepare('INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required, assessment_mode) SELECT ?, module_number, module_id, chapter_number, sort_order, required, assessment_mode FROM curriculum_policy_modules WHERE policy_version = ?')
             ->execute([$version, $source]);
         $pdo->prepare('INSERT INTO assessment_policies (policy_version, course_id, required_modules_json, module_pass_percent, final_pass_percent, created_at) SELECT ?, course_id, required_modules_json, module_pass_percent, final_pass_percent, ? FROM assessment_policies WHERE policy_version = ?')
             ->execute([$version, $now, $source]);
@@ -1534,6 +1600,7 @@ function aapm_cur_policy_create(string $version, int $actorId): array
 function aapm_cur_policy_update(string $version, array $input, int $actorId): array
 {
     $pdo = db();
+    $expected = aapm_cur_expected_version($input);
     $normal = aapm_cur_normalise_policy_input($input);
     $row = aapm_cur_policy_row($pdo, $version);
     if (!$row) {
@@ -1555,10 +1622,23 @@ function aapm_cur_policy_update(string $version, array $input, int $actorId): ar
             aapm_tx_rollback($pdo);
             error_response('Kebijakan yang sudah aktif atau digantikan tidak dapat diubah.', 409, 'policy_immutable');
         }
+        if ((int) $locked['draft_version'] !== $expected) {
+            aapm_tx_rollback($pdo); aapm_cur_conflict((int) $locked['draft_version']);
+        }
+        // Use the same module-id lock order as readiness/activation, and coordinate deletion.
+        $numbers = array_column($normal['modules'], 'moduleNumber');
+        if ($numbers !== []) {
+            $find = $pdo->prepare('SELECT id FROM course_modules WHERE module_number IN (' . implode(',', array_fill(0, count($numbers), '?')) . ') ORDER BY id' . (aapm_database_driver() === 'sqlite' ? '' : ' FOR UPDATE'));
+            $find->execute($numbers);
+            if (count($find->fetchAll()) !== count($numbers)) {
+                aapm_tx_rollback($pdo);
+                error_response('Modul keanggotaan tidak ditemukan.', 422, 'module_missing');
+            }
+        }
         $pdo->prepare('DELETE FROM curriculum_policy_modules WHERE policy_version = ?')->execute([$version]);
-        $insertModule = $pdo->prepare('INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required) VALUES (?, ?, NULL, NULL, ?, ?)');
+        $insertModule = $pdo->prepare('INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required, assessment_mode) VALUES (?, ?, NULL, NULL, ?, ?, ?)');
         foreach ($normal['modules'] as $index => $entry) {
-            $insertModule->execute([$version, $entry['moduleNumber'], $index + 1, $entry['required'] ? 1 : 0]);
+            $insertModule->execute([$version, $entry['moduleNumber'], $index + 1, $entry['required'] ? 1 : 0, $entry['assessmentMode']]);
         }
         $pdo->prepare('UPDATE curriculum_policy_modules SET module_id = (SELECT cm.id FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number), chapter_number = (SELECT cm.level_number FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number) WHERE policy_version = ?')
             ->execute([$version]);
@@ -1571,13 +1651,14 @@ function aapm_cur_policy_update(string $version, array $input, int $actorId): ar
         }
         $requirements = [
             'courseId' => (string) $locked['course_id'],
+            'modeSnapshotVersion' => 1,
             'modules' => $normal['modules'],
             'required' => array_values(array_unique($required)),
             'modulePassPercent' => $normal['modulePassPercent'],
             'finalPassPercent' => $normal['finalPassPercent'],
             'tiers' => $normal['tiers'],
         ];
-        $pdo->prepare("UPDATE curriculum_policy_versions SET requirements_json = ?, status = 'draft', validated_at = NULL WHERE policy_version = ?")
+        $pdo->prepare("UPDATE curriculum_policy_versions SET requirements_json = ?, draft_version = draft_version + 1, status = 'draft', validated_at = NULL WHERE policy_version = ?")
             ->execute([json_encode($requirements, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $version]);
         aapm_cur_event($pdo, 'policy.created', null, $version, null, $actorId, ['edited' => true]);
         aapm_tx_commit($pdo);
@@ -1607,24 +1688,29 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
     }
     $snapshotRequired = array_map('intval', $snapshot['required']);
     sort($snapshotRequired);
-    $members = $pdo->prepare('SELECT m.module_number, m.required, cm.lifecycle_status, cm.published_revision_id FROM curriculum_policy_modules m LEFT JOIN course_modules cm ON cm.module_number = m.module_number WHERE m.policy_version = ? ORDER BY m.module_number ASC');
+    $members = $pdo->prepare('SELECT m.module_number, m.required, m.assessment_mode, m.sort_order, cm.lifecycle_status, cm.published_revision_id FROM curriculum_policy_modules m LEFT JOIN course_modules cm ON cm.module_number = m.module_number WHERE m.policy_version = ? ORDER BY m.module_number ASC');
     $members->execute([$version]);
     $requiredSet = [];
     $memberRows = $members->fetchAll();
     $snapshotMembers = $snapshot['modules'] ?? array_map(static fn (int $number): array => ['moduleNumber' => $number, 'required' => true], $snapshotRequired);
     $expectedMembers = [];
     foreach ((array) $snapshotMembers as $member) {
-        if (!is_array($member) || !is_int($member['moduleNumber'] ?? null) || !is_bool($member['required'] ?? null)) {
+        if (!is_array($member) || !is_int($member['moduleNumber'] ?? null) || !is_bool($member['required'] ?? null) || !in_array($member['assessmentMode'] ?? null, ['quiz', 'acknowledgement'], true)) {
             $errors[] = ['section' => 'policy', 'field' => 'modules', 'message' => 'Snapshot keanggotaan modul tidak valid.', 'code' => 'policy_snapshot_invalid'];
             continue;
         }
-        $expectedMembers[] = ['moduleNumber' => $member['moduleNumber'], 'required' => $member['required']];
+        $expectedMembers[] = ['moduleNumber' => $member['moduleNumber'], 'required' => $member['required'], 'assessmentMode' => $member['assessmentMode'] ?? null];
     }
     usort($expectedMembers, static fn (array $a, array $b): int => $a['moduleNumber'] <=> $b['moduleNumber']);
-    $actualMembers = array_map(static fn (array $member): array => ['moduleNumber' => (int) $member['module_number'], 'required' => (int) $member['required'] === 1], $memberRows);
+    $actualMembers = array_map(static fn (array $member): array => ['moduleNumber' => (int) $member['module_number'], 'required' => (int) $member['required'] === 1, 'assessmentMode' => $member['assessment_mode']], $memberRows);
     $memberRequired = array_column(array_filter($actualMembers, static fn (array $member): bool => $member['required']), 'moduleNumber');
     if ($expectedMembers !== $actualMembers || $snapshotRequired !== $memberRequired) {
         $errors[] = ['section' => 'policy', 'field' => 'modules', 'message' => 'Keanggotaan modul tidak sama dengan snapshot kebijakan.', 'code' => 'policy_membership_mismatch'];
+    }
+    $orderedRows = $memberRows;
+    usort($orderedRows, static fn (array $a, array $b): int => ($a['sort_order'] <=> $b['sort_order']) ?: ($a['module_number'] <=> $b['module_number']));
+    if (array_column($snapshotMembers, 'moduleNumber') !== array_map('intval', array_column($orderedRows, 'module_number'))) {
+        $errors[] = ['section' => 'policy', 'field' => 'modules', 'message' => 'Urutan modul berbeda dari snapshot kebijakan.', 'code' => 'policy_order_mismatch'];
     }
     foreach ($memberRows as $member) {
         $number = (int) $member['module_number'];
@@ -1637,10 +1723,12 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
         }
         if ((int) $member['required'] === 1) {
             $requiredSet[] = $number;
+        }
+        if ($member['assessment_mode'] === 'quiz') {
             if (count(aapm_cur_live_questions($pdo, $number)) === 0) {
-                $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Modul wajib $number belum memiliki soal yang valid.", 'code' => 'required_quiz_missing'];
+                $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Mode kuis modul $number belum memiliki soal yang valid.", 'code' => 'required_quiz_missing'];
             } elseif (aapm_cur_final_bank_errors(aapm_cur_live_questions($pdo, $number)) !== []) {
-                $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Soal modul wajib $number tidak valid.", 'code' => 'required_quiz_invalid'];
+                $errors[] = ['section' => 'modules', 'field' => "modules[$number]", 'message' => "Soal untuk mode kuis modul $number tidak valid.", 'code' => 'required_quiz_invalid'];
             }
         }
     }
@@ -1717,39 +1805,44 @@ function aapm_cur_policy_errors(PDO $pdo, string $version): array
     return $errors;
 }
 
-function aapm_cur_policy_validate(string $version, int $actorId): array
+/** Lock the validation dependencies in the same order as controlled activation. */
+function aapm_cur_policy_dependencies_lock(PDO $pdo): void
+{
+    if (aapm_database_driver() !== 'sqlite') {
+        $pdo->query('SELECT id FROM course_modules ORDER BY id FOR UPDATE')->fetchAll();
+        aapm_cur_final_bank_locked($pdo, null);
+        $pdo->query('SELECT id FROM quiz_questions ORDER BY id FOR UPDATE')->fetchAll();
+    }
+}
+
+function aapm_cur_policy_validate(string $version, int $actorId, int $expected, bool $ready = false): array
 {
     $pdo = db();
     aapm_tx_begin($pdo);
     try {
-        aapm_cur_policy_lock($pdo, $version);
+        $row = aapm_cur_policy_lock($pdo, $version);
+        if (!$row) { aapm_tx_rollback($pdo); error_response('Kebijakan tidak ditemukan.', 404, 'not_found'); }
+        if ((int) $row['draft_version'] !== $expected) { aapm_tx_rollback($pdo); aapm_cur_conflict((int) $row['draft_version']); }
+        if (!in_array($row['status'], ['draft', 'ready'], true)) {
+            aapm_tx_rollback($pdo); error_response('Kebijakan ini tidak dapat diubah.', 409, 'policy_immutable');
+        }
+        aapm_cur_policy_dependencies_lock($pdo);
         $errors = aapm_cur_policy_errors($pdo, $version);
+        if ($ready && ($row['validated_at'] === null || $errors !== [])) {
+            aapm_tx_rollback($pdo); error_response('Validasi ulang kebijakan dan materi sebelum menandai siap.', 409, 'policy_not_validated');
+        }
         if ($errors === []) {
-            $pdo->prepare('UPDATE curriculum_policy_versions SET validated_at = ? WHERE policy_version = ?')->execute([aapm_utc_now(), $version]);
-            aapm_cur_event($pdo, 'policy.validated', null, $version, null, $actorId, []);
-        } else {
-            $pdo->prepare('UPDATE curriculum_policy_versions SET validated_at = NULL WHERE policy_version = ? AND status = ?')->execute([$version, 'draft']);
+            $pdo->prepare('UPDATE curriculum_policy_versions SET validated_at = ?, status = ? WHERE policy_version = ?')->execute([aapm_utc_now(), $ready ? 'ready' : $row['status'], $version]);
+            aapm_cur_event($pdo, 'policy.validated', null, $version, null, $actorId, ['ready' => $ready, 'draftVersion' => $expected]);
         }
         aapm_tx_commit($pdo);
-    } catch (Throwable $exception) {
-        aapm_tx_rollback($pdo);
-        throw $exception;
-    }
-    return ['valid' => $errors === [], 'errors' => $errors];
+    } catch (Throwable $exception) { aapm_tx_rollback($pdo); throw $exception; }
+    return ['valid' => $errors === [], 'errors' => $errors, 'draftVersion' => $expected];
 }
 
-function aapm_cur_policy_mark_ready(string $version, int $actorId): array
+function aapm_cur_policy_mark_ready(string $version, int $actorId, int $expected): array
 {
-    $pdo = db();
-    $row = aapm_cur_policy_row($pdo, $version);
-    if (!$row) {
-        error_response('Kebijakan tidak ditemukan.', 404, 'not_found');
-    }
-    if ((string) $row['status'] !== 'draft' || $row['validated_at'] === null) {
-        error_response('Kebijakan harus divalidasi tanpa perubahan sebelum ditandai siap.', 409, 'policy_not_validated');
-    }
-    $pdo->prepare("UPDATE curriculum_policy_versions SET status = 'ready' WHERE policy_version = ? AND status = 'draft'")->execute([$version]);
-    aapm_cur_event($pdo, 'policy.validated', null, $version, null, $actorId, ['ready' => true]);
+    aapm_cur_policy_validate($version, $actorId, $expected, true);
     return aapm_cur_policy_detail($version);
 }
 
@@ -1814,28 +1907,29 @@ function aapm_cur_policy_detail(string $version): array
     if (!$row) {
         error_response('Kebijakan tidak ditemukan.', 404, 'not_found');
     }
-    $members = $pdo->prepare('SELECT module_number, required, sort_order, chapter_number FROM curriculum_policy_modules WHERE policy_version = ? ORDER BY sort_order ASC, module_number ASC');
+    $members = $pdo->prepare('SELECT module_number, required, assessment_mode, sort_order, chapter_number FROM curriculum_policy_modules WHERE policy_version = ? ORDER BY sort_order ASC, module_number ASC');
     $members->execute([$version]);
-    $tiers = $pdo->prepare('SELECT tier_number, tier_name, required_modules_json, requires_final FROM certificate_tier_policies WHERE policy_version = ? ORDER BY tier_number ASC');
-    $tiers->execute([$version]);
+    $memberMetadata = [];
+    foreach ($members->fetchAll() as $member) $memberMetadata[(int) $member['module_number']] = $member;
+    $snapshot = json_decode((string) $row['requirements_json'], true);
+    $assigned = $pdo->prepare('SELECT COUNT(*) FROM users u LEFT JOIN learner_curriculum_assignments a ON a.user_id = u.id WHERE a.policy_version = ? OR (a.user_id IS NULL AND ? = ?)');
+    $assigned->execute([$version, $version, AAPM_CUR_POLICY_V1]);
     return [
+        'modulePassPercent' => $snapshot['modulePassPercent'],
+        'finalPassPercent' => $snapshot['finalPassPercent'],
+        'assignedLearners' => (int) $assigned->fetchColumn(),
         'version' => (string) $row['policy_version'],
+        'draftVersion' => (int) $row['draft_version'],
         'status' => (string) $row['status'],
         'parentVersion' => $row['parent_policy_version'],
         'validatedAt' => $row['validated_at'],
         'activatedAt' => $row['activated_at'],
-        'modules' => array_map(static fn (array $m): array => [
-            'moduleNumber' => (int) $m['module_number'],
-            'required' => (int) $m['required'] === 1,
-            'sortOrder' => $m['sort_order'] === null ? null : (int) $m['sort_order'],
-            'chapterNumber' => $m['chapter_number'] === null ? null : (int) $m['chapter_number'],
-        ], $members->fetchAll()),
-        'tiers' => array_map(static fn (array $t): array => [
-            'tierNumber' => (int) $t['tier_number'],
-            'tierName' => (string) $t['tier_name'],
-            'modules' => array_map('intval', json_decode((string) $t['required_modules_json'], true) ?: []),
-            'requiresFinal' => (int) $t['requires_final'] === 1,
-        ], $tiers->fetchAll()),
+        // Admin reads the canonical contract; validation separately checks its projections.
+        'modules' => array_map(static function (array $member, int $index) use ($memberMetadata): array {
+            $metadata = $memberMetadata[$member['moduleNumber']] ?? [];
+            return $member + ['sortOrder' => $index + 1, 'chapterNumber' => isset($metadata['chapter_number']) ? (int) $metadata['chapter_number'] : null];
+        }, $snapshot['modules'] ?? [], array_keys($snapshot['modules'] ?? [])),
+        'tiers' => $snapshot['tiers'],
     ];
 }
 
@@ -1875,6 +1969,8 @@ function aapm_cur_schema_status(PDO $pdo): array
         'question_bank_revision_items' => aapm_table_exists($pdo, 'question_bank_revision_items'),
         'curriculum_policy_versions' => aapm_table_exists($pdo, 'curriculum_policy_versions'),
         'curriculum_policy_modules' => aapm_table_exists($pdo, 'curriculum_policy_modules'),
+        'policy_draft_version' => aapm_column_exists($pdo, 'curriculum_policy_versions', 'draft_version'),
+        'policy_assessment_mode' => aapm_column_exists($pdo, 'curriculum_policy_modules', 'assessment_mode'),
         'learner_curriculum_assignments' => aapm_table_exists($pdo, 'learner_curriculum_assignments'),
         'curriculum_publication_events' => aapm_table_exists($pdo, 'curriculum_publication_events'),
         'lifecycle_column' => aapm_column_exists($pdo, 'course_modules', 'lifecycle_status'),

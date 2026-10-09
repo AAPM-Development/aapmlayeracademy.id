@@ -195,7 +195,7 @@ test("P08, P20 and P22 an empty required question bank cannot be published; the 
   });
 });
 
-test("P21 a required module cannot change between quiz and no-quiz under the same policy", async () => {
+test("P21 restoring a removed live bank preserves the immutable quiz assessment mode", async () => {
   const { site } = await setup("p21");
   await withSite(site, async (api) => {
     const admin = await signIn(api.port, "pengelola@example.test");
@@ -208,8 +208,8 @@ test("P21 a required module cannot change between quiz and no-quiz under the sam
     });
     assert.equal(created.status, 201, created.text);
     const reply = await publish(admin, id, created.json.data.draftVersion);
-    assert.equal(reply.status, 422);
-    assert.ok(reply.json.error.details.errors.some((item) => item.code === "assessment_mode_locked"));
+    assert.equal(reply.status, 200, reply.text);
+    assert.equal(rows(site, "SELECT assessment_mode FROM curriculum_policy_modules WHERE policy_version = 'academy-v1' AND module_number = 9")[0].assessment_mode, "quiz");
     void version;
   });
 });
@@ -446,9 +446,9 @@ test("archived-module access follows the assigned policy for catalogue, quiz and
     body.modules = body.modules.filter((m) => m.moduleNumber !== 8);
     body.tiers = body.tiers.map((t) => ({ ...t, modules: t.modules.filter((n) => n !== 8) }));
     await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
-    assert.equal((await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", body)).status, 200);
-    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
-    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
+    assert.equal((await policyMutation(admin, "PUT", "/api/admin/curriculum/policies/academy-v2", body)).status, 200);
+    assert.equal((await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
+    assert.equal((await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
     const activation = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=ARCHIVE"]);
     assert.equal(activation.status, 0, activation.stdout + activation.stderr);
     const registered = await api.mutate("POST", "/api/auth/register", { email: "unassigned@example.test", password: "Valid-pass1", fullName: "Peserta V2" });
@@ -504,8 +504,14 @@ test("P36 creating a v2 draft leaves v1 untouched", async () => {
   });
 });
 
+async function policyMutation(admin, method, path, body) {
+  const versionPath = path.replace(/\/(validate|ready)$/, '');
+  const current = await admin.get(versionPath);
+  return admin.mutate(method, path, { ...body, expectedDraftVersion: current.json.data.policy.draftVersion });
+}
+
 function v2Body(overrides = {}) {
-  const modules = Array.from({ length: 22 }, (_, index) => ({ moduleNumber: index + 1, required: true }));
+  const modules = Array.from({ length: 22 }, (_, index) => ({ moduleNumber: index + 1, required: true, assessmentMode: "quiz" }));
   return {
     modules,
     modulePassPercent: 70,
@@ -527,17 +533,16 @@ test("P37 and P38 an invalid v2 module requirement and an invalid tier mapping a
   await withSite(site, async (api) => {
     const admin = await signIn(api.port, "pengelola@example.test");
     await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
-    const badModule = v2Body({ modules: [...v2Body().modules, { moduleNumber: 999, required: true }] });
-    assert.equal((await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", badModule)).status, 200);
-    const badModuleValidation = await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
-    assert.equal(badModuleValidation.json.data.valid, false);
-    assert.ok(badModuleValidation.json.data.errors.some((item) => item.code === "module_missing"));
+    const badModule = v2Body({ modules: [...v2Body().modules, { moduleNumber: 999, required: true, assessmentMode: "quiz" }] });
+    const missingMember = await policyMutation(admin, "PUT", "/api/admin/curriculum/policies/academy-v2", badModule);
+    assert.equal(missingMember.status, 422);
+    assert.equal(missingMember.json.error.code, "module_missing");
 
     const badTier = v2Body();
     badTier.tiers[0].modules = [1, 2, 3, 22];
-    badTier.modules = badTier.modules.map((entry) => (entry.moduleNumber === 22 ? { moduleNumber: 22, required: false } : entry));
-    await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", badTier);
-    const tierValidation = await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
+    badTier.modules = badTier.modules.map((entry) => (entry.moduleNumber === 22 ? { moduleNumber: 22, required: false, assessmentMode: "quiz" } : entry));
+    await policyMutation(admin, "PUT", "/api/admin/curriculum/policies/academy-v2", badTier);
+    const tierValidation = await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
     assert.equal(tierValidation.json.data.valid, false);
     assert.ok(tierValidation.json.data.errors.some((item) => item.code === "tier_module_not_required"));
   });
@@ -548,10 +553,10 @@ test("P39 a valid v2 policy validates and becomes ready", async () => {
   await withSite(site, async (api) => {
     const admin = await signIn(api.port, "pengelola@example.test");
     await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
-    await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
-    const validated = await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
+    await policyMutation(admin, "PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
+    const validated = await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
     assert.equal(validated.json.data.valid, true, JSON.stringify(validated.json.data.errors));
-    const ready = await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", {});
+    const ready = await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/ready", {});
     assert.equal(ready.status, 200, ready.text);
     assert.equal(ready.json.data.policy.status, "ready");
     assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM curriculum_policy_versions WHERE status = 'active'")[0].n), 1, "readiness does not activate");
@@ -567,9 +572,9 @@ test("P40, P41, P43 and P44 activation affects new accounts only; existing learn
     assert.equal((await learner.mutate("POST", "/api/certificates/claims", { tierNumber: 1, requestKey: randomUUID() })).status, 201);
     const publicId = rows(site, "SELECT public_id FROM certificate_issuances WHERE user_id = (SELECT id FROM users WHERE email = 'peserta-a@example.test')")[0].public_id;
     await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
-    await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
-    await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
-    await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", {});
+    await policyMutation(admin, "PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
+    await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
+    await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/ready", {});
 
     const dry = cli(site, ["--policy-version=academy-v2", "--expect-environment=local", "--dry-run"]);
     assert.equal(dry.status, 0, dry.stdout + dry.stderr);
@@ -608,9 +613,9 @@ test("P47 concurrent activations leave exactly one active policy", async () => {
     const admin = await signIn(api.port, "pengelola@example.test");
     for (const version of ["academy-v2", "academy-v3"]) {
       await admin.mutate("POST", "/api/admin/curriculum/policies", { version });
-      await admin.mutate("PUT", `/api/admin/curriculum/policies/${version}`, v2Body({ modulePassPercent: 72 }));
-      await admin.mutate("POST", `/api/admin/curriculum/policies/${version}/validate`, {});
-      await admin.mutate("POST", `/api/admin/curriculum/policies/${version}/ready`, {});
+      await policyMutation(admin, "PUT", `/api/admin/curriculum/policies/${version}`, v2Body({ modulePassPercent: 72 }));
+      await policyMutation(admin, "POST", `/api/admin/curriculum/policies/${version}/validate`, {});
+      await policyMutation(admin, "POST", `/api/admin/curriculum/policies/${version}/ready`, {});
     }
   });
   const args = (version) => [`--policy-version=${version}`, "--expect-environment=local", "--apply", "--operator=Uji", "--evidence-ref=RACE"];
@@ -651,9 +656,9 @@ test("policy activation rejects snapshot/projection drift and invalidated readin
   await withSite(site, async (api) => {
     const admin = await signIn(api.port, "pengelola@example.test");
     await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
-    await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
-    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
-    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
+    await policyMutation(admin, "PUT", "/api/admin/curriculum/policies/academy-v2", v2Body({ modulePassPercent: 75 }));
+    assert.equal((await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {})).json.data.valid, true);
+    assert.equal((await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/ready", {})).status, 200);
     const requirements = rows(site, "SELECT requirements_json FROM curriculum_policy_versions WHERE policy_version = 'academy-v2'")[0].requirements_json;
     const snapshot = () => ({
       policy: rows(site, "SELECT * FROM curriculum_policy_versions WHERE policy_version = 'academy-v1'"),
@@ -673,7 +678,7 @@ test("policy activation rejects snapshot/projection drift and invalidated readin
     ];
     for (const c of cases) {
       sql(site, c.change, c.params);
-      const validation = await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
+      const validation = await policyMutation(admin, "POST", "/api/admin/curriculum/policies/academy-v2/validate", {});
       assert.equal(validation.json.data.valid, false, c.code);
       assert.ok(validation.json.data.errors.some((e) => e.code === c.code), JSON.stringify(validation.json.data.errors));
       // Call activation directly: this bypasses the CLI's earlier advisory validation,

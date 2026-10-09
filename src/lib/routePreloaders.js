@@ -20,6 +20,8 @@ const routeLoaders = {
   adminCertificates: () => import("@/pages/admin/AdminCertificates"),
   adminOverview: () => import("@/pages/admin/AdminOverview"),
   adminCourses: () => import("@/pages/admin/AdminCourses"),
+  adminCurriculumPolicies: () => import("@/pages/admin/AdminCurriculumPolicies"),
+  adminFinalBank: () => import("@/pages/admin/AdminFinalBank"),
   adminCourseDetail: () => import("@/pages/admin/AdminCourseDetail"),
   adminLearners: () => import("@/pages/admin/AdminLearners"),
   adminLearnerDetail: () => import("@/pages/admin/AdminLearnerDetail"),
@@ -63,6 +65,8 @@ export function preloadRoute(pathname) {
   else if (path === "/verify-email") moduleName = "verifyEmail";
   else if (path.startsWith("/verify-certificate/")) moduleName = "verifyCertificate";
   else if (path === "/admin") moduleName = "adminOverview";
+  else if (path === "/admin/curriculum/policies") moduleName = "adminCurriculumPolicies";
+  else if (path === "/admin/curriculum/final-bank") moduleName = "adminFinalBank";
   else if (path === "/admin/courses") moduleName = "adminCourses";
   else if (path.startsWith("/admin/courses/") && path.includes("/modules/")) {
     moduleName = "adminModuleEditor";

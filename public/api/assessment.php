@@ -357,6 +357,7 @@ function aapm_module_catalog(PDO $pdo, int $userId): array
         $catalog[(int) $row['module_number']] = [
             'levelNumber' => (int) $row['level_number'],
             'title' => (string) $row['title'],
+            'assessmentMode' => (string) $row['assessment_mode'],
         ];
     }
 
@@ -536,6 +537,10 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
     $catalog = aapm_module_catalog($pdo, $userId);
     $quizCounts = aapm_quiz_counts($pdo);
+    $modeRows = $pdo->prepare('SELECT module_number, assessment_mode FROM curriculum_policy_modules WHERE policy_version = ?');
+    $modeRows->execute([$policy['version']]);
+    $modes = [];
+    foreach ($modeRows->fetchAll() as $mode) $modes[(int) $mode['module_number']] = $mode['assessment_mode'];
     $now = aapm_utc_now();
 
     $attemptStatement = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? ORDER BY id ASC');
@@ -556,14 +561,20 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     }
 
     $modules = [];
-    $moduleNumbers = array_unique(array_merge(array_keys($catalog), [0], array_keys($legacyRows), array_keys($quizCounts)));
+    // Preserve historical progress outside today's available catalogue as evidence.
+    // Its quiz nature comes from stored attempts, never from the mutable live bank.
+    $historicalQuizzes = [];
+    foreach ($attempts as $attempt) {
+        if ($attempt['assessment_type'] === 'module_quiz') $historicalQuizzes[(int) $attempt['module_number']] = true;
+    }
+    $moduleNumbers = array_unique(array_merge(array_keys($catalog), [0], array_keys($legacyRows), array_keys($modes), array_keys($historicalQuizzes), array_map('intval', array_column($events, 'module_number'))));
     sort($moduleNumbers);
     foreach ($moduleNumbers as $number) {
         $modules[$number] = [
             'moduleNumber' => $number,
             'levelNumber' => $catalog[$number]['levelNumber'] ?? null,
             'title' => $catalog[$number]['title'] ?? ($number === 0 ? 'Ujian akhir' : null),
-            'hasQuiz' => ($quizCounts[$number] ?? 0) > 0,
+            'hasQuiz' => $number === 0 ? ($quizCounts[0] ?? 0) > 0 : (isset($modes[$number]) ? $modes[$number] === 'quiz' : isset($historicalQuizzes[$number])),
             'quizAttempted' => false,
             'quizPassed' => false,
             'bestPercent' => null,
@@ -833,6 +844,10 @@ function aapm_assessment_start(array $user, array $input): array
         if ($type === 'module_quiz' && !isset($catalog[$moduleNumber])) {
             aapm_tx_rollback($pdo);
             aapm_assessment_fail(404, 'assessment_not_found', 'Modul tidak ditemukan.');
+        }
+        if ($type === 'module_quiz' && $catalog[$moduleNumber]['assessmentMode'] !== 'quiz') {
+            aapm_tx_rollback($pdo);
+            aapm_assessment_fail(409, 'assessment_unavailable', 'Kebijakan Anda menggunakan konfirmasi belajar untuk modul ini.');
         }
         if (($quizCounts[$moduleNumber] ?? 0) < 1) {
             aapm_tx_rollback($pdo);

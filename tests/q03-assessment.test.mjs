@@ -520,6 +520,20 @@ test("A19 a no-quiz module completes on a server-recorded acknowledgement, idemp
   const { site } = await setup("a19");
   bulk(site, { modules: [{ module_number: 98, sort_order: 98 }] });
   await withSite(site, async (api) => {
+    // Q05: legitimate optional/no-quiz content belongs to an explicit disposable
+    // policy. Keep immutable v1 untouched rather than weakening assigned membership.
+    const admin = await signIn(api.port, "pengelola@example.test");
+    const created = await admin.mutate("POST", "/api/admin/curriculum/policies", { version: "academy-v2" });
+    const policy = created.json.data.policy;
+    const saved = await admin.mutate("PUT", "/api/admin/curriculum/policies/academy-v2", { ...policy, expectedDraftVersion: policy.draftVersion, modules: [...policy.modules, { moduleNumber: 98, required: false, assessmentMode: "acknowledgement" }] });
+    assert.equal(saved.status, 200, saved.text);
+    const token = saved.json.data.policy.draftVersion;
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/validate", { expectedDraftVersion: token })).json.data.valid, true);
+    assert.equal((await admin.mutate("POST", "/api/admin/curriculum/policies/academy-v2/ready", { expectedDraftVersion: token })).status, 200);
+    const activated = run(site, join(repo, "scripts", "curriculum", "activate-policy.php"), ["--policy-version=academy-v2", "--expect-environment=local", "--apply", "--operator=Test", "--evidence-ref=A19"]);
+    assert.equal(activated.status, 0, activated.stdout + activated.stderr);
+    // Test-only assignment of this disposable learner; production has no reassignment API.
+    sql(site, "INSERT INTO learner_curriculum_assignments (user_id, policy_version, assigned_at, assignment_source) SELECT id, 'academy-v2', CURRENT_TIMESTAMP, 'test_fixture' FROM users WHERE email = 'peserta-a@example.test' ON CONFLICT(user_id) DO UPDATE SET policy_version = 'academy-v2'");
     const learner = await signIn(api.port, "peserta-a@example.test");
     const first = await learner.mutate("POST", "/api/modules/98/acknowledge", {});
     assert.equal(first.status, 200);
@@ -753,13 +767,15 @@ test("A43 the progress read model agrees with the verified-completion count", as
 
 test("the 70% module boundary: 6 of 10 fails and 7 of 10 passes", async () => {
   const { site } = await setup("boundary70");
+  // Exercise grading on an assigned v1 member. A post-seed module is not
+  // automatically part of the learner's immutable academic contract.
+  sql(site, "DELETE FROM quiz_questions WHERE module_number = 1");
   bulk(site, {
-    modules: [{ module_number: 99, sort_order: 99 }],
-    questions: Array.from({ length: 10 }, () => ({ module_number: 99, correct_index: 0 })),
+    questions: Array.from({ length: 10 }, () => ({ module_number: 1, correct_index: 0 })),
   });
   await withSite(site, async (api) => {
     const learner = await signIn(api.port, "peserta-a@example.test");
-    const attempt = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 99, requestKey: randomUUID() })).json.data.attempt;
+    const attempt = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 1, requestKey: randomUUID() })).json.data.attempt;
     for (let index = 0; index < 10; index++) {
       await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/answers`, { questionId: attempt.questions[index].id, answerIndex: index < 6 ? 0 : 1 });
     }
@@ -767,7 +783,7 @@ test("the 70% module boundary: 6 of 10 fails and 7 of 10 passes", async () => {
     assert.equal(failed.json.data.attempt.result.scorePercent, 60);
     assert.equal(failed.json.data.attempt.result.passed, false);
 
-    const retake = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 99, requestKey: randomUUID() })).json.data.attempt;
+    const retake = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 1, requestKey: randomUUID() })).json.data.attempt;
     for (let index = 0; index < 10; index++) {
       await learner.mutate("POST", `/api/assessments/attempts/${retake.id}/answers`, { questionId: retake.questions[index].id, answerIndex: index < 7 ? 0 : 1 });
     }

@@ -38,6 +38,8 @@ const VerifyCertificate = lazy(() => loadRouteModule('verifyCertificate'));
 const AdminCertificates = lazy(() => loadRouteModule('adminCertificates'));
 const AdminOverview = lazy(() => loadRouteModule('adminOverview'));
 const AdminCourses = lazy(() => loadRouteModule('adminCourses'));
+const AdminCurriculumPolicies = lazy(() => loadRouteModule('adminCurriculumPolicies'));
+const AdminFinalBank = lazy(() => loadRouteModule('adminFinalBank'));
 const AdminCourseDetail = lazy(() => loadRouteModule('adminCourseDetail'));
 const AdminLearners = lazy(() => loadRouteModule('adminLearners'));
 const AdminLearnerDetail = lazy(() => loadRouteModule('adminLearnerDetail'));
@@ -123,6 +125,8 @@ const AuthenticatedApp = () => {
           <Route element={<AdminRoute />}>
             <Route element={<AdminShell />}>
               <Route path="/admin" element={<AdminOverview />} />
+              <Route path="/admin/curriculum/policies" element={<AdminCurriculumPolicies />} />
+              <Route path="/admin/curriculum/final-bank" element={<AdminFinalBank />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
               <Route path="/admin/courses/:courseId/modules/:moduleId" element={<AdminModuleEditor />} />
               <Route path="/admin/courses/:courseId" element={<AdminCourseDetail />} />
