@@ -506,7 +506,7 @@ a.aapm-module-row:not([data-state="locked"]):hover { background: var(--aapm-sema
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--aapm-primitive-space-2);
-  min-height: 40px;
+  min-height: 44px;
   padding: var(--aapm-primitive-space-1-5) var(--aapm-primitive-space-2);
   border-radius: var(--aapm-primitive-radius-control);
   color: var(--aapm-semantic-foreground);
@@ -519,7 +519,7 @@ a.aapm-module-row:not([data-state="locked"]):hover { background: var(--aapm-sema
 .aapm-outline__item[data-state="locked"] { color: var(--aapm-semantic-muted); }
 .aapm-outline__mark { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--aapm-semantic-border-strong); color: var(--aapm-semantic-muted); font-size: 11px; font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; }
 .aapm-outline__item[data-state="completed"] .aapm-outline__mark { border-color: var(--aapm-semantic-primary); background: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary-foreground); }
-.aapm-outline__item[aria-current="page"] .aapm-outline__mark { border-color: var(--hue); color: var(--hue); }
+.aapm-outline__item[aria-current="page"]:not([data-state="completed"]) .aapm-outline__mark { border-color: var(--hue); color: var(--hue); }
 .aapm-outline__mark .aapm-icon { width: 12px; height: 12px; }
 .aapm-outline__label { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 

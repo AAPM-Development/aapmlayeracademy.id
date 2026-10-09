@@ -279,6 +279,7 @@ export function CourseOutline({ curriculum = [], currentNumber, completed = 0, t
                   {module.state === "completed" ? <AapmIcon name="glyphCheck" /> : module.state === "locked" ? <AapmIcon name="lock" /> : module.moduleNumber}
                 </span>
                 <span className="aapm-outline__label">{module.title}</span>
+                {module.state === "completed" ? <span className="aapm-visually-hidden">Selesai</span> : module.state === "locked" ? <span className="aapm-visually-hidden">Terkunci</span> : null}
               </Link>
             );
           })}

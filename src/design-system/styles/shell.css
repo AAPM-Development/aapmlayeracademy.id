@@ -629,19 +629,13 @@
 .aapm-auth__divider { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); margin-block: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
 .aapm-auth__divider::before,
 .aapm-auth__divider::after { content: ""; flex: 1; height: 1px; background: var(--aapm-semantic-border); }
-/* Below desktop the brand panel reflows into a band above the form instead
- * of disappearing; the video stays desktop-only (AuthLayout gates it). */
+/* Compact auth screens devote their space to the form. */
 @media (max-width: 1023px) {
-  .aapm-auth { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
-  .aapm-auth__media { order: -1; aspect-ratio: 16 / 7; margin-bottom: 0; }
-  .aapm-auth__media > video { object-position: center 30%; }
-  .aapm-auth__quote { inset-inline: var(--aapm-primitive-space-6); bottom: var(--aapm-primitive-space-5); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
-  .aapm-auth__quote footer { display: none; }
+  .aapm-auth { grid-template-columns: minmax(0, 1fr); }
+  .aapm-auth__media { display: none; }
   .aapm-auth__form { padding-block-start: var(--aapm-primitive-space-4); }
 }
 @media (max-width: 639px) {
-  .aapm-auth__media { aspect-ratio: auto; height: var(--aapm-component-auth-media-band); }
-  .aapm-auth__quote { display: none; }
   .aapm-auth__pane { padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-5); }
   .aapm-auth__form { padding-block-start: 0; }
   .aapm-auth__brand { margin-bottom: var(--aapm-primitive-space-6); }

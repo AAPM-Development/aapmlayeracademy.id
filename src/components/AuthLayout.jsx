@@ -33,10 +33,10 @@ function AcademyVideoPanel() {
   }, []);
 
   useEffect(() => {
-    if (prefersReducedMotion) {
+    if (!isDesktop || prefersReducedMotion) {
       videoRef.current?.pause();
     }
-  }, [prefersReducedMotion]);
+  }, [isDesktop, prefersReducedMotion]);
 
   useEffect(() => {
     if (!isDesktop || prefersReducedMotion) {
@@ -56,7 +56,7 @@ function AcademyVideoPanel() {
   }, [isDesktop, prefersReducedMotion]);
 
   useEffect(() => {
-    if (prefersReducedMotion) {
+    if (!isDesktop || prefersReducedMotion) {
       return undefined;
     }
 
@@ -65,7 +65,10 @@ function AcademyVideoPanel() {
     }, 10000);
 
     return () => window.clearInterval(interval);
-  }, [prefersReducedMotion]);
+  }, [isDesktop, prefersReducedMotion]);
+
+  // Small screens use the form alone, without a video or poster request.
+  if (!isDesktop) return null;
 
   return (
     <aside className="aapm-auth__media" aria-hidden="true">
