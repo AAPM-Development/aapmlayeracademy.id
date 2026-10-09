@@ -12,7 +12,7 @@ import { ModuleCover } from "@/components/academy/CourseElements";
 import { useAdminCourse, useArchiveAdminModule, useRestoreAdminModule } from "@/lib/useAdminData";
 import { levelVisual } from "@/lib/academyVisuals";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
-import { curriculumStructureRecovery, filterCurriculum, nextChapterNumber } from "@/lib/curriculumState";
+import { curriculumStructureRecovery, filterCurriculum, nextChapterNumber, runCurriculumLifecycleMutation } from "@/lib/curriculumState";
 import { CourseLifecycleCounts, ModuleLifecycleStatus } from "@/components/admin/CurriculumStatus";
 
 const moduleEditorPath = (courseId, params = {}) => {
@@ -58,12 +58,18 @@ export default function AdminCourseDetail() {
     actionInFlight.current = true;
     setConfirmed(false);
     try {
-      if (action === "archive") await archiveModule.mutateAsync({ moduleId: module.id, reason: reason.trim() });
-      else await restoreModule.mutateAsync({ moduleId: module.id });
+      await runCurriculumLifecycleMutation(
+        () => action === "archive"
+          ? archiveModule.mutateAsync({ moduleId: module.id, reason: reason.trim() })
+          : restoreModule.mutateAsync({ moduleId: module.id }),
+        (mutationError) => setActionError(mutationError ? {
+          code: mutationError.code, message: mutationError.message,
+          modulePath: `/admin/courses/${courseId}/modules/${module.id}`,
+        } : null),
+      );
       setPendingAction(null); setReason("");
       toast({ title: action === "archive" ? "Modul diarsipkan" : "Modul dipulihkan", description: "Riwayat dan bukti akademik tetap tersimpan." });
     } catch (mutationError) {
-      setActionError({ code: mutationError.code, message: mutationError.message, modulePath: `/admin/courses/${courseId}/modules/${module.id}` });
       toast({ variant: "destructive", title: "Perubahan status belum disimpan", description: mutationError.message });
     } finally { actionInFlight.current = false; }
   };
@@ -93,7 +99,7 @@ export default function AdminCourseDetail() {
         <Tabs defaultValue="curriculum" className="grid gap-5">
           <TabsList variant="underline"><TabsTrigger value="curriculum" icon="roadmap">Kurikulum</TabsTrigger><TabsTrigger value="overview" icon="analytics">Ringkasan</TabsTrigger><TabsTrigger value="learners" icon="graduation">Peserta</TabsTrigger></TabsList>
           <TabsContent value="curriculum" className="grid gap-4">
-            <Alert tone="info" title="Ubah struktur melalui draf"
+            <Alert tone="info" title="Ubah struktur melalui draf" className="max-sm:!grid-cols-[auto_minmax(0,1fr)] max-sm:[&>div:last-child]:col-start-2 max-sm:[&>div:last-child]:row-start-2"
               description="Urutan kurikulum diubah melalui draf kebijakan kurikulum. Nama chapter diubah melalui draf modul. Perubahan langsung ke modul terbit sudah dinonaktifkan."
               action={<Button asChild variant="secondary"><Link to="/admin/curriculum/policies">Kebijakan kurikulum</Link></Button>} />
             <div className="flex flex-wrap gap-2"><Button asChild variant="outline" size="sm"><Link to="/admin/curriculum/final-bank">Bank ujian akhir</Link></Button><p className="aapm-text-caption m-0 self-center">APPI membantu isi draf melalui editor modul.</p></div>
@@ -142,7 +148,7 @@ export default function AdminCourseDetail() {
   );
 }
 
-function ModuleActions({ module, courseId, onAction, saving }) {
+function ModuleActions({ module, courseId, onAction, saving, className = "" }) {
   const navigate = useNavigate();
   const editor = `/admin/courses/${courseId}/modules/${module.id}`;
   const items = [
@@ -152,7 +158,7 @@ function ModuleActions({ module, courseId, onAction, saving }) {
     module.lifecycleStatus === "active" && module.publishedRevisionId ? { id: "archive", label: "Arsipkan", icon: "folder", disabled: saving, onSelect: () => onAction(module, "archive") } : null,
     module.lifecycleStatus === "archived" ? { id: "restore", label: "Pulihkan modul", icon: "refresh", disabled: saving, onSelect: () => onAction(module, "restore") } : null,
   ].filter(Boolean);
-  return <div className="aapm-lesson-row__actions"><Button asChild size="sm" variant="secondary" data-hide-mobile=""><Link to={editor}><AapmIcon name="edit" />Edit draf</Link></Button><OverflowMenu label={`Aksi untuk ${module.title}`} items={items} /></div>;
+  return <div className={`aapm-lesson-row__actions ${className}`}><Button asChild size="sm" variant="secondary" data-hide-mobile=""><Link to={editor}><AapmIcon name="edit" />Edit draf</Link></Button><OverflowMenu label={`Aksi untuk ${module.title}`} items={items} /></div>;
 }
 
 function ChapterHeader({ level }) {
@@ -172,15 +178,15 @@ function CurriculumView({ levels, courseId, board, onAction, saving }) {
     {levels.map((level) => <section key={level.levelNumber} className="aapm-chapter self-start" data-hue={levelVisual(level.levelNumber).hue} aria-label={`Chapter ${level.levelNumber}: ${level.levelName}`}>
       <div className="aapm-chapter__head"><ChapterHeader level={level} /></div>
       <ol className={board ? "grid gap-2 p-2" : "aapm-chapter__list"}>
-        {level.modules.map((module) => <li key={module.id} className={board ? "aapm-card gap-2 p-3" : "aapm-lesson-row"}>
+        {level.modules.map((module) => <li key={module.id} className={board ? "aapm-card gap-2 p-3" : "aapm-lesson-row max-sm:!grid-cols-[auto_minmax(0,1fr)]"}>
           {board ? <>
             <div className="flex flex-wrap items-center justify-between gap-2"><span className="aapm-text-overline">Modul {module.moduleNumber}</span><ModuleActions module={module} courseId={courseId} onAction={onAction} saving={saving} /></div>
             <Link to={`/admin/courses/${courseId}/modules/${module.id}`} className="text-body font-medium text-foreground hover:text-primary">{module.title}</Link>
             {module.category && <span className="aapm-meta">{module.category}</span>}<ModuleMetadata module={module} />
           </> : <>
-            <span aria-hidden="true" /><span className="aapm-lesson-row__index">{module.moduleNumber}</span>
-            <div className="grid min-w-0 gap-1"><Link to={`/admin/courses/${courseId}/modules/${module.id}`} className="aapm-lesson-row__title">{module.title}</Link><span className="aapm-meta truncate">{module.category || module.summary || "Tanpa kategori"}</span><ModuleMetadata module={module} /></div>
-            <span data-hide-mobile="" /><ModuleActions module={module} courseId={courseId} onAction={onAction} saving={saving} />
+            <span aria-hidden="true" className="max-sm:hidden" /><span className="aapm-lesson-row__index">{module.moduleNumber}</span>
+            <div className="grid min-w-0 gap-1 max-sm:col-start-2"><Link to={`/admin/courses/${courseId}/modules/${module.id}`} className="aapm-lesson-row__title">{module.title}</Link><span className="aapm-meta truncate">{module.category || module.summary || "Tanpa kategori"}</span><ModuleMetadata module={module} /></div>
+            <span data-hide-mobile="" /><ModuleActions module={module} courseId={courseId} onAction={onAction} saving={saving} className="max-sm:col-start-2 max-sm:row-start-2" />
           </>}
         </li>)}
       </ol>

@@ -29,6 +29,49 @@ test("course lifecycle labels distinguish draft, published, pending changes and 
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("deferred archive failure retains its retry reason and a successful retry clears stale feedback", async () => {
+  const { runCurriculumLifecycleMutation } = await import("../src/lib/curriculumState.js");
+  let error = null;
+  const reason = "Materi sedang ditinjau";
+  const calls = [];
+  let rejectFirst;
+  const firstMutation = new Promise((_, reject) => { rejectFirst = reject; });
+  const updateFeedback = (next) => { error = next; };
+  const first = runCurriculumLifecycleMutation(() => { calls.push(reason); return firstMutation; }, updateFeedback);
+  assert.equal(error, null);
+  const failure = new Error("Jaringan terputus");
+  rejectFirst(failure);
+  await assert.rejects(first, /Jaringan terputus/);
+  assert.equal(error, failure);
+  assert.equal(reason, "Materi sedang ditinjau");
+  let resolveRetry;
+  const retryMutation = new Promise((resolve) => { resolveRetry = resolve; });
+  const retry = runCurriculumLifecycleMutation(() => { calls.push(reason); return retryMutation; }, updateFeedback);
+  assert.equal(error, null, "old failure disappears while retry is pending");
+  resolveRetry({ lifecycleStatus: "archived" });
+  assert.deepEqual(await retry, { lifecycleStatus: "archived" });
+  assert.equal(error, null, "successful retry leaves no stale page/dialog alert");
+  assert.deepEqual(calls, [reason, reason], "retry submits the preserved reason");
+});
+
+test("course phone grid and stacked alert actions compile to scoped responsive CSS", async () => {
+  const [{ default: postcss }, { default: tailwind }] = await Promise.all([import("postcss"), import("tailwindcss")]);
+  const result = await postcss([tailwind({
+    content: [{ raw: read("src/pages/admin/AdminCourseDetail.jsx"), extension: "jsx" }],
+  })]).process("@tailwind utilities;", { from: undefined });
+  const responsive = [];
+  result.root.walkRules((rule) => {
+    if (rule.parent.type === "atrule" && rule.parent.name === "media" && rule.parent.params.includes("640px")) responsive.push(rule);
+  });
+  const hasDeclaration = (rule, prop, value) => rule.nodes.some((node) => node.prop === prop && node.value === value);
+  const phoneGrid = responsive.find((rule) => rule.selector.includes("grid-cols") && hasDeclaration(rule, "grid-template-columns", "auto minmax(0,1fr)"));
+  assert.ok(phoneGrid, "phone two-column layout is generated at the sm breakpoint");
+  assert.ok(phoneGrid.nodes.find((node) => node.prop === "grid-template-columns").important, "phone grid overrides the existing course selector while desktop remains unchanged");
+  assert.ok(responsive.some((rule) => rule.selector.includes("last-child") && hasDeclaration(rule, "grid-column-start", "2")), "alert action moves beneath paragraph");
+  assert.ok(responsive.some((rule) => rule.selector.includes("last-child") && hasDeclaration(rule, "grid-row-start", "2")));
+  assert.ok(responsive.some((rule) => rule.selector.includes("row-start-2") && !rule.selector.includes("last-child") && hasDeclaration(rule, "grid-row-start", "2")), "list action controls move to their second row");
+});
+
 test("draft and question writes carry the shared expected version; publication is explicit", async () => {
   const original = globalThis.fetch;
   const calls = [];

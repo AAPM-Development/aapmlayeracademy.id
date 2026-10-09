@@ -40,3 +40,16 @@ export function curriculumStructureRecovery(error, modulePath) {
     label: modulePath ? "Buka draf modul" : "Kebijakan kurikulum",
   };
 }
+
+/** Keep page and retained-dialog feedback aligned with the latest mutation. */
+export async function runCurriculumLifecycleMutation(mutate, updateFeedback) {
+  updateFeedback(null);
+  try {
+    const result = await mutate();
+    updateFeedback(null);
+    return result;
+  } catch (error) {
+    updateFeedback(error);
+    throw error;
+  }
+}
