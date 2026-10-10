@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useContext, useCallback, useEffect, useState } from "react";
+
+export const PwaInstallContext = createContext(null);
 
 function isStandaloneDisplay() {
   if (typeof window === "undefined") return false;
@@ -13,7 +15,7 @@ function isStandaloneDisplay() {
  * browser owns the actual prompt; the profile surface only decides when to
  * offer it and never attempts to fake an install state.
  */
-export function usePwaInstall() {
+export function usePwaInstallState() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(isStandaloneDisplay);
 
@@ -46,10 +48,10 @@ export function usePwaInstall() {
     // The install event is the browser-owned confirmation surface. Calling
     // it through the captured event is the only supported way to open the
     // native PWA install affordance; no product dialog is being fabricated.
+    setDeferredPrompt(null);
     await deferredPrompt["prompt"]();
     const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
-    if (choice?.outcome === "accepted") setIsInstalled(true);
     return choice;
   }, [deferredPrompt]);
 
@@ -58,4 +60,8 @@ export function usePwaInstall() {
     isInstalled,
     install,
   };
+}
+
+export function usePwaInstall() {
+  return useContext(PwaInstallContext);
 }

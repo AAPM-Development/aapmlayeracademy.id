@@ -115,3 +115,20 @@ html[data-editor-footer="true"] .aapm-ai-floating-panel {
 .aapm-lesson-bar { position: relative; }
 .aapm-lesson-bar__read { position: absolute; inset: auto 0 -1px; height: 3px; overflow: hidden; pointer-events: none; }
 .aapm-lesson-bar__read > span { display: block; width: 100%; height: 100%; border-radius: 0 999px 999px 0; background: var(--hue, var(--aapm-semantic-primary)); transform: scaleX(0); transform-origin: left center; transition: transform 120ms linear; }
+.aapm-pwa-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--aapm-primitive-space-4);
+  padding: var(--aapm-primitive-space-4);
+  margin-bottom: var(--aapm-primitive-space-4);
+  border: 1px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-primitive-space-4);
+  background: var(--aapm-semantic-surface);
+}
+.aapm-pwa-notice p { margin: var(--aapm-primitive-space-2) 0 0; }
+.aapm-pwa-notice__actions { display: flex; gap: var(--aapm-primitive-space-2); flex-shrink: 0; }
+@media (max-width: 639px) {
+  .aapm-pwa-notice { align-items: stretch; flex-direction: column; }
+  .aapm-pwa-notice__actions { flex-wrap: wrap; }
+}

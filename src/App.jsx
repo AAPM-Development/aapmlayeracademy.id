@@ -16,6 +16,7 @@ import AppBrand from '@/components/AppBrand';
 import AapmIcon from '@/components/icons/AapmIcon';
 import { Button, StateView } from '@/design-system';
 import { StatusPage } from '@/design-system/patterns/AppShell';
+import { PwaInstallContext, usePwaInstallState } from '@/lib/usePwaInstall';
 
 const Layout = lazy(() => loadRouteModule('layout'));
 const AdminShell = lazy(() => loadRouteModule('adminShell'));
@@ -151,9 +152,10 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  const pwaInstall = usePwaInstallState();
 
   return (
-    <ThemeModeProvider>
+    <PwaInstallContext.Provider value={pwaInstall}><ThemeModeProvider>
       <TooltipProvider>
         <ToastProvider>
           <AuthProvider>
@@ -166,7 +168,7 @@ function App() {
           </AuthProvider>
         </ToastProvider>
       </TooltipProvider>
-    </ThemeModeProvider>
+    </ThemeModeProvider></PwaInstallContext.Provider>
   )
 }
 

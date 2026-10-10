@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import PwaInstallNotice from "@/components/PwaInstallNotice";
 import { Page } from "@/design-system/patterns/AppShell";
 import { StatTile } from "@/components/academy/CourseElements";
 import { CertificationTeaser, DashboardHero, LevelProgressGrid, QuickTools, UpNextList } from "@/components/academy/DashboardComponents";
@@ -41,6 +42,7 @@ export default function Home() {
 
   return (
     <Page>
+      <PwaInstallNotice />
       {isLoading ? (
         <LearningLoading label="Memuat beranda belajar…" lines={3} />
       ) : !modules.length ? (

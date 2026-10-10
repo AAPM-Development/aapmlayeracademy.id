@@ -11,7 +11,7 @@ function viewportFixture() {
   const window = { innerHeight: 800, innerWidth: 375, visualViewport: viewport };
   const document = { documentElement: root, activeElement: null, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: (name) => handlers.delete(name) };
   let cleanup;
-  const source = readFileSync(new URL('../src/lib/useVisibleViewport.js', import.meta.url), 'utf8').replace(/import .*?;\n/, '').replace('export default ', '') + '\nuseVisibleViewport();';
+  const source = readFileSync(new URL('../src/lib/useVisibleViewport.js', import.meta.url), 'utf8').replace(/import .*?;\r?\n/, '').replace('export default ', '') + '\nuseVisibleViewport();';
   runInNewContext(source, { window, document, useEffect: (fn) => { cleanup = fn(); }, requestAnimationFrame: (fn) => { fn(); return 0; }, cancelAnimationFrame: () => {} });
   return { root, styles, viewport, window, document, handlers, cleanup };
 }
