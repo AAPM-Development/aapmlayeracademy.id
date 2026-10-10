@@ -245,6 +245,22 @@ Never commit those values. Email/password remains available as the fallback.
 
 ## AI provider registry
 
+Verified `admin` and `super_admin` accounts can use the Admin workspace.
+Only `super_admin` can create accounts, change assigned roles, reset another
+account's password, or start a new learning generation. Ordinary admins can
+read the account list and manage Academy material. Role changes revoke the
+target's existing sessions; an assigned Admin role is inactive until email
+verification succeeds. Super Admin accounts are protected from these account
+forms. They are provisioned explicitly by an authorized server operator:
+
+```bash
+php scripts/security/provision-admin.php --expect-environment=production --user-id=EXISTING_ID --role=super_admin --actor=AUTHORIZED_OPERATOR --evidence-ref=OWNER_APPROVAL_REFERENCE --dry-run
+```
+
+Run with the production private configuration selected and inspect the dry-run
+before replacing `--dry-run` with `--apply`. Super Admin promotion requires an
+existing verified Admin; names and configured email allowlists never grant it.
+
 Admin → APPI settings supports a multi-provider registry instead of a single
 hard-coded connection. The registry supports OpenRouter, OpenAI-compatible
 gateways, Gemini, Anthropic, Ollama, LM Studio, LocalAI, vLLM, and custom

@@ -10,4 +10,4 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../public/api/bootstrap.php';
 
-echo json_encode(admin_reset_user_progress(['id' => (int) ($argv[1] ?? 0)], (int) ($argv[2] ?? 0), ['confirm' => true]));
+echo json_encode(admin_reset_user_progress(['id' => (int) ($argv[1] ?? 0), 'role' => 'super_admin'], (int) ($argv[2] ?? 0), ['confirm' => true]));

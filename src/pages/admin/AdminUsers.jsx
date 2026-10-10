@@ -45,6 +45,7 @@ import {
   AdminUnavailable,
 } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
+import { useAuth } from "@/lib/AuthContext";
 
 const FORM_ID = "admin-user-form";
 
@@ -67,21 +68,29 @@ function UserSheet({ user, open, onOpenChange }) {
   const [newPassword, setNewPassword] = useState("");
   const [passwordConfirmationOpen, setPasswordConfirmationOpen] = useState(false);
   const [progressConfirmationOpen, setProgressConfirmationOpen] = useState(false);
+  const [roleConfirmationOpen, setRoleConfirmationOpen] = useState(false);
 
   useEffect(() => {
     setName(user?.full_name || "");
     setEmail(user?.email || "");
-    setRole(user?.role === "admin" ? "admin" : "learner");
+    setRole(user?.assignedRole || user?.role || "learner");
     setPassword("");
     setNewPassword("");
     setPasswordConfirmationOpen(false);
     setProgressConfirmationOpen(false);
+    setRoleConfirmationOpen(false);
   }, [user, open]);
 
   const isSaving = createUser.isPending || updateUser.isPending;
 
-  const save = async (event) => {
-    event.preventDefault();
+  const save = async (event, confirmed = false) => {
+    event?.preventDefault();
+    const previousRole = user?.assignedRole || user?.role || "learner";
+    if (!confirmed && role !== previousRole) {
+      setRoleConfirmationOpen(true);
+      return;
+    }
+    setRoleConfirmationOpen(false);
     try {
       if (isNew) {
         await createUser.mutateAsync({ fullName: name, email, password, role });
@@ -191,7 +200,7 @@ function UserSheet({ user, open, onOpenChange }) {
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="aapm-field-hint">{role === "admin" ? "Admin dapat mengelola kurikulum, pengguna, dan pengaturan APPI." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
+                  <p className="aapm-field-hint">{role === "admin" ? "Admin mengelola materi dan operasional Academy. Pengelolaan akses akun hanya untuk Super Admin. Akses admin aktif setelah email terverifikasi." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
                 </div>
               </FormGrid>
             </FormSection>
@@ -225,7 +234,7 @@ function UserSheet({ user, open, onOpenChange }) {
                   </AccordionTrigger>
                   <AccordionContent>
                     <Progress value={user.progressPercent || 0} aria-label={`Progress ${user.progressPercent || 0}%`} />
-                    <p className="aapm-accordion-note">{user.progressEntries || 0} entri tersimpan. Reset menghapus status modul, nilai kuis, praktik, dan waktu belajar.</p>
+                    <p className="aapm-accordion-note">{user.progressEntries || 0} entri tersimpan. Reset memulai periode belajar baru; riwayat nilai dan percobaan kuis tetap tersimpan.</p>
                     <p className="aapm-accordion-note">Sertifikat, data farm, dan percakapan tidak ikut dihapus.</p>
                     <Button type="button" variant="danger-soft" size="sm" onClick={() => setProgressConfirmationOpen(true)} disabled={resetProgress.isPending}>
                       <AapmIcon name="refresh" />
@@ -247,6 +256,14 @@ function UserSheet({ user, open, onOpenChange }) {
       </Sheet>
 
       <ConfirmDialog
+        open={roleConfirmationOpen}
+        onOpenChange={setRoleConfirmationOpen}
+        title={role === "admin" ? "Berikan akses Admin?" : "Cabut akses Admin?"}
+        description={role === "admin" ? `${displayName} dapat mengelola materi dan operasional Academy setelah email terverifikasi. Pengelolaan akses akun tetap untuk Super Admin.` : `${displayName} kembali menjadi Learner. Sesi lama akan dibatalkan; riwayat belajarnya tetap tersimpan.`}
+        confirmLabel={role === "admin" ? "Berikan akses Admin" : "Jadikan Learner"}
+        onConfirm={() => save(null, true)}
+      />
+      <ConfirmDialog
         open={passwordConfirmationOpen}
         onOpenChange={setPasswordConfirmationOpen}
         title="Ganti password pengguna?"
@@ -259,7 +276,7 @@ function UserSheet({ user, open, onOpenChange }) {
         open={progressConfirmationOpen}
         onOpenChange={setProgressConfirmationOpen}
         title="Reset progress pengguna?"
-        description={`Seluruh progress belajar ${displayName} akan dihapus permanen: status modul, nilai kuis, praktik, dan waktu belajar. Sertifikat, data farm, dan percakapan tetap dipertahankan.`}
+        description={`Mulai periode belajar baru untuk ${displayName}? Progress aktif dimulai kembali. Riwayat kuis, sertifikat, data farm, dan percakapan tetap tersimpan.`}
         confirmLabel="Reset progress"
         icon="solar:restart-bold"
         destructive
@@ -270,6 +287,8 @@ function UserSheet({ user, open, onOpenChange }) {
 }
 
 export default function AdminUsers() {
+  const { user: actor } = useAuth();
+  const canManage = actor?.canManageUsers === true;
   const [search, setSearch] = useState("");
   const [sheetUser, setSheetUser] = useState(undefined);
   const lastSheetUser = useRef(undefined);
@@ -281,9 +300,9 @@ export default function AdminUsers() {
   return (
     <AdminPageFrame
       title="Pengguna"
-      description="Kelola akses akun, role, password, dan reset progress dari satu tempat."
+      description={canManage ? "Kelola akun dan akses Admin. Akun Super Admin dilindungi; Admin baru perlu memverifikasi email." : "Lihat akun dan status verifikasi. Perubahan akses dikelola oleh Super Admin."}
       actions={
-        <Button onClick={() => setSheetUser(null)}>
+        canManage && <Button onClick={() => setSheetUser(null)}>
           <AapmIcon name="add" />
           Buat akun
         </Button>
@@ -341,7 +360,7 @@ export default function AdminUsers() {
                 key: "role",
                 header: "Role",
                 overflow: "nowrap",
-                render: (user) => <Badge variant={user.role === "admin" ? "warning" : "success"}>{user.role === "admin" ? "Admin" : "Learner"}</Badge>,
+                render: (user) => <Badge variant={["admin", "super_admin"].includes(user.assignedRole || user.role) ? "warning" : "success"}>{({ super_admin: "Super Admin", admin: "Admin", learner: "Learner" })[user.assignedRole || user.role]}</Badge>,
               },
               {
                 key: "verification",
@@ -375,7 +394,7 @@ export default function AdminUsers() {
                 required: true,
                 overflow: "nowrap",
                 render: (user) => (
-                  <Button size="sm" variant="outline" onClick={() => setSheetUser(user)}>
+                  <Button size="sm" variant="outline" disabled={!canManage || user.assignedRole === "super_admin"} onClick={() => setSheetUser(user)}>
                     <AapmIcon name="edit" />
                     Kelola
                   </Button>

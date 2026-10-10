@@ -5,6 +5,29 @@
  * bottom once the conversation begins. */
 
 .aapm-app--chat { height: 100dvh; }
+@media (max-width: 1023px) {
+  html[data-keyboard="open"] .aapm-app {
+    height: var(--aapm-visible-height, 100dvh);
+  }
+  html[data-keyboard="open"] .aapm-bottom-nav { display: none; }
+  html[data-keyboard="open"] .aapm-app--chat .aapm-app__canvas { padding-bottom: 0; }
+  html[data-keyboard="open"] .aapm-ai-floating-panel {
+    top: calc(var(--aapm-visible-top, 0px) + var(--aapm-primitive-space-2));
+    bottom: auto !important;
+    height: calc(var(--aapm-visible-height, 100dvh) - var(--aapm-primitive-space-4));
+    max-height: calc(var(--aapm-visible-height, 100dvh) - var(--aapm-primitive-space-4));
+  }
+  html[data-keyboard="open"] .aapm-sheet[data-side="right"],
+  html[data-keyboard="open"] .aapm-sheet[data-side="left"] {
+    top: var(--aapm-visible-top, 0px);
+    bottom: auto;
+    height: var(--aapm-visible-height, 100dvh);
+    max-height: var(--aapm-visible-height, 100dvh);
+  }
+  html[data-keyboard="open"] .aapm-room__welcome { min-height: 0; align-content: start; }
+  html[data-keyboard="open"] .aapm-room__welcome .aapm-chat-welcome__text,
+  html[data-keyboard="open"] .aapm-room__chips { display: none; }
+}
 /* The chat owns its transcript scroll. Remove the shell's normal page and
  * launcher clearance; the canvas reserves the mobile navigation once. */
 .aapm-app.aapm-app--chat[data-bottom-nav="true"] .aapm-app__main {

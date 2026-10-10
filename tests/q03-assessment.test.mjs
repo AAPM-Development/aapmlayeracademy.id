@@ -243,7 +243,7 @@ async function setup(name) {
   seedCurriculum(site);
   const learnerA = seedAccount(site, { email: "peserta-a@example.test", verified: true });
   seedAccount(site, { email: "peserta-b@example.test", verified: true });
-  seedAccount(site, { email: "pengelola@example.test", role: "admin", verified: true });
+  seedAccount(site, { email: "pengelola@example.test", role: "super_admin", verified: true });
   return { site, learnerA };
 }
 

@@ -210,9 +210,9 @@ export function StatTile({ icon, hue = "green", label, value, className = undefi
  * from module content and saved progress; nothing here changes the contract.
  */
 export function ModuleFlow({ flow, active = "content", onSelect, quizTo }) {
-  const practiceDone = flow.completed || flow.practicalDone || flow.quizAttempted;
+  const practiceDone = flow.practicalDone;
   const draft = [
-    { id: "content", label: "Materi", icon: "lesson", done: flow.completed || practiceDone || active !== "content" },
+    { id: "content", label: "Materi", icon: "lesson", done: flow.completed || flow.acknowledged },
     ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", done: practiceDone }] : []),
     // A passed quiz shows its tick; the score only matters while a retake is due
     // (a done "Kuis 100%" also truncated to "Kuis 10…" on phones).

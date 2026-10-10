@@ -16,6 +16,7 @@ import { askAppi } from "@/lib/askAppi";
 import AppiMascot from "@/components/appi/AppiMascot";
 import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
+import { lessonNavigation } from "@/lib/lessonNavigation";
 
 const OUTLINE_KEY = "aapm-lesson-outline";
 const hasText = (value) => typeof value === "string" && value.trim().length > 0;
@@ -177,7 +178,8 @@ export default function ModuleDetail() {
     return <StandaloneState><LearningEmptyState title="Modul belum tersedia" description="Materi ini belum tersedia atau tautannya sudah berubah. Kembali ke jalur belajar untuk memilih materi lain." actionLabel="Kembali ke jalur belajar" actionTo="/modules" /></StandaloneState>;
   }
 
-  const sectionIndex = Math.max(0, learnerSections.findIndex((section) => section.id === activeSection));
+  const sectionNavigation = lessonNavigation(learnerSections, activeSection);
+  const sectionIndex = sectionNavigation.index;
   const activeStep = activeSection === "practical" ? "practice" : "content";
   const outline = (
     <CourseOutline
@@ -191,21 +193,20 @@ export default function ModuleDetail() {
 
   // Primary next step follows the bounded flow: Materi → Praktik → Kuis → Selesai.
   // A quiz module is complete only when the quiz is passed, so no shortcut button here.
-  const onPracticeSection = activeSection === "practical";
-  const continueToPractice = !flow.completed && flow.hasPractice && !flow.quizAttempted && !onPracticeSection;
-  let primaryAction;
+  let completionAction;
   if (flow.completed) {
-    primaryAction = next
+    completionAction = next
       ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span className="sm:hidden">Lanjut</span><span className="hidden sm:inline">Modul berikutnya</span><AapmIcon name="arrowRight" /></Link></Button>
       : <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
-  } else if (continueToPractice) {
-    primaryAction = <Button variant="learn" onClick={() => jumpToSection("practical")}>Lanjut ke praktik<AapmIcon name="arrowRight" /></Button>;
   } else if (flow.hasQuiz) {
     const quizLabel = flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Kerjakan kuis";
-    primaryAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
+    completionAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
   } else {
-    primaryAction = <Button variant="learn" loading={acknowledge.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
+    completionAction = <Button variant="learn" loading={acknowledge.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
   }
+  const primaryAction = sectionNavigation.next
+    ? <Button variant="learn" onClick={() => jumpToSection(sectionNavigation.next.id)}>Berikutnya: {sectionNavigation.next.label}<AapmIcon name="arrowRight" /></Button>
+    : completionAction;
 
   return (
     <FocusShell
@@ -245,7 +246,9 @@ export default function ModuleDetail() {
       footer={(
         <>
           <div className="aapm-focus__footer-group">
-            {previous ? (
+            {sectionNavigation.previous ? (
+              <Button variant="secondary" leadingIcon="arrowLeft" onClick={() => jumpToSection(sectionNavigation.previous.id)}>Bagian sebelumnya</Button>
+            ) : previous ? (
               <Button asChild variant="secondary" data-hide-label-mobile="">
                 <Link to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}><AapmIcon name="arrowLeft" /><span>Sebelumnya</span></Link>
               </Button>
@@ -325,7 +328,7 @@ export default function ModuleDetail() {
                   <p className="m-0 text-support text-muted-foreground">
                     {flow.completed
                       ? next ? `Lanjutkan ke modul ${next.moduleNumber}: ${next.title}.` : "Semua modul tuntas — saatnya ujian akhir."
-                      : flow.hasQuiz ? `${questions.length} soal singkat · nilai lulus 70%.` : "Tandai selesai untuk menyimpan progress Anda."}
+                      : flow.hasQuiz ? `${questions.length} soal · ketentuan kelulusan tersedia sebelum kuis dimulai. Praktik dapat dicatat setelah dikerjakan.` : "Konfirmasikan setelah materi dipahami. Praktik dapat dicatat setelah dikerjakan."}
                   </p>
                 </div>
               </div>
@@ -333,7 +336,8 @@ export default function ModuleDetail() {
                 {flow.completed && flow.hasQuiz ? (
                   <Button asChild variant="secondary" leadingIcon="quiz"><Link to={`/quiz/${number}`}>Ulangi kuis</Link></Button>
                 ) : null}
-                {primaryAction}
+                <Button variant="secondary" leadingIcon="refresh" onClick={() => jumpToSection("content")}>Baca ulang materi</Button>
+                {completionAction}
               </div>
             </div>
           </section>

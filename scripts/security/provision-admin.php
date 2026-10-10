@@ -61,7 +61,7 @@ function provision_report(PDO $pdo, array $row, array $config): array
         'environmentMarkerRequired' => (bool) $config['environment_marker_required'],
         'userId' => (int) $row['id'],
         'email' => provision_mask((string) $row['email']),
-        'storedRole' => strtolower(trim((string) $row['role'])) === 'admin' ? 'admin' : 'learner',
+        'storedRole' => in_array($row['role'] ?? '', ['admin', 'super_admin'], true) ? $row['role'] : 'learner',
         'verificationStatus' => aapm_verification_status($row),
         'effectiveRole' => effective_user_role($row),
         'verifiedAdminCount' => aapm_verified_admin_count($pdo),
@@ -86,11 +86,13 @@ function provision_emit(array $result, bool $json): void
     }
 }
 
-$options = getopt('', ['expect-environment:', 'user-id:', 'actor:', 'evidence-ref:', 'dry-run', 'apply', 'json']);
+$options = getopt('', ['expect-environment:', 'user-id:', 'actor:', 'evidence-ref:', 'role:', 'dry-run', 'apply', 'json']);
 $expected = strtolower(trim((string) ($options['expect-environment'] ?? '')));
 $userId = (int) ($options['user-id'] ?? 0);
 $actor = trim((string) ($options['actor'] ?? ''));
 $evidence = trim((string) ($options['evidence-ref'] ?? ''));
+$targetRole = (string) ($options['role'] ?? 'admin');
+if (!in_array($targetRole, ['admin', 'super_admin'], true)) provision_fail('--role harus admin atau super_admin.', 2);
 $apply = isset($options['apply']);
 $json = isset($options['json']);
 if ($apply && isset($options['dry-run'])) {
@@ -132,16 +134,21 @@ $row = $statement->fetch();
 if (!$row) {
     provision_fail('pengguna dengan ID tersebut tidak ditemukan. Tidak ada perubahan.');
 }
+if ($targetRole === 'super_admin' && (!in_array($row['role'] ?? '', ['admin', 'super_admin'], true) || aapm_verification_status($row) !== 'verified')) {
+    provision_fail('Promosi Super Admin hanya untuk akun admin yang sudah terverifikasi.');
+}
 
+if (($row['role'] ?? '') === 'super_admin' && $targetRole !== 'super_admin') provision_fail('Super Admin tidak dapat diturunkan melalui provisioning.');
 $report = provision_report($pdo, $row, $config);
+$report['targetRole'] = $targetRole;
 if (!$apply) {
     $report['mode'] = 'dry-run';
-    $report['wouldChange'] = $report['effectiveRole'] !== 'admin';
+    $report['wouldChange'] = $report['effectiveRole'] !== $targetRole;
     provision_emit($report, $json);
     exit(0);
 }
 
-if ($report['effectiveRole'] === 'admin') {
+if ($report['effectiveRole'] === $targetRole) {
     $report['mode'] = 'apply';
     $report['result'] = 'already_provisioned';
     provision_emit($report, $json);
@@ -156,7 +163,10 @@ try {
     if (!$fresh) {
         throw new RuntimeException('account vanished before the change');
     }
-    if (effective_user_role($fresh) === 'admin') {
+    if (($fresh['role'] ?? '') === 'super_admin' && $targetRole !== 'super_admin') {
+        throw new RuntimeException('protected super administrator');
+    }
+    if (effective_user_role($fresh) === $targetRole) {
         aapm_tx_rollback($pdo);
         $report['mode'] = 'apply';
         $report['result'] = 'already_provisioned';
@@ -167,7 +177,7 @@ try {
     $wasVerified = !empty($fresh['email_verified_at']);
     $storedBefore = strtolower(trim((string) $fresh['role'])) === 'admin' ? 'admin' : 'learner';
     $pdo->prepare('UPDATE users SET role = ?, email_verified_at = COALESCE(email_verified_at, ?), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-        ->execute(['admin', aapm_utc_now(), $userId]);
+        ->execute([$targetRole, aapm_utc_now(), $userId]);
     if (!$wasVerified) {
         aapm_audit('auth.email_verified', 'ok', null, $userId, ['channel' => 'manual_provisioning', 'operator' => $actor, 'evidence_ref' => $evidence]);
     }
@@ -175,7 +185,7 @@ try {
         'operator' => $actor,
         'evidence_ref' => $evidence,
         'role_from' => $storedBefore,
-        'role_to' => 'admin',
+        'role_to' => $targetRole,
     ]);
     aapm_tx_commit($pdo);
 } catch (Throwable $exception) {
@@ -185,6 +195,9 @@ try {
     provision_fail('perubahan dibatalkan. Tidak ada perubahan yang tersimpan.');
 }
 
+$statement->execute([$userId]);
+$report = provision_report($pdo, $statement->fetch() ?: $row, $config);
+$report['targetRole'] = $targetRole;
 $report['mode'] = 'apply';
 $report['result'] = 'provisioned';
 $report['operator'] = $actor;
