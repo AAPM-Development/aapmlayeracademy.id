@@ -2,6 +2,18 @@
  * (375px, 540px and desktop). Loaded last so it settles shared edges
  * without rewriting each feature file. */
 
+/* The app canvas reserves room for the floating APPI launcher on ordinary
+ * pages. Pages with a sticky action surface use that space for the action
+ * surface instead, so keep the sticky edge flush with the desktop viewport. */
+@media (min-width: 860px) {
+  .aapm-app__main:has(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
+    padding-bottom: 0;
+  }
+  .aapm-app__main:has(.aapm-editor-actionbar, .aapm-curriculum-actionbar) > .aapm-page {
+    padding-bottom: 0;
+  }
+}
+
 /* Editor action bar on phones: an opaque, edge-to-edge bar, so content never
  * shows through or beside it while the canvas scrolls underneath. */
 @media (max-width: 639px) {
@@ -22,14 +34,14 @@
     box-shadow: 0 -8px 20px color-mix(in srgb, var(--aapm-semantic-foreground) 8%, transparent);
   }
 }
-html[data-editor-footer="true"] .aapm-ai-launcher,
-html[data-editor-footer="true"] .aapm-ai-floating-panel {
-  bottom: calc(var(--aapm-editor-footer-offset, 0px) + var(--aapm-primitive-space-3));
+html[data-shell-footer="true"] .aapm-ai-launcher,
+html[data-shell-footer="true"] .aapm-ai-floating-panel {
+  bottom: calc(var(--aapm-shell-footer-offset, 0px) + var(--aapm-primitive-space-3));
 }
 @media (max-width: 1023px) {
-  html[data-editor-footer="true"] .aapm-ai-launcher,
-  html[data-editor-footer="true"] .aapm-ai-floating-panel {
-    bottom: max(calc(var(--aapm-editor-footer-offset, 0px) + var(--aapm-primitive-space-3)), calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-3)));
+  html[data-shell-footer="true"] .aapm-ai-launcher,
+  html[data-shell-footer="true"] .aapm-ai-floating-panel {
+    bottom: max(calc(var(--aapm-shell-footer-offset, 0px) + var(--aapm-primitive-space-3)), calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-3)));
   }
 }
 

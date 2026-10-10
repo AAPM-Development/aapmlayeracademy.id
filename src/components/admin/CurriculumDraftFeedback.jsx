@@ -21,8 +21,38 @@ export function ReloadDraftDialog({ open, onOpenChange, onConfirm, busy }) {
 // The shell keeps its phone navigation. Show one current action above it;
 // secondary actions remain keyboard-accessible through the existing menu.
 export function CurriculumActionBar({ actions, primaryKey, status }) {
+  const barRef = React.useRef(null);
+  React.useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return undefined;
+    const root = document.documentElement;
+    const update = () => {
+      const rect = bar.getBoundingClientRect();
+      const offset = rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0;
+      root.style.setProperty('--aapm-shell-footer-offset', `${offset}px`);
+      root.dataset.shellFooter = 'true';
+    };
+    let frame = 0;
+    const schedule = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(update);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    window.addEventListener('resize', schedule);
+    document.addEventListener('scroll', schedule, true);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', schedule);
+      document.removeEventListener('scroll', schedule, true);
+      root.style.removeProperty('--aapm-shell-footer-offset');
+      delete root.dataset.shellFooter;
+    };
+  }, []);
   const primary = actions.find((action) => action.id === primaryKey);
-  return <div className="aapm-card aapm-curriculum-actionbar" aria-label="Aksi draf kurikulum">
+  return <div ref={barRef} className="aapm-card aapm-curriculum-actionbar" aria-label="Aksi draf kurikulum">
     <div className="aapm-curriculum-actionbar__desktop">{actions.map((action) => <Button key={action.id} type={action.type} variant={action.id === primaryKey ? 'primary' : 'secondary'} disabled={action.disabled} onClick={action.type === 'submit' ? undefined : action.onSelect}>{action.label}</Button>)}</div>
     <div className="aapm-curriculum-actionbar__mobile">
       {primary ? <Button className="aapm-curriculum-actionbar__primary" type={primary.type} disabled={primary.disabled} onClick={primary.type === 'submit' ? undefined : primary.onSelect}>{primary.label}</Button> : <span className="aapm-text-caption flex-1">Siap ditinjau operator</span>}

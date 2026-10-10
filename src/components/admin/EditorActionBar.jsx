@@ -70,8 +70,8 @@ export default function EditorActionBar({
       const height = `${rect.height}px`;
       content.style.setProperty('--aapm-editor-footer-height', height);
       root.style.setProperty('--aapm-editor-footer-height', height);
-      root.style.setProperty('--aapm-editor-footer-offset', `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`);
-      root.dataset.editorFooter = 'true';
+      root.style.setProperty('--aapm-shell-footer-offset', `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`);
+      root.dataset.shellFooter = 'true';
     };
     let frame = 0;
     const schedule = () => {
@@ -90,8 +90,8 @@ export default function EditorActionBar({
       document.removeEventListener('scroll', schedule, true);
       content.style.removeProperty('--aapm-editor-footer-height');
       root.style.removeProperty('--aapm-editor-footer-height');
-      root.style.removeProperty('--aapm-editor-footer-offset');
-      delete root.dataset.editorFooter;
+      root.style.removeProperty('--aapm-shell-footer-offset');
+      delete root.dataset.shellFooter;
     };
   }, []);
   const status = isSaving ? "saving" : saveError ? "error" : isDirty ? "dirty" : "saved";
