@@ -348,7 +348,7 @@ export default function KpiDashboard() {
                   hue={active.metric.hue}
                   band={active.metric.band}
                   valueFormatter={active.metric.format}
-                  height={224}
+                  height={184}
                 />
               ) : (
                 <ChartEmpty message="Catat minimal dua minggu untuk melihat tren indikator ini." />

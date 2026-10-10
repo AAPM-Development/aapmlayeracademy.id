@@ -307,7 +307,7 @@ export function Topbar({ title, subtitle, breadcrumbs, actions, mobileBrandTo = 
  * answer-feedback bar after a quiz check.
  */
 export const FocusShell = React.forwardRef(function FocusShell(
-    { bar, outline, outlineLabel = "Kurikulum", outlineOpen = true, footer, footerTone, children, className, label = "Konten belajar", resetKey },
+    { bar, outline, outlineLabel = "Kurikulum", outlineOpen = true, outlineSide = "left", footer, footerTone, children, className, label = "Konten belajar", resetKey },
   ref,
 ) {
   const mainRef = React.useRef(null);
@@ -336,7 +336,7 @@ export const FocusShell = React.forwardRef(function FocusShell(
   }, [Boolean(footer)]);
 
   return (
-    <div className={cn("aapm-focus", className)} data-outline={outline && outlineOpen ? "true" : "false"}>
+    <div className={cn("aapm-focus", className)} data-outline={outline && outlineOpen ? "true" : "false"} data-outline-side={outlineSide}>
       <a className="aapm-skip-link" href="#aapm-focus-main">Lewati ke konten</a>
       {bar}
       <div className="aapm-focus__body">

@@ -615,18 +615,6 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
 }
 .aapm-toc__link:hover { color: var(--aapm-semantic-foreground); }
 .aapm-toc__link[aria-current="true"] { border-inline-start-color: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary-soft-text); font-weight: var(--aapm-primitive-weight-label); }
-.aapm-lesson__section-trigger { justify-content: center; gap: var(--aapm-primitive-space-1-5); border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-control); background: var(--aapm-semantic-surface); color: var(--aapm-semantic-foreground); white-space: nowrap; }
-.aapm-lesson__section-trigger:hover { background: var(--aapm-semantic-surface-subtle); }
-.aapm-lesson__section-trigger:focus-visible { outline: var(--aapm-primitive-focus-width) solid var(--aapm-semantic-focus); outline-offset: 2px; }
-.aapm-section-sheet.aapm-sheet { display: flex; flex-direction: column; gap: var(--aapm-primitive-space-3); max-height: 78dvh; padding: var(--aapm-primitive-space-5); padding-bottom: calc(var(--aapm-primitive-space-5) + env(safe-area-inset-bottom)); }
-.aapm-section-sheet .aapm-toc__title { margin-bottom: var(--aapm-primitive-space-2); padding: 0; }
-.aapm-section-sheet .aapm-toc { gap: var(--aapm-primitive-space-1); border: 0; }
-.aapm-section-sheet .aapm-toc__link { min-height: 48px; margin: 0; padding: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3); border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-control); }
-.aapm-section-sheet .aapm-toc__link[aria-current="true"] { border-color: color-mix(in srgb, var(--aapm-semantic-primary) 36%, var(--aapm-semantic-border)); background: var(--aapm-semantic-primary-soft); }
-@media (max-width: 639px) {
-  .aapm-focus__footer .aapm-lesson__section-trigger { display: inline-flex; flex: 0 1 auto; min-height: 44px; padding-inline: var(--aapm-primitive-space-2); font-size: var(--aapm-component-type-caption-size); }
-}
-
 /* Callout cards inside the lesson (objectives, takeaways, practice). */
 .aapm-callout {
   display: grid;
