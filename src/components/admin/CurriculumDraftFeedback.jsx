@@ -25,9 +25,11 @@ export function CurriculumActionBar({ actions, primaryKey, status }) {
   React.useEffect(() => {
     const bar = barRef.current;
     if (!bar) return undefined;
+    const content = bar.closest('.aapm-curriculum-editor');
     const root = document.documentElement;
     const update = () => {
       const rect = bar.getBoundingClientRect();
+      content?.style.setProperty('--aapm-curriculum-footer-height', `${rect.height}px`);
       const offset = rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0;
       root.style.setProperty('--aapm-shell-footer-offset', `${offset}px`);
       root.dataset.shellFooter = 'true';
@@ -41,13 +43,18 @@ export function CurriculumActionBar({ actions, primaryKey, status }) {
     const observer = new ResizeObserver(update);
     observer.observe(bar);
     window.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
     document.addEventListener('scroll', schedule, true);
     return () => {
       observer.disconnect();
       window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('scroll', schedule);
       document.removeEventListener('scroll', schedule, true);
       root.style.removeProperty('--aapm-shell-footer-offset');
+      content?.style.removeProperty('--aapm-curriculum-footer-height');
       delete root.dataset.shellFooter;
     };
   }, []);

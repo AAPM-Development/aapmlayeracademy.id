@@ -82,11 +82,15 @@ export default function EditorActionBar({
     const observer = new ResizeObserver(update);
     observer.observe(bar);
     window.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
     document.addEventListener('scroll', schedule, true);
     return () => {
       observer.disconnect();
       window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('scroll', schedule);
       document.removeEventListener('scroll', schedule, true);
       content.style.removeProperty('--aapm-editor-footer-height');
       root.style.removeProperty('--aapm-editor-footer-height');
