@@ -4,6 +4,22 @@
  * composer that starts in the middle of an empty chat and floats at the
  * bottom once the conversation begins. */
 
+.aapm-app--chat { height: 100dvh; }
+/* The chat owns its transcript scroll. Remove the shell's normal page and
+ * launcher clearance; the canvas reserves the mobile navigation once. */
+.aapm-app.aapm-app--chat[data-bottom-nav="true"] .aapm-app__main {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.aapm-app--chat .aapm-ai-workspace { flex: 1; }
+@media (max-width: 859px) {
+  .aapm-app--chat .aapm-app__canvas {
+    padding-bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom));
+  }
+}
+
 .aapm-room.aapm-ai-frame { border: 0; border-radius: 0; box-shadow: none; background: var(--aapm-semantic-background); }
 .aapm-room .aapm-ai-workspace__main { background: var(--aapm-semantic-surface); }
 .aapm-room .aapm-ai-conversation-sidebar { background: var(--aapm-semantic-background); border-inline-end: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border); }

@@ -119,6 +119,7 @@ export default function AcademyShell() {
         <Outlet />
       ) : (
         <AppShell
+          className={isAiWorkspace ? "aapm-app--chat" : undefined}
           collapsed={collapsed}
           label="Navigasi Academy"
           sidebar={navigation(false)}

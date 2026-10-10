@@ -1296,16 +1296,6 @@
     flex: 0 0 auto;
   }
 
-/* The full APPI route sits above the fixed mobile bottom navigation. Keep
-   * its canvas tied to the viewport instead of subtracting a desktop-sized
-   * header plus nav; the old 8.6rem subtraction left a visible blank band in
-   * installed PWAs. */
-
-.aapm-ai-workspace--full-mobile {
-    height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom));
-    min-height: 0;
-  }
-
 .aapm-ai-workspace__header {
     box-shadow: inset 0 -1px 0 hsl(var(--border) / var(--aapm-shell-divider-alpha, 0.34));
   }
@@ -1422,12 +1412,6 @@
       border-left: 0;
       border-radius: 0;
       box-shadow: none;
-    }
-
-    .aapm-ai-workspace--full-mobile {
-      height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom));
-      max-height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom));
-      min-height: 0;
     }
 
     .aapm-ai-workspace__main {

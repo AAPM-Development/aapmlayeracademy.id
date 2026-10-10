@@ -942,7 +942,7 @@ export default function AiAssistant() {
   );
 
   return (
-    <div className="aapm-ai-workspace aapm-ai-workspace--full-mobile aapm-ai-frame aapm-room flex min-h-0 w-full min-w-0 max-w-full overflow-hidden lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="aapm-ai-workspace aapm-ai-frame aapm-room flex min-h-0 w-full min-w-0 max-w-full overflow-hidden">
       <ConversationList
         conversations={conversations}
         conversationTotal={conversationTotal}
