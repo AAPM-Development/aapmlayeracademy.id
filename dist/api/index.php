@@ -424,19 +424,19 @@ try {
     }
 
     if ($path === 'admin/users' && $method === 'POST') {
-        $actor = require_admin();
+        $actor = require_super_admin();
         require_csrf();
         json_response(['user' => admin_create_user($actor, request_json())], 201);
     }
 
     if (preg_match('#^admin/users/(\\d+)$#', $path, $matches) && $method === 'PUT') {
-        $actor = require_admin();
+        $actor = require_super_admin();
         require_csrf();
         json_response(['user' => admin_update_user($actor, (int) $matches[1], request_json())]);
     }
 
     if (preg_match('#^admin/users/(\\d+)/password$#', $path, $matches) && $method === 'PUT') {
-        $actor = require_admin();
+        $actor = require_super_admin();
         require_csrf();
         $input = request_json();
         admin_reset_user_password($actor, (int) $matches[1], (string) ($input['password'] ?? ''));
@@ -444,7 +444,7 @@ try {
     }
 
     if (preg_match('#^admin/users/(\\d+)/progress$#', $path, $matches) && $method === 'DELETE') {
-        $actor = require_admin();
+        $actor = require_super_admin();
         require_csrf();
         json_response(['reset' => admin_reset_user_progress($actor, (int) $matches[1], request_json())]);
     }
