@@ -533,7 +533,7 @@ function ai_sse_emit(string $event, array $payload = []): void
     flush();
 }
 
-function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
+function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null, ?array &$responseDetails = null): string
 {
     $headers = ai_registry_auth_headers($settings, $apiKey);
     $requestBody = [
@@ -564,6 +564,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     $responseText = '';
     $streamError = '';
     $reasoningObserved = false;
+    $responseDetails = ['reasoningSummary' => '', 'reasoningObserved' => false];
     $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . ($settings['chatPath'] ?? '/chat/completions'));
     curl_setopt_array($handle, [
         CURLOPT_RETURNTRANSFER => false,
@@ -576,7 +577,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         CURLOPT_HTTPHEADER => array_merge(['Accept: text/event-stream', 'Content-Type: application/json'], $headers),
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$responseText, &$streamError, &$reasoningObserved): int {
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$responseText, &$streamError, &$reasoningObserved, &$responseDetails): int {
             $lineBuffer .= str_replace("\r\n", "\n", $chunk);
             while (($lineEnd = strpos($lineBuffer, "\n")) !== false) {
                 $line = trim(substr($lineBuffer, 0, $lineEnd));
@@ -600,10 +601,12 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                 $delta = $decoded['choices'][0]['delta'] ?? [];
                 if (!is_array($delta)) continue;
                 foreach (ai_public_reasoning_summaries($delta) as $summary) {
+                    $responseDetails['reasoningSummary'] = substr($responseDetails['reasoningSummary'] . $summary, 0, 12000);
                     ai_sse_emit('reasoning', ['summary' => $summary]);
                 }
                 if (!$reasoningObserved && (!empty($delta['reasoning']) || !empty($delta['reasoning_content']) || !empty($delta['reasoning_details']))) {
                     $reasoningObserved = true;
+                    $responseDetails['reasoningObserved'] = true;
                     ai_sse_emit('reasoning', ['summary' => '']);
                     ai_sse_emit('status', ['label' => 'Model sedang menelaah pertanyaan']);
                 }
@@ -640,6 +643,7 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
+    $responseDetails = [];
     ai_sse_emit('status', ['label' => 'APPI memeriksa konteks KPI']);
     try {
         if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
@@ -663,16 +667,16 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
         } else {
             ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
             try {
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl, $responseDetails);
             } catch (RuntimeException $exception) {
                 // Free providers may occasionally reject a single request while
                 // remaining healthy. Retry once before showing a local fallback.
                 error_log('[aapm-ai-provider-retry] ' . $exception->getMessage());
                 ai_sse_emit('status', ['label' => 'APPI menghubungkan ulang provider']);
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl, $responseDetails);
             }
         }
-        return ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null];
+        return ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null, 'responseDetails' => $responseDetails ?? []];
     } catch (Throwable $exception) {
         error_log('[aapm-ai-provider] ' . $exception->getMessage());
         if ($imageDataUrl !== null) {
@@ -921,3 +925,4 @@ function ai_test_connection(): array
     }
     return ['ok' => true, 'provider' => $settings['provider'], 'providerLabel' => $settings['providerLabel'], 'model' => $settings['model'], 'reply' => $reply];
 }
+

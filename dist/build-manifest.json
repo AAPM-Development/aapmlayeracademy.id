@@ -1,12 +1,12 @@
 {
   "schema": "aapm-release-manifest/1",
   "channel": "staging",
-  "sourceCommit": "04be6e9c5d92f72b42d74015345cc101ea2525a9",
+  "sourceCommit": "cef20d6e28bcc84d85a9c3b01df10a3ecbc7808b",
   "sourceDirty": false,
-  "sourceTreeFingerprint": "7ec6e4dc845544e1443c95dc2cef334ec7a844240197519b54162f731a01f7d7",
+  "sourceTreeFingerprint": "1aa73a84a97291f3975d44dc9830dbeba86cf8a482558de378e9630f8029428e",
   "sourceFileCount": 264,
-  "artifactId": "ab4bf8e457625034285916d52310ba4a8b2d072e9da9873ae6862c540bfa863b",
-  "builtAt": "2026-10-10T05:56:04.637Z",
+  "artifactId": "456696f0ad758a3e80fbf96b3cc40528ddfce19405f96a4569646f3872c49862",
+  "builtAt": "2026-10-10T06:00:01.799Z",
   "schemaCompatibility": {
     "migrationKey": "20260909_ai_conversation_archiving_v1",
     "environmentMarkerTable": "aapm_environment_marker"
@@ -29,8 +29,8 @@
     },
     {
       "path": "api/bootstrap.php",
-      "sha256": "f246ec6604c0f6261430644a3aed810ef48bf1513704bbda459e765339647c82",
-      "bytes": 138292
+      "sha256": "38eecc8bd8a305f98b59ddb7f73f7e39a918ba2e2c93b30ebba58d4f3809100c",
+      "bytes": 139385
     },
     {
       "path": "api/certification.php",
@@ -49,13 +49,13 @@
     },
     {
       "path": "api/index.php",
-      "sha256": "f8a16a7827b37b7a2c0166cd9a51b0279b500a550ee0091c4033c08075788be5",
-      "bytes": 77276
+      "sha256": "b5e3d0c17f4ee0adf34f4fa7b4fd89c904ba5fcccac8b4f956f4b9e6817d0020",
+      "bytes": 77645
     },
     {
       "path": "api/openrouter.php",
-      "sha256": "bdd4d0786265de8b7b3490f94a0ba6aa0aae127ee2218ef59a00286a27db346a",
-      "bytes": 51780
+      "sha256": "3d2861084ce2ed5daf86e20ce9529af57e625362c0999a820f8f2282f6300f4d",
+      "bytes": 52219
     },
     {
       "path": "api/security.php",
