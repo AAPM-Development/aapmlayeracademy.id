@@ -95,6 +95,9 @@ import s_paperclip_bold_duotone from "@iconify-icons/solar/paperclip-bold-duoton
 import s_pen_new_square_bold_duotone from "@iconify-icons/solar/pen-new-square-bold-duotone.js";
 import s_plain_2_bold_duotone from "@iconify-icons/solar/plain-2-bold-duotone.js";
 import s_play_circle_bold_duotone from "@iconify-icons/solar/play-circle-bold-duotone.js";
+import s_pause_circle_bold_duotone from "@iconify-icons/solar/pause-circle-bold-duotone.js";
+import s_volume_loud_linear from "@iconify-icons/solar/volume-loud-linear.js";
+import s_volume_cross_linear from "@iconify-icons/solar/volume-cross-linear.js";
 import s_presentation_graph_bold_duotone from "@iconify-icons/solar/presentation-graph-bold-duotone.js";
 import s_question_circle_bold_duotone from "@iconify-icons/solar/question-circle-bold-duotone.js";
 import s_question_square_bold_duotone from "@iconify-icons/solar/question-square-bold-duotone.js";
@@ -257,6 +260,9 @@ export const aapmIconSources = Object.freeze({
   circle: "solar:record-circle-bold-duotone",
   pending: "solar:record-circle-bold-duotone",
   play: "solar:play-circle-bold-duotone",
+  pause: "solar:pause-circle-bold-duotone",
+  volume: "solar:volume-loud-linear",
+  volumeMuted: "solar:volume-cross-linear",
   preview: "solar:play-circle-bold-duotone",
   stop: "solar:stop-circle-bold-duotone",
   add: "solar:add-circle-bold-duotone",
@@ -408,6 +414,9 @@ export const solarIconData = Object.freeze({
   "solar:pen-new-square-bold-duotone": s_pen_new_square_bold_duotone,
   "solar:plain-2-bold-duotone": s_plain_2_bold_duotone,
   "solar:play-circle-bold-duotone": s_play_circle_bold_duotone,
+  "solar:pause-circle-bold-duotone": s_pause_circle_bold_duotone,
+  "solar:volume-loud-linear": s_volume_loud_linear,
+  "solar:volume-cross-linear": s_volume_cross_linear,
   "solar:presentation-graph-bold-duotone": s_presentation_graph_bold_duotone,
   "solar:question-circle-bold-duotone": s_question_circle_bold_duotone,
   "solar:question-square-bold-duotone": s_question_square_bold_duotone,

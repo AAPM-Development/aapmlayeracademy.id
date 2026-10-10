@@ -16,9 +16,16 @@
 @import "./styles/features/presentation.css";
 @import "./styles/features/editor.css";
 @import "./styles/features/editor-workspace.css";
+@import "./styles/features/curriculum.css";
+@import "./styles/features/lesson-video.css";
 @import "./styles/features/editor-blocks.css";
 @import "./styles/features/ai.css";
 @import "./styles/features/ai-chat.css";
+@import "./styles/features/appi-room.css";
+@import "./styles/features/mascot.css";
+@import "./styles/features/farm-tools.css";
+@import "./styles/features/certificate.css";
+@import "./styles/features/sweep.css";
 
 @tailwind base;
 @tailwind components;

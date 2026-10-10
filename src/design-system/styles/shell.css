@@ -424,6 +424,26 @@
 .aapm-bottom-nav__item[data-accent="ai"] .aapm-bottom-nav__icon { color: var(--aapm-semantic-ai); }
 .aapm-bottom-nav__item[data-accent="ai"][aria-current="page"] .aapm-bottom-nav__icon { background: var(--aapm-semantic-ai-soft); color: var(--aapm-semantic-ai-soft-text); }
 .aapm-bottom-nav__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aapm-bottom-nav__item:focus-visible { outline: 3px solid var(--aapm-semantic-focus); outline-offset: -3px; border-radius: var(--aapm-primitive-radius-control); }
+@media (max-width: 859px) {
+  :root { --aapm-component-bottom-nav-height: 72px; }
+  .aapm-bottom-nav {
+    inset-inline: var(--aapm-primitive-space-2);
+    bottom: calc(var(--aapm-primitive-space-2) + env(safe-area-inset-bottom));
+    height: calc(var(--aapm-component-bottom-nav-height) - var(--aapm-primitive-space-2));
+    gap: var(--aapm-primitive-space-1);
+    padding: var(--aapm-primitive-space-1);
+    border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+    border-radius: var(--aapm-primitive-radius-panel);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
+  }
+  .aapm-bottom-nav__item { min-height: 44px; border-radius: var(--aapm-primitive-radius-control); transition: background-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease); }
+  .aapm-bottom-nav__icon { width: 44px; height: 28px; }
+  .aapm-bottom-nav__label { overflow: visible; text-overflow: clip; font-size: 12px; }
+  .aapm-bottom-nav__item[data-active="true"] { background: var(--aapm-semantic-primary-soft); color: var(--aapm-semantic-primary); font-weight: var(--aapm-primitive-weight-strong); }
+  .aapm-bottom-nav__item[data-accent="ai"][data-active="true"] { background: var(--aapm-semantic-ai-soft); color: var(--aapm-semantic-ai-soft-text); }
+  .aapm-bottom-nav__item[aria-current="page"] .aapm-bottom-nav__icon { background: transparent; }
+}
 
 /* ------------------------------------------------------ Navigation sheet */
 .aapm-nav-sheet.aapm-sheet {
@@ -567,8 +587,7 @@
   min-width: 0;
   padding: var(--aapm-primitive-space-8) var(--aapm-primitive-space-6);
 }
-/* Top-anchored, not centred: the brand and title sit in the same place on
- * every route of the flow, and an Alert only pushes what is below it. */
+/* Shared centered auth content; forms keep their full column width. */
 .aapm-auth__form {
   display: flex;
   flex: 1;
@@ -577,13 +596,15 @@
   max-width: var(--aapm-component-auth-form-width);
   margin-inline: auto;
   padding-block-start: var(--aapm-component-auth-top-offset);
+  align-items: center;
+  text-align: center;
 }
-.aapm-auth__brand { display: block; width: var(--aapm-component-brand-width); height: auto; margin-bottom: var(--aapm-primitive-space-8); }
-.aapm-auth__icon { margin-bottom: var(--aapm-primitive-space-4); }
+.aapm-auth__brand { display: block; width: min(var(--aapm-component-brand-width), 9rem); height: auto; margin: 0 auto var(--aapm-primitive-space-8); }
+.aapm-auth__icon { align-self: center; margin-bottom: var(--aapm-primitive-space-4); }
 .aapm-auth__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; }
 /* The header group sits further from the form than two fields sit apart. */
 .aapm-auth__subtitle { margin: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-8); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-body-size); line-height: var(--aapm-component-type-body-line); text-wrap: pretty; }
-.aapm-auth__alert { margin-bottom: var(--aapm-primitive-space-5); }
+.aapm-auth__alert { width: 100%; margin-bottom: var(--aapm-primitive-space-5); text-align: center; }
 .aapm-auth__footer { margin-top: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-support-size); text-align: center; }
 /* Every auth link is the shared .aapm-link at one size. */
 .aapm-auth .aapm-link { gap: var(--aapm-primitive-space-1); font-size: var(--aapm-component-type-support-size); }
@@ -619,26 +640,22 @@
 .aapm-auth__quote footer { margin-top: var(--aapm-primitive-space-3); font-size: var(--aapm-component-type-caption-size); font-style: normal; opacity: .85; }
 /* The shell is the only source of form rhythm: one gap between fields. */
 .aapm-auth__form > form,
-.aapm-auth__stack { display: grid; gap: var(--aapm-primitive-space-5); }
+.aapm-auth__stack { display: grid; width: 100%; gap: var(--aapm-primitive-space-5); }
+.aapm-auth__form .aapm-field { text-align: left; }
+.aapm-auth__divider { width: 100%; }
 .aapm-auth__form > form > .aapm-button[type="submit"] { margin-top: var(--aapm-primitive-space-2); }
 .aapm-auth__form .aapm-input { min-height: var(--aapm-component-action-height-lg); }
 .aapm-auth__form .aapm-button[type="submit"] { min-height: var(--aapm-component-action-height-lg); }
 .aapm-auth__divider { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); margin-block: var(--aapm-primitive-space-6); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
 .aapm-auth__divider::before,
 .aapm-auth__divider::after { content: ""; flex: 1; height: 1px; background: var(--aapm-semantic-border); }
-/* Below desktop the brand panel reflows into a band above the form instead
- * of disappearing; the video stays desktop-only (AuthLayout gates it). */
+/* Compact auth screens devote their space to the form. */
 @media (max-width: 1023px) {
-  .aapm-auth { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
-  .aapm-auth__media { order: -1; aspect-ratio: 16 / 7; margin-bottom: 0; }
-  .aapm-auth__media > video { object-position: center 30%; }
-  .aapm-auth__quote { inset-inline: var(--aapm-primitive-space-6); bottom: var(--aapm-primitive-space-5); font-size: var(--aapm-component-type-support-size); line-height: var(--aapm-component-type-support-line); }
-  .aapm-auth__quote footer { display: none; }
+  .aapm-auth { grid-template-columns: minmax(0, 1fr); }
+  .aapm-auth__media { display: none; }
   .aapm-auth__form { padding-block-start: var(--aapm-primitive-space-4); }
 }
 @media (max-width: 639px) {
-  .aapm-auth__media { aspect-ratio: auto; height: var(--aapm-component-auth-media-band); }
-  .aapm-auth__quote { display: none; }
   .aapm-auth__pane { padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-5); }
   .aapm-auth__form { padding-block-start: 0; }
   .aapm-auth__brand { margin-bottom: var(--aapm-primitive-space-6); }
@@ -646,8 +663,8 @@
 
 /* APPI launcher clears the focus action bar. */
 html[data-shell="focus"] .aapm-ai-launcher {
-  bottom: calc(var(--aapm-component-lesson-footer-height) + var(--aapm-primitive-space-3) + env(safe-area-inset-bottom)) !important;
+  bottom: calc(var(--aapm-focus-footer-height, var(--aapm-component-lesson-footer-height)) + var(--aapm-primitive-space-3)) !important;
 }
 html[data-shell="focus"] .aapm-ai-floating-panel {
-  bottom: calc(var(--aapm-component-lesson-footer-height) + var(--aapm-primitive-space-3) + env(safe-area-inset-bottom)) !important;
+  bottom: calc(var(--aapm-focus-footer-height, var(--aapm-component-lesson-footer-height)) + var(--aapm-primitive-space-3)) !important;
 }

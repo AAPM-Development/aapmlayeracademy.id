@@ -1,0 +1,114 @@
+/* UI sweep: cross-page spacing and layering fixes found in the full audit
+ * (375px, 540px and desktop). Loaded last so it settles shared edges
+ * without rewriting each feature file. */
+
+/* Editor action bar on phones: an opaque, edge-to-edge bar, so content never
+ * shows through or beside it while the canvas scrolls underneath. */
+@media (max-width: 639px) {
+  .aapm-editor-content:has([data-editor-actionbar]) {
+    padding-bottom: calc(var(--aapm-editor-footer-height, 160px) + var(--aapm-primitive-space-4));
+  }
+  .aapm-editor-actionbar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    margin-inline: 0;
+    padding-inline: var(--aapm-component-page-inset-compact);
+    background: var(--aapm-semantic-surface);
+    backdrop-filter: none;
+    box-shadow: 0 -8px 20px color-mix(in srgb, var(--aapm-semantic-foreground) 8%, transparent);
+  }
+}
+html[data-editor-footer="true"] .aapm-ai-launcher,
+html[data-editor-footer="true"] .aapm-ai-floating-panel {
+  bottom: calc(var(--aapm-editor-footer-offset, 0px) + var(--aapm-primitive-space-3));
+}
+@media (max-width: 1023px) {
+  html[data-editor-footer="true"] .aapm-ai-launcher,
+  html[data-editor-footer="true"] .aapm-ai-floating-panel {
+    bottom: max(calc(var(--aapm-editor-footer-offset, 0px) + var(--aapm-primitive-space-3)), calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-3)));
+  }
+}
+
+/* Metric cards on phones (admin overview, profile, learner detail): the icon
+ * leads the label on one line, so two-column cards never fold a label into
+ * three lines and every card keeps the same rhythm. */
+@media (max-width: 639px) {
+  .aapm-metric { gap: var(--aapm-primitive-space-1-5); padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-3-5, 14px); }
+  .aapm-metric__head { flex-direction: row-reverse; justify-content: flex-end; gap: var(--aapm-primitive-space-2); }
+  .aapm-metric__head .aapm-icon-tile { width: 28px; height: 28px; flex: none; }
+  .aapm-metric__head .aapm-icon-tile .aapm-icon { width: 16px; height: 16px; }
+  .aapm-metric__label {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--aapm-component-type-caption-size);
+    line-height: var(--aapm-component-type-caption-line);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .aapm-metric__value { font-size: var(--aapm-component-type-section-size); line-height: var(--aapm-component-type-section-line); }
+}
+
+
+/* Stat tiles: labels wrap instead of ending in an ellipsis ("Rata-rata k…"). */
+.aapm-stat__label { white-space: normal; text-wrap: balance; }
+
+/* Final exam start screen: APPI, one headline, the next step and a way back. */
+.aapm-exam-intro-page { min-height: 100svh; justify-content: center; }
+.aapm-exam-intro {
+  display: grid;
+  justify-items: center;
+  gap: var(--aapm-primitive-space-2);
+  padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-4);
+  text-align: center;
+}
+.aapm-exam-intro > .aapm-appi { margin-bottom: var(--aapm-primitive-space-3); }
+.aapm-exam-intro__eyebrow { margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: .04em; text-transform: uppercase; }
+.aapm-exam-intro__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; animation: aapm-appi-bubble-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) 160ms both; }
+.aapm-exam-intro__text { max-width: 44ch; margin: 0; color: var(--aapm-semantic-muted); text-wrap: pretty; }
+.aapm-exam-intro__actions { display: grid; gap: var(--aapm-primitive-space-2); width: 100%; max-width: 360px; margin-top: var(--aapm-primitive-space-5); }
+.aapm-quiz-intro { min-height: 100%; align-content: center; }
+.aapm-quiz-intro__facts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--aapm-primitive-space-2); margin-block: var(--aapm-primitive-space-3); }
+
+/* Lesson video as one card: the picture, then a control bar joined to it
+ * (play as the one filled control, time, volume, full screen), and the
+ * provider link as a quiet line below. Touch targets stay 44px. */
+.aapm-video-player { border-radius: var(--aapm-primitive-radius-surface); }
+.aapm-video-player .aapm-video-player__viewport { border-radius: var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface) 0 0; }
+.aapm-video-player .aapm-video-player__controls {
+  gap: 0 var(--aapm-primitive-space-2);
+  padding: var(--aapm-primitive-space-1) var(--aapm-primitive-space-3) var(--aapm-primitive-space-2);
+  border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  border-top: 0;
+  border-radius: 0 0 var(--aapm-primitive-radius-surface) var(--aapm-primitive-radius-surface);
+  background: var(--aapm-semantic-surface);
+}
+.aapm-video-player .aapm-video-player__controls > .aapm-button:first-of-type {
+  border-radius: 50%;
+  background: var(--aapm-semantic-primary);
+  color: var(--aapm-semantic-primary-foreground);
+}
+.aapm-video-player .aapm-video-player__controls > .aapm-button:first-of-type:hover:not(:disabled) { filter: brightness(1.08); }
+.aapm-video-player .aapm-video-player__time { min-width: 7ch; color: var(--aapm-semantic-foreground); font-weight: var(--aapm-primitive-weight-label); }
+
+/* Range inputs: a slim track with a round thumb, inside the 44px target. */
+.aapm-video-player input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
+.aapm-video-player input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: var(--aapm-semantic-surface-subtle); box-shadow: inset 0 0 0 1px var(--aapm-semantic-border); }
+.aapm-video-player input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border: 3px solid var(--aapm-semantic-surface); border-radius: 50%; background: var(--aapm-semantic-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.aapm-video-player input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--aapm-semantic-surface-subtle); }
+.aapm-video-player input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--aapm-semantic-primary); }
+.aapm-video-player input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 3px solid var(--aapm-semantic-surface); border-radius: 50%; background: var(--aapm-semantic-primary); }
+.aapm-video-player .aapm-video-player__timeline { min-height: 32px; }
+
+.aapm-video-player + .aapm-lesson-media__fallback,
+.aapm-video-player .aapm-lesson-media__fallback { margin-top: var(--aapm-primitive-space-2); }
+.aapm-video-player .aapm-lesson-media__fallback a { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); text-decoration: none; }
+.aapm-video-player .aapm-lesson-media__fallback a:hover { color: var(--aapm-semantic-foreground); text-decoration: underline; }
+@media (max-width: 479px) {
+  .aapm-video-player .aapm-video-player__volume { display: none; }
+}
+
+/* Lesson reading progress under the focus bar. */
+.aapm-lesson-bar { position: relative; }
+.aapm-lesson-bar__read { position: absolute; inset: auto 0 -1px; height: 3px; overflow: hidden; pointer-events: none; }
+.aapm-lesson-bar__read > span { display: block; width: 100%; height: 100%; border-radius: 0 999px 999px 0; background: var(--hue, var(--aapm-semantic-primary)); transform: scaleX(0); transform-origin: left center; transition: transform 120ms linear; }

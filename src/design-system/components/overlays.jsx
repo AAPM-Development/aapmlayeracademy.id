@@ -157,7 +157,7 @@ function ConfirmDialog({
   destructive = false,
   loading = false,
   onConfirm,
-  children,
+  children = null,
 }) {
   const resolvedIcon = icon || (destructive ? "danger" : "info");
 

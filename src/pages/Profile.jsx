@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ContentContainer from "@/components/layout/ContentContainer";
 import PageHeader from "@/components/layout/PageHeader";
+import { nativeApi } from "@/api/nativeClient";
 import AapmIcon from "@/components/icons/AapmIcon";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import {
@@ -265,7 +266,7 @@ export default function Profile() {
   const { data, isLoading, error, refetch } = useLearningProfile();
   const { data: hall } = useHallOfFame();
   const saveProfile = useSaveLearningProfile();
-  const { checkUserAuth } = useAuth();
+  const { checkUserAuth, user: authUser } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -273,6 +274,8 @@ export default function Profile() {
   const [avatarData, setAvatarData] = useState("");
   const [avatarError, setAvatarError] = useState("");
   const avatarInputRef = useRef(null);
+  const [verificationNoticeHidden, setVerificationNoticeHidden] = useState(false);
+  const [verificationNote, setVerificationNote] = useState("");
 
   useEffect(() => {
     if (!data) return;
@@ -338,8 +341,30 @@ export default function Profile() {
     || optIn !== Boolean(data?.profile?.hallOfFameOptIn)
     || avatarData !== (data?.profile?.avatar || data?.user?.avatar || "");
 
+  // One quiet, dismissible reminder for legacy accounts. It never blocks learning.
+  const showVerificationNotice = authUser?.emailVerificationStatus === "legacy_pending" && !verificationNoticeHidden;
+  const sendVerificationInstructions = async () => {
+    setVerificationNote("");
+    try {
+      await nativeApi.auth.resendVerification({});
+      setVerificationNote("Jika akun ini belum terverifikasi, instruksi baru telah dikirim ke email Anda.");
+    } catch {
+      setVerificationNote("Instruksi belum dapat dikirim. Coba lagi nanti.");
+    }
+  };
+
   return (
     <ContentContainer>
+      {showVerificationNotice && (
+        <div className="aapm-profile__verify" role="status">
+          <p className="aapm-text-caption">Verifikasi alamat email Anda untuk melindungi akun. Akses belajar Anda tetap tersedia.</p>
+          <div className="aapm-profile__verify-actions">
+            <Button type="button" variant="secondary" onClick={sendVerificationInstructions}>Kirim instruksi verifikasi</Button>
+            <Button type="button" variant="secondary" onClick={() => setVerificationNoticeHidden(true)}>Nanti saja</Button>
+          </div>
+          {verificationNote && <p className="aapm-text-caption">{verificationNote}</p>}
+        </div>
+      )}
       <PageHeader
         title="Profil & prestasi"
         description="Identitas belajar, pencapaian, dan preferensi akun Anda."

@@ -475,21 +475,36 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 
-test("progress saves are partial and record practice and study time", () => {
+test("progress writes are retired; academic results and study time are server-recorded", () => {
   const api = readWorkspaceFile("../public/api/index.php");
+  const assessment = readWorkspaceFile("../public/api/assessment.php");
   const lesson = readWorkspaceFile("../src/pages/ModuleDetail.jsx");
   const quiz = readWorkspaceFile("../src/pages/Quiz.jsx");
+  const finalExam = readWorkspaceFile("../src/pages/FinalExam.jsx");
+  const hooks = readWorkspaceFile("../src/lib/useCourseData.js");
+  const client = readWorkspaceFile("../src/api/nativeClient.js");
   const studyTime = readWorkspaceFile("../src/lib/useStudyTime.js");
 
-  // A field the client did not send keeps its stored value.
-  assert.match(api, /array_key_exists\('completed', \$input\) \? bool_value\(\$input\['completed'\]\) : \(int\) \(\$row\['completed'\] \?\? 0\)/);
-  assert.match(api, /array_key_exists\('practicalDone', \$input\)/);
-  assert.match(api, /array_key_exists\('quizScore', \$input\)/);
-  // Study time accumulates, at most four hours per save.
-  assert.match(api, /min\(240, max\(0, \(int\) \$input\['timeSpentDeltaMinutes'\]\)\)/);
-  assert.match(lesson, /useStudyTime\(module\?\.moduleNumber/);
-  assert.match(lesson, /practicalDone: done/);
-  assert.match(quiz, /timeSpentDeltaMinutes: minutes/);
+  // Client writes to /progress are refused and name the academic fields; nothing is stored.
+  assert.match(api, /aapm_reject_progress_write\(request_json\(\)\)/);
+  assert.match(assessment, /'academic_field_forbidden'/);
+  assert.match(assessment, /'progress_write_retired'/);
+  // Study time arrives as capped increments with their own keys; long sessions are split on the page.
+  assert.match(assessment, /AAPM_STUDY_INCREMENT_MAX_MINUTES/);
+  assert.match(lesson, /useStudyTimeIncrement\(\)/);
+  assert.match(lesson, /Math\.min\(15, remaining\)/);
+  assert.match(lesson, /practice\.mutateAsync\(\{ moduleNumber: number, attested: done \}\)/);
+  assert.match(lesson, /acknowledge\.mutateAsync\(number\)/);
+  // The quiz and the final exam take their state from the server attempt and never score on the client.
+  assert.match(quiz, /useAnswerAssessment\(\)/);
+  assert.match(finalExam, /useFinalEligibility\(\)/);
+  for (const page of [quiz, finalExam]) {
+    assert.doesNotMatch(page, /(?:item|question)\??\.correctIndex/);
+    assert.doesNotMatch(page, /timeSpentDeltaMinutes|quizScore: /);
+  }
+  assert.doesNotMatch(finalExam, /useIssueCertificate|certificates\.create/);
+  assert.doesNotMatch(hooks, /useSaveProgress|useIssueCertificate/);
+  assert.doesNotMatch(client, /userProgress\.upsert|create: \(data\) => request\("\/certificates"/);
   // Idle tabs do not count: only visible time with recent activity.
   assert.match(studyTime, /document\.visibilityState === "visible" && Date\.now\(\) - lastActivity < IDLE_AFTER_MS/);
 });
@@ -587,6 +602,8 @@ test("OpenRouter requests stay model-compatible and surface upstream diagnostics
 
 test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bounded", () => {
   const aiPage = readWorkspaceFile("../src/pages/AiAssistant.jsx");
+  const academyShell = readWorkspaceFile("../src/components/layout/AcademyShell.jsx");
+  const appiRoomStyles = readWorkspaceFile("../src/styles/features/appi-room.css");
   const floatingAi = readWorkspaceFile("../src/components/ai/FloatingAiAssistant.jsx");
   const historyControls = readWorkspaceFile("../src/components/ai/AiHistoryControls.jsx");
   const chatProvider = readWorkspaceFile("../src/components/ai/AiChatProvider.jsx");
@@ -604,7 +621,13 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   const iconBridge = readWorkspaceFile("../src/design-system/icons/iconData.js");
   const styles = readStyles();
 
-  assert.match(aiPage, /aapm-ai-workspace--full-mobile/);
+  // The route shell owns viewport height and bottom-nav clearance. Keeping
+  // the old page-level mobile height would restore the outer scroll gap.
+  assert.match(academyShell, /className=\{isAiWorkspace \? "aapm-app--chat" : undefined\}/);
+  assert.doesNotMatch(aiPage, /aapm-ai-workspace--full-mobile/);
+  assert.match(appiRoomStyles, /\.aapm-app--chat\s*\{\s*height: 100dvh;/);
+  assert.match(appiRoomStyles, /\.aapm-app\.aapm-app--chat\[data-bottom-nav="true"\] \.aapm-app__main\s*\{[^}]*padding: 0;[^}]*overflow: hidden;/);
+  assert.match(aiPage, /aapm-ai-transcript[^"\n]*overflow-x-hidden overflow-y-auto/);
   assert.match(aiPage, /AiHistoryBulkBar/);
   assert.match(floatingAi, /AiHistoryBulkBar/);
   assert.match(historyControls, /Beri nama singkat agar mudah ditemukan/);
@@ -693,7 +716,7 @@ test("editorial document players keep a shared reading-stage contract", () => {
   assert.match(styles, /\.aapm-pdf-canvas/);
 });
 
-test("native cPanel APPI companion stays provider-backed and preview-first", () => {
+test("native cPanel APPI companion stays provider-backed in the module draft editor and preview-first", () => {
   const client = readWorkspaceFile("../src/api/nativeClient.js");
   const api = readWorkspaceFile("../public/api/index.php");
   const provider = readWorkspaceFile("../public/api/openrouter.php");
@@ -714,7 +737,8 @@ test("native cPanel APPI companion stays provider-backed and preview-first", () 
   assert.match(companion, /onApplyModule/);
   assert.match(companion, /onApplyOrder/);
   assert.match(moduleEditor, /AdminModuleCompanion/);
-  assert.match(courseEditor, /scope="course"/);
+  assert.match(courseEditor, /APPI membantu isi draf melalui editor modul/);
+  assert.doesNotMatch(courseEditor, /scope="course"|onApplyOrder|AdminModuleCompanion/);
 });
 
 test("PDF player has a recovery path when embedded cPanel rendering fails", () => {

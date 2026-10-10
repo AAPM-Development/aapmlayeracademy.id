@@ -261,10 +261,11 @@
   .aapm-editor-save-status[data-status="error"] .aapm-editor-save-status__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 }
 
-/* Phones: the action bar keeps one row and the keyboard hint goes. */
+/* Phones: panel controls share a row; the primary draft action keeps its full label. */
 @media (max-width: 639px) {
   .aapm-editor-actionbar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); }
-  .aapm-editor-actionbar__actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .aapm-editor-actionbar__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .aapm-editor-actionbar__actions [data-editor-save] { grid-column: 1 / -1; }
   .aapm-editor-actionbar__actions .aapm-button { width: 100%; padding-inline: 6px; }
   .aapm-editor-actionbar__actions [data-editor-add-menu],
   .aapm-editor-actionbar__actions .aapm-editor-kbd { display: none; }

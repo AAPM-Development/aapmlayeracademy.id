@@ -1,0 +1,39 @@
+{
+  "schema": "aapm-release-contract/1",
+  "fingerprint": {
+    "description": "Source-tree fingerprint. One line per input file: '<content hash>  <relative path>\\n', lines sorted by byte order; the fingerprint is the sha256 of those lines. Content hashes follow the hashing rule below. Shared by scripts/release/artifact-lib.mjs and scripts/release/lib.php.",
+    "roots": ["src", "public", "database"],
+    "files": [
+      "index.html",
+      "package.json",
+      "package-lock.json",
+      "vite.config.js",
+      "tailwind.config.js",
+      "postcss.config.js",
+      "jsconfig.json",
+      "components.json"
+    ],
+    "excludePrefixes": ["public/uploads/"]
+  },
+  "hashing": {
+    "rule": "Text files hash their LF-normalised bytes, so a Windows checkout (CRLF working copy) and a cPanel checkout (LF blobs) agree. Files whose extension is listed in binaryExtensions hash their raw bytes.",
+    "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".woff", ".woff2", ".ttf", ".otf", ".eot", ".pdf", ".pptx", ".ppt", ".key", ".odp", ".zip", ".gz", ".mp4", ".webm", ".mp3", ".wav"]
+  },
+  "artifact": {
+    "manifestFile": "build-manifest.json",
+    "apiSourceDir": "public/api",
+    "apiDistDir": "api",
+    "forbiddenFiles": ["api/deployment.php"],
+    "uploadsDir": "uploads",
+    "uploadsAllowed": ["uploads/.htaccess"],
+    "requiredFiles": [
+      "index.html",
+      "manifest.json",
+      "sw.js",
+      "router.php",
+      "api/index.php",
+      "api/bootstrap.php"
+    ],
+    "requiredDirs": ["assets", "brand", "fonts"]
+  }
+}

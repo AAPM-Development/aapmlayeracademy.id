@@ -694,6 +694,36 @@ export function AiChatProvider({ children }) {
     [activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
   );
 
+  const deleteAllConversations = useCallback(async () => {
+    if (!accountId || isStreaming) throw new Error("Tunggu respons APPI selesai sebelum menghapus riwayat.");
+    const accountRequest = accountRequestRef.current;
+    const result = await nativeApi.ai.conversations.deleteAll();
+    if (accountRequest !== accountRequestRef.current) return result;
+    accountRequestRef.current += 1;
+    const deletionRequest = accountRequestRef.current;
+    await queryClient.cancelQueries({ queryKey: conversationQueryKey });
+    if (deletionRequest !== accountRequestRef.current) return result;
+    activeRef.current = null;
+    persistActiveConversation(null);
+    setActiveConversationId(null);
+    setMessages([]);
+    setIsDraft(true);
+    setIsLoadingConversation(false);
+    setHistorySyncState("idle");
+    setHistoryError(null);
+    try {
+      const prefix = `${COMPOSER_DRAFT_STORAGE_KEY}:${encodeURIComponent(accountId)}:`;
+      Object.keys(window.localStorage).filter((key) => key.startsWith(prefix)).forEach((key) => window.localStorage.removeItem(key));
+    } catch { /* Storage can be unavailable; server history is already cleared. */ }
+    setPromptDraftState("");
+    queryClient.setQueryData(conversationQueryKey, { pages: [{ items: [], total: 0, activeTotal: 0, archivedTotal: 0, nextCursor: null }], pageParams: [null] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: conversationQueryKey }),
+      queryClient.invalidateQueries({ queryKey: activityQueryKey }),
+    ]);
+    return result;
+  }, [accountId, activityQueryKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient]);
+
   const renameConversation = useCallback(
     async (id, title) => {
       if (!id || isStreaming) return null;
@@ -831,6 +861,7 @@ export function AiChatProvider({ children }) {
       selectConversation,
       startNewConversation,
       deleteConversation,
+      deleteAllConversations,
       renameConversation,
       archiveConversation,
       bulkArchiveConversations,
@@ -851,6 +882,7 @@ export function AiChatProvider({ children }) {
       conversationsQuery.isFetchingNextPage,
       conversationsQuery.isLoading,
       deleteConversation,
+      deleteAllConversations,
       clearPromptDraft,
       historyError,
       historySyncState,

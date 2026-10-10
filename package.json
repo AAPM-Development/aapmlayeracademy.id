@@ -5,14 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/release/build-artifact.mjs --channel=local",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "test": "node --test tests/academy-hardening.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/academy-hardening.test.mjs tests/q01-environment-artifact.test.mjs tests/q02-authz.test.mjs tests/q03-assessment.test.mjs tests/q04-evidence.test.mjs tests/q04-certification.test.mjs tests/q04-frontend.test.mjs tests/q05-curriculum.test.mjs tests/q05-policy-admin.test.mjs tests/q05-course-lifecycle.test.mjs tests/q05-frontend.test.mjs tests/lesson-video.test.mjs",
+    "test:q05:mysql": "node scripts/testing/test-q05-mysql.mjs",
+    "test:q03-q04:mysql": "node scripts/testing/test-q05-mysql.mjs --q03-q04",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "tokens": "node scripts/build-aapm-tokens.mjs",
-    "tokens:check": "node scripts/build-aapm-tokens.mjs --check"
+    "tokens:check": "node scripts/build-aapm-tokens.mjs --check",
+    "build:staging": "node scripts/release/build-artifact.mjs --channel=staging",
+    "build:production": "node scripts/release/build-artifact.mjs --channel=production",
+    "verify:dist": "node scripts/verify-dist-parity.mjs --source=. --dist=dist",
+    "verify:artifact-php": "php scripts/release/validate-artifact.php --source=. --dist=dist",
+    "lint:php": "node scripts/release/php-lint.mjs"
   },
   "dependencies": {
     "@file-viewer/pptx": "2.3.0",
@@ -74,6 +81,7 @@
     "moment": "^2.30.1",
     "next-themes": "^0.4.4",
     "pdfjs-dist": "^4.10.38",
+    "qrcode": "1.5.4",
     "react": "^18.2.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.2.0",
@@ -81,7 +89,6 @@
     "react-hot-toast": "^2.6.0",
     "react-leaflet": "^4.2.1",
     "react-markdown": "^9.0.1",
-    "react-quill-new": "^3.8.3",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^7.18.4",
     "recharts": "^2.15.4",
@@ -92,6 +99,10 @@
     "three": "^0.171.0",
     "vaul": "^1.1.2",
     "zod": "^3.24.2"
+  },
+  "overrides": {
+    "katex": "0.18.2",
+    "postcss-selector-parser": "7.1.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

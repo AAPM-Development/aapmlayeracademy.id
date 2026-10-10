@@ -14,6 +14,8 @@ import {
   Topbar,
 } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
+import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
+import { AiChatProvider } from "@/components/ai/AiChatProvider";
 import { adminBottomNavigation, adminNavigationGroups, getAdminBreadcrumbs } from "@/components/admin/adminNavigationItems";
 
 const COLLAPSE_KEY = "aapm-admin-sidebar-collapsed";
@@ -94,7 +96,7 @@ export default function AdminShell() {
   };
 
   return (
-    <>
+    <AiChatProvider>
       <AppShell
         collapsed={collapsed}
         label="Navigasi admin"
@@ -134,7 +136,7 @@ export default function AdminShell() {
         bottomNav={isEditor ? null : (
           <BottomNav
             label="Navigasi admin cepat"
-            items={[...adminBottomNavigation, { label: "Menu", icon: "menu", onClick: () => setSheetOpen(true) }]}
+            items={[...adminBottomNavigation, { label: "Menu", icon: "menu", expanded: sheetOpen, onClick: () => setSheetOpen(true) }]}
           />
         )}
       >
@@ -143,6 +145,7 @@ export default function AdminShell() {
       <NavigationSheet open={sheetOpen} onOpenChange={setSheetOpen} title="Navigasi admin">
         {navigation(true)}
       </NavigationSheet>
-    </>
+      <FloatingAiAssistant />
+    </AiChatProvider>
   );
 }

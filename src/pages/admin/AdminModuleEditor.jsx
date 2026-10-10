@@ -10,6 +10,9 @@ import EditorialComposer, { editorialInsertGroups } from "@/components/admin/Edi
 import AdminModuleCompanion from "@/components/admin/AdminModuleCompanion";
 import EditorOutline from "@/components/admin/EditorOutline";
 import EditorActionBar from "@/components/admin/EditorActionBar";
+import CurriculumPublishingPanel from "@/components/admin/CurriculumPublishingPanel";
+import { useQueryClient } from "@tanstack/react-query";
+import { cancelQuestionEdit, curriculumModule, recoverCurriculumDraft } from "@/lib/curriculumEditorState";
 import useModalFocus from "@/components/ai/useModalFocus";
 import { levelVisual } from "@/lib/academyVisuals";
 import {
@@ -34,7 +37,6 @@ import {
   Field,
   IconTile,
   IconButton,
-  OverflowMenu,
 } from "@/components/primitives";
 import {
   AdminError,
@@ -46,7 +48,6 @@ import {
   useAdminCourse,
   useAdminModuleQuestions,
   useCreateAdminModule,
-  useDeleteAdminModule,
   useDeleteAdminQuestion,
   useAdminAiSettings,
   useSaveAdminQuestion,
@@ -376,7 +377,7 @@ function AiModuleDraft({ form, onApply, toast }) {
     if (!draft) return;
     onApply(draft);
     setDraft(null);
-    toast({ title: "Draf APPI diterapkan", description: "Tinjau poin-poinnya sebelum menyimpan modul." });
+    toast({ title: "Draf APPI diterapkan", description: "Periksa perubahan lokal, lalu pilih Simpan draf. Validasi dan terbitkan agar revisi tersedia di Academy." });
   };
 
   const applyRewrite = () => {
@@ -384,7 +385,7 @@ function AiModuleDraft({ form, onApply, toast }) {
     onApply(rewriteDraft);
     setRewriteDraft(null);
     setPendingRewrite(false);
-    toast({ title: "Rewrite APPI diterapkan", description: "Isi lokal berubah sebagai draft. Periksa kembali, lalu pilih Simpan modul." });
+    toast({ title: "Rewrite APPI diterapkan", description: "Isi lokal berubah sebagai draf. Periksa kembali, lalu pilih Simpan draf. Validasi dan terbitkan agar revisi tersedia di Academy." });
   };
 
   return (
@@ -580,6 +581,7 @@ function HueSelect({ id, value, onChange }) {
 }
 
 function moduleFormFromApi(module) {
+  module = curriculumModule(module);
   return {
     levelNumber: module?.level || 1,
     levelName: module?.levelName || "",
@@ -644,6 +646,7 @@ function readEditorDraft(key) {
       form,
       savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : "",
       serverSnapshot: typeof parsed.serverSnapshot === "string" ? parsed.serverSnapshot : "",
+      draftVersion: parsed.draftVersion ?? null,
     };
   } catch {
     return null;
@@ -659,13 +662,14 @@ function removeEditorDraft(key) {
   }
 }
 
-function writeEditorDraft(key, form, serverSnapshot = "") {
+function writeEditorDraft(key, form, serverSnapshot = "", draftVersion = null) {
   if (!key || typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify({
       version: 2,
       savedAt: new Date().toISOString(),
       serverSnapshot,
+      draftVersion,
       form,
     }));
   } catch {
@@ -673,14 +677,25 @@ function writeEditorDraft(key, form, serverSnapshot = "") {
   }
 }
 
-function QuestionEditor({ moduleId }) {
-  const { data, isLoading } = useAdminModuleQuestions(moduleId);
+function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onError, beginWrite, endWrite, onDirty, resetKey }) {
+  const { data, isLoading, error: loadError, refetch: reloadQuestions } = useAdminModuleQuestions(moduleId);
   const saveQuestion = useSaveAdminQuestion();
   const deleteQuestion = useDeleteAdminQuestion();
   const { toast } = useToast();
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(emptyQuestion);
+  const formRef = useRef(form);
+  formRef.current = form;
+  const [questionError, setQuestionError] = useState("");
   const [pendingQuestionDelete, setPendingQuestionDelete] = useState(null);
+  const questionWriteBusy = busy || saveQuestion.isPending || deleteQuestion.isPending;
+  const cancelEdit = () => cancelQuestionEdit(questionWriteBusy, () => {
+    setSelected(null);
+    setForm(emptyQuestion);
+    setQuestionError("");
+  });
+  useEffect(() => { setSelected(null); setForm(emptyQuestion); setQuestionError(""); }, [resetKey]);
+  useEffect(() => { onDirty(JSON.stringify(form) !== JSON.stringify(emptyQuestion)); }, [form, onDirty]);
   const questions = data?.questions || [];
   const edit = (question) => {
     const options = question.options || [];
@@ -699,9 +714,13 @@ function QuestionEditor({ moduleId }) {
   };
   const save = async (event) => {
     event.preventDefault();
+    if (conflict || !beginWrite()) return;
+    const submittedForm = formRef.current;
+    setQuestionError("");
     try {
-      await saveQuestion.mutateAsync({
+      const result = await saveQuestion.mutateAsync({
         moduleId,
+        expectedDraftVersion: draftVersion,
         questionId: selected?.id,
         data: {
           question: form.question,
@@ -718,37 +737,49 @@ function QuestionEditor({ moduleId }) {
           learningObjective: form.learningObjective,
         },
       });
-      setSelected(null);
-      setForm(emptyQuestion);
-      toast({ title: "Soal disimpan" });
+      onVersion(result.draftVersion);
+      if (JSON.stringify(formRef.current) === JSON.stringify(submittedForm)) {
+        setSelected(null);
+        setForm(emptyQuestion);
+      } else setSelected(result.question);
+      toast({ title: "Soal disimpan ke draf", description: "Materi dan soal terbit belum berubah." });
     } catch (error) {
+      setQuestionError(error.message);
+      onError(error);
       toast({
         variant: "destructive",
         title: "Soal belum disimpan",
         description: error.message,
       });
-    }
+    } finally { endWrite(); }
   };
   const remove = async (question) => {
+    if (conflict || !beginWrite()) return;
+    setQuestionError("");
     try {
-      await deleteQuestion.mutateAsync({ moduleId, questionId: question.id });
+      const result = await deleteQuestion.mutateAsync({ moduleId, questionId: question.id, expectedDraftVersion: draftVersion });
+      onVersion(result.draftVersion);
       if (selected?.id === question.id) {
         setSelected(null);
         setForm(emptyQuestion);
       }
-      toast({ title: "Soal dihapus" });
+      toast({ title: "Soal dihapus dari draf" });
     } catch (error) {
+      setQuestionError(error.message);
+      onError(error);
       toast({
         variant: "destructive",
         title: "Soal belum dihapus",
         description: error.message,
       });
-    }
+    } finally { endWrite(); }
   };
   const set = (key, value) =>
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => { const next = { ...current, [key]: value }; formRef.current = next; return next; });
   return (
     <>
+      {loadError && <AdminError error={loadError} onRetry={reloadQuestions} />}
+      {questionError && <p role="alert" className="mb-3">{questionError} Form soal tetap tersedia. {conflict ? "Pilih tindakan pemulihan konflik di atas." : "Periksa isian dan simpan soal kembali."}</p>}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)] xl:items-start">
       <section className="aapm-editor-panel" aria-labelledby="question-list-title">
         <header className="aapm-editor-panel__head">
@@ -787,6 +818,7 @@ function QuestionEditor({ moduleId }) {
                     size="icon"
                     variant="ghost"
                     onClick={() => edit(question)}
+                    disabled={busy}
                     aria-label="Edit soal"
                   >
                     <AapmIcon name="edit" className="h-4 w-4" />
@@ -795,6 +827,7 @@ function QuestionEditor({ moduleId }) {
                     size="icon"
                     variant="ghost"
                     onClick={() => setPendingQuestionDelete(question)}
+                    disabled={busy || Boolean(conflict)}
                     aria-label="Hapus soal"
                   >
                     <AapmIcon name="delete" className="h-4 w-4 text-danger" />
@@ -821,19 +854,19 @@ function QuestionEditor({ moduleId }) {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => {
-                setSelected(null);
-                setForm(emptyQuestion);
-              }}
+              disabled={questionWriteBusy}
+              onClick={cancelEdit}
             >
               Batal
             </Button>
           )}
         </header>
         <form onSubmit={save} className="grid gap-3">
+          <fieldset disabled={busy} className="grid gap-3">
           <div className="space-y-1.5">
-            <Label>Pertanyaan</Label>
+            <Label htmlFor="question-text">Pertanyaan</Label>
             <Textarea
+              id="question-text"
               value={form.question}
               onChange={(event) => set("question", event.target.value)}
               rows={3}
@@ -847,8 +880,9 @@ function QuestionEditor({ moduleId }) {
             ["optionD", "Opsi 4 (opsional)"],
           ].map(([key, label]) => (
             <div key={key} className="space-y-1.5">
-              <Label>{label}</Label>
+              <Label htmlFor={`question-${key}`}>{label}</Label>
               <Input
+                id={`question-${key}`}
                 value={form[key]}
                 onChange={(event) => set(key, event.target.value)}
                 required={key === "optionA" || key === "optionB"}
@@ -857,12 +891,12 @@ function QuestionEditor({ moduleId }) {
           ))}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Jawaban benar</Label>
+              <Label htmlFor="question-correct">Jawaban benar</Label>
               <Select
                 value={form.correctIndex}
                 onValueChange={(value) => set("correctIndex", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="question-correct">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -875,12 +909,12 @@ function QuestionEditor({ moduleId }) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Kesulitan</Label>
+              <Label htmlFor="question-difficulty">Kesulitan</Label>
               <Select
                 value={form.difficulty}
                 onValueChange={(value) => set("difficulty", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="question-difficulty">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -892,16 +926,18 @@ function QuestionEditor({ moduleId }) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Penjelasan</Label>
+            <Label htmlFor="question-explanation">Penjelasan</Label>
             <Textarea
+              id="question-explanation"
               value={form.explanation}
               onChange={(event) => set("explanation", event.target.value)}
               rows={2}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Tujuan pembelajaran</Label>
+            <Label htmlFor="question-objective">Tujuan pembelajaran</Label>
             <Input
+              id="question-objective"
               value={form.learningObjective}
               onChange={(event) => set("learningObjective", event.target.value)}
             />
@@ -909,14 +945,17 @@ function QuestionEditor({ moduleId }) {
           <Button
             className="w-full"
             type="submit"
-            disabled={saveQuestion.isPending}
+            variant={JSON.stringify(form) !== JSON.stringify(emptyQuestion) ? "primary" : "secondary"}
+            disabled={busy || Boolean(conflict) || saveQuestion.isPending}
           >
             {saveQuestion.isPending
               ? "Menyimpan…"
               : selected
-                ? "Simpan soal"
-                : "Tambah soal"}
+                ? "Simpan soal ke draf"
+                : "Tambah soal ke draf"}
           </Button>
+          {JSON.stringify(form) !== JSON.stringify(emptyQuestion) && <Button type="button" variant="secondary" disabled={questionWriteBusy} onClick={cancelEdit}>Batalkan perubahan soal</Button>}
+          </fieldset>
         </form>
       </section>
       </div>
@@ -924,7 +963,7 @@ function QuestionEditor({ moduleId }) {
         open={Boolean(pendingQuestionDelete)}
         onOpenChange={(open) => !open && setPendingQuestionDelete(null)}
         title="Hapus soal?"
-        description="Soal ini akan dihapus dari bank soal modul dan tidak dapat dipulihkan."
+        description="Soal akan dihapus dari draf. Bank soal terbit dan percobaan aktif tetap utuh sampai revisi baru diterbitkan."
         confirmLabel="Hapus soal"
         icon="delete"
         destructive
@@ -944,6 +983,7 @@ export default function AdminModuleEditor() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const isNew = moduleId === "new";
   const { data: course, isLoading: isLoadingCourse } = useAdminCourse(courseId);
   const newModuleParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -969,10 +1009,20 @@ export default function AdminModuleEditor() {
   );
   const createModule = useCreateAdminModule();
   const updateModule = useUpdateAdminModule();
-  const deleteModule = useDeleteAdminModule();
   const [form, setForm] = useState(emptyModule);
-  const [pendingModuleDelete, setPendingModuleDelete] = useState(false);
-  const [pendingModuleDeleteWithProgress, setPendingModuleDeleteWithProgress] = useState(false);
+  const [draftVersion, setDraftVersion] = useState(null);
+  const draftVersionRef = useRef(draftVersion);
+  draftVersionRef.current = draftVersion;
+  const [serverView, setServerView] = useState(null);
+  const [conflict, setConflict] = useState(null);
+  const [operationBusy, setOperationBusy] = useState(false);
+  const operationLockRef = useRef(false);
+  const conflictRef = useRef(null);
+  const [questionDirty, setQuestionDirty] = useState(false);
+  const [questionResetKey, setQuestionResetKey] = useState(0);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewError, setPreviewError] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [pendingDraft, setPendingDraft] = useState(null);
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [editorReady, setEditorReady] = useState(false);
@@ -1052,7 +1102,6 @@ export default function AdminModuleEditor() {
   const draftWrittenKeyRef = useRef("");
   const formSnapshot = useMemo(() => moduleFormSnapshot(form), [form]);
   const isDirty = editorReady && formSnapshot !== initialFormRef.current;
-  const editorialVideoIsPresent = hasEditorialVideo(form.editorialContent);
   const editorialPresentation = useMemo(
     () => normaliseEditorialPresentation(parseEditorialDocument(form.editorialContent)?.presentation),
     [form.editorialContent],
@@ -1123,6 +1172,12 @@ export default function AdminModuleEditor() {
     setSaveError("");
     setSavedAt(null);
     setDrawer(null);
+    setDraftVersion(data?.draft?.version ?? null);
+    setServerView(data || null);
+    setConflict(null);
+    setPreviewData(null);
+    setPreviewError("");
+    setQuestionDirty(false);
 
     const draft = readEditorDraft(draftKey);
     const draftSnapshot = draft ? moduleFormSnapshot(draft.form) : "";
@@ -1131,14 +1186,13 @@ export default function AdminModuleEditor() {
       : false;
     if (
       draft &&
-      draftSnapshot !== nextServerSnapshot &&
-      (!draft.serverSnapshot || draftMatchesCurrentServer)
+      draftSnapshot !== nextServerSnapshot
     ) {
       if (location.state?.preserveEditorDraft && draftMatchesCurrentServer) {
         setForm(draft.form);
         formRef.current = draft.form;
         setPendingDraft(null);
-      } else setPendingDraft({ key: draftKey, ...draft });
+      } else setPendingDraft({ key: draftKey, ...draft, stale: Boolean((draft.serverSnapshot && !draftMatchesCurrentServer) || (draft.draftVersion !== null && draft.draftVersion !== data?.draft?.version)) });
     } else {
       removeEditorDraft(draftKey);
       setPendingDraft(null);
@@ -1149,11 +1203,11 @@ export default function AdminModuleEditor() {
     if (!editorReady || !isDirty || !draftKey) return undefined;
     draftWrittenKeyRef.current = draftKey;
     const timeoutId = window.setTimeout(
-      () => writeEditorDraft(draftKey, form, serverFormSnapshotRef.current),
+      () => writeEditorDraft(draftKey, form, serverFormSnapshotRef.current, draftVersion),
       250,
     );
     return () => window.clearTimeout(timeoutId);
-  }, [draftKey, editorReady, form, isDirty]);
+  }, [draftKey, draftVersion, editorReady, form, isDirty]);
 
   useEffect(() => {
     if (!editorReady || isDirty || !draftKey || draftWrittenKeyRef.current !== draftKey) return;
@@ -1168,6 +1222,7 @@ export default function AdminModuleEditor() {
         draftKeyRef.current,
         formRef.current,
         serverFormSnapshotRef.current,
+        draftVersionRef.current,
       );
       event.preventDefault();
       event.returnValue = "";
@@ -1224,6 +1279,7 @@ export default function AdminModuleEditor() {
         draftKeyRef.current,
         formRef.current,
         serverFormSnapshotRef.current,
+        draftVersionRef.current,
       );
       window.history.pushState(guard.sentinelState, "", guard.editorHref);
       promptNavigation({ type: "history-back" });
@@ -1272,6 +1328,7 @@ export default function AdminModuleEditor() {
         draftKeyRef.current,
         formRef.current,
         serverFormSnapshotRef.current,
+        draftVersionRef.current,
       );
       promptNavigation({ target: nextTarget, type: "route" });
     };
@@ -1377,6 +1434,7 @@ export default function AdminModuleEditor() {
       draftKeyRef.current,
       formRef.current,
       serverFormSnapshotRef.current,
+      draftVersionRef.current,
     );
     promptNavigation({ target, type: "route" });
   };
@@ -1389,6 +1447,11 @@ export default function AdminModuleEditor() {
     });
   };
   const submitEditorForm = () => {
+    if (questionDirty && !isDirty) {
+      setActiveTab("assessment");
+      window.requestAnimationFrame(() => document.getElementById("question-text")?.focus());
+      return;
+    }
     if (!isSaving) document.getElementById("module-editor-form")?.requestSubmit();
   };
   const handleInvalidField = (event) => {
@@ -1411,7 +1474,7 @@ export default function AdminModuleEditor() {
   };
   const save = async (event) => {
     event.preventDefault();
-    if (saveInFlightRef.current) return;
+    if (saveInFlightRef.current || operationLockRef.current || conflict) return;
     if (editorialComposerRef.current?.validate?.() === false) {
       setSaveError("Lengkapi blok materi yang ditandai sebelum menyimpan.");
       toast({
@@ -1441,15 +1504,17 @@ export default function AdminModuleEditor() {
       delete payload.videoUrl;
     }
     saveInFlightRef.current = true;
+    operationLockRef.current = true;
+    setOperationBusy(true);
     try {
       const result = isNew
         ? await createModule.mutateAsync(payload)
-        : await updateModule.mutateAsync({ moduleId, data: payload });
+        : await updateModule.mutateAsync({ moduleId, data: payload, expectedDraftVersion: draftVersion });
       if (currentEditorContextRef.current !== submittedContext) return;
       const saved = result?.module || result;
       toast({
-        title: "Modul disimpan",
-        description: "Perubahan langsung dipakai oleh Academy.",
+        title: "Draf disimpan",
+        description: "Draf aman di server. Validasi dan terbitkan untuk mengaktifkan revisi baru di Academy.",
       });
       const savedForm = saved?.id ? moduleFormFromApi(saved) : submittedForm;
       const savedSnapshot = moduleFormSnapshot(savedForm);
@@ -1461,12 +1526,15 @@ export default function AdminModuleEditor() {
       formRef.current = nextForm;
       if (hasNewEdits) {
         const nextDraftKey = isNew && saved?.id ? editorDraftKey(accountId, courseId, saved.id) : draftKey;
-        writeEditorDraft(nextDraftKey, nextForm, savedSnapshot);
+        writeEditorDraft(nextDraftKey, nextForm, savedSnapshot, result.draft.version);
         if (nextDraftKey !== draftKey) removeEditorDraft(draftKey);
       } else removeEditorDraft(draftKey);
       setSaveError("");
       setSavedAt(new Date());
       setEditorReady(true);
+      setDraftVersion(result.draft.version);
+      setServerView(result);
+      setPreviewData(null);
       if (!hasNewEdits || isNew) releaseHistoryGuard();
       if (isNew && saved?.id)
         navigate(`/admin/courses/${courseId}/modules/${saved.id}`, {
@@ -1476,6 +1544,7 @@ export default function AdminModuleEditor() {
     } catch (saveError) {
       if (currentEditorContextRef.current !== submittedContext) return;
       setSaveError(saveError?.message || "Periksa isian, lalu coba lagi.");
+      handleEditorialError(saveError);
       toast({
         variant: "destructive",
         title: "Modul belum disimpan",
@@ -1483,32 +1552,106 @@ export default function AdminModuleEditor() {
       });
     } finally {
       saveInFlightRef.current = false;
+      operationLockRef.current = false;
+      setOperationBusy(false);
     }
   };
-  const remove = async ({ purgeProgress = false } = {}) => {
+  const beginEditorialWrite = () => {
+    if (operationLockRef.current || conflict) return false;
+    operationLockRef.current = true;
+    setOperationBusy(true);
+    return true;
+  };
+  const endEditorialWrite = () => { operationLockRef.current = false; setOperationBusy(false); };
+  const handleEditorialError = (editorError) => {
+    if (editorError?.status === 409 && editorError?.code === "revision_conflict") {
+      setConflict(editorError);
+      // Flush the current values before focusing recovery, including edits made during the request.
+      writeEditorDraft(draftKey, formRef.current, serverFormSnapshotRef.current, draftVersion);
+      requestAnimationFrame(() => conflictRef.current?.focus());
+    } else if (editorError?.message) {
+      setSaveError(editorError.message);
+    }
+  };
+  const acceptServerDraft = (latest, keepChanges = false, submittedForm = null) => {
+    const latestForm = moduleFormFromApi(latest.module);
+    const recovered = recoverCurriculumDraft(formRef.current, latestForm, latest.draft.version, keepChanges);
+    if (submittedForm) recovered.form = reconcileSavedModule(submittedForm, formRef.current, latestForm);
+    const latestSnapshot = moduleFormSnapshot(latestForm);
+    initialFormRef.current = latestSnapshot;
+    serverFormSnapshotRef.current = latestSnapshot;
+    formRef.current = recovered.form;
+    setForm(recovered.form);
+    setDraftVersion(recovered.draftVersion);
+    setServerView(latest);
+    setConflict(null);
+    setSaveError("");
+    setPreviewData(activeTab === "preview" ? latest : null);
+    queryClient.setQueryData(["admin", "modules", moduleId], latest);
+    queryClient.setQueryData(["admin", "modules", Number(moduleId), "questions"], { questions: latest.questions, draftVersion: latest.draft.version });
+    if (moduleFormSnapshot(recovered.form) !== latestSnapshot) writeEditorDraft(draftKey, recovered.form, latestSnapshot, recovered.draftVersion);
+    else removeEditorDraft(draftKey);
+    if (!keepChanges && !questionDirty) { setQuestionResetKey((key) => key + 1); setQuestionDirty(false); }
+  };
+  const recoverConflict = async (keepChanges) => {
+    if (operationLockRef.current) return;
+    operationLockRef.current = true; setOperationBusy(true);
     try {
-      await deleteModule.mutateAsync({ moduleId, purgeProgress });
-      toast({
-        title: "Modul dihapus",
-        description: purgeProgress
-          ? "Bank soal dan seluruh progress pada modul ini ikut dihapus."
-          : undefined,
-      });
-      removeEditorDraft(draftKey);
-      releaseHistoryGuard();
-      navigate(`/admin/courses/${courseId}`);
-    } catch (deleteError) {
-      if (!purgeProgress && deleteError?.code === "module_has_progress") {
-        setPendingModuleDeleteWithProgress(true);
-        return;
-      }
-      toast({
-        variant: "destructive",
-        title: "Modul belum dihapus",
-        description: deleteError.message,
-      });
-    }
+      const latest = await nativeApi.admin.modules.detail(moduleId, "draft");
+      acceptServerDraft(latest, keepChanges);
+      if (!keepChanges) { setQuestionResetKey((key) => key + 1); setQuestionDirty(false); }
+      toast({ title: keepChanges ? "Perubahan Anda dipertahankan" : "Draf terbaru dimuat",
+        description: keepChanges ? "Tidak ada penggabungan otomatis. Periksa perubahan Anda; simpan berikutnya akan mengganti isi draf server dengan form Anda." : "Editor menggunakan draf terbaru dari server." });
+    } catch (editorError) { setSaveError(editorError.message); }
+    finally { endEditorialWrite(); }
   };
+  const handleQuestionVersion = (version) => {
+    setDraftVersion(version);
+    setServerView((current) => ({ ...current, draft: { version, hasUnpublishedChanges: true } }));
+    setPreviewData(null);
+  };
+  const mutateLifecycle = async (action, value) => {
+    if ((action === "publish" || action === "copy") && (isDirtyRef.current || questionDirty)) return false;
+    if (!beginEditorialWrite()) return false;
+    const submittedForm = formRef.current;
+    try {
+      let result;
+      if (action === "publish") {
+        const published = await nativeApi.admin.modules.publishDraft(moduleId, draftVersion);
+        result = published.module;
+        acceptServerDraft(result, false, submittedForm);
+      } else if (action === "copy") {
+        result = await nativeApi.admin.modules.copyRevisionToDraft(moduleId, value, draftVersion);
+        acceptServerDraft(result, false, submittedForm);
+      } else {
+        result = action === "archive" ? await nativeApi.admin.modules.archive(moduleId, value) : await nativeApi.admin.modules.restore(moduleId);
+        setServerView((current) => ({ ...current, lifecycleStatus: result.lifecycleStatus, archivedAt: result.archivedAt, archiveReason: result.archiveReason }));
+      }
+      for (const queryKey of [["admin", "courses"], ["admin", "overview"], ["courseModules"], ["userProgress"], ["learning-profile"], ["quizQuestions"]]) {
+        queryClient.invalidateQueries({ queryKey, refetchType: "all" });
+      }
+      toast({ title: { publish: "Revisi diterbitkan", copy: "Revisi disalin ke draf", archive: "Modul diarsipkan", restore: "Modul dipulihkan" }[action] });
+      return true;
+    } catch (editorError) { handleEditorialError(editorError); toast({ variant: "destructive", title: "Aksi belum berhasil", description: editorError.message }); return false; }
+    finally { endEditorialWrite(); }
+  };
+  const loadServerPreview = async () => {
+    if (isNew || previewLoading) return;
+    const submittedContext = editorContextKey;
+    setPreviewLoading(true); setPreviewError(""); setPreviewData(null);
+    try {
+      const result = await nativeApi.admin.modules.previewDraft(moduleId);
+      if (currentEditorContextRef.current === submittedContext) setPreviewData(result);
+    } catch (editorError) { setPreviewError(editorError.message); handleEditorialError(editorError); }
+    finally { setPreviewLoading(false); }
+  };
+  const recoverValidation = (problem) => {
+    if (problem.section === "questions") { setActiveTab("assessment"); requestAnimationFrame(() => document.getElementById("question-text")?.focus()); return; }
+    setActiveTab("content");
+    const fields = { title: "module-title", levelName: "module-level-name", content: "module-section-content", practicalAssignment: "module-section-practice" };
+    requestAnimationFrame(() => { const target = document.getElementById(fields[problem.field] || "module-title"); target?.scrollIntoView({ block: "center" }); if (target?.matches("input,textarea,button")) target.focus(); else target?.querySelector("input,textarea,button,[contenteditable]")?.focus(); });
+  };
+  const previewForm = previewData ? moduleFormFromApi(previewData.module) : emptyModule;
   const applyCompanionDraft = (draft) => {
     if (!draft) return;
     setForm((current) => {
@@ -1544,7 +1687,7 @@ export default function AdminModuleEditor() {
       </AdminPageFrame>
     );
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
+    <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); if (tab === "preview") loadServerPreview(); }}>
       <AdminPageFrame
         editor
         title={isNew ? "Modul baru" : "Edit modul"}
@@ -1552,23 +1695,25 @@ export default function AdminModuleEditor() {
           <>
             <TabsList className="aapm-editor-mode" aria-label="Mode editor">
               <TabsTrigger value="content" icon="edit">Konten</TabsTrigger>
-              <TabsTrigger value="preview" icon="eye">Pratinjau</TabsTrigger>
+              <TabsTrigger value="preview" icon="eye" disabled={isNew}>Pratinjau</TabsTrigger>
               <TabsTrigger value="assessment" icon="quiz" disabled={isNew}>Bank soal</TabsTrigger>
             </TabsList>
-            <Button type="button" variant="secondary" onClick={() => requestNavigation(`/modules/${form.moduleNumber}`)} disabled={isNew}><AapmIcon name="eye" />Lihat di Academy</Button>
-            {!isNew ? (
-              <OverflowMenu
-                label="Aksi modul"
-                triggerVariant="secondary"
-                size="md"
-                items={[
-                  { id: "delete", label: "Hapus modul", icon: "delete", tone: "danger", disabled: deleteModule.isPending, onSelect: () => setPendingModuleDelete(true) },
-                ]}
-              />
-            ) : null}
+            <Button type="button" variant="secondary" onClick={() => requestNavigation(`/modules/${form.moduleNumber}`)} disabled={isNew || !serverView?.publishedRevisionId || serverView?.lifecycleStatus === "archived"}><AapmIcon name="eye" />Lihat di Academy</Button>
           </>
         )}
       >
+        {conflict && <Surface className="mb-5 space-y-3 p-4" role="alert" tabIndex={-1} ref={conflictRef}>
+          <h2 className="font-semibold">Draf berubah di server</h2>
+          <p>Form dan draf browser Anda tetap dipertahankan. Muat ulang akan mengganti perubahan lokal dengan draf server. Pertahankan perubahan saya mengambil versi terbaru tanpa menggabungkan isi; simpan berikutnya mengganti draf server dengan form Anda.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" disabled={operationBusy} onClick={() => recoverConflict(false)}>Muat ulang draf terbaru</Button>
+            <Button type="button" disabled={operationBusy} onClick={() => recoverConflict(true)}>Pertahankan perubahan saya</Button>
+          </div>
+          {saveError && <p>{saveError}</p>}
+        </Surface>}
+        {!isNew && editorReady && <CurriculumPublishingPanel key={moduleId} moduleId={moduleId} view={serverView} draftVersion={draftVersion}
+          dirty={isDirty || questionDirty} changeKey={formSnapshot} conflict={conflict} busy={operationBusy}
+          onMutation={mutateLifecycle} onError={handleEditorialError} onRecoverValidation={recoverValidation} />}
         <TabsContent value="content" className="aapm-editor-content">
           <form id="module-editor-form" onSubmit={save} onInvalid={handleInvalidField} className="aapm-editor-form aapm-editor-workspace">
             <EditorOutline
@@ -1751,7 +1896,7 @@ export default function AdminModuleEditor() {
                         return next;
                       });
                     }} /></Field>
-                    <Field id="module-number" label="No. modul" required><Input type="number" min="1" max="999" value={form.moduleNumber} onChange={(event) => set("moduleNumber", event.target.value)} /></Field>
+                    <Field id="module-number" label="No. modul" required><Input type="number" min="1" max="999" readOnly={!isNew} value={form.moduleNumber} onChange={(event) => set("moduleNumber", event.target.value)} /></Field>
                   </div>
                   <Field id="module-level-name" label="Nama chapter" required><Input value={form.levelName} onChange={(event) => set("levelName", event.target.value)} /></Field>
                   <div className="grid grid-cols-2 gap-3">
@@ -1807,46 +1952,56 @@ export default function AdminModuleEditor() {
             onSave={submitEditorForm}
             onRetry={submitEditorForm}
             isSaving={isSaving}
-            isDirty={isDirty}
+            isDirty={isDirty || questionDirty}
+            isNew={isNew}
             saveError={saveError}
             savedAt={savedAt}
+            disabled={operationBusy || Boolean(conflict)}
           />
         </TabsContent>
         <TabsContent value="preview" className="mt-5">
+          <p role="status" className="mb-3 text-sm">Pratinjau draf server tersimpan{previewData ? ` · v${previewData.draft.version}` : ""}. {isDirty || questionDirty ? "Perubahan lokal belum termasuk; simpan draf untuk memperbarui pratinjau." : ""}</p>
+          <Button type="button" variant="secondary" disabled={previewLoading || operationBusy} onClick={loadServerPreview}>Muat ulang pratinjau</Button>
+          {previewLoading && <AdminLoading label="Memuat pratinjau draf…" />}
+          {previewError && <p role="alert">{previewError}</p>}
+          {previewData && <>
           <Surface className="p-3 sm:p-5 lg:p-7">
             <div className="mx-auto max-w-[1280px]">
               <div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-                <div><h2 className="text-xl font-semibold">{form.title || "Pratinjau materi"}</h2>
-                {form.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.summary}</p>}
+                <div><h2 className="text-xl font-semibold">{previewForm.title || "Pratinjau materi"}</h2>
+                {previewForm.summary && <p className="mt-2 text-sm leading-6 text-muted-foreground">{previewForm.summary}</p>}
                 </div>
               </div>
               <div className="rounded-2xl border border-border bg-background p-3 shadow-sm sm:p-5 lg:p-7">
-                <EditorialContent document={form.editorialContent} fallback={form.content} title={form.title || "Materi modul"} />
-                {!editorialVideoIsPresent && form.videoUrl.trim() && (
+                <EditorialContent document={previewForm.editorialContent} fallback={previewForm.content} title={previewForm.title || "Materi modul"} />
+                {!hasEditorialVideo(previewForm.editorialContent) && previewForm.videoUrl.trim() && (
                   <div className="mt-7 border-t border-border pt-7">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-orange">Video materi</p>
-                    <LessonMedia module={{ title: form.title || "Video", videoUrl: form.videoUrl }} />
-                    {form.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{form.videoScript}</p>}
+                    <LessonMedia module={{ title: previewForm.title || "Video", videoUrl: previewForm.videoUrl }} />
+                    {previewForm.videoScript && <p className="mt-3 rounded-xl bg-surface-subtle p-4 text-sm leading-6 text-muted-foreground">{previewForm.videoScript}</p>}
                   </div>
                 )}
                 <div className="mt-7 space-y-8 border-t border-border pt-7">
                   <LessonStructuredContent
                     module={{
-                      ...form,
-                      learningObjectives: textToList(form.learningObjectives),
-                      keyTakeaways: textToList(form.keyTakeaways),
-                      checklist: textToList(form.checklist),
+                      ...previewForm,
+                      learningObjectives: textToList(previewForm.learningObjectives),
+                      keyTakeaways: textToList(previewForm.keyTakeaways),
+                      checklist: textToList(previewForm.checklist),
                     }}
-                    document={form.editorialContent}
+                    document={previewForm.editorialContent}
                     withSectionIds={false}
                   />
                 </div>
               </div>
             </div>
           </Surface>
+          </>}
         </TabsContent>
-        <TabsContent value="assessment" className="mt-5 aapm-editor-content">
-          {!isNew && <QuestionEditor moduleId={Number(moduleId)} />}
+        <TabsContent value="assessment" forceMount hidden={activeTab !== "assessment"} className="mt-5 aapm-editor-content">
+          {!isNew && <QuestionEditor key={moduleId} moduleId={Number(moduleId)} draftVersion={draftVersion} busy={operationBusy} conflict={conflict}
+            beginWrite={beginEditorialWrite} endWrite={endEditorialWrite} onVersion={handleQuestionVersion} onError={handleEditorialError}
+            onDirty={setQuestionDirty} resetKey={questionResetKey} />}
         </TabsContent>
       </AdminPageFrame>
       <ConfirmDialog
@@ -1858,7 +2013,7 @@ export default function AdminModuleEditor() {
           }
         }}
         title="Draft lokal ditemukan"
-        description="Ada perubahan lokal yang belum tersimpan untuk modul ini. Pulihkan draft untuk melanjutkan dari titik terakhir atau buang draft tersebut."
+        description={pendingDraft?.stale ? "Draf lokal berasal dari versi server sebelumnya. Pulihkan untuk mempertahankan perubahan Anda, lalu pilih pemulihan konflik secara eksplisit sebelum menyimpan. Tidak ada penggabungan otomatis." : "Ada perubahan lokal yang belum tersimpan untuk modul ini. Pulihkan draft untuk melanjutkan dari titik terakhir atau buang draft tersebut."}
         confirmLabel="Pulihkan draft"
         cancelLabel="Buang draft"
         icon="history"
@@ -1867,7 +2022,7 @@ export default function AdminModuleEditor() {
            if (!draft) return;
            setForm(draft.form);
            formRef.current = draft.form;
-          removeEditorDraft(draft.key);
+          if (draft.stale) handleEditorialError({ status: 409, code: "revision_conflict", message: "Draf browser berasal dari versi sebelumnya." });
           setPendingDraft(null);
         }}
       />
@@ -1893,32 +2048,6 @@ export default function AdminModuleEditor() {
           }
           releaseHistoryGuard();
           if (request.target) navigate(request.target);
-        }}
-      />
-      <ConfirmDialog
-        open={pendingModuleDelete}
-        onOpenChange={setPendingModuleDelete}
-        title="Hapus modul?"
-        description={`Modul dan seluruh bank soalnya akan dihapus. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang setelah Anda mengonfirmasi. " : ""}Jika modul memiliki progres learner, sistem akan meminta konfirmasi tambahan sebelum ikut menghapus progres tersebut.`}
-        confirmLabel="Hapus modul"
-        icon="delete"
-        destructive
-        onConfirm={() => {
-          setPendingModuleDelete(false);
-          remove();
-        }}
-      />
-      <ConfirmDialog
-        open={pendingModuleDeleteWithProgress}
-        onOpenChange={setPendingModuleDeleteWithProgress}
-        title="Hapus modul beserta progress learner?"
-        description={`Modul, bank soal, dan seluruh progress learner pada Modul ${form.moduleNumber || "ini"} akan dihapus permanen. ${isDirty ? "Perubahan yang belum disimpan juga akan dibuang. " : ""}Sertifikat, data farm, dan percakapan pengguna tetap dipertahankan.`}
-        confirmLabel="Hapus bersama progress"
-        icon="delete"
-        destructive
-        onConfirm={() => {
-          setPendingModuleDeleteWithProgress(false);
-          remove({ purgeProgress: true });
         }}
       />
     </Tabs>

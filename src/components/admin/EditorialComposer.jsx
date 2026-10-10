@@ -526,22 +526,68 @@ function SlidesBlockFields({ block, onChange }) {
   );
 }
 
+const MAX_VIDEO_UPLOAD_BYTES = 300 * 1024 * 1024;
+
 function VideoBlockFields({ block, onChange }) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [uploadState, setUploadState] = React.useState({ status: "idle", message: "", progress: null });
+  const controllerRef = React.useRef(null);
+  const fileRef = React.useRef(null);
   const hasUrl = Boolean(block.url?.trim());
   const urlId = `${block.id}-url`;
   const captionId = `${block.id}-caption`;
+  React.useEffect(() => () => controllerRef.current?.abort(), []);
+
+  // A video file can be uploaded straight into the lesson (MP4/WebM); links
+  // from YouTube, Vimeo, Google Drive, Loom, Dailymotion or an HTTPS file work too.
+  const uploadVideo = async (file) => {
+    if (!file) return;
+    if (!/\.(mp4|webm)$/i.test(file.name) && !/^video\/(mp4|webm)$/.test(file.type)) {
+      setUploadState({ status: "error", message: "Gunakan video MP4 (H.264) atau WebM.", progress: null });
+      return;
+    }
+    if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
+      setUploadState({ status: "error", message: `Ukuran video maksimal ${readableBytes(MAX_VIDEO_UPLOAD_BYTES)}. Untuk video lebih besar, unggah ke YouTube/Drive lalu tempel tautannya.`, progress: null });
+      return;
+    }
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setUploadState({ status: "loading", message: `Mengunggah ${file.name}…`, progress: 0 });
+    try {
+      const result = await nativeApi.admin.media.uploadVideo(file, {
+        signal: controller.signal,
+        onProgress: ({ percent }) => setUploadState((current) => current.status === "loading" ? { ...current, progress: percent } : current),
+      });
+      if (!result?.video?.url) throw new Error("Respons unggahan video tidak lengkap.");
+      onChange({ url: result.video.url });
+      setUploadState({ status: "success", message: "Video tersimpan di Academy dan siap diputar.", progress: null });
+      setPreviewOpen(true);
+    } catch (error) {
+      if (error?.name === "AbortError") setUploadState({ status: "idle", message: "", progress: null });
+      else setUploadState({ status: "error", message: error?.message || "Video belum terunggah. Coba lagi.", progress: null });
+    } finally {
+      if (controllerRef.current === controller) controllerRef.current = null;
+    }
+  };
+
   return (
     <div className="aapm-editor-video-fields aapm-editor-media-fields space-y-3">
       <div className="aapm-editor-media-row aapm-editor-video-row grid items-start gap-3">
-        <Field id={urlId} label="Tautan video" required hint="YouTube, Vimeo, atau file video HTTPS/internal.">
-          <Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/..." value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required />
+        <Field id={urlId} label="Tautan atau file video" required hint="YouTube, Vimeo, Google Drive, Loom, URL embed Dailymotion dengan Player ID, file MP4/WebM HTTPS, atau unggah file. Tautan biasa Dailymotion dibuka di situsnya.">
+          <Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/… atau https://drive.google.com/file/d/…" value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required />
         </Field>
         <Field id={captionId} label="Keterangan learner" hint="Opsional; singkatkan hal yang perlu diperhatikan.">
           <Textarea id={captionId} rows={1} maxLength={600} value={block.caption || ""} onChange={(event) => onChange({ caption: event.target.value })} placeholder="Contoh: Perhatikan tiga tanda awal perubahan kualitas air." />
         </Field>
       </div>
-      {hasUrl && <div className="aapm-editor-media-actions flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant="outline" onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup pratinjau" : "Pratinjau video"}</Button></div>}
+      <div className="aapm-editor-media-actions flex flex-wrap items-center gap-2">
+        <input ref={fileRef} type="file" accept="video/mp4,video/webm,.mp4,.webm" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void uploadVideo(file); }} />
+        <Button type="button" size="sm" variant="outline" disabled={uploadState.status === "loading"} onClick={() => fileRef.current?.click()}><AapmIcon name="upload" className="h-3.5 w-3.5" />Unggah video</Button>
+        {hasUrl && <Button type="button" size="sm" variant="outline" onClick={() => setPreviewOpen((open) => !open)}><AapmIcon name={previewOpen ? "chevronUp" : "eye"} className="h-3.5 w-3.5" />{previewOpen ? "Tutup pratinjau" : "Pratinjau video"}</Button>}
+      </div>
+      {uploadState.status === "loading" && <UploadProgress progress={uploadState.progress} label={uploadState.message} onCancel={() => controllerRef.current?.abort()} />}
+      {uploadState.status === "error" || uploadState.status === "success" ? <p className={cn("inline-flex items-center gap-1.5 text-[11px] leading-4", uploadState.status === "error" ? "text-danger" : "text-brand-green")} role={uploadState.status === "error" ? "alert" : "status"}><AapmIcon name={uploadState.status === "success" ? "approve" : "info"} className="h-3.5 w-3.5 shrink-0" />{uploadState.message}</p> : null}
       {previewOpen && hasUrl && <div className="border-t border-border pt-3"><LessonMedia module={{ title: block.caption || "Video materi", videoUrl: block.url }} /></div>}
     </div>
   );

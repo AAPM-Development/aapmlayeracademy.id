@@ -294,10 +294,11 @@ function ConversationList({
 
   return (
     <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
+      <div className="aapm-history-heading"><strong>Riwayat chat</strong><span>{conversationTotal} percakapan</span></div>
       <div className="px-3 pb-2 pt-3">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="md"
           onClick={onNew}
           disabled={disabled}
@@ -916,8 +917,32 @@ export default function AiAssistant() {
     }
   };
 
+  const composer = (
+    <AiComposer
+        input={promptDraft}
+        setInput={setPromptDraft}
+        onSubmit={() => submit()}
+        isStreaming={isStreaming}
+        disabled={isLoadingConversation}
+        imageInputRef={imageInputRef}
+        onImageSelection={handleImageSelection}
+        imageLoading={imageLoading}
+        imageAttachment={imageAttachment}
+        onRemoveImage={() => setImageAttachment(null)}
+        attachmentError={attachmentError}
+        includeFarm={includeFarm && farmAvailable}
+        onIncludeFarmChange={setIncludeFarm}
+        farmAvailable={farmAvailable}
+        allowWebSearch={allowWebSearch}
+        onAllowWebSearchChange={setAllowWebSearch}
+        showFarmToggle
+        showPrivacy
+        idPrefix="appi-workspace-photo"
+    />
+  );
+
   return (
-    <div className="aapm-ai-workspace aapm-ai-workspace--full-mobile aapm-ai-frame flex min-h-0 w-full min-w-0 max-w-full overflow-hidden lg:h-[calc(100dvh-73px)] lg:min-h-[33rem]">
+    <div className="aapm-ai-workspace aapm-ai-frame aapm-room flex min-h-0 w-full min-w-0 max-w-full overflow-hidden">
       <ConversationList
         conversations={conversations}
         conversationTotal={conversationTotal}
@@ -945,10 +970,13 @@ export default function AiAssistant() {
       <section aria-label="Ruang chat APPI" className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-default px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2.5">
-            <AiProfileAvatar
-              size="sm"
-              state={isStreaming ? streamPhase : "idle"}
-            />
+            {/* The empty chat greets with a large APPI; the header mark joins once the chat starts. */}
+            {messages.length ? (
+              <AiProfileAvatar
+                size="sm"
+                state={isStreaming ? streamPhase : "idle"}
+              />
+            ) : null}
             <div className="min-w-0">
               <h1 className="aapm-chat-header__title" title={headerTitle}>{headerTitle}</h1>
               <p className="aapm-chat-header__meta">APPI · {headerStatus}</p>
@@ -993,7 +1021,7 @@ export default function AiAssistant() {
             aria-live="off"
             aria-busy={isStreaming}
             aria-label="Transkrip percakapan APPI"
-            className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
+            className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto"
           >
             <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
               {historyError && !conversationsError && (
@@ -1009,11 +1037,12 @@ export default function AiAssistant() {
                   Memuat riwayat...
                 </p>
               ) : messages.length === 0 ? (
-                <div className="aapm-chat-welcome">
+                <div className="aapm-chat-welcome aapm-room__welcome">
                   <span className="aapm-chat-welcome__mark aapm-chat-welcome__mark--mascot"><AiAvatar size="lg" state="idle" decorative /></span>
                   <h2 className="aapm-chat-welcome__title">Halo! Apa yang terjadi di farm hari ini?</h2>
                   <p className="aapm-chat-welcome__text">{welcomeMessage}</p>
-                  <div className="aapm-chat-suggestions">
+                  <div className="aapm-room__composer">{composer}</div>
+                  <div className="aapm-chat-suggestions aapm-room__chips">
                     {suggestions.map((suggestion, index) => (
                       <button
                         key={suggestion.id}
@@ -1095,31 +1124,13 @@ export default function AiAssistant() {
             </button>
           )}
         </div>
-        <div className="aapm-ai-composer-dock min-w-0 max-w-full shrink-0 overflow-hidden border-t border-border bg-surface-default px-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
-          <div className="mx-auto min-w-0 max-w-3xl">
-            <AiComposer
-              input={promptDraft}
-              setInput={setPromptDraft}
-              onSubmit={() => submit()}
-              isStreaming={isStreaming}
-              disabled={isLoadingConversation}
-              imageInputRef={imageInputRef}
-              onImageSelection={handleImageSelection}
-              imageLoading={imageLoading}
-              imageAttachment={imageAttachment}
-              onRemoveImage={() => setImageAttachment(null)}
-              attachmentError={attachmentError}
-              includeFarm={includeFarm && farmAvailable}
-              onIncludeFarmChange={setIncludeFarm}
-              farmAvailable={farmAvailable}
-              allowWebSearch={allowWebSearch}
-              onAllowWebSearchChange={setAllowWebSearch}
-              showFarmToggle
-              showPrivacy
-              idPrefix="appi-workspace-photo"
-            />
+        {/* Once the chat has started the composer floats at the bottom of the
+            centred column; an empty chat keeps it in the middle (below). */}
+        {messages.length || isLoadingConversation ? (
+          <div className="aapm-ai-composer-dock aapm-room__dock min-w-0 max-w-full shrink-0">
+            <div className="mx-auto min-w-0 max-w-3xl">{composer}</div>
           </div>
-        </div>
+        ) : null}
       </section>
       <MobileConversationSheet
         open={historyOpen}

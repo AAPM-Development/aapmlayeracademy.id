@@ -1,11 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, StateView } from "@/design-system";
+import { Button, StateView } from "@/design-system";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { ModuleCover } from "@/components/academy/CourseElements";
 import { useAdminCourses } from "@/lib/useAdminData";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
+import { CourseLifecycleCounts } from "@/components/admin/CurriculumStatus";
 
 export default function AdminCourses() {
   const { data, isLoading, error, refetch } = useAdminCourses();
@@ -25,7 +26,7 @@ export default function AdminCourses() {
               <ModuleCover level={1} number={course.moduleCount} />
               <div className="aapm-course-card__body">
                 <div className="aapm-course-card__chips">
-                  <Badge tone={course.status === "published" ? "success" : "warning"} dot>{course.status === "published" ? "Aktif" : "Belum tersedia"}</Badge>
+                  <CourseLifecycleCounts counts={course.lifecycleCounts} />
                 </div>
                 <h2 className="aapm-course-card__title">{course.title}</h2>
                 <div className="aapm-course-card__meta">

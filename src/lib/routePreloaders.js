@@ -15,8 +15,13 @@ const routeLoaders = {
   register: () => import("@/pages/Register"),
   forgotPassword: () => import("@/pages/ForgotPassword"),
   resetPassword: () => import("@/pages/ResetPassword"),
+  verifyEmail: () => import("@/pages/VerifyEmail"),
+  verifyCertificate: () => import("@/pages/VerifyCertificate"),
+  adminCertificates: () => import("@/pages/admin/AdminCertificates"),
   adminOverview: () => import("@/pages/admin/AdminOverview"),
   adminCourses: () => import("@/pages/admin/AdminCourses"),
+  adminCurriculumPolicies: () => import("@/pages/admin/AdminCurriculumPolicies"),
+  adminFinalBank: () => import("@/pages/admin/AdminFinalBank"),
   adminCourseDetail: () => import("@/pages/admin/AdminCourseDetail"),
   adminLearners: () => import("@/pages/admin/AdminLearners"),
   adminLearnerDetail: () => import("@/pages/admin/AdminLearnerDetail"),
@@ -57,7 +62,11 @@ export function preloadRoute(pathname) {
   else if (path === "/register") moduleName = "register";
   else if (path === "/forgot-password") moduleName = "forgotPassword";
   else if (path === "/reset-password") moduleName = "resetPassword";
+  else if (path === "/verify-email") moduleName = "verifyEmail";
+  else if (path.startsWith("/verify-certificate/")) moduleName = "verifyCertificate";
   else if (path === "/admin") moduleName = "adminOverview";
+  else if (path === "/admin/curriculum/policies") moduleName = "adminCurriculumPolicies";
+  else if (path === "/admin/curriculum/final-bank") moduleName = "adminFinalBank";
   else if (path === "/admin/courses") moduleName = "adminCourses";
   else if (path.startsWith("/admin/courses/") && path.includes("/modules/")) {
     moduleName = "adminModuleEditor";
@@ -65,6 +74,7 @@ export function preloadRoute(pathname) {
     moduleName = "adminCourseDetail";
   } else if (path === "/admin/learners") moduleName = "adminLearners";
   else if (path.startsWith("/admin/learners/")) moduleName = "adminLearnerDetail";
+  else if (path === "/admin/certificates") moduleName = "adminCertificates";
   else if (path === "/admin/users") moduleName = "adminUsers";
   else if (path === "/admin/ai-settings") moduleName = "adminAiSettings";
   else if (path === "/admin/workspace-status") moduleName = "adminWorkspaceStatus";

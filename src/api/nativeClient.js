@@ -2,11 +2,12 @@ const API_ROOT = "/api";
 let csrfToken = null;
 
 class ApiError extends Error {
-  constructor(message, status, code) {
+  constructor(message, status, code, details = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -22,6 +23,8 @@ const sessionExpiryExcludedPaths = new Set([
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/logout",
+  "/auth/verify-email",
+  "/auth/resend-verification",
 ]);
 
 function notifySessionExpired(path, status) {
@@ -76,6 +79,7 @@ async function request(path, options = /** @type {any} */ ({})) {
       error.message || "Permintaan gagal.",
       response.status,
       error.code,
+      error.details,
     );
   }
 
@@ -271,6 +275,12 @@ async function upload(path, formData, options = {}) {
 
 const json = (body) => ({ method: "POST", body: JSON.stringify(body) });
 
+/** Idempotency key for one learner action: 8–80 characters from [A-Za-z0-9_-]. */
+export function newRequestKey() {
+  const id = globalThis.crypto?.randomUUID?.();
+  return id || `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export const nativeApi = {
   auth: {
     async csrf() {
@@ -286,6 +296,12 @@ export const nativeApi = {
     async login(email, password) {
       await this.csrf();
       return request("/auth/login", json({ email, password }));
+    },
+    async verifyEmail(token) {
+      return request("/auth/verify-email", json({ token }));
+    },
+    async resendVerification(payload = {}) {
+      return request("/auth/resend-verification", json(payload));
     },
     async register(data) {
       await this.csrf();
@@ -310,14 +326,32 @@ export const nativeApi = {
     list: (moduleNumber) =>
       request(`/quiz?moduleNumber=${encodeURIComponent(moduleNumber)}`),
   },
+  // Academic results are decided on the server. Learners start, answer and
+  // submit assessments and record learning activity; they never write
+  // completion, scores, or certificates.
+  assessments: {
+    start: (data) => request("/assessments/attempts", json(data)),
+    get: (attemptId) => request(`/assessments/attempts/${encodeURIComponent(attemptId)}`),
+    answer: (attemptId, data) => request(`/assessments/attempts/${encodeURIComponent(attemptId)}/answers`, json(data)),
+    submit: (attemptId, data) => request(`/assessments/attempts/${encodeURIComponent(attemptId)}/submit`, json(data)),
+    finalEligibility: () => request("/assessments/final-eligibility"),
+  },
+  learning: {
+    acknowledge: (moduleNumber) => request(`/modules/${encodeURIComponent(moduleNumber)}/acknowledge`, json({})),
+    practice: (moduleNumber, data) => request(`/modules/${encodeURIComponent(moduleNumber)}/practice`, json(data)),
+    studyTime: (moduleNumber, data) => request(`/modules/${encodeURIComponent(moduleNumber)}/study-time`, json(data)),
+  },
   userProgress: {
     list: () => request("/progress"),
-    upsert: (moduleNumber, data) =>
-      request("/progress", json({ moduleNumber, ...data })),
   },
   certificates: {
     list: () => request("/certificates"),
-    create: (data) => request("/certificates", json(data)),
+    detail: (id) => request(`/certificates/${encodeURIComponent(id)}`),
+    claim: (tierNumber, requestKey) => request("/certificates/claims", json({ tierNumber, requestKey })),
+    eligibility: () => request("/certification/eligibility"),
+  },
+  publicCertificates: {
+    verify: (publicId) => request(`/public/certificates/verify/${encodeURIComponent(publicId)}`),
   },
   profile: {
     get: () => request("/profile"),
@@ -375,6 +409,7 @@ export const nativeApi = {
         request(`/ai/conversations/${encodeURIComponent(id)}`, {
           method: "DELETE",
         }),
+      deleteAll: () => request("/ai/conversations", { method: "DELETE", body: JSON.stringify({ confirm: true }) }),
       stream: ({
         id,
         message,
@@ -431,12 +466,49 @@ export const nativeApi = {
       resetProgress: (userId) =>
         request(`/admin/users/${encodeURIComponent(userId)}/progress`, {
           method: "DELETE",
+          body: JSON.stringify({ confirm: true }),
         }),
     },
+    curriculum: {
+      policies: {
+        list: () => request('/admin/curriculum/policies'),
+        detail: (version) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}`),
+        create: (version) => request('/admin/curriculum/policies', json({ version })),
+        save: (version, data, expectedDraftVersion) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}`, { method: 'PUT', body: JSON.stringify({ ...data, expectedDraftVersion }) }),
+        validate: (version, expectedDraftVersion) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}/validate`, json({ expectedDraftVersion })),
+        ready: (version, expectedDraftVersion) => request(`/admin/curriculum/policies/${encodeURIComponent(version)}/ready`, json({ expectedDraftVersion })),
+      },
+      finalBank: {
+        get: () => request('/admin/curriculum/final-bank'),
+        save: (questions, expectedDraftVersion) => request('/admin/curriculum/final-bank', json({ questions, expectedDraftVersion })),
+        validate: (expectedDraftVersion) => request('/admin/curriculum/final-bank/validate', json({ expectedDraftVersion })),
+        publish: (expectedDraftVersion) => request('/admin/curriculum/final-bank/publish', json({ expectedDraftVersion, confirm: true })),
+      },
+    },
+    certificates: {
+      list: (query = {}) => request(`/admin/certificates?${new URLSearchParams(query).toString()}`),
+      detail: (publicId) => request(`/admin/certificates/${encodeURIComponent(publicId)}`),
+      revoke: (publicId, body) => request(`/admin/certificates/${encodeURIComponent(publicId)}/revoke`, json({ ...body, confirm: true })),
+    },
     modules: {
-      detail: (moduleId) =>
-        request(`/admin/modules/${encodeURIComponent(moduleId)}`),
+      detail: (moduleId, view = "published") =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}?view=${encodeURIComponent(view)}`),
       create: (data) => request("/admin/modules", json(data)),
+      saveDraft: (moduleId, data, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
+          method: "PUT", body: JSON.stringify({ ...data, expectedDraftVersion }),
+        }),
+      previewDraft: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/preview`),
+      validateDraft: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/validate`, json({})),
+      publishPreview: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/publish-preview`),
+      publishDraft: (moduleId, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/publish`, json({ expectedDraftVersion, confirm: true })),
+      revisions: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/revisions`),
+      revision: (moduleId, revisionId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/revisions/${encodeURIComponent(revisionId)}`),
+      copyRevisionToDraft: (moduleId, revisionId, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/revisions/${encodeURIComponent(revisionId)}/copy-to-draft`, json({ expectedDraftVersion })),
+      archive: (moduleId, reason) => request(`/admin/modules/${encodeURIComponent(moduleId)}/archive`, json({ reason, confirm: true })),
+      restore: (moduleId) => request(`/admin/modules/${encodeURIComponent(moduleId)}/restore`, json({})),
       update: (moduleId, data) =>
         request(`/admin/modules/${encodeURIComponent(moduleId)}`, {
           method: "PUT",
@@ -459,17 +531,17 @@ export const nativeApi = {
         }),
       questions: (moduleId) =>
         request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`),
-      createQuestion: (moduleId, data) =>
-        request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`, json(data)),
-      updateQuestion: (moduleId, questionId, data) =>
+      createQuestion: (moduleId, data, expectedDraftVersion) =>
+        request(`/admin/modules/${encodeURIComponent(moduleId)}/questions`, json({ ...data, expectedDraftVersion })),
+      updateQuestion: (moduleId, questionId, data, expectedDraftVersion) =>
         request(
           `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
-          { method: "PUT", body: JSON.stringify(data) },
+          { method: "PUT", body: JSON.stringify({ ...data, expectedDraftVersion }) },
         ),
-      deleteQuestion: (moduleId, questionId) =>
+      deleteQuestion: (moduleId, questionId, expectedDraftVersion) =>
         request(
           `/admin/modules/${encodeURIComponent(moduleId)}/questions/${encodeURIComponent(questionId)}`,
-          { method: "DELETE" },
+          { method: "DELETE", body: JSON.stringify({ expectedDraftVersion }) },
         ),
     },
     media: {
@@ -482,6 +554,11 @@ export const nativeApi = {
         const formData = new FormData();
         formData.append("file", file, file.name);
         return upload("/admin/media/presentations", formData, options);
+      },
+      uploadVideo: (file, options) => {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        return upload("/admin/media/videos", formData, options);
       },
     },
     aiSettings: {

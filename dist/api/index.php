@@ -5,8 +5,6 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/editorialMedia.php';
 require_once __DIR__ . '/openrouter.php';
 
-apply_security_headers();
-start_app_session();
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $rawPath = isset($_GET['path']) ? (string) $_GET['path'] : (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
 $path = trim($rawPath, '/');
@@ -14,12 +12,24 @@ $path = preg_replace('#^api/?#', '', $path);
 $path = preg_replace('#^index\.php/?#', '', $path);
 $path = trim((string) $path, '/');
 
-try {
-    if ($path === 'health' && $method === 'GET') {
-        db();
-        json_response(['ok' => true, 'app' => 'aapm-layer-academy-native', 'environment' => app_config()['app_env']]);
-    }
+// Health reports its own state, including configuration problems, as 503.
+if ($path === 'health' && $method === 'GET') {
+    aapm_health_response();
+}
 
+// Configuration is validated before the session, security headers, or any
+// database work. A missing or invalid environment fails closed.
+try {
+    aapm_assert_runtime_identity(app_config());
+} catch (AppConfigException $exception) {
+    error_log('[aapm-native-api] configuration unavailable: ' . $exception->safeCode());
+    error_response('Konfigurasi server belum siap.', 503, 'configuration_unavailable');
+}
+
+apply_security_headers();
+start_app_session();
+
+try {
     if ($path === 'auth/csrf' && $method === 'GET') {
         json_response(['csrfToken' => csrf_token()]);
     }
@@ -80,44 +90,27 @@ try {
             redirect_response($baseUrl . '/login?oauth=unverified');
         }
 
-        $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
-        if (!$user) {
-            $fullName = trim(substr(preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? '')), 0, 160));
-            if ($fullName === '') {
-                $fullName = ucfirst((string) strtok($email, '@'));
-            }
-            try {
-                $insert = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
-                $insert->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $fullName, 'user']);
-                $userId = (int) db()->lastInsertId();
-            } catch (PDOException $exception) {
-                if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
-                    throw $exception;
-                }
-                $retry = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-                $retry->execute([$email]);
-                $userId = (int) ($retry->fetch()['id'] ?? 0);
-            }
-        } else {
-            $userId = (int) $user['id'];
-        }
+        $userId = aapm_provision_google_account(db(), $profile);
 
         if ($userId < 1) {
             redirect_response($baseUrl . '/login?oauth=error');
         }
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = $userId;
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        // Google verified this address, so it is trusted evidence for the account.
+        $verifyStatement = db()->prepare('UPDATE users SET email_verified_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND email_verified_at IS NULL');
+        $verifyStatement->execute([aapm_utc_now(), $userId]);
+        if ($verifyStatement->rowCount() === 1) {
+            aapm_audit('auth.email_verified', 'ok', $userId, $userId, ['channel' => 'google']);
+        }
+        $sessionRow = db()->prepare('SELECT id, auth_version FROM users WHERE id = ? LIMIT 1');
+        $sessionRow->execute([$userId]);
+        aapm_establish_session($sessionRow->fetch() ?: ['id' => $userId, 'auth_version' => 1]);
+        aapm_audit('auth.login_success', 'ok', $userId, $userId, ['source' => 'google']);
         redirect_response($baseUrl . $returnTo);
     }
 
     if ($path === 'auth/me' && $method === 'GET') {
-        $user = current_user();
-        if (!$user) {
-            error_response('Silakan login terlebih dahulu.', 401, 'auth_required');
-        }
+        // Same guard as every protected route, so revoked sessions get session_revoked.
+        $user = require_user();
         json_response(['user' => $user, 'csrfToken' => csrf_token()]);
     }
 
@@ -126,19 +119,20 @@ try {
         $email = normalize_email($input['email'] ?? '');
         $password = (string) ($input['password'] ?? '');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
-            error_response('Email dan password wajib diisi.', 422, 'validation_error');
+            error_response('Email dan kata sandi wajib diisi.', 422, 'validation_error');
         }
         require_csrf();
         rate_limit_guard('login-ip', '', 60, 900, 900);
         rate_limit_guard('login-user', $email, 8, 900, 900);
 
-        $stmt = db()->prepare('SELECT id, email, password_hash, full_name, role, created_at FROM users WHERE email = ? LIMIT 1');
+        $stmt = db()->prepare('SELECT id, email, password_hash, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password_hash'])) {
             rate_limit_failure('login-ip', '', 60, 900, 900);
             rate_limit_failure('login-user', $email, 8, 900, 900);
-            error_response('Email atau password tidak sesuai.', 401, 'invalid_credentials');
+            aapm_audit('auth.login_failure', 'invalid_credentials', null, $user ? (int) $user['id'] : null, ['identity' => aapm_identity_digest($email)]);
+            error_response('Email atau kata sandi tidak sesuai.', 401, 'invalid_credentials');
         }
 
         rate_limit_clear('login-ip');
@@ -147,9 +141,14 @@ try {
             db()->prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), (int) $user['id']]);
         }
 
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = (int) $user['id'];
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        // A new account gets no application session until its email is verified.
+        if (aapm_verification_status($user) === 'pending') {
+            aapm_audit('auth.login_failure', 'verification_required', null, (int) $user['id'], ['identity' => aapm_identity_digest($email)]);
+            error_response('Verifikasi email Anda terlebih dahulu. Periksa kotak masuk email Anda.', 403, 'email_verification_required');
+        }
+
+        aapm_establish_session($user);
+        aapm_audit('auth.login_success', 'ok', (int) $user['id'], (int) $user['id'], ['source' => 'password']);
         json_response(['user' => current_user() ?? present_authenticated_user($user), 'csrfToken' => csrf_token()]);
     }
 
@@ -172,28 +171,85 @@ try {
         }
         $fullName = substr(preg_replace('/[\x00-\x1F\x7F]/', '', $fullName), 0, 160);
 
+        // Existing and new addresses get the same acknowledgment. Only a new
+        // address creates a pending account, and it never receives a session.
         $existing = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
         $existing->execute([$email]);
-        if ($existing->fetch()) {
-            error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+        $devPayload = [];
+        if (!$existing->fetch()) {
+            $pdo = db();
+            $userId = 0;
+            $token = null;
+            aapm_tx_begin($pdo);
+            try {
+                $insert = $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)');
+                $insert->execute([$email, app_password_hash($password), $fullName, 'user', aapm_utc_now()]);
+                $userId = (int) $pdo->lastInsertId();
+                aapm_assign_new_learner_policy($pdo, $userId, 'registration');
+                $token = aapm_issue_verification_token($pdo, $userId);
+                aapm_tx_commit($pdo);
+            } catch (PDOException $exception) {
+                aapm_tx_rollback($pdo);
+                if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) {
+                    throw $exception;
+                }
+                $token = null;
+            }
+            if ($token !== null) {
+                rate_limit_clear('register-ip');
+                aapm_audit('auth.verification_sent', aapm_send_verification_email($email, $token) ? 'sent' : 'delivery_failed', null, $userId, ['channel' => 'email']);
+                $devPayload = aapm_dev_token_payload($token);
+            }
+        }
+        json_response(array_merge(['message' => 'Jika alamat email dapat digunakan, instruksi verifikasi akan dikirim.', 'status' => 'accepted'], $devPayload), 202);
+    }
+
+    if ($path === 'auth/resend-verification' && $method === 'POST') {
+        $input = request_json();
+        require_csrf();
+        rate_limit_guard('resend-ip', '', 20, 3600, 3600);
+        $signedIn = current_user();
+        if ($signedIn && ($signedIn['emailVerificationStatus'] ?? '') === 'legacy_pending') {
+            rate_limit_guard('resend-user', (string) $signedIn['id'], 3, 3600, 3600);
+            $fresh = aapm_send_fresh_verification((int) $signedIn['id'], (string) $signedIn['email'], 'auth.verification_resend');
+            json_response(array_merge(['message' => 'Jika akun ini belum terverifikasi, instruksi verifikasi baru telah dikirim.', 'status' => 'accepted'], aapm_dev_token_payload($fresh['token'])), 202);
         }
 
-        try {
-            $stmt = db()->prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$email, app_password_hash($password), $fullName, 'user']);
-        } catch (PDOException $exception) {
-            if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
-                error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
+        // A pending registrant proves knowledge of the password, without a session.
+        $email = normalize_email($input['email'] ?? '');
+        $password = (string) ($input['password'] ?? '');
+        $devPayload = [];
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) && $password !== '') {
+            rate_limit_guard('resend-user', $email, 3, 3600, 3600);
+            $stmt = db()->prepare('SELECT id, email, password_hash, email_verified_at, verification_required_at FROM users WHERE email = ? LIMIT 1');
+            $stmt->execute([$email]);
+            $account = $stmt->fetch();
+            rate_limit_failure('resend-user', $email, 3, 3600, 3600);
+            if ($account && password_verify($password, $account['password_hash']) && aapm_verification_status($account) === 'pending') {
+                $fresh = aapm_send_fresh_verification((int) $account['id'], (string) $account['email'], 'auth.verification_resend');
+                $devPayload = aapm_dev_token_payload($fresh['token']);
             }
-            throw $exception;
         }
-        rate_limit_clear('register-ip');
-        $userId = (int) db()->lastInsertId();
-        session_regenerate_id(true);
-        $_SESSION['user_id'] = $userId;
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        $user = current_user();
-        json_response(['user' => $user, 'csrfToken' => csrf_token()], 201);
+        json_response(array_merge(['message' => 'Jika akun tersebut menunggu verifikasi, instruksi baru akan dikirim.', 'status' => 'accepted'], $devPayload), 202);
+    }
+
+    if ($path === 'auth/verify-email' && $method === 'POST') {
+        $input = request_json();
+        $token = trim((string) ($input['token'] ?? ''));
+        require_csrf();
+        rate_limit_guard('verify-ip', '', 30, 900, 900);
+        $userId = aapm_consume_verification_token($token);
+        if ($userId === null) {
+            rate_limit_failure('verify-ip', '', 30, 900, 900);
+            error_response('Tautan verifikasi tidak valid atau sudah kedaluwarsa.', 400, 'invalid_verification_token');
+        }
+        rate_limit_clear('verify-ip');
+        $row = db()->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
+        $row->execute([$userId]);
+        $account = $row->fetch();
+        aapm_establish_session($account);
+        aapm_audit('auth.email_verified', 'ok', $userId, $userId, ['channel' => 'email']);
+        json_response(['user' => present_authenticated_user($account), 'csrfToken' => csrf_token()]);
     }
 
     if ($path === 'auth/logout' && $method === 'POST') {
@@ -215,7 +271,7 @@ try {
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             rate_limit_guard('forgot-user', $email, 3, 3600, 3600);
         }
-        $result = ['message' => 'Jika akun tersebut ada, instruksi reset password telah dibuat.'];
+        $result = ['message' => 'Jika akun tersebut ada, instruksi reset kata sandi telah dibuat.'];
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $stmt = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
             $stmt->execute([$email]);
@@ -226,7 +282,7 @@ try {
                 $update = db()->prepare('UPDATE users SET reset_token_hash = ?, reset_token_expires_at = ? WHERE id = ?');
                 $update->execute([hash('sha256', $token), $expires, (int) $user['id']]);
                 send_password_reset_email($email, $token);
-                if (app_config()['app_env'] === 'local' && app_config()['expose_dev_reset_token']) {
+                if (app_config()['environment'] === 'local' && app_config()['expose_dev_reset_token']) {
                     $result['devResetToken'] = $token;
                 }
             }
@@ -254,10 +310,22 @@ try {
         $user = $stmt->fetch();
         if (!$user) {
             rate_limit_failure('reset-ip', '', 10, 3600, 3600);
-            error_response('Link reset password sudah tidak berlaku.', 400, 'invalid_reset_token');
+            error_response('Tautan reset kata sandi sudah tidak berlaku.', 400, 'invalid_reset_token');
         }
-        $update = db()->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL WHERE id = ?');
-        $update->execute([app_password_hash($password), (int) $user['id']]);
+        $resetPdo = db();
+        aapm_tx_begin($resetPdo);
+        try {
+            $resetNow = aapm_utc_now();
+            $resetPdo->prepare('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires_at = NULL, email_verified_at = COALESCE(email_verified_at, ?), auth_version = auth_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+                ->execute([app_password_hash($password), $resetNow, (int) $user['id']]);
+            $resetPdo->prepare('UPDATE email_verification_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
+                ->execute([$resetNow, (int) $user['id']]);
+            aapm_audit('auth.password_reset', 'ok', (int) $user['id'], (int) $user['id'], ['channel' => 'email']);
+            aapm_tx_commit($resetPdo);
+        } catch (Throwable $exception) {
+            aapm_tx_rollback($resetPdo);
+            throw $exception;
+        }
         rate_limit_clear('reset-ip');
         unset($_SESSION['user_id']);
         session_regenerate_id(true);
@@ -310,9 +378,35 @@ try {
         json_response(admin_course_detail_data());
     }
 
+    if ($path === 'admin/certificates' && $method === 'GET') {
+        require_admin();
+        json_response(aapm_admin_certificate_list($_GET));
+    }
+
+    if (preg_match('#^admin/certificates/([a-f0-9]{32})$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_admin_certificate_detail($matches[1]));
+    }
+
+    if (preg_match('#^admin/certificates/([a-f0-9]{32})/revoke$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_admin_certificate_revoke($actor, $matches[1], request_json()));
+    }
+
+    if ($path === 'admin/security-audit' && $method === 'GET') {
+        require_admin();
+        json_response(aapm_security_audit_page((int) ($_GET['limit'] ?? 50), (int) ($_GET['offset'] ?? 0)));
+    }
+
     if ($path === 'admin/learners' && $method === 'GET') {
         require_admin();
         json_response(['learners' => admin_learner_list((string) ($_GET['search'] ?? ''))]);
+    }
+
+    if (preg_match('#^admin/learners/(\\d+)/assessment-history$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_admin_assessment_history(db(), (int) $matches[1]));
     }
 
     if (preg_match('#^admin/learners/(\\d+)$#', $path, $matches) && $method === 'GET') {
@@ -330,9 +424,9 @@ try {
     }
 
     if ($path === 'admin/users' && $method === 'POST') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['user' => admin_create_user(request_json())], 201);
+        json_response(['user' => admin_create_user($actor, request_json())], 201);
     }
 
     if (preg_match('#^admin/users/(\\d+)$#', $path, $matches) && $method === 'PUT') {
@@ -342,17 +436,17 @@ try {
     }
 
     if (preg_match('#^admin/users/(\\d+)/password$#', $path, $matches) && $method === 'PUT') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
         $input = request_json();
-        admin_reset_user_password((int) $matches[1], (string) ($input['password'] ?? ''));
+        admin_reset_user_password($actor, (int) $matches[1], (string) ($input['password'] ?? ''));
         json_response(['ok' => true]);
     }
 
     if (preg_match('#^admin/users/(\\d+)/progress$#', $path, $matches) && $method === 'DELETE') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['reset' => admin_reset_user_progress((int) $matches[1])]);
+        json_response(['reset' => admin_reset_user_progress($actor, (int) $matches[1], request_json())]);
     }
 
     if ($path === 'admin/media/images' && $method === 'POST') {
@@ -373,70 +467,205 @@ try {
         json_response(['presentation' => admin_upload_editorial_presentation()], 201);
     }
 
-    if ($path === 'admin/modules' && $method === 'POST') {
-        require_admin();
+    if ($path === 'admin/media/videos' && $method === 'POST') {
+        $actor = require_admin();
         require_csrf();
-        json_response(['module' => admin_create_module(request_json())], 201);
+        $identity = 'editorial-media-' . (int) ($actor['id'] ?? 0);
+        rate_limit_guard('editorial_upload', $identity, 100, 900, 900);
+        rate_limit_failure('editorial_upload', $identity, 100, 900, 900);
+        json_response(['video' => admin_upload_editorial_video()], 201);
+    }
+
+    if ($path === 'admin/modules' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_create_module(request_json(), (int) $actor['id']), 201);
     }
 
     if ($path === 'admin/modules/reorder' && $method === 'PUT') {
         require_admin();
         require_csrf();
-        $input = request_json();
-        json_response(['course' => admin_reorder_modules($input['items'] ?? [])]);
+        // Curriculum order is an academic structure: it changes through a policy draft, never the live catalogue.
+        error_response('Urutan kurikulum diubah melalui draf kebijakan kurikulum. Perubahan langsung ke modul terbit sudah dinonaktifkan.', 409, 'curriculum_structure_draft_required');
     }
 
     if (preg_match('#^admin/chapters/(\\d+)$#', $path, $matches) && $method === 'PUT') {
         require_admin();
         require_csrf();
-        $input = request_json();
-        json_response(['course' => admin_rename_chapter((int) $matches[1], (string) ($input['levelName'] ?? ''))]);
+        error_response('Nama chapter diubah melalui draf modul. Perubahan langsung ke modul terbit sudah dinonaktifkan.', 409, 'curriculum_structure_draft_required');
     }
 
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'GET') {
         require_admin();
-        $module = admin_module_from_id((int) $matches[1]);
-        if (!$module) {
-            error_response('Modul tidak ditemukan.', 404, 'not_found');
-        }
-        json_response(['module' => present_module($module)]);
+        $view = ($_GET['view'] ?? 'published') === 'draft' ? 'draft' : 'published';
+        json_response(aapm_cur_admin_module_view(aapm_cur_module_or_fail(db(), (int) $matches[1]), $view));
     }
 
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'PUT') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['module' => admin_update_module((int) $matches[1], request_json())]);
+        json_response(aapm_cur_save_draft((int) $matches[1], request_json(), (int) $actor['id']));
     }
 
     if (preg_match('#^admin/modules/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
+        $actor = require_admin();
+        require_csrf();
+        aapm_cur_delete((int) $matches[1], (int) $actor['id']);
+        json_response(['ok' => true, 'deleted' => true]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/preview$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        $module = (int) $matches[1];
+        json_response(aapm_cur_admin_module_view(aapm_cur_module_or_fail(db(), $module), 'draft') + ['validation' => aapm_cur_validate_module($module)]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/validate$#', $path, $matches) && $method === 'POST') {
         require_admin();
         require_csrf();
-        $purgeProgress = bool_value($_GET['purgeProgress'] ?? false) === 1;
-        json_response(['ok' => true, 'deleted' => admin_delete_module((int) $matches[1], $purgeProgress)]);
+        json_response(aapm_cur_validate_module((int) $matches[1]));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/publish-preview$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_cur_publish_preview((int) $matches[1]));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/publish$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? null) !== true) {
+            error_response('Konfirmasi penerbitan wajib dikirim.', 422, 'confirmation_required');
+        }
+        json_response(aapm_cur_publish((int) $matches[1], aapm_cur_expected_version($input), (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/archive$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? null) !== true) {
+            error_response('Konfirmasi pengarsipan wajib dikirim.', 422, 'confirmation_required');
+        }
+        json_response(aapm_cur_archive((int) $matches[1], (string) ($input['reason'] ?? ''), (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/restore$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_restore((int) $matches[1], (int) $actor['id']));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/revisions$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(['revisions' => aapm_cur_revisions((int) $matches[1])]);
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/revisions/(\\d+)$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(aapm_cur_revision_detail((int) $matches[1], (int) $matches[2]));
+    }
+
+    if (preg_match('#^admin/modules/(\\d+)/revisions/(\\d+)/copy-to-draft$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_copy_revision_to_draft((int) $matches[1], (int) $matches[2], aapm_cur_expected_version(request_json()), (int) $actor['id']));
     }
 
     if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'GET') {
         require_admin();
-        json_response(['questions' => admin_module_questions((int) $matches[1])]);
+        $view = aapm_cur_admin_module_view(aapm_cur_module_or_fail(db(), (int) $matches[1]), ($_GET['view'] ?? 'draft') === 'published' ? 'published' : 'draft');
+        json_response(['questions' => $view['questions'], 'draftVersion' => $view['draft']['version']]);
     }
 
     if (preg_match('#^admin/modules/(\\d+)/questions$#', $path, $matches) && $method === 'POST') {
-        require_admin();
+        $actor = require_admin();
         require_csrf();
-        json_response(['question' => admin_create_question((int) $matches[1], request_json())], 201);
+        $result = aapm_cur_question_write((int) $matches[1], 'create', request_json(), null, (int) $actor['id']);
+        json_response(['question' => $result['question'], 'draftVersion' => $result['draftVersion']], 201);
     }
 
-    if (preg_match('#^admin/modules/(\\d+)/questions/(\\d+)$#', $path, $matches) && $method === 'PUT') {
-        require_admin();
+    if (preg_match('#^admin/modules/(\\d+)/questions/(-?\\d+)$#', $path, $matches) && $method === 'PUT') {
+        $actor = require_admin();
         require_csrf();
-        json_response(['question' => admin_update_question((int) $matches[1], (int) $matches[2], request_json())]);
+        $result = aapm_cur_question_write((int) $matches[1], 'update', request_json(), (int) $matches[2], (int) $actor['id']);
+        json_response(['question' => $result['question'], 'draftVersion' => $result['draftVersion']]);
     }
 
-    if (preg_match('#^admin/modules/(\\d+)/questions/(\\d+)$#', $path, $matches) && $method === 'DELETE') {
-        require_admin();
+    if (preg_match('#^admin/modules/(\\d+)/questions/(-?\\d+)$#', $path, $matches) && $method === 'DELETE') {
+        $actor = require_admin();
         require_csrf();
-        admin_delete_question((int) $matches[1], (int) $matches[2]);
-        json_response(['ok' => true]);
+        $input = request_json();
+        if (!array_key_exists('expectedDraftVersion', $input) && isset($_GET['expectedDraftVersion'])) {
+            $input['expectedDraftVersion'] = $_GET['expectedDraftVersion'];
+        }
+        $result = aapm_cur_question_write((int) $matches[1], 'delete', $input, (int) $matches[2], (int) $actor['id']);
+        json_response(['ok' => true, 'draftVersion' => $result['draftVersion']]);
+    }
+
+    if ($path === 'admin/curriculum/final-bank' && $method === 'GET') {
+        $actor = require_admin();
+        json_response(aapm_cur_final_bank_draft(db(), (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/final-bank' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        $questionId = isset($input['questionId']) && is_int($input['questionId']) ? $input['questionId'] : null;
+        json_response(aapm_cur_final_bank_write($input, (string) ($input['operation'] ?? 'replace'), $questionId, (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/final-bank/validate' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_final_bank_validate(aapm_cur_expected_version(request_json()), (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/final-bank/publish' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? false) !== true) {
+            error_response('Konfirmasi penerbitan wajib dikirim.', 422, 'publish_confirmation_required');
+        }
+        json_response(aapm_cur_final_bank_publish(aapm_cur_expected_version($input), (int) $actor['id']));
+    }
+
+    if ($path === 'admin/curriculum/policies' && $method === 'GET') {
+        require_admin();
+        json_response(['policies' => aapm_cur_policy_list()]);
+    }
+
+    if ($path === 'admin/curriculum/policies' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['policy' => aapm_cur_policy_create((string) ($input['version'] ?? 'academy-v2'), (int) $actor['id'])], 201);
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(['policy' => aapm_cur_policy_detail($matches[1])]);
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})$#', $path, $matches) && $method === 'PUT') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(['policy' => aapm_cur_policy_update($matches[1], request_json(), (int) $actor['id'])]);
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})/validate$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(aapm_cur_policy_validate($matches[1], (int) $actor['id'], aapm_cur_expected_version(request_json())));
+    }
+
+    if (preg_match('#^admin/curriculum/policies/(academy-v[0-9]{1,3})/ready$#', $path, $matches) && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        json_response(['policy' => aapm_cur_policy_mark_ready($matches[1], (int) $actor['id'], aapm_cur_expected_version(request_json()))]);
     }
 
     if ($path === 'admin/ai-settings' && $method === 'GET') {
@@ -506,97 +735,141 @@ try {
     }
 
     if ($path === 'modules' && $method === 'GET') {
-        require_user();
-        $rows = db()->query('SELECT * FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();
-        json_response(array_map('present_module', $rows));
+        $user = require_user();
+        json_response(array_map('present_module', aapm_cur_learner_modules(db(), (int) $user['id'])));
+    }
+
+    if ($path === 'curriculum/me' && $method === 'GET') {
+        $user = require_user();
+        json_response(['policyVersion' => aapm_learner_policy_version(db(), (int) $user['id'])]);
     }
 
     if ($path === 'quiz' && $method === 'GET') {
-        require_user();
+        // Safe projection only: no correct answer, no explanation. Interactive
+        // assessment uses the attempt endpoints below.
+        $user = require_user();
         $moduleNumber = isset($_GET['moduleNumber']) ? (int) $_GET['moduleNumber'] : null;
         if ($moduleNumber === null) {
             error_response('moduleNumber wajib diisi.', 422, 'validation_error');
         }
-        $stmt = db()->prepare('SELECT * FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
+        if ($moduleNumber > 0 && !isset(aapm_module_catalog(db(), (int) $user['id'])[$moduleNumber])) {
+            error_response('Modul tidak ditemukan.', 404, 'assessment_not_found');
+        }
+        if ($moduleNumber > 0 && aapm_module_catalog(db(), (int) $user['id'])[$moduleNumber]['assessmentMode'] !== 'quiz') {
+            json_response([]);
+        }
+        $stmt = db()->prepare('SELECT id, module_number, question, options FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
         $stmt->execute([$moduleNumber]);
-        json_response(array_map('present_question', $stmt->fetchAll()));
+        json_response(array_map(static function (array $row): array {
+            $options = json_decode((string) $row['options'], true);
+            return [
+                'id' => (int) $row['id'],
+                'moduleNumber' => (int) $row['module_number'],
+                'question' => (string) $row['question'],
+                'options' => array_values(is_array($options) ? $options : []),
+            ];
+        }, $stmt->fetchAll()));
     }
 
     if ($path === 'progress' && $method === 'GET') {
         $user = require_user();
-        // Module 0 is reserved for the final exam. All other progress rows
-        // must still point to a live catalog module so deleted modules cannot
-        // keep showing up in the learner view.
-        $stmt = db()->prepare('SELECT p.* FROM user_progress p LEFT JOIN course_modules m ON m.module_number = p.module_number WHERE p.user_id = ? AND (p.module_number = 0 OR m.id IS NOT NULL) ORDER BY p.module_number ASC');
-        $stmt->execute([(int) $user['id']]);
-        json_response(array_map('present_progress', $stmt->fetchAll()));
+        json_response(aapm_progress_rows($user));
     }
 
     if ($path === 'progress' && ($method === 'POST' || $method === 'PUT')) {
+        require_user();
+        require_csrf();
+        aapm_reject_progress_write(request_json());
+    }
+
+    if ($path === 'assessments/attempts' && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        $result = aapm_assessment_start($user, request_json());
+        json_response(['attempt' => $result['attempt'], 'created' => $result['created']], $result['created'] ? 201 : 200);
+    }
+
+    if (preg_match('#^assessments/attempts/([a-f0-9]{48})$#', $path, $matches) && $method === 'GET') {
+        $user = require_user();
+        json_response(['attempt' => aapm_assessment_read($user, $matches[1])]);
+    }
+
+    if (preg_match('#^assessments/attempts/([a-f0-9]{48})/answers$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(aapm_assessment_answer($user, $matches[1], request_json()));
+    }
+
+    if (preg_match('#^assessments/attempts/([a-f0-9]{48})/submit$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(['attempt' => aapm_assessment_submit($user, $matches[1], request_json())]);
+    }
+
+    if ($path === 'assessments/history' && $method === 'GET') {
+        $user = require_user();
+        json_response(aapm_assessment_history($user, $_GET));
+    }
+
+    if ($path === 'assessments/final-eligibility' && $method === 'GET') {
+        $user = require_user();
+        json_response(aapm_final_eligibility_payload(db(), (int) $user['id']));
+    }
+
+    if (preg_match('#^modules/(\\d+)/acknowledge$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(['progress' => aapm_acknowledge_module($user, (int) $matches[1])]);
+    }
+
+    if (preg_match('#^modules/(\\d+)/practice$#', $path, $matches) && $method === 'POST') {
         $user = require_user();
         require_csrf();
         $input = request_json();
-        $moduleNumber = (int) ($input['moduleNumber'] ?? 0);
-        if ($moduleNumber < 0 || ($moduleNumber !== 0 && !admin_module_number_exists($moduleNumber))) {
-            error_response('Nomor modul tidak valid.', 422, 'validation_error');
+        if (!is_bool($input['attested'] ?? null)) {
+            error_response('Status latihan wajib berupa true atau false.', 422, 'validation_error');
         }
+        $eventType = $input['attested'] ? 'practice_attested' : 'practice_unattested';
+        json_response(['progress' => aapm_record_module_event($user, (int) $matches[1], $eventType, $input)]);
+    }
 
-        $values = [
-            'completed' => bool_value($input['completed'] ?? false),
-            'quiz_score' => array_key_exists('quizScore', $input) && $input['quizScore'] !== null ? (int) $input['quizScore'] : null,
-            'quiz_total' => array_key_exists('quizTotal', $input) && $input['quizTotal'] !== null ? (int) $input['quizTotal'] : null,
-            'practical_done' => bool_value($input['practicalDone'] ?? false),
-            'time_spent_minutes' => array_key_exists('timeSpentMinutes', $input) && $input['timeSpentMinutes'] !== null ? (int) $input['timeSpentMinutes'] : null,
-        ];
-        $existing = db()->prepare('SELECT id FROM user_progress WHERE user_id = ? AND module_number = ? LIMIT 1');
-        $existing->execute([(int) $user['id'], $moduleNumber]);
-        $row = $existing->fetch();
-        if ($row) {
-            $update = db()->prepare('UPDATE user_progress SET completed = ?, quiz_score = ?, quiz_total = ?, practical_done = ?, time_spent_minutes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-            $update->execute([$values['completed'], $values['quiz_score'], $values['quiz_total'], $values['practical_done'], $values['time_spent_minutes'], (int) $row['id']]);
-            $id = (int) $row['id'];
-        } else {
-            $insert = db()->prepare('INSERT INTO user_progress (user_id, module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            $insert->execute([(int) $user['id'], $moduleNumber, $values['completed'], $values['quiz_score'], $values['quiz_total'], $values['practical_done'], $values['time_spent_minutes']]);
-            $id = (int) db()->lastInsertId();
-        }
-        $stmt = db()->prepare('SELECT * FROM user_progress WHERE id = ? LIMIT 1');
-        $stmt->execute([$id]);
-        json_response(present_progress($stmt->fetch()));
+    if (preg_match('#^modules/(\\d+)/study-time$#', $path, $matches) && $method === 'POST') {
+        $user = require_user();
+        require_csrf();
+        json_response(['progress' => aapm_record_module_event($user, (int) $matches[1], 'study_time_increment', request_json())]);
     }
 
     if ($path === 'certificates' && $method === 'GET') {
         $user = require_user();
-        $stmt = db()->prepare('SELECT * FROM certificates WHERE user_id = ? ORDER BY level_number ASC, issued_at ASC');
-        $stmt->execute([(int) $user['id']]);
-        json_response(array_map('present_certificate', $stmt->fetchAll()));
+        json_response(aapm_certificate_list($user));
     }
 
     if ($path === 'certificates' && $method === 'POST') {
+        require_user();
+        require_csrf();
+        // The client-authored endpoint is permanently retired. Certificates are claimed through /certificates/claims.
+        error_response('Endpoint penerbitan sertifikat ini sudah dihentikan. Gunakan klaim sertifikat di halaman Sertifikasi.', 410, 'certificate_endpoint_retired');
+    }
+
+    if ($path === 'certification/eligibility' && $method === 'GET') {
+        $user = require_user();
+        json_response(aapm_certification_eligibility($user));
+    }
+
+    if ($path === 'certificates/claims' && $method === 'POST') {
         $user = require_user();
         require_csrf();
-        $input = request_json();
-        $levelNumber = (int) ($input['levelNumber'] ?? 0);
-        $levelName = trim((string) ($input['levelName'] ?? ''));
-        $examType = trim((string) ($input['examType'] ?? 'level'));
-        $score = nullable_number($input, 'score');
-        if ($levelNumber < 1 || $levelName === '' || !in_array($examType, ['module', 'level', 'final'], true)) {
-            error_response('Data sertifikat tidak lengkap.', 422, 'validation_error');
-        }
-        $holderName = trim((string) ($input['holderName'] ?? '')) ?: ((string) $user['full_name'] ?: (string) $user['email']);
-        try {
-            $insert = db()->prepare('INSERT INTO certificates (user_id, level_number, level_name, score, exam_type, holder_name) VALUES (?, ?, ?, ?, ?, ?)');
-            $insert->execute([(int) $user['id'], $levelNumber, $levelName, $score === null ? 0 : $score, $examType, $holderName]);
-            $id = (int) db()->lastInsertId();
-        } catch (PDOException $exception) {
-            if (strpos(strtolower($exception->getMessage()), 'unique') !== false || strpos(strtolower($exception->getMessage()), 'duplicate') !== false) {
-                error_response('Sertifikat untuk level ini sudah ada.', 409, 'certificate_exists');
-            }
-            throw $exception;
-        }
-        $stmt = db()->prepare('SELECT * FROM certificates WHERE id = ? LIMIT 1');
-        $stmt->execute([$id]);
-        json_response(present_certificate($stmt->fetch()), 201);
+        $result = aapm_certificate_claim($user, request_json());
+        json_response(['certificate' => $result['certificate'], 'created' => $result['created']], $result['created'] ? 201 : 200);
+    }
+
+    if (preg_match('#^certificates/([A-Za-z0-9]{1,40})$#', $path, $matches) && $method === 'GET') {
+        $user = require_user();
+        json_response(['certificate' => aapm_certificate_detail($user, $matches[1])]);
+    }
+
+    if (preg_match('#^public/certificates/verify/([a-f0-9]{32})$#', $path, $matches) && $method === 'GET') {
+        json_response(aapm_certificate_public_verify($matches[1]));
     }
 
     if ($path === 'farm-data' && $method === 'GET') {
@@ -709,6 +982,29 @@ try {
         $stmt = db()->prepare('SELECT id, conversation_id, event_type, label, detail, created_at FROM ai_activity_log WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 80');
         $stmt->execute([(int) $user['id']]);
         json_response(array_map('present_ai_activity', $stmt->fetchAll()));
+    }
+
+    if ($path === 'ai/conversations' && $method === 'DELETE') {
+        $user = require_user();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? false) !== true) {
+            error_response('Konfirmasi penghapusan semua percakapan diperlukan.', 422, 'confirmation_required');
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $activity = $pdo->prepare('DELETE FROM ai_activity_log WHERE user_id = ? AND conversation_id IN (SELECT id FROM ai_conversations WHERE user_id = ?)');
+            $activity->execute([(int) $user['id'], (int) $user['id']]);
+            $delete = $pdo->prepare('DELETE FROM ai_conversations WHERE user_id = ?');
+            $delete->execute([(int) $user['id']]);
+            $count = $delete->rowCount();
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        json_response(['ok' => true, 'deletedCount' => $count]);
     }
 
     if ($path === 'ai/conversations' && $method === 'POST') {
@@ -1020,6 +1316,9 @@ try {
     error_response('Endpoint tidak ditemukan.', 404, 'not_found');
 } catch (AiConfigurationException $exception) {
     error_response($exception->getMessage(), 503, 'ai_configuration_missing');
+} catch (AppConfigException $exception) {
+    error_log('[aapm-native-api] configuration unavailable: ' . $exception->safeCode());
+    error_response('Konfigurasi server belum siap.', 503, 'configuration_unavailable');
 } catch (Throwable $exception) {
     error_log('[aapm-native-api] ' . $exception->getMessage());
     error_response('Terjadi kesalahan pada server.', 500, 'server_error');

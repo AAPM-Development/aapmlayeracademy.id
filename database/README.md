@@ -6,7 +6,7 @@ API under `public/api/`.
 ## Local development
 
 1. Copy `config.native.example.php` to `config.php`.
-2. Keep the default SQLite settings.
+2. Keep `'environment' => 'local'` and the default SQLite settings.
 3. Run `php database/seed.php` once.
 4. Start the API with `php -S 127.0.0.1:8000 -t public public/router.php`.
 5. Start Vite with `npm run dev` in another terminal.
@@ -18,22 +18,21 @@ The seed creates a demo account:
 
 ## cPanel
 
-Create a MySQL database/user in cPanel, run `database/schema.sql` for a new
-database, then create `/home/aapp8359/aapmlayeracademy-config.php` outside
-`public_html`:
+Each deployed environment has its own MySQL/MariaDB database and user, and its
+own private file outside `public_html`. Start from `config.staging.example.php`
+or `config.production.example.php` in the repository root, and follow the
+provisioning steps in the top-level README (“Environments, artifacts, and
+deployment”). Set `environment` to the environment name, keep `db_driver` as
+`mysql`, and replace every `REPLACE_` value on the server. Do not use the
+former shared `aapmlayeracademy-config.php` file or an `app_env` key; both are
+no longer read.
 
-```php
-<?php
-return [
-    'app_env' => 'staging',
-    'db_driver' => 'mysql',
-    'db_host' => 'localhost',
-    'db_port' => '3306',
-    'db_name' => 'aapp8359_layeracademy',
-    'db_user' => 'aapp8359_layeracademy',
-    'db_password' => 'CHANGE_ME',
-    'expose_dev_reset_token' => false,
-];
+For a new, empty database, create the schema (or let the API create it on its
+first request, which is allowed only after the marker below), then provision the
+environment marker. The marker command writes only the marker table and row:
+
+```bash
+AAPLAYERACADEMY_CONFIG=/home/aapp8359/aapmlayeracademy-staging-config.php php database/migrate.php --init-environment-marker --expect-environment=staging
 ```
 
 For a new, empty database, run `php database/seed.php` from the checked-out
@@ -48,8 +47,10 @@ instead of the content seed:
 
 ```bash
 php database/migrate.php --plan --verify
-php database/migrate.php --apply --verify
+AAPLAYERACADEMY_CONFIG=<private file> php database/migrate.php --apply --verify --expect-environment=<environment>
 ```
+
+`--apply` refuses to run unless `--expect-environment` matches the private file and the environment marker is verified. `--plan` and `--verify` never write.
 
 `--plan --verify` is read-only. It reports missing application tables, the
 expected additive indexes, and non-secret integrity checks. `--apply --verify`

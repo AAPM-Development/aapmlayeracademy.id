@@ -1,91 +1,191 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, ConfirmDialog, Skeleton, StateView, useToast } from "@/design-system";
+import { Button, ConfirmDialog, Skeleton, useToast } from "@/design-system";
 import { FocusShell, Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { AnswerReview, AssessmentBar, AssessmentResult, QuestionNavigator, QuizQuestion } from "@/components/academy/AssessmentComponents";
-import { useIssueCertificate, useQuizQuestions, useSaveProgress } from "@/lib/useCourseData";
+import AppiMascot from "@/components/appi/AppiMascot";
+import { AssessmentBar, AssessmentResult, QuestionNavigator, QuizQuestion } from "@/components/academy/AssessmentComponents";
+import { useAnswerAssessment, useFinalEligibility, useStartAssessment, useSubmitAssessment } from "@/lib/useCourseData";
 
+// Display copy only. The server decides the passing grade (AAPM_FINAL_PASS_PERCENT).
 const FINAL_PASSING_GRADE = 80;
 
 /**
  * Final exam in exam mode: no per-question feedback, a question navigator,
- * review flags and an explicit submit confirmation.
+ * review flags and an explicit submit confirmation. Eligibility, saved
+ * answers, grading and the outcome all come from the server.
  */
 export default function FinalExam() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: questions = [], isLoading } = useQuizQuestions(0);
-  const saveProgress = useSaveProgress();
-  const issue = useIssueCertificate();
-  const save = /** @type {any} */ (saveProgress.mutateAsync);
-  const issueCertificate = /** @type {any} */ (issue.mutateAsync);
+  const { data: eligibility, isLoading } = useFinalEligibility();
+  const start = useStartAssessment();
+  const answer = useAnswerAssessment();
+  const submitExam = useSubmitAssessment();
+  const [attempt, setAttempt] = useState(null);
   const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState({});
   const [flagged, setFlagged] = useState({});
-  const [submitted, setSubmitted] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  // Answers are saved one at a time, in the order the learner gave them.
+  const saveQueue = useRef(Promise.resolve());
+
+  const questions = attempt?.questions ?? [];
   const question = questions[current];
+  const result = attempt?.result ?? null;
+  const answers = useMemo(() => Object.fromEntries(
+    questions.flatMap((item, index) => (item.selectedIndex === null || item.selectedIndex === undefined ? [] : [[index, item.selectedIndex]])),
+  ), [questions]);
   const answeredCount = Object.keys(answers).length;
   const flaggedCount = Object.values(flagged).filter(Boolean).length;
-  const score = useMemo(() => questions.filter((item, index) => answers[index] === item.correctIndex).length, [answers, questions]);
-  const percent = questions.length ? Math.round((score / questions.length) * 100) : 0;
-  const passed = percent >= FINAL_PASSING_GRADE;
+  const isLast = current === questions.length - 1;
 
-  const submit = async () => {
-    setConfirmOpen(false);
-    setSubmitted(true);
+  const begin = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
     try {
-      await save({ moduleNumber: 0, data: { moduleNumber: 0, completed: passed, quizScore: score, quizTotal: questions.length } });
-      if (passed) {
-        await issueCertificate({ levelNumber: 6, levelName: "Layer Poultry Farm Expert", score: percent, examType: "final", holderName: "Peserta Layer Farm Academy" });
-        toast({ title: "Ujian akhir lulus", description: "Sertifikat Expert telah diterbitkan." });
-      } else {
-        toast({ title: "Belum lulus", description: "Tinjau jalur belajar lalu coba lagi.", variant: "warning" });
-      }
-    } catch {
-      toast({ title: "Hasil belum tersimpan", description: "Periksa koneksi lalu kirim ulang ujian.", variant: "destructive" });
+      const reply = await start.mutateAsync({ assessmentType: "final_exam", moduleNumber: 0 });
+      setAttempt(reply.attempt);
+      setCurrent(0);
+      setFlagged({});
+    } catch (error) {
+      toast({ title: "Ujian belum dapat dimulai", description: error?.message || "Periksa koneksi lalu coba lagi.", variant: "destructive" });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
   };
 
-  const reset = () => { setSubmitted(false); setAnswers({}); setFlagged({}); setCurrent(0); };
+  const select = (index) => {
+    if (!attempt || result || !question) return;
+    const item = question;
+    const previous = item.selectedIndex;
+    setAttempt((value) => ({
+      ...value,
+      questions: value.questions.map((entry) => (entry.id === item.id ? { ...entry, selectedIndex: index } : entry)),
+    }));
+    saveQueue.current = saveQueue.current.then(async () => {
+      try {
+        await answer.mutateAsync({ attemptId: attempt.id, questionId: item.id, answerIndex: index });
+      } catch (error) {
+        setAttempt((value) => ({
+          ...value,
+          questions: value.questions.map((entry) => (entry.id === item.id ? { ...entry, selectedIndex: previous } : entry)),
+        }));
+        toast({ title: "Jawaban belum tersimpan", description: error?.message || "Coba pilih lagi.", variant: "destructive" });
+      }
+    });
+  };
+
+  const submit = async () => {
+    setConfirmOpen(false);
+    if (!attempt || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await saveQueue.current;
+      const reply = await submitExam.mutateAsync({ attemptId: attempt.id });
+      setAttempt(reply.attempt);
+      if (reply.attempt.result?.passed) {
+        toast({ title: "Ujian akhir lulus", description: "Hasil sudah tercatat di akun Anda." });
+      } else {
+        toast({ title: "Belum lulus", description: "Tinjau jalur belajar lalu coba lagi.", variant: "warning" });
+      }
+    } catch (error) {
+      toast({ title: "Hasil belum tersimpan", description: error?.message || "Periksa koneksi lalu coba kirim lagi.", variant: "destructive" });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  const retry = () => {
+    setAttempt(null);
+    setCurrent(0);
+    begin();
+  };
   const exit = () => navigate("/certification");
 
   if (isLoading) return <Page width="narrow"><Skeleton className="h-3 w-full" /><Skeleton className="h-10 w-3/4" /><Skeleton className="h-64 w-full" /></Page>;
-  if (!questions.length) {
-    return (
-      <Page width="narrow" className="min-h-[60vh] justify-center">
-        <StateView kind="empty" icon="exam" title="Ujian akhir belum tersedia" description="Belum ada soal ujian akhir pada data Academy." action={<Button asChild variant="secondary"><Link to="/modules"><AapmIcon name="arrowLeft" />Kembali ke jalur belajar</Link></Button>} />
-      </Page>
-    );
-  }
 
-  if (submitted) {
+  if (result) {
+    const passed = Boolean(result.passed);
     return (
-      <FocusShell resetKey="result" label="Hasil ujian akhir" bar={<AssessmentBar onExit={exit} title="Ujian akhir" total={questions.length} current={questions.length - 1} states={questions.map((item, index) => (answers[index] === item.correctIndex ? "done" : "wrong"))} label="Hasil ujian" />}>
+      <FocusShell
+        resetKey="result"
+        label="Hasil ujian akhir"
+        bar={<AssessmentBar onExit={exit} title="Ujian akhir" total={questions.length} current={questions.length - 1} states={questions.map((item) => (item.selectedIndex === null ? undefined : "done"))} label="Hasil ujian" />}
+      >
         <AssessmentResult
           passed={passed}
-          score={score}
-          total={questions.length}
-          passingGrade={FINAL_PASSING_GRADE}
+          score={result.correctAnswers}
+          total={result.totalQuestions}
+          passingGrade={result.passingGrade}
           title={passed ? "Anda lulus ujian akhir!" : "Ujian akhir belum lulus"}
-          description={passed ? "Sertifikat Layer Poultry Farm Expert diterbitkan ke akun Anda." : "Gunakan hasil ini untuk memilih materi yang perlu diulang."}
+          description={passed
+            ? "Hasil ini sudah tercatat. Penerbitan sertifikat Expert belum tersedia di halaman ini."
+            : "Tinjau materi yang perlu diulang. Pertanyaan dan kunci jawaban tidak ditampilkan pada ujian akhir."}
         >
+          {Array.isArray(result.objectives) && result.objectives.length ? (
+            <ul className="m-0 mt-4 grid list-none gap-2 p-0">
+              {result.objectives.map((item) => (
+                <li key={item.learningObjective} className="flex items-center justify-between gap-3 rounded-[var(--aapm-primitive-radius-panel)] bg-[var(--aapm-semantic-surface-subtle)] p-3 text-body">
+                  <span className="min-w-0">{item.learningObjective}</span>
+                  <span className="tabular-nums">{item.correct}/{item.total}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="aapm-result-actions">
             {passed ? (
-              <Button asChild variant="learn" size="lg"><Link to="/certification"><AapmIcon name="certificate" />Lihat sertifikat</Link></Button>
+              <Button asChild variant="learn" size="lg"><Link to="/certification"><AapmIcon name="certificate" />Lihat status sertifikat</Link></Button>
             ) : (
-              <Button variant="learn" size="lg" leadingIcon="refresh" onClick={reset}>Ulangi ujian</Button>
+              <Button variant="learn" size="lg" leadingIcon="refresh" loading={busy} onClick={retry}>Ulangi ujian</Button>
             )}
             <Button asChild variant="secondary" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Jalur belajar</Link></Button>
           </div>
-          <AnswerReview questions={questions} answers={answers} />
         </AssessmentResult>
       </FocusShell>
     );
   }
 
-  const isLast = current === questions.length - 1;
+  if (!attempt) {
+    const finished = eligibility?.finalStatus === "passed";
+    const prerequisitesMissing = eligibility && !eligibility.eligible && !eligibility.activeAttemptId;
+    const limitReached = eligibility && eligibility.attemptsRemaining < 1 && !eligibility.activeAttemptId;
+    const missing = (eligibility?.missingModuleNumbers ?? []).join(", ");
+    const back = <Button asChild variant="ghost" size="lg"><Link to="/"><AapmIcon name="arrowLeft" />Kembali ke beranda</Link></Button>;
+    let intro;
+    if (finished) {
+      intro = { mood: "proud", title: "Ujian akhir sudah lulus", text: "Hasil ujian Anda sudah tercatat. Lihat status sertifikat Expert Anda.", action: <Button asChild variant="learn" size="lg"><Link to="/certification"><AapmIcon name="certificate" />Status sertifikat</Link></Button> };
+    } else if (prerequisitesMissing) {
+      intro = { mood: "curious", title: "Ujian akhir belum terbuka", text: `Selesaikan kuis atau aktivitas belajar pada modul berikut: ${missing || "—"}.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Buka jalur belajar</Link></Button> };
+    } else if (limitReached) {
+      intro = { mood: "concerned", title: "Batas percobaan tercapai", text: `Coba lagi setelah ${eligibility.nextEligibleAt ? new Date(eligibility.nextEligibleAt).toLocaleString("id-ID") : "beberapa saat"}. Sambil menunggu, ulas lagi modul yang sulit.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Jalur belajar</Link></Button> };
+    } else {
+      const resume = Boolean(eligibility?.activeAttemptId);
+      intro = {
+        mood: resume ? "talk" : "wink",
+        title: resume ? "Ujian Anda belum selesai" : "Siap mengikuti ujian akhir?",
+        text: `Nilai lulus ${FINAL_PASSING_GRADE}%.${eligibility?.attemptsRemaining !== undefined ? ` Kesempatan tersisa: ${eligibility.attemptsRemaining} dari ${eligibility.attemptLimit}.` : ""} Ujian dikerjakan tanpa bantuan APPI.`,
+        action: <Button variant="learn" size="lg" loading={busy} onClick={begin}>{resume ? "Lanjutkan ujian" : "Mulai ujian"}<AapmIcon name="arrowRight" /></Button>,
+      };
+    }
+    // Start screen (Duolingo-style): APPI, one headline, the next step and a way back.
+    const body = (
+      <section className="aapm-exam-intro" aria-labelledby="exam-intro-title">
+        <AppiMascot mood={intro.mood} size="hero" />
+        <p className="aapm-exam-intro__eyebrow">Ujian akhir · Sertifikasi Expert</p>
+        <h1 id="exam-intro-title" className="aapm-exam-intro__title">{intro.title}</h1>
+        <p className="aapm-exam-intro__text">{intro.text}</p>
+        <div className="aapm-exam-intro__actions">{intro.action}{back}</div>
+      </section>
+    );
+    return <Page width="narrow" className="aapm-exam-intro-page">{body}</Page>;
+  }
+
   const navigator = (
     <QuestionNavigator total={questions.length} current={current} answers={answers} flagged={flagged} onSelect={setCurrent} />
   );
@@ -124,7 +224,7 @@ export default function FinalExam() {
           <p className="aapm-focus__footer-center">{answeredCount}/{questions.length} terjawab · nilai lulus {FINAL_PASSING_GRADE}%</p>
           <div className="aapm-focus__footer-group">
             {isLast ? (
-              <Button variant="learn" size="lg" loading={saveProgress.isPending || issue.isPending} onClick={() => setConfirmOpen(true)}>Kirim ujian</Button>
+              <Button variant="learn" size="lg" loading={busy} onClick={() => setConfirmOpen(true)}>Kirim ujian</Button>
             ) : (
               <Button variant="learn" size="lg" onClick={() => setCurrent((value) => value + 1)}>Berikutnya<AapmIcon name="arrowRight" /></Button>
             )}
@@ -137,7 +237,7 @@ export default function FinalExam() {
         number={current + 1}
         total={questions.length}
         answer={answers[current]}
-        onAnswer={(answer) => setAnswers((value) => ({ ...value, [current]: answer }))}
+        onAnswer={select}
         meta={<span className="aapm-chip" data-tone="attention">Ujian akhir · Tingkat 6</span>}
       />
       <ConfirmDialog

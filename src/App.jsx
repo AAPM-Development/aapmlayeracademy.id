@@ -33,8 +33,13 @@ const Login = lazy(() => loadRouteModule('login'));
 const Register = lazy(() => loadRouteModule('register'));
 const ForgotPassword = lazy(() => loadRouteModule('forgotPassword'));
 const ResetPassword = lazy(() => loadRouteModule('resetPassword'));
+const VerifyEmail = lazy(() => loadRouteModule('verifyEmail'));
+const VerifyCertificate = lazy(() => loadRouteModule('verifyCertificate'));
+const AdminCertificates = lazy(() => loadRouteModule('adminCertificates'));
 const AdminOverview = lazy(() => loadRouteModule('adminOverview'));
 const AdminCourses = lazy(() => loadRouteModule('adminCourses'));
+const AdminCurriculumPolicies = lazy(() => loadRouteModule('adminCurriculumPolicies'));
+const AdminFinalBank = lazy(() => loadRouteModule('adminFinalBank'));
 const AdminCourseDetail = lazy(() => loadRouteModule('adminCourseDetail'));
 const AdminLearners = lazy(() => loadRouteModule('adminLearners'));
 const AdminLearnerDetail = lazy(() => loadRouteModule('adminLearnerDetail'));
@@ -102,6 +107,8 @@ const AuthenticatedApp = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/verify-certificate/:publicId" element={<VerifyCertificate />} />
         <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
@@ -118,11 +125,14 @@ const AuthenticatedApp = () => {
           <Route element={<AdminRoute />}>
             <Route element={<AdminShell />}>
               <Route path="/admin" element={<AdminOverview />} />
+              <Route path="/admin/curriculum/policies" element={<AdminCurriculumPolicies />} />
+              <Route path="/admin/curriculum/final-bank" element={<AdminFinalBank />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
               <Route path="/admin/courses/:courseId/modules/:moduleId" element={<AdminModuleEditor />} />
               <Route path="/admin/courses/:courseId" element={<AdminCourseDetail />} />
               <Route path="/admin/learners" element={<AdminLearners />} />
               <Route path="/admin/learners/:learnerId" element={<AdminLearnerDetail />} />
+              <Route path="/admin/certificates" element={<AdminCertificates />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/ai-settings" element={<AdminAiSettings />} />
               <Route path="/admin/workspace-status" element={<AdminWorkspaceStatus />} />

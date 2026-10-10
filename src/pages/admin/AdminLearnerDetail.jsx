@@ -24,12 +24,12 @@ export default function AdminLearnerDetail() {
     if (!learner) return;
     try {
       const result = await resetProgress.mutateAsync({ userId: learner.id });
-      const deletedEntries = result?.reset?.deletedEntries || 0;
+      const generation = result?.reset?.generationTo || 0;
       toast({
         title: "Progress direset",
-        description: deletedEntries
-          ? `${deletedEntries} entri progress dihapus. Sertifikat, data farm, dan percakapan tetap ada.`
-          : "Belum ada entri progress. Data akun lain tetap ada.",
+        description: generation
+          ? `Progress aktif dimulai ulang (siklus ${generation}). Riwayat ujian, sertifikat, data farm, dan percakapan tetap tersimpan.`
+          : "Progress aktif dimulai ulang. Riwayat tetap tersimpan.",
       });
     } catch (resetError) {
       toast({
@@ -189,7 +189,7 @@ export default function AdminLearnerDetail() {
         open={resetConfirmationOpen}
         onOpenChange={setResetConfirmationOpen}
         title="Reset progress peserta?"
-        description={`Seluruh progress belajar ${learner?.full_name || learner?.email || "peserta ini"} akan dihapus permanen: status modul, nilai kuis, praktik, dan waktu belajar. Sertifikat, data farm, dan percakapan tetap dipertahankan.`}
+        description={`Seluruh progress belajar ${learner?.full_name || learner?.email || "peserta ini"} akan dimulai ulang: status modul, kuis, praktik, dan waktu belajar aktif kembali kosong. Riwayat ujian dan nilai lama, sertifikat, data farm, dan percakapan tetap tersimpan.`}
         confirmLabel="Reset progress"
         icon="solar:restart-bold"
         destructive

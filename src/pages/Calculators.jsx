@@ -1,29 +1,289 @@
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge, IconTile, Input, PageHeader } from "@/design-system";
+import { Badge, Button, IconTile, Input, PageHeader } from "@/design-system";
 import { Page } from "@/design-system/patterns/AppShell";
+import AppiMascot from "@/components/appi/AppiMascot";
+import CountUp from "@/components/motion/CountUp";
+import { askAppi } from "@/lib/askAppi";
 
-const tools = [
-  { id: "fcr", name: "FCR", icon: "equalRatio", hue: "green", description: "Efisiensi pakan terhadap egg mass." },
-  { id: "eggmass", name: "Egg Mass", icon: "egg", hue: "orange", description: "Output telur per ekor per hari." },
-  { id: "uniformity", name: "Uniformity", icon: "weight", hue: "blue", description: "Konsistensi bobot flock." },
-  { id: "mortality", name: "Mortality", icon: "mortality", hue: "rose", description: "Kehilangan dan livability." },
-  { id: "waterfeed", name: "Water/Feed Ratio", icon: "waterRate", hue: "teal", description: "Perubahan konsumsi air dan pakan." },
-  { id: "ventilation", name: "Ventilasi", icon: "hvac", hue: "violet", description: "Volume kandang menjadi airflow." },
-  { id: "roi", name: "ROI & Break Even", icon: "marginalRoi", hue: "amber", description: "Kelayakan keputusan investasi." },
-];
+const rupiah = (value) => `Rp ${Math.round(value).toLocaleString("id-ID")}`;
 
-const ToolContext = React.createContext(tools[0]);
+// Readings use the same general references across tools: "good" (green),
+// "watch" (amber) and "act" (rose). They are starting points for a walk
+// through the house, never a replacement for the strain standard.
+const TONE = {
+  good: { hue: "green", icon: "check", mood: "happy" },
+  watch: { hue: "amber", icon: "warning", mood: "think" },
+  act: { hue: "rose", icon: "warning", mood: "concerned" },
+  info: { hue: "blue", icon: "insight", mood: "talk" },
+};
 
 /**
- * Calculator workspace (tool pattern): pick a tool, enter actual numbers on
- * the left, read the result and its interpretation on the right.
+ * Each tool declares its inputs and a `compute` that returns null until the
+ * required numbers are usable. `scale` places the result on a reference bar
+ * whose zones also give the verdict; tools without a scale give an `info`
+ * reading.
+ */
+const tools = [
+  {
+    id: "fcr",
+    name: "FCR",
+    title: "Feed Conversion Ratio (FCR)",
+    icon: "equalRatio",
+    hue: "green",
+    description: "Efisiensi pakan terhadap egg mass.",
+    formula: "FCR = Total pakan (kg) ÷ Egg mass (kg)\nEgg mass = Jumlah telur × Berat telur (g) ÷ 1000",
+    fields: [
+      { key: "feed", label: "Total konsumsi pakan", unit: "kg", example: 120 },
+      { key: "eggs", label: "Jumlah telur", unit: "butir", example: 850 },
+      { key: "eggWeight", label: "Berat rata-rata telur", unit: "gram", example: 60 },
+    ],
+    compute: ({ feed, eggs, eggWeight }) => {
+      const eggMass = (eggs * eggWeight) / 1000;
+      if (!(feed > 0 && eggMass > 0)) return null;
+      return { value: feed / eggMass, details: [["Egg mass", `${eggMass.toFixed(1)} kg`]] };
+    },
+    format: (value) => value.toFixed(2),
+    scale: {
+      min: 1.6,
+      max: 3.2,
+      zones: [
+        { upTo: 2.2, tone: "good", label: "Sangat baik", note: "Pakan terkonversi efisien menjadi telur." },
+        { upTo: 2.6, tone: "watch", label: "Baik", note: "Masih wajar; pantau pakan tercecer dan berat telur." },
+        { upTo: Infinity, tone: "act", label: "Evaluasi", note: "Cek pakan tercecer, kualitas ransum, dan produksi." },
+      ],
+    },
+  },
+  {
+    id: "eggmass",
+    name: "Egg Mass",
+    title: "Egg Mass per Ekor per Hari",
+    icon: "egg",
+    hue: "orange",
+    description: "Output telur per ekor per hari.",
+    formula: "Egg mass = HDP (%) × Berat telur (g) ÷ 100",
+    fields: [
+      { key: "hdp", label: "Hen Day Production", unit: "%", example: 90 },
+      { key: "eggWeight", label: "Berat telur", unit: "gram", example: 60 },
+    ],
+    compute: ({ hdp, eggWeight }) => (hdp > 0 && eggWeight > 0 ? { value: (hdp * eggWeight) / 100 } : null),
+    format: (value) => value.toFixed(1),
+    unit: "g/ekor/hari",
+    scale: {
+      min: 40,
+      max: 66,
+      zones: [
+        { upTo: 50, tone: "act", label: "Di bawah target", note: "Evaluasi produksi dan berat telur bersama." },
+        { upTo: 57, tone: "watch", label: "Baik", note: "Mendekati standar layer komersial." },
+        { upTo: Infinity, tone: "good", label: "Excellent", note: "Di atas standar layer komersial." },
+      ],
+    },
+  },
+  {
+    id: "uniformity",
+    name: "Uniformity",
+    title: "Uniformity (%)",
+    icon: "weight",
+    hue: "blue",
+    description: "Konsistensi bobot flock.",
+    formula: "Uniformity = Ayam dalam ±10% berat rata-rata ÷ Total ditimbang × 100",
+    fields: [
+      { key: "average", label: "Berat rata-rata", unit: "gram", example: 1500, optional: true },
+      { key: "within", label: "Ayam dalam ±10%", unit: "ekor", example: 82 },
+      { key: "total", label: "Total ayam ditimbang", unit: "ekor", example: 100 },
+    ],
+    compute: ({ within, total }) => (total > 0 && within > 0 ? { value: Math.min(100, (within / total) * 100) } : null),
+    format: (value) => `${Math.round(value)}`,
+    unit: "%",
+    scale: {
+      min: 50,
+      max: 100,
+      zones: [
+        { upTo: 75, tone: "act", label: "Rendah", note: "Pertimbangkan grading, seleksi, atau culling." },
+        { upTo: 85, tone: "watch", label: "Baik", note: "Jaga akses pakan dan kepadatan merata." },
+        { upTo: Infinity, tone: "good", label: "Excellent", note: "Bobot flock seragam." },
+      ],
+    },
+  },
+  {
+    id: "mortality",
+    name: "Mortality",
+    title: "Mortality & Livability",
+    icon: "mortality",
+    hue: "rose",
+    description: "Kehilangan dan livability.",
+    formula: "Mortality = Jumlah mati ÷ Populasi awal × 100\nLivability = 100 − Mortality",
+    fields: [
+      // Zero deaths is a real answer, so this field may be 0.
+      { key: "dead", label: "Jumlah ayam mati", unit: "ekor", example: 15, allowZero: true },
+      { key: "start", label: "Populasi awal", unit: "ekor", example: 5000 },
+    ],
+    compute: ({ dead, start }) => {
+      if (!(start > 0) || !(dead >= 0)) return null;
+      const mortality = (dead / start) * 100;
+      return { value: mortality, details: [["Livability", `${(100 - mortality).toFixed(1)}%`]] };
+    },
+    format: (value) => value.toFixed(2),
+    unit: "%",
+    scale: {
+      min: 0,
+      max: 8,
+      zones: [
+        { upTo: 1, tone: "good", label: "Baik", note: "Di bawah ambang normal." },
+        { upTo: 5, tone: "watch", label: "Pantau", note: "Catat penyebab kematian per hari." },
+        { upTo: Infinity, tone: "act", label: "Tinggi", note: "Investigasi penyebab dan konsultasikan dengan dokter hewan." },
+      ],
+    },
+  },
+  {
+    id: "waterfeed",
+    name: "Water/Feed",
+    title: "Water/Feed Ratio",
+    icon: "waterRate",
+    hue: "teal",
+    description: "Perubahan konsumsi air dan pakan.",
+    formula: "Rasio = Konsumsi air (ml) ÷ Konsumsi pakan (g) — normal 1,8–2,2",
+    fields: [
+      { key: "water", label: "Konsumsi air", unit: "ml/ekor", example: 220 },
+      { key: "feed", label: "Konsumsi pakan", unit: "g/ekor", example: 115 },
+    ],
+    compute: ({ water, feed }) => (water > 0 && feed > 0 ? { value: water / feed } : null),
+    format: (value) => value.toFixed(2),
+    scale: {
+      min: 1.2,
+      max: 3,
+      zones: [
+        { upTo: 1.8, tone: "watch", label: "Rendah", note: "Cek akses air, nipple, dan kualitas air." },
+        { upTo: 2.2, tone: "good", label: "Normal", note: "Konsumsi air dan pakan seimbang." },
+        { upTo: Infinity, tone: "act", label: "Tinggi", note: "Cek suhu kandang, stres panas, dan kebocoran." },
+      ],
+    },
+  },
+  {
+    id: "ventilation",
+    name: "Ventilasi",
+    title: "Kebutuhan Ventilasi & Jumlah Fan",
+    icon: "hvac",
+    hue: "violet",
+    description: "Volume kandang menjadi airflow.",
+    formula: "Ventilasi minimum (m³/menit) = Berat total (kg) × 0,014\nTunnel = Berat total × 0,07 · Fan 36″ ≈ 340 m³/menit",
+    fields: [
+      { key: "birds", label: "Jumlah ayam", unit: "ekor", example: 5000 },
+      { key: "weight", label: "Berat rata-rata", unit: "gram", example: 1800 },
+      { key: "temp", label: "Suhu lingkungan", unit: "°C", example: 30, optional: true },
+    ],
+    // Rule of thumb: minimum (cold) 0.014 and tunnel (hot) 0.07 m³/min per kg live weight; a 36″ fan moves ≈ 340 m³/min.
+    compute: ({ birds, weight, temp }) => {
+      if (!(birds > 0 && weight > 0)) return null;
+      const kg = birds * (weight / 1000);
+      const tunnel = kg * 0.07;
+      return {
+        value: Math.ceil(tunnel / 340),
+        note: "Perkiraan; sesuaikan dengan static pressure dan desain kandang.",
+        details: [
+          ["Berat total", `${kg.toFixed(0)} kg`],
+          ["Ventilasi minimum", `${(kg * 0.014).toFixed(1)} m³/menit`],
+          [temp > 0 ? `Tunnel (${temp}°C)` : "Tunnel", `${tunnel.toFixed(1)} m³/menit`],
+        ],
+      };
+    },
+    format: (value) => `${Math.round(value)}`,
+    unit: "fan 36″",
+  },
+  {
+    id: "roi",
+    name: "ROI & BEP",
+    title: "ROI & Break Even Point",
+    icon: "marginalRoi",
+    hue: "amber",
+    description: "Kelayakan keputusan investasi.",
+    formula: "Gross margin = Revenue − OPEX · BEP = CAPEX ÷ Margin · ROI = Margin ÷ CAPEX × 100",
+    fields: [
+      { key: "capex", label: "CAPEX", unit: "Rp", example: 500000000 },
+      { key: "opex", label: "OPEX per tahun", unit: "Rp", example: 800000000 },
+      { key: "revenue", label: "Revenue per tahun", unit: "Rp", example: 1100000000 },
+    ],
+    compute: ({ capex, opex, revenue }) => {
+      if (!(capex > 0 && opex > 0 && revenue > 0)) return null;
+      const margin = revenue - opex;
+      return {
+        value: (margin / capex) * 100,
+        details: [
+          ["Break even", margin > 0 ? `${(capex / margin).toFixed(1)} tahun` : "Tidak tercapai"],
+          ["Gross margin", rupiah(margin)],
+        ],
+      };
+    },
+    format: (value) => value.toFixed(0),
+    unit: "% ROI",
+    scale: {
+      min: -20,
+      max: 60,
+      zones: [
+        { upTo: 0, tone: "act", label: "Belum profit", note: "Evaluasi OPEX dan revenue sebelum investasi." },
+        { upTo: 20, tone: "watch", label: "Marginal", note: "Optimalkan biaya agar margin lebih aman." },
+        { upTo: Infinity, tone: "good", label: "Layak", note: "Menguntungkan untuk dipertimbangkan." },
+      ],
+    },
+  },
+];
+
+function parse(value) {
+  if (value === "" || value === null || value === undefined) return NaN;
+  const number = Number.parseFloat(String(value).replace(",", "."));
+  return Number.isFinite(number) ? number : NaN;
+}
+
+function evaluate(tool, values) {
+  const numbers = Object.fromEntries(tool.fields.map((field) => [field.key, parse(values[field.key])]));
+  const missing = tool.fields
+    .filter((field) => !field.optional)
+    .filter((field) => {
+      const number = numbers[field.key];
+      return !Number.isFinite(number) || (field.allowZero ? number < 0 : number <= 0);
+    })
+    .map((field) => field.label);
+  const outcome = missing.length ? null : tool.compute(numbers);
+  if (!outcome || !Number.isFinite(outcome.value)) return { ready: false, missing: missing.length ? missing : tool.fields.map((field) => field.label) };
+  const zone = tool.scale?.zones.find((item) => outcome.value < item.upTo) || tool.scale?.zones[tool.scale.zones.length - 1];
+  const tone = zone ? zone.tone : "info";
+  return {
+    ready: true,
+    value: outcome.value,
+    text: tool.format(outcome.value),
+    verdict: zone?.label || "Perkiraan",
+    note: zone?.note || outcome.note,
+    details: outcome.details || [],
+    tone,
+  };
+}
+
+function appiPrompt(tool, values, reading) {
+  const inputs = tool.fields
+    .filter((field) => values[field.key] !== "" && values[field.key] !== undefined)
+    .map((field) => `${field.label} ${values[field.key]} ${field.unit}`)
+    .join(", ");
+  return `Saya menghitung ${tool.title} di kalkulator Academy. Input: ${inputs}. Hasil: ${reading.text}${tool.unit ? ` ${tool.unit}` : ""} (${reading.verdict}). Apa artinya untuk flock saya dan apa yang perlu saya cek lebih dulu di kandang?`;
+}
+
+/**
+ * Calculator workspace: pick a tool, enter actual numbers, and read the result
+ * on a reference bar while APPI explains it. Values stay per tool while the
+ * learner switches between tools.
  */
 export default function Calculators() {
   const [active, setActive] = useState("fcr");
+  const [values, setValues] = useState({});
   const railRef = useScrollEdgeFade();
-  const activeTool = tools.find((tool) => tool.id === active) || tools[0];
+  const tool = tools.find((item) => item.id === active) || tools[0];
+  const toolValues = values[tool.id] || {};
+  const reading = evaluate(tool, toolValues);
+
+  const setField = (key, value) => setValues((current) => ({ ...current, [tool.id]: { ...(current[tool.id] || {}), [key]: value } }));
+  const fillExample = () => setValues((current) => ({ ...current, [tool.id]: Object.fromEntries(tool.fields.map((field) => [field.key, String(field.example)])) }));
+  const reset = () => setValues((current) => ({ ...current, [tool.id]: {} }));
+  const hasInput = Object.values(toolValues).some((value) => value !== "");
 
   return (
     <Page>
@@ -34,294 +294,175 @@ export default function Calculators() {
       />
       <section className="aapm-calc-layout">
         <nav ref={railRef} className="aapm-calc-tools aapm-scroll-fade aapm-scroll-fade--x" aria-label="Pilih kalkulator">
-          {tools.map((tool) => (
+          {tools.map((item) => (
             <button
-              key={tool.id}
+              key={item.id}
               type="button"
               className="aapm-calc-tool"
-              data-hue={tool.hue}
-              aria-pressed={active === tool.id}
-              onClick={() => setActive(tool.id)}
+              data-hue={item.hue}
+              aria-pressed={active === item.id}
+              onClick={() => setActive(item.id)}
             >
-              <IconTile icon={tool.icon} hue={tool.hue} size="sm" shape="circle" variant={active === tool.id ? "badge" : undefined} />
+              <IconTile icon={item.icon} hue={item.hue} size="sm" shape="circle" variant={active === item.id ? "badge" : undefined} />
               <span className="min-w-0">
-                <span className="aapm-calc-tool__name">{tool.name}</span>
-                <span className="aapm-calc-tool__description">{tool.description}</span>
+                <span className="aapm-calc-tool__name">{item.name}</span>
+                <span className="aapm-calc-tool__description">{item.description}</span>
               </span>
             </button>
           ))}
         </nav>
-        <ToolContext.Provider value={activeTool}>
-          <div className="min-w-0" key={active}>
-            {active === "fcr" && <FcrCalc />}
-            {active === "eggmass" && <EggMassCalc />}
-            {active === "uniformity" && <UniformityCalc />}
-            {active === "mortality" && <MortalityCalc />}
-            {active === "waterfeed" && <WaterFeedCalc />}
-            {active === "ventilation" && <VentilationCalc />}
-            {active === "roi" && <RoiCalc />}
+        <article className="aapm-card aapm-calc" key={tool.id}>
+          <header className="aapm-calc__header">
+            <IconTile icon={tool.icon} hue={tool.hue} size="lg" shape="circle" />
+            <div className="min-w-0 flex-1">
+              <h2 className="aapm-text-section m-0">{tool.title}</h2>
+              <p className="aapm-text-support m-0">{tool.description}</p>
+            </div>
+            <div className="aapm-calc__tools">
+              <Button variant="ghost" size="sm" leadingIcon="star" onClick={fillExample}>Isi contoh</Button>
+              {hasInput ? <Button variant="ghost" size="sm" leadingIcon="refresh" onClick={reset}>Reset</Button> : null}
+            </div>
+          </header>
+          <details className="aapm-calc__formula">
+            <summary><AapmIcon name="insight" />Lihat rumus</summary>
+            <code>{tool.formula}</code>
+          </details>
+          <div className="aapm-calc__body">
+            <div className="aapm-calc__inputs">
+              {tool.fields.map((field) => (
+                <CalcField
+                  key={field.key}
+                  field={field}
+                  value={toolValues[field.key] ?? ""}
+                  onChange={(value) => setField(field.key, value)}
+                  flagged={!reading.ready && hasInput && reading.missing.includes(field.label) && toolValues[field.key] !== undefined && toolValues[field.key] !== ""}
+                />
+              ))}
+            </div>
+            <CalcResult tool={tool} values={toolValues} reading={reading} />
           </div>
-        </ToolContext.Provider>
+        </article>
       </section>
     </Page>
   );
 }
 
-/**
- * Declares a calculator's outcome: one primary number (`value`), its reading
- * (`note`, flagged `attention` when it asks for action) and secondary figures
- * (`details`, [label, value] pairs). Until `ready` (the required inputs are
- * filled), the card shows the neutral empty state instead of a verdict
- * computed from zeros.
- */
-function CalcResult() {
-  return null;
-}
-
-const emptyNote = "Hasil muncul saat angka yang diperlukan terisi. Periksa kolom kosong atau bernilai 0.";
-
-function CalculatorCard({ title, formula, children }) {
-  const tool = React.useContext(ToolContext);
-  const items = React.Children.toArray(children);
-  const outcome = items.find((child) => React.isValidElement(child) && child.type === CalcResult);
-  const inputs = items.filter((child) => child !== outcome);
-  const { ready = false, value, note, attention = false, details = [] } = outcome?.props || {};
-  const resultHue = ready && attention ? "orange" : tool.hue;
-
+function CalcField({ field, value, onChange, flagged }) {
+  const id = React.useId();
+  const hintId = `${id}-hint`;
   return (
-    <article className="aapm-card aapm-calc">
-      <header className="aapm-calc__header">
-        <IconTile icon={tool.icon} hue={tool.hue} size="lg" shape="circle" />
-        <div className="min-w-0">
-          <h2 className="aapm-text-section m-0">{title}</h2>
-          <p className="aapm-text-support m-0">{tool.description}</p>
-        </div>
-      </header>
-      {formula ? (
-        <details className="aapm-calc__formula">
-          <summary><AapmIcon name="insight" />Lihat rumus</summary>
-          <code>{formula}</code>
-        </details>
-      ) : null}
-      <div className="aapm-calc__body">
-        <div className="aapm-calc__inputs">{inputs}</div>
-        <aside className="aapm-calc__result" data-hue={resultHue} data-empty={ready ? undefined : "true"} aria-live="polite">
-          <p className="aapm-text-overline m-0">Hasil</p>
-          <p className="aapm-calc__value">{ready ? value : "—"}</p>
-          {ready && note ? (
-            <p className="aapm-calc__note"><AapmIcon name={resultHue === "orange" ? "warning" : "check"} />{note}</p>
-          ) : !ready ? (
-            <p className="aapm-calc__note">{emptyNote}</p>
-          ) : null}
-          {ready && details.length ? (
-            <dl className="aapm-description-list aapm-calc__details">
-              {details.map(([label, detail]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{detail}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </aside>
+    <div className="aapm-field">
+      <label className="aapm-label" htmlFor={id}>
+        {field.label}
+        {field.optional ? <span className="aapm-calc__optional">opsional</span> : null}
+      </label>
+      <div className="aapm-input-group">
+        <Input
+          id={id}
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="any"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={`contoh ${field.example.toLocaleString("id-ID")}`}
+          className="pe-20"
+          aria-invalid={flagged || undefined}
+          aria-describedby={flagged ? hintId : undefined}
+        />
+        <span className="aapm-input-group__suffix aapm-calc__unit">{field.unit}</span>
       </div>
-    </article>
+      {flagged ? <p id={hintId} className="aapm-calc__hint">{field.allowZero ? "Isi 0 atau lebih." : "Isi angka di atas 0."}</p> : null}
+    </div>
   );
 }
 
-function Field({ label, value, onChange, unit, placeholder }) {
-  const id = React.useId();
+/** Where the result sits on the general reference, with the zone labels. */
+function ReferenceBar({ scale, value, text, verdict }) {
+  const span = scale.max - scale.min;
+  const position = Math.max(0, Math.min(100, ((value - scale.min) / span) * 100));
+  let from = scale.min;
+  const zones = scale.zones.map((zone) => {
+    const to = Math.min(zone.upTo, scale.max);
+    const width = ((to - from) / span) * 100;
+    from = to;
+    return { ...zone, width };
+  });
   return (
-    <div className="aapm-field">
-      <label className="aapm-label" htmlFor={id}>{label}</label>
-      <div className="aapm-input-group">
-        <Input id={id} type="number" inputMode="decimal" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={unit ? "pe-16" : undefined} />
-        {unit ? <span className="aapm-input-group__suffix aapm-calc__unit">{unit}</span> : null}
+    <div className="aapm-calc-scale" role="img" aria-label={`Posisi ${text} pada acuan umum: ${verdict}`}>
+      <div className="aapm-calc-scale__track">
+        {zones.map((zone) => <span key={zone.label} className="aapm-calc-scale__zone" data-tone={zone.tone} style={{ width: `${zone.width}%` }} />)}
+        <span className="aapm-calc-scale__marker" style={/** @type {React.CSSProperties} */ ({ "--position": position })}><i /></span>
+      </div>
+      <div className="aapm-calc-scale__labels" aria-hidden="true">
+        {zones.map((zone) => <span key={zone.label} style={{ width: `${zone.width}%` }}>{zone.label}</span>)}
       </div>
     </div>
   );
 }
 
-function FcrCalc() {
-  const [feed, setFeed] = useState("");
-  const [eggs, setEggs] = useState("");
-  const [eggW, setEggW] = useState("");
-  const f = parseFloat(feed) || 0;
-  const e = parseFloat(eggs) || 0;
-  const w = parseFloat(eggW) || 0;
-  const eggMassKg = (e * w) / 1000;
-  const ready = f > 0 && eggMassKg > 0;
-  const fcr = ready ? f / eggMassKg : 0;
-  return (
-    <CalculatorCard
-      title="Feed Conversion Ratio (FCR)"
-      formula="FCR = Total Feed (kg) ÷ Egg Mass (kg), Egg Mass = Total Eggs × Egg Weight ÷ 1000"
-    >
-      <Field label="Total Konsumsi Pakan" value={feed} onChange={setFeed} unit="kg" placeholder="contoh 120" />
-      <Field label="Jumlah Telur" value={eggs} onChange={setEggs} unit="butir" placeholder="contoh 850" />
-      <Field label="Berat Rata-rata Telur" value={eggW} onChange={setEggW} unit="gram" placeholder="contoh 60" />
-      <CalcResult
-        ready={ready}
-        value={fcr.toFixed(2)}
-        note={fcr < 2.2 ? "Sangat baik — efisien" : fcr < 2.6 ? "Baik" : "Perlu evaluasi feed & produksi"}
-        attention={fcr >= 2.6}
-        details={[["Egg mass", `${eggMassKg.toFixed(1)} kg`]]}
-      />
-    </CalculatorCard>
-  );
-}
+function CalcResult({ tool, values, reading }) {
+  const panelRef = useRef(null);
+  const [panelVisible, setPanelVisible] = useState(true);
+  const tone = TONE[reading.ready ? reading.tone : "info"];
+  const hue = reading.ready ? tone.hue : tool.hue;
 
-function EggMassCalc() {
-  const [hdp, setHdp] = useState("");
-  const [ew, setEw] = useState("");
-  const h = parseFloat(hdp) || 0;
-  const w = parseFloat(ew) || 0;
-  const mass = (h * w) / 100;
-  return (
-    <CalculatorCard title="Egg Mass per Ekor per Hari" formula="Egg Mass = HDP(%) × Egg Weight(g) ÷ 100">
-      <Field label="Hen Day Production" value={hdp} onChange={setHdp} unit="%" placeholder="contoh 90" />
-      <Field label="Berat Telur" value={ew} onChange={setEw} unit="gram" placeholder="contoh 60" />
-      <CalcResult
-        ready={h > 0 && w > 0}
-        value={`${mass.toFixed(1)} g/ekor/hari`}
-        note={mass >= 57 ? "Excellent — di atas standar layer komersial" : mass >= 50 ? "Baik" : "Di bawah target — evaluasi produksi & berat telur"}
-        attention={mass < 50}
-      />
-    </CalculatorCard>
-  );
-}
+  // Phones: when the result panel scrolls out of view, a slim bar keeps the
+  // reading in sight above the bottom navigation.
+  useEffect(() => {
+    const node = panelRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(([entry]) => setPanelVisible(entry.isIntersecting), { threshold: 0.2 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
-function UniformityCalc() {
-  const [avg, setAvg] = useState("");
-  const [within, setWithin] = useState("");
-  const [total, setTotal] = useState("");
-  const wi = parseFloat(within) || 0;
-  const t = parseFloat(total) || 0;
-  const u = t > 0 ? Math.round((wi / t) * 100) : 0;
-  return (
-    <CalculatorCard
-      title="Uniformity (%)"
-      formula="Uniformity = (Jumlah ayam dalam ±10% berat rata-rata ÷ Total ayam) × 100"
-    >
-      <Field label="Berat Rata-rata" value={avg} onChange={setAvg} unit="gram" placeholder="contoh 1500" />
-      <Field label="Ayam dalam ±10%" value={within} onChange={setWithin} unit="ekor" placeholder="contoh 80" />
-      <Field label="Total Ayam Ditimbang" value={total} onChange={setTotal} unit="ekor" placeholder="contoh 100" />
-      <CalcResult
-        ready={t > 0 && wi > 0}
-        value={`${u}%`}
-        note={u >= 85 ? "Excellent — uniformity tinggi" : u >= 75 ? "Baik" : "Rendah — perlu seleksi/culling"}
-        attention={u < 75}
-      />
-    </CalculatorCard>
-  );
-}
+  const missingText = reading.missing?.length
+    ? `Isi ${reading.missing.slice(0, -1).join(", ")}${reading.missing.length > 1 ? " dan " : ""}${reading.missing[reading.missing.length - 1]} untuk melihat hasil.`
+    : "";
 
-function MortalityCalc() {
-  const [dead, setDead] = useState("");
-  const [start, setStart] = useState("");
-  const d = parseFloat(dead) || 0;
-  const s = parseFloat(start) || 0;
-  const m = s > 0 ? (d / s) * 100 : 0;
   return (
-    <CalculatorCard
-      title="Mortality & Livability"
-      formula="Mortality = (Jumlah Mati ÷ Populasi Awal) × 100  |  Livability = 100 − Mortality"
-    >
-      <Field label="Jumlah Ayam Mati" value={dead} onChange={setDead} unit="ekor" placeholder="contoh 15" />
-      <Field label="Populasi Awal" value={start} onChange={setStart} unit="ekor" placeholder="contoh 5000" />
-      {/* Zero deaths is a real answer, so only the population must be above 0. */}
-      <CalcResult
-        ready={s > 0 && dead !== ""}
-        value={`${m.toFixed(2)}%`}
-        note={m < 1 ? "Baik — di bawah ambang normal" : m < 5 ? "Pantau — sedang" : "Tinggi — investigasi penyebab"}
-        attention={m >= 1}
-        details={[["Livability", `${(100 - m).toFixed(1)}%`]]}
-      />
-    </CalculatorCard>
-  );
-}
-
-function WaterFeedCalc() {
-  const [water, setWater] = useState("");
-  const [feed, setFeed] = useState("");
-  const w = parseFloat(water) || 0;
-  const f = parseFloat(feed) || 0;
-  const r = f > 0 ? w / f : 0;
-  return (
-    <CalculatorCard title="Water/Feed Ratio" formula="Ratio = Water Intake (ml) ÷ Feed Intake (g)  — Normal: 1.8–2.2">
-      <Field label="Konsumsi Air" value={water} onChange={setWater} unit="ml/ekor/hari" placeholder="contoh 220" />
-      <Field label="Konsumsi Pakan" value={feed} onChange={setFeed} unit="g/ekor/hari" placeholder="contoh 115" />
-      <CalcResult
-        ready={w > 0 && f > 0}
-        value={r.toFixed(2)}
-        note={r >= 1.8 && r <= 2.2 ? "Normal" : r > 2.2 ? "Tinggi — cek suhu/stres/kualitas air" : "Rendah — cek akses air & kualitas"}
-        attention={r < 1.8 || r > 2.2}
-      />
-    </CalculatorCard>
-  );
-}
-
-function VentilationCalc() {
-  const [birds, setBirds] = useState("");
-  const [weight, setWeight] = useState("");
-  const [temp, setTemp] = useState("");
-  const b = parseFloat(birds) || 0;
-  const w = parseFloat(weight) || 0;
-  const t = parseFloat(temp) || 0;
-  // Rule of thumb: minimum (cold) 0.014 and tunnel (hot) 0.07 m³/min per kg live weight; a 36″ fan moves ≈ 340 m³/min.
-  const kg = b * (w / 1000);
-  const minVent = kg * 0.014;
-  const tunnelVent = kg * 0.07;
-  const fansTunnel = Math.ceil(tunnelVent / 340);
-  return (
-    <CalculatorCard
-      title="Kebutuhan Ventilasi & Jumlah Fan"
-      formula="Min vent (m³/min) = berat total (kg) × 0.014 | Tunnel = × 0.07 | Fan 36″ ≈ 340 m³/min"
-    >
-      <Field label="Jumlah Ayam" value={birds} onChange={setBirds} unit="ekor" placeholder="contoh 5000" />
-      <Field label="Berat Rata-rata" value={weight} onChange={setWeight} unit="gram" placeholder="contoh 1800" />
-      <Field label="Suhu Lingkungan" value={temp} onChange={setTemp} unit="°C" placeholder="contoh 30" />
-      <CalcResult
-        ready={b > 0 && w > 0}
-        value={`${fansTunnel} fan 36″`}
-        note="Perkiraan; sesuaikan dengan static pressure & design kandang"
-        details={[
-          ["Berat total", `${kg.toFixed(0)} kg`],
-          ["Ventilasi minimum", `${minVent.toFixed(1)} m³/min`],
-          [t > 0 ? `Tunnel (${t}°C)` : "Tunnel", `${tunnelVent.toFixed(1)} m³/min`],
-        ]}
-      />
-    </CalculatorCard>
-  );
-}
-
-function RoiCalc() {
-  const [capex, setCapex] = useState("");
-  const [opexYr, setOpexYr] = useState("");
-  const [revYr, setRevYr] = useState("");
-  const c = parseFloat(capex) || 0;
-  const o = parseFloat(opexYr) || 0;
-  const r = parseFloat(revYr) || 0;
-  const margin = r - o;
-  const roi = c > 0 ? (margin / c) * 100 : 0;
-  return (
-    <CalculatorCard
-      title="ROI & Break Even Point"
-      formula="Gross Margin = Revenue − OPEX | BEP = CAPEX ÷ Margin | ROI = (Margin ÷ CAPEX) × 100"
-    >
-      <Field label="CAPEX" value={capex} onChange={setCapex} unit="Rp" placeholder="contoh 500000000" />
-      <Field label="OPEX per Tahun" value={opexYr} onChange={setOpexYr} unit="Rp" placeholder="contoh 800000000" />
-      <Field label="Revenue per Tahun" value={revYr} onChange={setRevYr} unit="Rp" placeholder="contoh 1100000000" />
-      <CalcResult
-        ready={c > 0 && o > 0 && r > 0}
-        value={`ROI ${roi.toFixed(0)}%`}
-        note={roi > 20 ? "Menguntungkan — layak investasi" : roi > 0 ? "Marginal — optimalkan biaya" : "Belum profit — evaluasi OPEX/revenue"}
-        attention={roi <= 20}
-        details={[
-          ["Break even", margin > 0 ? `${(c / margin).toFixed(1)} tahun` : "Tidak tercapai"],
-          ["Gross margin", `Rp ${margin.toLocaleString("id-ID")}`],
-        ]}
-      />
-    </CalculatorCard>
+    <>
+      <aside ref={panelRef} className="aapm-calc__result" data-hue={hue} data-empty={reading.ready ? undefined : "true"} aria-labelledby="calc-result-title">
+        <p id="calc-result-title" className="aapm-text-overline m-0">Hasil</p>
+        <p className="aapm-calc__value">
+          {reading.ready ? <CountUp key={tool.id} value={reading.value} format={tool.format} duration={500} /> : "—"}
+          {reading.ready && tool.unit ? <span className="aapm-calc__value-unit">{tool.unit}</span> : null}
+        </p>
+        {reading.ready ? (
+          <span className="aapm-calc__verdict" data-tone={reading.tone}><AapmIcon name={tone.icon} />{reading.verdict}</span>
+        ) : null}
+        {reading.ready && tool.scale ? <ReferenceBar scale={tool.scale} value={reading.value} text={reading.text} verdict={reading.verdict} /> : null}
+        {reading.ready && reading.details.length ? (
+          <dl className="aapm-description-list aapm-calc__details">
+            {reading.details.map(([label, detail]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{detail}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        <div className="aapm-calc__appi">
+          <AppiMascot mood={reading.ready ? tone.mood : "curious"} size={56} presence />
+          <p className="aapm-calc__appi-text">{reading.ready ? reading.note : missingText}</p>
+        </div>
+        {reading.ready ? (
+          <Button variant="secondary" size="sm" className="w-full" onClick={() => askAppi(appiPrompt(tool, values, reading))}>
+            <AapmIcon name="ai" />Tanya APPI soal hasil ini
+          </Button>
+        ) : null}
+        {tool.scale ? <p className="aapm-calc__source">Acuan umum layer komersial; sesuaikan dengan standar strain dan umur flock.</p> : null}
+      </aside>
+      <p className="aapm-visually-hidden" aria-live="polite">{reading.ready ? `${tool.name}: ${reading.text}${tool.unit ? ` ${tool.unit}` : ""}, ${reading.verdict}.` : ""}</p>
+      {reading.ready && !panelVisible ? (
+        <button type="button" className="aapm-calc-dock" data-hue={hue} onClick={() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+          <span className="aapm-calc-dock__label">{tool.name}</span>
+          <strong className="aapm-calc-dock__value">{reading.text}{tool.unit ? ` ${tool.unit}` : ""}</strong>
+          <span className="aapm-calc__verdict" data-tone={reading.tone}><AapmIcon name={tone.icon} />{reading.verdict}</span>
+          <AapmIcon name="chevronDown" className="aapm-calc-dock__go" />
+        </button>
+      ) : null}
+    </>
   );
 }

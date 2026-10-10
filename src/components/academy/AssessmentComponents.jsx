@@ -3,11 +3,13 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconButton, Segments } from "@/design-system";
 import { StatTile } from "@/components/academy/CourseElements";
 import { formatDuration } from "@/lib/learningPath";
+import AppiMascot from "@/components/appi/AppiMascot";
+import CountUp from "@/components/motion/CountUp";
 
 const KEYS = ["A", "B", "C", "D", "E", "F"];
 
 /** Slim assessment bar: exit, segmented progress, counter. */
-export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title, context, children }) {
+export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title = undefined, context = undefined, children = null }) {
   return (
     <header className="aapm-topbar aapm-focus__bar">
       <IconButton label="Keluar" icon="close" onClick={onExit} />
@@ -30,10 +32,11 @@ export function AssessmentBar({ onExit, total = 0, current = 0, states = [], lab
 
 /**
  * One question with A/B/C/D choice cards (radiogroup). `revealed` shows the
- * correct and chosen-wrong options after checking. The quiz page maps the
- * A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
+ * correct and chosen-wrong options after checking; `correctIndex` is the
+ * server's answer for that check, never a value the page holds. The quiz page
+ * maps the A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
  */
-export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, meta, children = null }) {
+export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, correctIndex = null, meta, children = null }) {
   if (!question) return null;
   const titleId = `question-${number}`;
   return (
@@ -49,7 +52,7 @@ export function QuizQuestion({ question, number, total, answer, onAnswer, reveal
       <div className="aapm-choices aapm-motion-stack" role="radiogroup" aria-labelledby={titleId}>
         {question.options.map((option, index) => {
           const selected = answer === index;
-          const result = revealed ? (index === question.correctIndex ? "correct" : selected ? "wrong" : undefined) : undefined;
+          const result = revealed ? (index === correctIndex ? "correct" : selected ? "wrong" : undefined) : undefined;
           return (
             <button
               key={`${option}-${index}`}
@@ -75,9 +78,9 @@ export function QuizQuestion({ question, number, total, answer, onAnswer, reveal
 }
 
 /** Short screen-reader sentence for a checked answer (feeds a live region). */
-export function checkAnnouncement(question, answer, run = 0) {
-  if (!question || answer === undefined) return "";
-  if (answer !== question.correctIndex) return `Belum tepat. Jawaban benar: ${question.options[question.correctIndex]}.`;
+export function checkAnnouncement(question, feedback, run = 0) {
+  if (!question || !feedback) return "";
+  if (!feedback.isCorrect) return `Belum tepat. Jawaban benar: ${question.options[feedback.correctIndex]}.`;
   return run >= 3 ? `Tepat sekali! ${run} benar beruntun.` : "Tepat sekali!";
 }
 
@@ -87,19 +90,26 @@ export function checkAnnouncement(question, answer, run = 0) {
  * correct answers from three on. The bar itself carries the tone; the
  * announcement goes through the page's persistent live region.
  */
-export function CheckFeedback({ question, answer, run = 0 }) {
-  if (!question || answer === undefined) return null;
-  const correct = answer === question.correctIndex;
+export function CheckFeedback({ question, feedback, run = 0 }) {
+  if (!question || !feedback) return null;
+  const correct = feedback.isCorrect;
+  // A run of three or more is an APPI moment: the mascot cheers in place of
+  // the check mark, which stays as a small badge so the verdict never
+  // depends on the character alone.
+  const streak = correct && run >= 3;
   return (
-    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"}>
-      <span className="aapm-check-feedback__icon" aria-hidden="true"><AapmIcon name={correct ? "glyphCheck" : "close"} /></span>
+    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"} data-streak={streak ? "true" : undefined}>
+      <span className="aapm-check-feedback__icon" aria-hidden="true">
+        {streak ? <AppiMascot mood="cheer" size={52} decor={false} /> : null}
+        <AapmIcon name={correct ? "glyphCheck" : "close"} />
+      </span>
       <div className="aapm-check-feedback__body">
         <p className="aapm-check-feedback__title">
           {correct ? "Tepat sekali!" : "Belum tepat"}
           {correct && run >= 3 ? <span className="aapm-check-feedback__run"><AapmIcon name="streak" />{run} benar beruntun</span> : null}
         </p>
-        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[question.correctIndex]}</strong></p> : null}
-        {question.explanation ? <p className="aapm-check-feedback__text">{question.explanation}</p> : null}
+        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[feedback.correctIndex]}</strong></p> : null}
+        {feedback.explanation ? <p className="aapm-check-feedback__text">{feedback.explanation}</p> : null}
       </div>
     </div>
   );
@@ -139,23 +149,32 @@ export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagge
 }
 
 /**
- * Result screen: badge, headline, stat tiles; actions are passed as children.
- * With `duration` (ms) the third tile shows the time taken instead of the
- * passing grade, like a lesson-complete screen.
+ * Result screen (lesson-complete style): APPI reacts to the outcome over a
+ * sunburst, the headline, then stat tiles whose numbers count up; actions are
+ * passed as children. With `duration` (ms) the third tile shows the time
+ * taken instead of the passing grade.
  */
-export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title, description, children }) {
+export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title = undefined, description = undefined, children = null }) {
   const percent = total ? Math.round((score / total) * 100) : 0;
+  const perfect = passed && total > 0 && score === total;
+  const outcome = perfect ? "perfect" : passed ? "passed" : "retry";
+  const mood = { perfect: "proud", passed: "cheer", retry: "wink" }[outcome];
+  const headline = { perfect: "Sempurna!", passed: "Luar biasa!", retry: "Hampir sampai" }[outcome];
   return (
     <div className="aapm-quiz">
-      <div className="aapm-result" data-hue={passed ? "green" : "orange"}>
-        <div className="aapm-result__badge"><AapmIcon name={passed ? "exam" : "refresh"} /></div>
+      <div className="aapm-result" data-hue={passed ? "green" : "orange"} data-outcome={outcome}>
+        <div className="aapm-result__badge aapm-result__badge--appi">
+          {passed ? <span className="aapm-result__rays" aria-hidden="true" /> : null}
+          <span className="aapm-result__glow" aria-hidden="true" />
+          <AppiMascot mood={mood} size="hero" />
+        </div>
         {/* The assessment bar already holds the screen's h1 (quiz or exam title). */}
-        <h2 className="aapm-result__title">{title || (passed ? "Luar biasa!" : "Hampir sampai")}</h2>
-        <p className="aapm-result__text">{description || (passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi.`)}</p>
+        <h2 className="aapm-result__title">{title || headline}</h2>
+        <p className="aapm-result__text">{description || (perfect ? "Semua jawaban benar. Anda siap untuk modul berikutnya." : passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi — APPI yakin Anda bisa.`)}</p>
       </div>
       <div className="aapm-stat-grid aapm-stat-grid--result">
-        <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={`${percent}%`} />
-        <StatTile icon="check" hue="blue" label="Jawaban benar" value={`${score}/${total}`} />
+        <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={<CountUp value={percent} format={(value) => `${Math.round(value)}%`} duration={900} />} />
+        <StatTile icon="check" hue="blue" label="Jawaban benar" value={<><CountUp value={score} duration={900} />/{total}</>} />
         {duration !== undefined
           ? <StatTile icon="timer" hue="violet" label="Waktu" value={formatDuration(duration)} />
           : <StatTile icon="flag" hue="violet" label="Nilai lulus" value={`${passingGrade}%`} />}
@@ -165,8 +184,11 @@ export function AssessmentResult({ passed = false, score = 0, total = 0, passing
   );
 }
 
-/** Answer review after submission. */
-export function AnswerReview({ questions = [], answers = {} }) {
+/**
+ * Answer review after submission. Each item is a checked attempt question
+ * with the server's `feedback`; the final exam never renders this.
+ */
+export function AnswerReview({ questions = [] }) {
   return (
     <details className="aapm-card aapm-disclosure mt-6">
       <summary className="aapm-card__header">
@@ -178,13 +200,13 @@ export function AnswerReview({ questions = [], answers = {} }) {
       </summary>
       <ol className="aapm-card__content m-0 grid list-none gap-2 p-5 pt-0">
         {questions.map((item, index) => {
-          const correct = answers[index] === item.correctIndex;
+          const correct = Boolean(item.feedback?.isCorrect);
           return (
             <li key={item.id || index} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-[var(--aapm-primitive-radius-panel)] bg-[var(--aapm-semantic-surface-subtle)] p-3">
               <span className="aapm-icon-tile" data-size="xs" data-shape="circle" data-hue={correct ? "green" : "rose"}><AapmIcon name={correct ? "check" : "closeCircle"} /></span>
               <div className="min-w-0">
                 <p className="m-0 text-body font-medium">{index + 1}. {item.question}</p>
-                <p className="m-0 text-caption text-muted-foreground">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.correctIndex]}`}</p>
+                <p className="m-0 text-caption text-muted-foreground">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.feedback?.correctIndex]}`}</p>
               </div>
             </li>
           );

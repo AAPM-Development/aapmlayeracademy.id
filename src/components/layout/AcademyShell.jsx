@@ -119,6 +119,7 @@ export default function AcademyShell() {
         <Outlet />
       ) : (
         <AppShell
+          className={isAiWorkspace ? "aapm-app--chat" : undefined}
           collapsed={collapsed}
           label="Navigasi Academy"
           sidebar={navigation(false)}
@@ -144,7 +145,7 @@ export default function AcademyShell() {
             <BottomNav
               items={[
                 ...academyBottomNavigation,
-                { label: "Menu", icon: "menu", onClick: () => setSheetOpen(true) },
+                { label: "Menu", icon: "menu", expanded: sheetOpen, onClick: () => setSheetOpen(true) },
               ]}
             />
           )}

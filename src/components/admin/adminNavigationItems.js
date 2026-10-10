@@ -5,12 +5,15 @@ export const adminNavigationGroups = [
       { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
       { to: "/admin/courses", label: "Course", icon: "course" },
       { to: "/admin/learners", label: "Peserta", icon: "graduation" },
+      { to: "/admin/certificates", label: "Sertifikat", icon: "certificate" },
       { to: "/admin/users", label: "Pengguna", icon: "users" },
     ],
   },
   {
     label: "Ruang kerja",
     items: [
+      { to: "/admin/curriculum/policies", label: "Kebijakan kurikulum", icon: "roadmap" },
+      { to: "/admin/curriculum/final-bank", label: "Bank ujian akhir", icon: "quiz" },
       { to: "/admin/ai-settings", label: "Pengaturan APPI", icon: "ai", accent: "ai" },
       { to: "/admin/workspace-status", label: "Status ruang kerja", icon: "workspace" },
     ],
@@ -20,9 +23,11 @@ export const adminNavigationGroups = [
 export const adminPrimaryNavigation = adminNavigationGroups[0].items;
 export const adminSecondaryNavigation = adminNavigationGroups[1].items;
 
-// The bottom bar shows the primary group under the same names as the sidebar,
-// so a phone user meets one vocabulary, not two.
-export const adminBottomNavigation = adminPrimaryNavigation;
+// The bottom bar shows the most used admin destinations under the same names
+// as the sidebar, so a phone user meets one vocabulary, not two. Four items
+// plus Menu keep every label whole on a 375px phone; the rest live in Menu.
+const bottomDestinations = ["/admin", "/admin/courses", "/admin/learners", "/admin/users"];
+export const adminBottomNavigation = adminPrimaryNavigation.filter((item) => bottomDestinations.includes(item.to));
 
 export const adminPlannedCapabilities = [
   {
@@ -52,6 +57,7 @@ export function getAdminNavigationMeta(pathname = "/admin") {
 
 // Mirrors the admin routes in App.jsx; anything else is the in-shell 404.
 const knownAdminPaths = [
+  /^\/admin\/curriculum\/(?:policies|final-bank)\/?$/,
   /^\/admin\/?$/,
   /^\/admin\/courses(?:\/[^/]+(?:\/modules\/[^/]+)?)?\/?$/,
   /^\/admin\/learners(?:\/[^/]+)?\/?$/,

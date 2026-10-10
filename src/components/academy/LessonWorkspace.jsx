@@ -2,6 +2,9 @@ import React from "react";
 import { Alert, Badge, CheckboxField, IconTile } from "@/design-system";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
+import LessonVideoPlayer from "./LessonVideoPlayer";
+import { trustedVideoSource } from "@/lib/lessonVideoSource";
+export { trustedVideoSource } from "@/lib/lessonVideoSource";
 
 export const lessonSections = [
   { id: "content", label: "Materi", icon: "lesson" },
@@ -17,57 +20,6 @@ export const lessonSections = [
     icon: "practice",
   },
 ];
-
-function safeInternalVideoPath(value) {
-  if (typeof value !== "string") return null;
-  const path = value.trim();
-  if (!path.startsWith("/") || path.startsWith("//")) return null;
-  if (path.includes("\\") || /(?:^|\/)\.\.?($|\/)/.test(path)) return null;
-  if (!/^\/(?:assets|media|uploads)(?:\/|$)/.test(path)) return null;
-  return /\.(mp4|webm|ogg|m4v)(?:[?#]|$)/i.test(path) ? path : null;
-}
-
-export function trustedVideoSource(value) {
-  const internalPath = safeInternalVideoPath(value);
-  if (internalPath) return { kind: "file", src: internalPath };
-
-  try {
-    const source = new URL(value);
-    if (source.protocol !== "https:" || !source.hostname || source.username || source.password) {
-      return null;
-    }
-    const hostname = source.hostname.replace(/^www\./, "").toLowerCase();
-
-    if (hostname === "youtu.be") {
-      const id = source.pathname.split("/").filter(Boolean)[0];
-      return id && /^[A-Za-z0-9_-]{6,}$/.test(id)
-        ? { kind: "embed", src: `https://www.youtube-nocookie.com/embed/${id}?rel=0` }
-        : null;
-    }
-
-    if (hostname === "youtube.com" || hostname === "m.youtube.com" || hostname === "youtube-nocookie.com") {
-      const id =
-        source.searchParams.get("v") ||
-        source.pathname.match(/^\/(?:embed|shorts)\/([^/?#]+)/)?.[1];
-      return id && /^[A-Za-z0-9_-]{6,}$/.test(id)
-        ? { kind: "embed", src: `https://www.youtube-nocookie.com/embed/${id}?rel=0` }
-        : null;
-    }
-
-    if (hostname === "vimeo.com" || hostname.endsWith(".vimeo.com")) {
-      const id = source.pathname.match(/\/(\d+)(?:\/|$)/)?.[1];
-      return id ? { kind: "embed", src: `https://player.vimeo.com/video/${id}` } : null;
-    }
-
-    if (/\.(mp4|webm|ogg|m4v)$/i.test(source.pathname)) {
-      return { kind: "file", src: source.toString() };
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
 
 export function LessonMedia({ module = null } = {}) {
   const [loadedEmbedSource, setLoadedEmbedSource] = React.useState("");
@@ -90,20 +42,19 @@ export function LessonMedia({ module = null } = {}) {
   if (source) {
     // An embed can be blocked (network, extensions, region); the original link
     // is always one tap away instead of a dead grey frame.
-    const provider = /vimeo/.test(source.src) ? "Vimeo" : "YouTube";
+    const provider = source.provider || (/vimeo/.test(source.src) ? "Vimeo" : "YouTube");
+    const youtubeId = source.kind === "embed" && provider === "YouTube"
+      ? new URL(source.src).pathname.split("/").pop()
+      : null;
+    if (source.kind === "link") {
+      return <Alert tone="info" icon="video" title="Video Dailymotion" description={<a href={source.src} target="_blank" rel="noopener noreferrer" className="aapm-link">Buka di Dailymotion<AapmIcon name="externalLink" /><span className="aapm-visually-hidden"> (tab baru)</span></a>} />;
+    }
+    if (source.kind === "file" || youtubeId) {
+      return <LessonVideoPlayer key={source.src} src={source.src} videoId={youtubeId} title={`Video ${module.title || "materi"}`} fallbackUrl={mediaUrl} />;
+    }
     return (
       <>
       <div className="aapm-lesson-media">
-        {source.kind === "file" ? (
-          <video
-            className="absolute inset-0 h-full w-full object-contain"
-            controls
-            playsInline
-            preload="metadata"
-            src={source.src}
-          />
-        ) : (
-          <>
             {loadedEmbedSource !== source.src && <div className="aapm-lesson-media__loading" aria-live="polite"><span className="aapm-spinner" aria-hidden="true" />Memuat video…</div>}
             <iframe
               className="absolute inset-0 h-full w-full"
@@ -115,8 +66,6 @@ export function LessonMedia({ module = null } = {}) {
               allowFullScreen
               onLoad={() => setLoadedEmbedSource(source.src)}
             />
-          </>
-        )}
       </div>
       {source.kind === "embed" ? (
         <p className="aapm-lesson-media__fallback">
@@ -136,7 +85,7 @@ export function LessonMedia({ module = null } = {}) {
         tone="warning"
         icon="shieldWarning"
         title="Tautan video tidak dapat ditampilkan"
-        description="Untuk menjaga keamanan lesson, gunakan YouTube, Vimeo, atau file video HTTPS/internal (MP4, WebM, OGG, M4V)."
+        description="Gunakan YouTube, Vimeo, Google Drive, Loom, URL embed Dailymotion dengan Player ID, atau file video HTTPS/internal (MP4, WebM, OGG, M4V)."
       />
     );
   }
