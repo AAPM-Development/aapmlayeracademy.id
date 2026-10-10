@@ -76,7 +76,7 @@ export function getModuleState(module, modules = [], completedSet = new Set()) {
   if (module.available === true || module.state === "available") return "available";
 
   const firstIncomplete = sortModules(modules).find((item) => !completedSet.has(Number(item.moduleNumber)));
-  return Number(firstIncomplete?.moduleNumber) === Number(module.moduleNumber) ? "current" : "locked";
+  return Number(firstIncomplete?.moduleNumber) === Number(module.moduleNumber) ? "current" : "available";
 }
 
 export function getLevelProgress(levelNumber, modules = [], completedSet = new Set()) {

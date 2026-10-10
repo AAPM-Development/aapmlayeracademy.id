@@ -15,8 +15,6 @@ const AAPM_ASSESSMENT_POLICY_VERSION = 'academy-v1';
 const AAPM_ASSESSMENT_SCHEMA_KEY = '20261015_assessment_authority_v1';
 const AAPM_MODULE_PASS_PERCENT = 70;
 const AAPM_FINAL_PASS_PERCENT = 80;
-const AAPM_FINAL_ATTEMPT_LIMIT = 3;
-const AAPM_FINAL_ATTEMPT_WINDOW_SECONDS = 86400;
 const AAPM_ATTEMPT_TTL_SECONDS = 604800;
 const AAPM_STUDY_INCREMENT_MAX_MINUTES = 15;
 
@@ -695,9 +693,9 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     $active = null;
     $passed = false;
     $lastSubmittedFailed = false;
-    $recentStarts = [];
     foreach ($finalAttempts as $attempt) {
-        // Status follows the active generation; the rolling attempt limit counts every generation.
+        // Status follows the active generation. Earlier tries remain evidence,
+        // and never impose a waiting period on the learner.
         $isCurrent = (int) ($attempt['academic_generation'] ?? 1) === $generation;
         if ($isCurrent && $attempt['status'] === 'in_progress') {
             $active = $attempt;
@@ -708,16 +706,6 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
             }
             $lastSubmittedFailed = (int) $attempt['passed'] !== 1;
         }
-        if ((string) $attempt['started_at'] >= gmdate('Y-m-d H:i:s', time() - AAPM_FINAL_ATTEMPT_WINDOW_SECONDS)) {
-            $recentStarts[] = (string) $attempt['started_at'];
-        }
-    }
-    rsort($recentStarts);
-    $remaining = max(0, AAPM_FINAL_ATTEMPT_LIMIT - count($recentStarts));
-    $nextEligibleAt = null;
-    if ($remaining === 0 && $recentStarts !== []) {
-        $oldestCounted = $recentStarts[AAPM_FINAL_ATTEMPT_LIMIT - 1];
-        $nextEligibleAt = gmdate('Y-m-d H:i:s', strtotime($oldestCounted . ' UTC') + AAPM_FINAL_ATTEMPT_WINDOW_SECONDS);
     }
 
     if ($passed) {
@@ -746,8 +734,8 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
         ],
         'final' => [
             'status' => $finalStatus,
-            'attemptsRemaining' => $remaining,
-            'nextEligibleAt' => $nextEligibleAt,
+            'attemptsRemaining' => null,
+            'nextEligibleAt' => null,
             'activeAttemptId' => $active !== null ? (string) $active['public_id'] : null,
         ],
     ];
@@ -772,14 +760,15 @@ function aapm_final_eligibility_payload(PDO $pdo, int $userId): array
         'attemptsRemaining' => $snapshot['final']['attemptsRemaining'],
         'nextEligibleAt' => $snapshot['final']['nextEligibleAt'],
         'activeAttemptId' => $snapshot['final']['activeAttemptId'],
-        'attemptLimit' => AAPM_FINAL_ATTEMPT_LIMIT,
-        'attemptWindowHours' => AAPM_FINAL_ATTEMPT_WINDOW_SECONDS / 3600,
+        'attemptLimit' => null,
+        'attemptWindowHours' => null,
+        'retriesUnlimited' => true,
     ]);
 }
 
 /**
  * POST /api/assessments/attempts. Idempotent per request key; resumes an active
- * attempt without consuming one; enforces final prerequisites and the 24-hour limit.
+ * attempt without creating another; enforces certificate preparation prerequisites.
  *
  * @return array{attempt:array,created:bool}
  */
@@ -861,13 +850,6 @@ function aapm_assessment_start(array $user, array $input): array
                 aapm_assessment_fail(409, 'final_prerequisites_unmet', 'Selesaikan semua modul wajib untuk membuka ujian akhir.', [
                     'missingModuleNumbers' => $snapshot['eligibility']['missingModuleNumbers'],
                     'reason' => $snapshot['eligibility']['reason'],
-                ]);
-            }
-            if ($snapshot['final']['attemptsRemaining'] < 1) {
-                aapm_tx_rollback($pdo);
-                aapm_assessment_fail(429, 'assessment_rate_limited', 'Batas percobaan ujian akhir telah tercapai. Coba lagi nanti.', [
-                    'nextEligibleAt' => $snapshot['final']['nextEligibleAt'],
-                    'attemptLimit' => AAPM_FINAL_ATTEMPT_LIMIT,
                 ]);
             }
         }

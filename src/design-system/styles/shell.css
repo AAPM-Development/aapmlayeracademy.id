@@ -488,6 +488,8 @@ html[data-shell="focus"] #root {
   overscroll-behavior: none;
 }
 .aapm-focus {
+  position: fixed;
+  inset: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100svh;

@@ -125,7 +125,7 @@ export default function FinalExam() {
           passingGrade={result.passingGrade}
           title={passed ? "Anda lulus ujian akhir!" : "Ujian akhir belum lulus"}
           description={passed
-            ? "Hasil ini sudah tercatat. Penerbitan sertifikat Expert belum tersedia di halaman ini."
+            ? "Hasil lulus sudah tercatat. Buka Sertifikasi untuk melihat dan mengklaim sertifikat Expert yang memenuhi syarat."
             : "Tinjau materi yang perlu diulang. Pertanyaan dan kunci jawaban tidak ditampilkan pada ujian akhir."}
         >
           {Array.isArray(result.objectives) && result.objectives.length ? (
@@ -154,22 +154,19 @@ export default function FinalExam() {
   if (!attempt) {
     const finished = eligibility?.finalStatus === "passed";
     const prerequisitesMissing = eligibility && !eligibility.eligible && !eligibility.activeAttemptId;
-    const limitReached = eligibility && eligibility.attemptsRemaining < 1 && !eligibility.activeAttemptId;
     const missing = (eligibility?.missingModuleNumbers ?? []).join(", ");
     const back = <Button asChild variant="ghost" size="lg"><Link to="/"><AapmIcon name="arrowLeft" />Kembali ke beranda</Link></Button>;
     let intro;
     if (finished) {
       intro = { mood: "proud", title: "Ujian akhir sudah lulus", text: "Hasil ujian Anda sudah tercatat. Lihat status sertifikat Expert Anda.", action: <Button asChild variant="learn" size="lg"><Link to="/certification"><AapmIcon name="certificate" />Status sertifikat</Link></Button> };
     } else if (prerequisitesMissing) {
-      intro = { mood: "curious", title: "Ujian akhir belum terbuka", text: `Selesaikan kuis atau aktivitas belajar pada modul berikut: ${missing || "—"}.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Buka jalur belajar</Link></Button> };
-    } else if (limitReached) {
-      intro = { mood: "concerned", title: "Batas percobaan tercapai", text: `Coba lagi setelah ${eligibility.nextEligibleAt ? new Date(eligibility.nextEligibleAt).toLocaleString("id-ID") : "beberapa saat"}. Sambil menunggu, ulas lagi modul yang sulit.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Jalur belajar</Link></Button> };
+      intro = { mood: "curious", title: "Persiapkan sertifikasi sesuai ritme Anda", text: `Untuk sertifikasi Expert, catat hasil belajar pada modul ${missing || "—"}. Materi dan kuis modul bisa dibuka dalam urutan pilihan Anda, serta diulang kapan saja.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Pilih materi belajar</Link></Button> };
     } else {
       const resume = Boolean(eligibility?.activeAttemptId);
       intro = {
         mood: resume ? "talk" : "wink",
         title: resume ? "Ujian Anda belum selesai" : "Siap mengikuti ujian akhir?",
-        text: `Nilai lulus ${FINAL_PASSING_GRADE}%.${eligibility?.attemptsRemaining !== undefined ? ` Kesempatan tersisa: ${eligibility.attemptsRemaining} dari ${eligibility.attemptLimit}.` : ""} Ujian dikerjakan tanpa bantuan APPI.`,
+        text: `Nilai lulus ${FINAL_PASSING_GRADE}%. Anda bisa mencoba ulang tanpa batas harian. Hasil lulus sebelumnya tetap tersimpan.`,
         action: <Button variant="learn" size="lg" loading={busy} onClick={begin}>{resume ? "Lanjutkan ujian" : "Mulai ujian"}<AapmIcon name="arrowRight" /></Button>,
       };
     }

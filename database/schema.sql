@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS ai_chat_messages (
   conversation_id BIGINT UNSIGNED NOT NULL,
   role VARCHAR(16) NOT NULL,
   content MEDIUMTEXT NOT NULL,
+  response_details TEXT NULL,
   provider VARCHAR(80) NULL,
   model VARCHAR(190) NULL,
   used_fallback TINYINT(1) NOT NULL DEFAULT 0,

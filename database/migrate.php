@@ -348,6 +348,12 @@ function migration_expected_columns(): array
             'sqliteType' => 'TEXT NULL',
             'mysqlType' => 'DATETIME NULL',
         ],
+        [
+            'table' => 'ai_chat_messages',
+            'name' => 'response_details',
+            'sqliteType' => 'TEXT NULL',
+            'mysqlType' => 'TEXT NULL',
+        ],
     ];
 }
 

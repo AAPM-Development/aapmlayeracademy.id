@@ -16,7 +16,7 @@ import { askAppi } from "@/lib/askAppi";
 import AppiMascot from "@/components/appi/AppiMascot";
 import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
-import { lessonNavigation } from "@/lib/lessonNavigation";
+import { lessonNavigation, scrollLessonSection } from "@/lib/lessonNavigation";
 
 const OUTLINE_KEY = "aapm-lesson-outline";
 const hasText = (value) => typeof value === "string" && value.trim().length > 0;
@@ -167,7 +167,7 @@ export default function ModuleDetail() {
 
   const jumpToSection = (section) => {
     setActiveSection(section);
-    document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollLessonSection(mainRef.current, document.getElementById(section), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
   };
 
   if (modulesError || progressError) {
@@ -299,7 +299,7 @@ export default function ModuleDetail() {
                 <CheckboxField
                   className="aapm-practice-done"
                   label="Saya sudah mengerjakan praktik ini"
-                  description={flow.practicalDone ? "Tercatat di progress dan poin belajar Anda." : "Centang setelah tugas di kandang selesai. Bisa dibatalkan."}
+                  description={flow.practicalDone ? "Praktik tercatat. Hasil kuis menentukan penyelesaian modul berkuis." : "Catat setelah dikerjakan. Praktik bisa menyusul dan bukan syarat membuka kuis."}
                   checked={flow.practicalDone}
                   disabled={practice.isPending}
                   onChange={(event) => togglePracticeDone(event.target.checked)}

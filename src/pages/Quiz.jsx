@@ -232,6 +232,7 @@ export default function Quiz() {
             <span className="aapm-chip" data-tone="outline"><AapmIcon name="check" />Umpan balik langsung</span>
           </div>
           <p className="aapm-exam-intro__text">Pilih jawaban, tekan Periksa, lalu baca penjelasannya sebelum lanjut. Jawaban yang sudah diperiksa tetap tersimpan saat Anda kembali.</p>
+          <p className="aapm-exam-intro__text">Belajar sesuai ritme Anda. Kuis bisa diulang kapan saja; mencoba ulang tidak menghapus hasil lulus sebelumnya.</p>
           {previousProgress?.quizTotal ? <p className="aapm-exam-intro__eyebrow">Skor sebelumnya {Math.round(((previousProgress.quizScore || 0) / previousProgress.quizTotal) * 100)}%</p> : null}
           <div className="aapm-exam-intro__actions">
             <Button variant="learn" size="lg" loading={busy} onClick={begin}>{startState === "loading" ? "Menyiapkan kuis…" : "Mulai kuis"}<AapmIcon name="arrowRight" /></Button>

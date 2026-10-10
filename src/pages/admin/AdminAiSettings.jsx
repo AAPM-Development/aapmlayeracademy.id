@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import {
   Accordion,
@@ -160,7 +160,8 @@ function ModelPicker({ value, models, discoveryNote, discoveryAttempted, isDisco
                       {modelItems.map((model) => (
                         <CommandItem
                           key={model.id}
-                          value={`${model.id} ${model.label || ""}`}
+                          value={model.id}
+                          keywords={[model.label || model.id]}
                           onSelect={() => {
                             onChange(model.id);
                             setOpen(false);
@@ -214,6 +215,7 @@ export default function AdminAiSettings() {
   const [discoveryAttempted, setDiscoveryAttempted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const discoveryEpoch = useRef(0);
 
   const presets = settings?.presets?.length ? settings.presets : fallbackPresets;
   const providers = settings?.providers || [];
@@ -222,21 +224,30 @@ export default function AdminAiSettings() {
   const currentPreset = useMemo(() => presetFor(form.type, presets), [form.type, presets]);
 
   useEffect(() => {
-    if (!settings || dirty) return;
-    const activeId = settings.activeProviderId || settings.providers?.[0]?.id || "";
+    if (!settings || dirty || isCreating) return;
+    const activeId = settings.providers?.some((item) => item.id === selectedId) ? selectedId : settings.activeProviderId || settings.providers?.[0]?.id || "";
     const provider = settings.providers?.find((item) => item.id === activeId) || settings.providers?.[0];
     setSelectedId(activeId);
     setIsCreating(!provider);
     setForm(newForm(presetFor(provider?.type || "openrouter", presets), provider));
-  }, [settings, dirty, presets]);
+  }, [settings, dirty, presets, selectedId, isCreating]);
+
+  const resetDiscovery = () => {
+    discoveryEpoch.current += 1;
+    setDiscoveredModels([]);
+    setDiscoveryNote("");
+    setDiscoveryAttempted(false);
+  };
 
   const updateForm = (key, value) => {
+    if (["baseUrl", "apiKey", "clearApiKey", "modelsPath", "authMode", "allowLocal"].includes(key)) resetDiscovery();
     setForm((previous) => ({ ...previous, [key]: value }));
     setDirty(true);
     setTestResult(null);
   };
 
   const selectProvider = (provider) => {
+    resetDiscovery();
     setSelectedId(provider.id);
     setIsCreating(false);
     setForm(newForm(presetFor(provider.type, presets), provider));
@@ -248,6 +259,7 @@ export default function AdminAiSettings() {
   };
 
   const createProvider = (type = "custom-openai") => {
+    resetDiscovery();
     const preset = presetFor(type, presets);
     setSelectedId("");
     setIsCreating(true);
@@ -294,12 +306,14 @@ export default function AdminAiSettings() {
   });
 
   const discoverCurrentModels = async () => {
+    const epoch = ++discoveryEpoch.current;
     let config;
     try { config = configPayload(); } catch (exception) { toast({ variant: "destructive", title: "Konfigurasi belum valid", description: exception.message }); return; }
     setDiscoveryAttempted(true);
     setDiscoveryNote("Menghubungi endpoint provider…");
     try {
       const resultModels = await discover.mutateAsync({ config });
+      if (discoveryEpoch.current !== epoch) return;
       setDiscoveredModels(resultModels.models || []);
       setDiscoveryNote(resultModels.note || "");
       toast({
@@ -307,6 +321,7 @@ export default function AdminAiSettings() {
         description: resultModels.note || "Periksa endpoint models atau masukkan ID model manual.",
       });
     } catch (exception) {
+      if (discoveryEpoch.current !== epoch) return;
       setDiscoveredModels([]);
       setDiscoveryNote(exception.message || "Endpoint model belum dapat dijangkau dari server.");
       toast({ variant: "destructive", title: "Model belum dapat dibaca", description: exception.message || "Periksa endpoint dan autentikasi provider." });
@@ -371,6 +386,17 @@ export default function AdminAiSettings() {
     } catch (exception) { toast({ variant: "destructive", title: "Provider belum dihapus", description: exception.message }); }
   };
 
+  const importServerOpenAi = async () => {
+    try {
+      const result = await save.mutateAsync({ action: "importServerOpenAi" });
+      resetDiscovery();
+      selectProvider(result.providers.find((provider) => provider.id === "openai-server"));
+      toast({ title: "OpenAI terhubung ke Pengaturan APPI", description: "Kunci tersimpan terenkripsi di server. Pilih Baca model untuk memilih modelnya." });
+    } catch (exception) {
+      toast({ variant: "destructive", title: "Kunci server belum diintegrasikan", description: exception.message });
+    }
+  };
+
   if (isLoading) return <AdminPageFrame title="Pengaturan APPI" description="Menyiapkan registry provider APPI."><AdminLoading label="Memuat provider AI…" /></AdminPageFrame>;
   if (error) return <AdminPageFrame title="Pengaturan APPI" description="Kelola koneksi AI global dan kompatibilitas local."><AdminError error={error} onRetry={refetch} /></AdminPageFrame>;
 
@@ -385,9 +411,9 @@ export default function AdminAiSettings() {
   return (
     <AdminPageFrame
       title="Pengaturan APPI"
-      description="Satu kontrak untuk hosted API, gateway internal, jaringan privat, dan local AI. Provider aktif menjadi default global APPI."
+      description="Pilih koneksi dan model yang digunakan APPI. Perubahan provider aktif berlaku bagi peserta yang memakai pengaturan global."
       actions={(
-        <Button type="button" variant="outline" onClick={() => createProvider()} disabled={isLocked}>
+        <Button type="button" variant="outline" onClick={() => createProvider()} disabled={isLocked || isBusy}>
           <AapmIcon name="add" />
           Tambah provider
         </Button>
@@ -396,6 +422,10 @@ export default function AdminAiSettings() {
       {isLocked ? (
         <Alert tone="warning" title="Registry dikunci konfigurasi server." description="Provider aktif dikelola dari private cPanel config. Admin tetap dapat melihat status dan menjalankan test." className="mb-5" />
       ) : null}
+      <Alert tone={settings.serverOpenAiKeyAvailable ? "info" : "warning"} title={settings.serverOpenAiKeyAvailable ? "Kunci OpenAI server tersedia" : "Kunci OpenAI belum tersedia di lingkungan ini"} description={settings.serverOpenAiKeyAvailable ? "Gunakan kunci yang sudah disiapkan tanpa menyalin atau menampilkannya. Setelah integrasi, koneksi dan model bisa diatur di halaman ini." : "Kunci lokal tidak ikut masuk ke staging atau produksi. Siapkan OPENAI_API_KEY atau openai_api_key pada konfigurasi privat server."} className="mb-5">
+        {settings.serverOpenAiKeyAvailable ? <Button type="button" variant="outline" onClick={importServerOpenAi} disabled={isBusy || !settings.serverKeyEncryptionReady} className="mt-3">{providers.some((provider) => provider.id === "openai-server") ? "Perbarui dari kunci OpenAI server" : "Integrasikan kunci OpenAI server"}</Button> : null}
+        {settings.serverOpenAiKeyAvailable && !settings.serverKeyEncryptionReady ? <p className="aapm-field-hint">Penyimpanan terenkripsi belum siap. Isi ai_settings_encryption_key di konfigurasi privat server.</p> : null}
+      </Alert>
       {!isLocked && !keyStorageReady ? (
         <Alert tone="warning" title="Penyimpanan key belum siap di server." description="Isi ai_settings_encryption_key di konfigurasi server privat sebelum menyimpan API key. Baca model dan Simpan & test tetap bisa dicoba dengan key yang diketik." className="mb-5" />
       ) : null}
@@ -414,6 +444,7 @@ export default function AdminAiSettings() {
               <button
                 type="button"
                 key={provider.id}
+                disabled={isBusy}
                 className="aapm-provider-item"
                 data-selected={selectedId === provider.id && !isCreating ? "true" : undefined}
                 onClick={() => selectProvider(provider)}
@@ -462,6 +493,7 @@ export default function AdminAiSettings() {
                 <Select
                   value={form.type}
                   onValueChange={(value) => {
+                    resetDiscovery();
                     const preset = presetFor(value, presets);
                     setForm((previous) => ({ ...newForm(preset), id: previous.id, isDefault: previous.isDefault }));
                     setDirty(true);

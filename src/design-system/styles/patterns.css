@@ -404,9 +404,16 @@
 .aapm-model-picker__trigger:disabled { opacity: var(--aapm-primitive-disabled-opacity); pointer-events: none; }
 .aapm-model-picker__panel {
   width: min(34rem, calc(100vw - 2rem));
+  max-height: min(30rem, var(--radix-popover-content-available-height, 70dvh));
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
+.aapm-model-picker__panel .aapm-command { flex: 1; min-height: 0; }
+.aapm-model-picker__panel .aapm-command__list { min-height: 0; overscroll-behavior: contain; }
+.aapm-model-picker__panel .aapm-command__input,
+.aapm-model-picker__panel .aapm-model-picker__footer { flex-shrink: 0; }
 .aapm-model-picker__item {
   display: flex;
   align-items: flex-start;
