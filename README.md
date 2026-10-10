@@ -197,6 +197,16 @@ A partial install reports `release incomplete`, not success.
 Set `AAPM_PHP` in the cPanel environment if the account's default `php` is not the
 PHP 8.4 CLI used by the domains.
 
+If **Update from Remote** reports “up-to-date”, the checked branch has no newer
+remote commit to pull; this does not confirm deployment. Read the latest
+`~/.cpanel/logs/vc_*_git_deploy.log` when the deployment status is still pending.
+`DEPLOY ABORTED: private config file not found` means that the branch's dedicated
+private file is missing: `aapmlayeracademy-staging-config.php` for `develop`, or
+`aapmlayeracademy-production-config.php` for `main`, under `/home/aapp8359/`.
+Provision the matching example and dedicated database as described above before
+deploying. The repository name does not select the environment; the checked
+branch does. Do not reuse the legacy shared config to bypass this isolation.
+
 ### Rollback
 
 Rollback redeploys the previous artifact with the same script: check out the

@@ -196,7 +196,7 @@ export default function ModuleDetail() {
   let primaryAction;
   if (flow.completed) {
     primaryAction = next
-      ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`}>Modul berikutnya<AapmIcon name="arrowRight" /></Link></Button>
+      ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span className="sm:hidden">Lanjut</span><span className="hidden sm:inline">Modul berikutnya</span><AapmIcon name="arrowRight" /></Link></Button>
       : <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
   } else if (continueToPractice) {
     primaryAction = <Button variant="learn" onClick={() => jumpToSection("practical")}>Lanjut ke praktik<AapmIcon name="arrowRight" /></Button>;
@@ -255,6 +255,11 @@ export default function ModuleDetail() {
             Bagian {sectionIndex + 1} dari {learnerSections.length} · {learnerSections[sectionIndex]?.label}
           </p>
           <div className="aapm-focus__footer-group">
+            {flow.completed && flow.hasQuiz ? (
+              <Button asChild variant="secondary">
+                <Link to={`/quiz/${number}`} aria-label={`Ulangi kuis modul ${number}`}><AapmIcon name="quiz" /><span className="sm:hidden">Kuis</span><span className="hidden sm:inline">Ulangi kuis</span></Link>
+              </Button>
+            ) : null}
             {primaryAction}
           </div>
         </>
@@ -324,7 +329,12 @@ export default function ModuleDetail() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">{primaryAction}</div>
+              <div className="flex flex-wrap gap-2">
+                {flow.completed && flow.hasQuiz ? (
+                  <Button asChild variant="secondary" leadingIcon="quiz"><Link to={`/quiz/${number}`}>Ulangi kuis</Link></Button>
+                ) : null}
+                {primaryAction}
+              </div>
             </div>
           </section>
         </article>

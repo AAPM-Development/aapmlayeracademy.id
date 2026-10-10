@@ -6,10 +6,9 @@ function isDarkMode() {
 }
 
 function themeColor(token, fallback) {
-  const tokenOwner =
-    document.querySelector(".aapm-t7-runtime") || document.documentElement;
-  const value = getComputedStyle(tokenOwner).getPropertyValue(token).trim();
-  return value ? `hsl(${value})` : fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+  // Chart aliases contain HSL channels; semantic colours are already CSS colours.
+  return /^\d/.test(value) ? `hsl(${value})` : value;
 }
 
 export default function MermaidDiagram({ chart }) {
@@ -32,16 +31,16 @@ export default function MermaidDiagram({ chart }) {
     const render = async () => {
       try {
         // Mermaid owns the SVG markup, but its visual language should still
-        // come from the same Ten4Seven chart/surface roles as KPI and LineChart.
+        // come from the same Academy chart/surface roles as KPI and LineChart.
         // Reading the resolved variables also keeps dark mode and palette
         // changes in lockstep with the rest of the app.
-        const chartOne = themeColor("--t7-chart-1-hsl", "148 58% 29%");
-        const chartTwo = themeColor("--t7-chart-2-hsl", "193 74% 36%");
-        const chartThree = themeColor("--t7-chart-3-hsl", "30 90% 42%");
-        const foreground = themeColor("--t7-foreground-hsl", dark ? "0 0% 96%" : "0 0% 12%");
-        const border = themeColor("--t7-border-hsl", dark ? "0 0% 24%" : "0 0% 86%");
-        const surface = themeColor("--t7-surface-hsl", dark ? "0 0% 12%" : "0 0% 100%");
-        const surfaceSubtle = themeColor("--t7-surface-subtle-hsl", dark ? "0 0% 16%" : "0 0% 97%");
+        const chartOne = themeColor("--chart-1", "148 58% 29%");
+        const chartTwo = themeColor("--chart-2", "193 74% 36%");
+        const chartThree = themeColor("--chart-3", "30 90% 42%");
+        const foreground = themeColor("--aapm-semantic-foreground", dark ? "0 0% 96%" : "0 0% 12%");
+        const border = themeColor("--aapm-semantic-border", dark ? "0 0% 24%" : "0 0% 86%");
+        const surface = themeColor("--aapm-semantic-surface", dark ? "0 0% 12%" : "0 0% 100%");
+        const surfaceSubtle = themeColor("--aapm-semantic-surface-subtle", dark ? "0 0% 16%" : "0 0% 97%");
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "strict",
