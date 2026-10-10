@@ -53,8 +53,8 @@
   gap: var(--aapm-primitive-space-2) var(--aapm-primitive-space-4);
   padding: var(--aapm-primitive-space-3) 0;
   border-top: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
-  background: color-mix(in srgb, var(--aapm-semantic-surface) 94%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--aapm-semantic-surface);
+  box-shadow: 0 -8px 20px color-mix(in srgb, var(--aapm-semantic-foreground) 8%, transparent);
 }
 /* Susun: the outline rail. It is quiet text, not a card. The active section is the
  * only ink-weight item, and the Materi group nests the blocks in reading order. */
