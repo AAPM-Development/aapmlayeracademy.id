@@ -1,12 +1,12 @@
 {
   "schema": "aapm-release-manifest/1",
-  "channel": "staging",
-  "sourceCommit": "335afcb5edf64f70b6997b112a8a2f03c70f0b40",
+  "channel": "production",
+  "sourceCommit": "dbff798358793a94d0cbcf6204294ef708962f79",
   "sourceDirty": false,
   "sourceTreeFingerprint": "006a1485e6eb33f94d466187eebce19fd4a7182381722da855828c04c3675d99",
   "sourceFileCount": 264,
   "artifactId": "83da47971fa534b0200d563c7cdba1a78613ef453b3461b7e94568b669d9c241",
-  "builtAt": "2026-10-10T06:48:32.334Z",
+  "builtAt": "2026-10-10T06:54:43.948Z",
   "schemaCompatibility": {
     "migrationKey": "20260909_ai_conversation_archiving_v1",
     "environmentMarkerTable": "aapm_environment_marker"
@@ -40,7 +40,7 @@
     {
       "path": "api/curriculum.php",
       "sha256": "6dee8eecef0fbe5c99b41d8574ba3e1999c61add556eb7638e6cd148ad8dc018",
-      "bytes": 113548
+      "bytes": 115580
     },
     {
       "path": "api/editorialMedia.php",
