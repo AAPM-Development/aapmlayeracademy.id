@@ -52,7 +52,7 @@ test('a keyboard moves the active editor field above draft actions using only th
     matches: () => true, closest: () => panel,
     getBoundingClientRect: () => ({ top: 650 - scrollTop, bottom: 746 - scrollTop, height: 96 }),
   };
-  state.document.querySelector = () => ({ getBoundingClientRect: () => ({ top: 388, bottom: 480 }) });
+  state.document.querySelector = (selector) => selector.includes('actionbar') ? { getBoundingClientRect: () => ({ top: 388, bottom: 480 }) } : null;
   state.viewport.height = 480;
   state.handlers.get('resize')();
   assert.equal(scrollTop, 358);
@@ -76,4 +76,30 @@ test('an editor field taller than the visible area aligns its top rather than lo
   state.viewport.height = 480;
   state.handlers.get('resize')();
   assert.equal(shift, 440);
+});
+
+test('the active field clears the available APPI launcher only when their horizontal bounds overlap', () => {
+  const state = viewportFixture();
+  let shift = 0;
+  let launcherLeft = 370;
+  const panel = {
+    scrollHeight: 1600, clientHeight: 420,
+    getBoundingClientRect: () => ({ top: 60, bottom: 480 }),
+    scrollBy: ({ top }) => { shift += top; },
+  };
+  state.document.activeElement = {
+    matches: () => true, closest: () => panel,
+    getBoundingClientRect: () => ({ left: 37, right: 353, top: 292 - shift, bottom: 388 - shift, height: 96 }),
+  };
+  state.document.querySelector = (selector) => ({ getBoundingClientRect: () => selector.includes('actionbar')
+    ? { top: 388, bottom: 480 }
+    : { left: launcherLeft, right: launcherLeft + 52, top: 324, bottom: 376, width: 52 } });
+  state.viewport.height = 480;
+  state.handlers.get('resize')();
+  assert.equal(shift, 0, 'a launcher outside the field width does not consume reading space');
+  launcherLeft = 326;
+  state.handlers.get('resize')();
+  assert.equal(shift, 64);
+  state.handlers.get('resize')();
+  assert.equal(shift, 64, 'the field stays clear without repeated scrolling');
 });
