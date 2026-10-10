@@ -367,56 +367,74 @@ function aapm_cur_backfill_policy_modes(PDO $pdo): void
  */
 function aapm_cur_seed_v1(PDO $pdo): void
 {
-    $exists = $pdo->prepare('SELECT COUNT(*) FROM curriculum_policy_versions WHERE policy_version = ?');
-    $exists->execute([AAPM_CUR_POLICY_V1]);
-    $now = aapm_utc_now();
-    if ((int) $exists->fetchColumn() === 0) {
-        $tiers = [];
-        $statement = $pdo->prepare('SELECT tier_number, tier_name, required_modules_json, requires_final FROM certificate_tier_policies WHERE policy_version = ? ORDER BY tier_number ASC');
-        $statement->execute([AAPM_CUR_POLICY_V1]);
-        foreach ($statement->fetchAll() as $row) {
-            $tiers[] = [
-                'tierNumber' => (int) $row['tier_number'],
-                'tierName' => (string) $row['tier_name'],
-                'modules' => array_map('intval', json_decode((string) $row['required_modules_json'], true) ?: []),
-                'requiresFinal' => (int) $row['requires_final'] === 1,
-            ];
-        }
-        $requirements = [
-            'courseId' => 'aapm-layer-academy',
-            'required' => aapm_assessment_policy_required_modules(),
-            'modulePassPercent' => AAPM_MODULE_PASS_PERCENT,
-            'finalPassPercent' => AAPM_FINAL_PASS_PERCENT,
-            'tiers' => $tiers,
-        ];
-        try {
-            $pdo->prepare('INSERT INTO curriculum_policy_versions (policy_version, course_id, status, parent_policy_version, requirements_json, created_by_user_id, created_at, validated_at, activated_at) VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?)')
-                ->execute([AAPM_CUR_POLICY_V1, 'aapm-layer-academy', 'active', json_encode($requirements, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $now, $now, $now]);
-        } catch (PDOException $exception) {
-            $exists->execute([AAPM_CUR_POLICY_V1]);
-            if ((int) $exists->fetchColumn() < 1) {
-                throw $exception;
+    // Reserve the SQLite writer before reading membership. A live COUNT cursor
+    // cannot safely upgrade its implicit read while another writer is waiting.
+    // The policy and all memberships must also survive or roll back together.
+    aapm_tx_begin($pdo);
+    try {
+        $exists = $pdo->prepare('SELECT COUNT(*) FROM curriculum_policy_versions WHERE policy_version = ?');
+        $exists->execute([AAPM_CUR_POLICY_V1]);
+        $policyExists = (int) $exists->fetchColumn() > 0;
+        $exists->closeCursor();
+        $now = aapm_utc_now();
+        if (!$policyExists) {
+            $tiers = [];
+            $statement = $pdo->prepare('SELECT tier_number, tier_name, required_modules_json, requires_final FROM certificate_tier_policies WHERE policy_version = ? ORDER BY tier_number ASC');
+            $statement->execute([AAPM_CUR_POLICY_V1]);
+            foreach ($statement->fetchAll() as $row) {
+                $tiers[] = [
+                    'tierNumber' => (int) $row['tier_number'],
+                    'tierName' => (string) $row['tier_name'],
+                    'modules' => array_map('intval', json_decode((string) $row['required_modules_json'], true) ?: []),
+                    'requiresFinal' => (int) $row['requires_final'] === 1,
+                ];
             }
-        }
-    }
-    // Membership follows the fixed v1 definition by module number. Module ids are linked once the modules exist.
-    $insert = $pdo->prepare('INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required) VALUES (?, ?, NULL, NULL, NULL, 1)');
-    $has = $pdo->prepare('SELECT COUNT(*) FROM curriculum_policy_modules WHERE policy_version = ? AND module_number = ?');
-    foreach (aapm_assessment_policy_required_modules() as $number) {
-        $has->execute([AAPM_CUR_POLICY_V1, $number]);
-        if ((int) $has->fetchColumn() === 0) {
+            $requirements = [
+                'courseId' => 'aapm-layer-academy',
+                'required' => aapm_assessment_policy_required_modules(),
+                'modulePassPercent' => AAPM_MODULE_PASS_PERCENT,
+                'finalPassPercent' => AAPM_FINAL_PASS_PERCENT,
+                'tiers' => $tiers,
+            ];
             try {
-                $insert->execute([AAPM_CUR_POLICY_V1, $number]);
+                $pdo->prepare('INSERT INTO curriculum_policy_versions (policy_version, course_id, status, parent_policy_version, requirements_json, created_by_user_id, created_at, validated_at, activated_at) VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?)')
+                    ->execute([AAPM_CUR_POLICY_V1, 'aapm-layer-academy', 'active', json_encode($requirements, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $now, $now, $now]);
             } catch (PDOException $exception) {
-                $has->execute([AAPM_CUR_POLICY_V1, $number]);
-                if ((int) $has->fetchColumn() < 1) {
+                $exists->execute([AAPM_CUR_POLICY_V1]);
+                $policyExists = (int) $exists->fetchColumn() > 0;
+                $exists->closeCursor();
+                if (!$policyExists) {
                     throw $exception;
                 }
             }
         }
+        // Membership follows the fixed v1 definition by module number. Module ids are linked once the modules exist.
+        $insert = $pdo->prepare('INSERT INTO curriculum_policy_modules (policy_version, module_number, module_id, chapter_number, sort_order, required) VALUES (?, ?, NULL, NULL, NULL, 1)');
+        $has = $pdo->prepare('SELECT COUNT(*) FROM curriculum_policy_modules WHERE policy_version = ? AND module_number = ?');
+        foreach (aapm_assessment_policy_required_modules() as $number) {
+            $has->execute([AAPM_CUR_POLICY_V1, $number]);
+            $memberExists = (int) $has->fetchColumn() > 0;
+            $has->closeCursor();
+            if (!$memberExists) {
+                try {
+                    $insert->execute([AAPM_CUR_POLICY_V1, $number]);
+                } catch (PDOException $exception) {
+                    $has->execute([AAPM_CUR_POLICY_V1, $number]);
+                    $memberExists = (int) $has->fetchColumn() > 0;
+                    $has->closeCursor();
+                    if (!$memberExists) {
+                        throw $exception;
+                    }
+                }
+            }
+        }
+        $pdo->prepare('UPDATE curriculum_policy_modules SET module_id = (SELECT cm.id FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number), chapter_number = (SELECT cm.level_number FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number), sort_order = (SELECT cm.sort_order FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number) WHERE policy_version = ? AND module_id IS NULL')
+            ->execute([AAPM_CUR_POLICY_V1]);
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
     }
-    $pdo->prepare('UPDATE curriculum_policy_modules SET module_id = (SELECT cm.id FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number), chapter_number = (SELECT cm.level_number FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number), sort_order = (SELECT cm.sort_order FROM course_modules cm WHERE cm.module_number = curriculum_policy_modules.module_number) WHERE policy_version = ? AND module_id IS NULL')
-        ->execute([AAPM_CUR_POLICY_V1]);
 }
 
 /** Records every module number ever used. A number is never reused, even after a draft is deleted. */
@@ -1925,9 +1943,7 @@ function aapm_cur_policy_activate(PDO $pdo, string $version, ?int $actorId, arra
         aapm_cur_event($pdo, 'policy.activated', null, $version, null, $actorId, $evidence);
         aapm_tx_commit($pdo);
     } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) {
-            aapm_tx_rollback($pdo);
-        }
+        aapm_tx_rollback($pdo);
         throw $exception;
     }
     return aapm_cur_policy_detail($version);

@@ -8,6 +8,63 @@ declare(strict_types=1);
 const AAPM_AI_REGISTRY_SETTING = 'ai_provider_registry';
 const AAPM_AI_ACTIVE_PROVIDER_SETTING = 'ai_active_provider_id';
 
+/** A server credential can be imported without ever crossing the browser. */
+function ai_server_openai_key(): string
+{
+    $config = app_config();
+    $key = trim((string) ($config['openai_api_key'] ?? ''));
+    if ($key !== '') return $key;
+    $private = ai_private_config();
+    if ($private['provider'] === 'openai-compatible' && rtrim($private['baseUrl'] ?: 'https://api.openai.com/v1', '/') === 'https://api.openai.com/v1') return $private['apiKey'];
+    // The Vite env file is read only in the owner's local checkout, never in
+    // deployed environments or disposable tests with an explicit config.
+    if ($config['environment'] === 'local' && aapm_resolve_config_source()['source'] === 'local_development') {
+        $file = dirname(__DIR__, 2) . '/.env.local';
+        foreach (is_file($file) ? (file($file, FILE_IGNORE_NEW_LINES) ?: []) : [] as $line) {
+            if (preg_match('/^\s*(?:export\s+)?OPENAI_API_KEY\s*=\s*(.*?)\s*$/', $line, $matches)) {
+                return trim($matches[1], "\"'");
+            }
+        }
+    }
+    return '';
+}
+
+function ai_registry_private_override(): bool
+{
+    return ai_private_config()['provider'] !== '' && app_setting_get('ai_manage_in_admin', '0') !== '1';
+}
+
+function ai_registry_import_server_openai(): array
+{
+    $key = ai_server_openai_key();
+    if ($key === '') error_response('Kunci OpenAI belum tersedia di server lingkungan ini.', 422, 'ai_server_key_missing');
+    $private = ai_private_config();
+    if (ai_registry_private_override() && ($private['provider'] !== 'openai-compatible' || rtrim($private['baseUrl'] ?: 'https://api.openai.com/v1', '/') !== 'https://api.openai.com/v1')) {
+        error_response('Konfigurasi privat saat ini mengelola provider lain. Sesuaikan konfigurasi server terlebih dahulu.', 409, 'ai_managed_in_config');
+    }
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        app_setting_set('ai_manage_in_admin', '1');
+        $result = ai_registry_save_settings(['config' => [
+            'id' => 'openai-server', 'type' => 'openai-compatible', 'label' => 'OpenAI AAPM',
+            'baseUrl' => 'https://api.openai.com/v1', 'model' => ($private['provider'] === 'openai-compatible' ? $private['model'] : '') ?: 'gpt-4o-mini',
+            'apiKey' => ai_validate_api_key($key), 'activate' => true, 'isDefault' => true,
+            'allowLocal' => false, 'authMode' => 'bearer', 'keyRequired' => true,
+            'adapter' => 'openai-compatible', 'chatPath' => '/chat/completions', 'modelsPath' => '/models',
+        ]]);
+        $records = ai_registry_records();
+        foreach ($records as &$record) if ($record['id'] === 'openai-server') $record['credentialOrigin'] = 'server_openai';
+        unset($record);
+        ai_registry_write($records);
+        aapm_tx_commit($pdo);
+        return $result;
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
+}
+
 function ai_registry_catalog(): array
 {
     return [
@@ -243,8 +300,8 @@ function ai_registry_decode_secret(string $encoded): string
 function ai_registry_secret_for_record(array $record): string
 {
     if (!empty($record['secret'])) return ai_registry_decode_secret((string) $record['secret']);
-    $type = (string) ($record['type'] ?? '');
-    if ($type !== '' && isset(ai_provider_catalog()[$type])) return ai_stored_secret($type);
+    // The legacy default record already carries its scalar secret. A new or
+    // cleared registry connection must not inherit another connection's key.
     return '';
 }
 
@@ -429,7 +486,7 @@ function ai_registry_presets(): array
 function ai_registry_runtime_status(): array
 {
     $private = ai_private_config();
-    if ($private['provider'] !== '') {
+    if (ai_registry_private_override()) {
         $definition = ai_registry_definition($private['provider']);
         $record = [
             'id' => 'private-config',
@@ -480,6 +537,8 @@ function ai_registry_admin_status(): array
 {
     $status = ai_registry_runtime_status();
     unset($status['_extraHeaders'], $status['_private']);
+    $status['serverOpenAiKeyAvailable'] = ai_server_openai_key() !== '';
+    $status['serverKeyEncryptionReady'] = ai_encryption_key() !== '' && function_exists('openssl_encrypt');
     return $status;
 }
 
@@ -499,6 +558,10 @@ function ai_registry_build_record(array $input, ?array $existing = null, bool $p
     $id = $inputId !== '' ? ai_registry_validate_id($inputId) : ($existing ? (string) $existing['id'] : ai_registry_validate_id('provider-' . substr(bin2hex(random_bytes(5)), 0, 10)));
     $allowLocal = bool_value($input['allowLocal'] ?? ($existing['allowLocal'] ?? false)) === 1;
     $baseUrl = ai_registry_normalize_url((string) ($input['baseUrl'] ?? ($existing['baseUrl'] ?? $definition['baseUrl'])), $allowLocal, $definition['baseUrl']);
+    $origin = (string) ($existing['credentialOrigin'] ?? '');
+    if ($origin === 'server_openai' && $baseUrl !== 'https://api.openai.com/v1' && empty($input['clearApiKey']) && trim((string) ($input['apiKey'] ?? '')) === '') {
+        error_response('Kunci OpenAI server hanya dapat digunakan pada endpoint resmi OpenAI. Hapus atau ganti kunci sebelum mengganti endpoint.', 422, 'ai_server_key_endpoint');
+    }
     $model = ai_registry_validate_model((string) ($input['model'] ?? ($existing['model'] ?? $definition['defaultModel'])));
     $authMode = trim((string) ($input['authMode'] ?? ($existing['authMode'] ?? $definition['authMode'])));
     if (!in_array($authMode, ['bearer', 'x-api-key', 'none'], true)) error_response('Metode autentikasi AI tidak valid.', 422, 'invalid_ai_auth_mode');
@@ -525,6 +588,7 @@ function ai_registry_build_record(array $input, ?array $existing = null, bool $p
         'timeoutSeconds' => max(8, min(120, (int) ($input['timeoutSeconds'] ?? ($existing['timeoutSeconds'] ?? 35)))),
         'secret' => (string) ($existing['secret'] ?? ''),
         'headersSecret' => (string) ($existing['headersSecret'] ?? ''),
+        'credentialOrigin' => (!empty($input['clearApiKey']) || trim((string) ($input['apiKey'] ?? '')) !== '') ? '' : $origin,
     ];
     if ($persistSecrets && array_key_exists('apiKey', $input) && trim((string) $input['apiKey']) !== '') {
         $record['secret'] = ai_encrypt_secret(ai_validate_api_key((string) $input['apiKey']));
@@ -540,8 +604,9 @@ function ai_registry_build_record(array $input, ?array $existing = null, bool $p
 
 function ai_registry_save_settings(array $input): array
 {
-    if (ai_private_config()['provider'] !== '') error_response('Provider dikelola dari konfigurasi server privat dan tidak dapat ditimpa dari Admin.', 409, 'ai_managed_in_config');
     $action = trim((string) ($input['action'] ?? 'saveProvider'));
+    if ($action === 'importServerOpenAi') return ai_registry_import_server_openai();
+    if (ai_registry_private_override()) error_response('Provider dikelola dari konfigurasi server privat dan tidak dapat ditimpa dari Admin.', 409, 'ai_managed_in_config');
     $records = ai_registry_records();
     if ($action === 'setActive') {
         $id = ai_registry_validate_id((string) ($input['providerId'] ?? ''));

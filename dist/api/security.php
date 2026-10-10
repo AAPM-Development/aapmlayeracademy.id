@@ -51,11 +51,20 @@ function aapm_database_driver(): string
     return (string) app_config()['db_driver'];
 }
 
+/** Track raw-SQL SQLite transactions without retaining closed PDO connections. */
+function aapm_sqlite_transactions(): SplObjectStorage
+{
+    static $transactions;
+    return $transactions ??= new SplObjectStorage();
+}
+
 /** SQLite serializes writers with BEGIN IMMEDIATE; MySQL uses an ordinary transaction plus row locks. */
 function aapm_tx_begin(PDO $pdo): void
 {
     if (aapm_database_driver() === 'sqlite') {
         $pdo->exec('BEGIN IMMEDIATE');
+        // PDO does not track transactions opened through raw SQL.
+        aapm_sqlite_transactions()[$pdo] = true;
         return;
     }
     $pdo->beginTransaction();
@@ -65,6 +74,7 @@ function aapm_tx_commit(PDO $pdo): void
 {
     if (aapm_database_driver() === 'sqlite') {
         $pdo->exec('COMMIT');
+        unset(aapm_sqlite_transactions()[$pdo]);
         return;
     }
     $pdo->commit();
@@ -72,11 +82,15 @@ function aapm_tx_commit(PDO $pdo): void
 
 function aapm_tx_rollback(PDO $pdo): void
 {
-    if (!$pdo->inTransaction()) {
+    if (aapm_database_driver() === 'sqlite') {
+        if (!isset(aapm_sqlite_transactions()[$pdo]) && !$pdo->inTransaction()) {
+            return;
+        }
+        $pdo->exec('ROLLBACK');
+        unset(aapm_sqlite_transactions()[$pdo]);
         return;
     }
-    if (aapm_database_driver() === 'sqlite') {
-        $pdo->exec('ROLLBACK');
+    if (!$pdo->inTransaction()) {
         return;
     }
     $pdo->rollBack();
