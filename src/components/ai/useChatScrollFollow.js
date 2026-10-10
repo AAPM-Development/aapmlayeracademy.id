@@ -7,7 +7,14 @@ export default function useChatScrollFollow({
   activeKey = null,
   isStreaming = false,
 }) {
-  const viewportRef = useRef(null);
+  const viewportElementRef = useRef(null);
+  const [viewport, setViewport] = useState(null);
+  // The floating panel mounts after this hook. Bind listeners and observers
+  // when its scrollport appears, including after closing and reopening it.
+  const viewportRef = useCallback((node) => {
+    viewportElementRef.current = node;
+    setViewport(node);
+  }, []);
   const endRef = useRef(null);
   const shouldFollowRef = useRef(true);
   const hasContentRef = useRef(Boolean(content?.length));
@@ -15,7 +22,7 @@ export default function useChatScrollFollow({
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const updateScrollState = useCallback(() => {
-    const viewport = viewportRef.current;
+    const viewport = viewportElementRef.current;
     if (!viewport) return;
     const maxTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
     const maxLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
@@ -36,7 +43,7 @@ export default function useChatScrollFollow({
   }, []);
 
   const scrollToLatest = useCallback((behavior = "auto") => {
-    const viewport = viewportRef.current;
+    const viewport = viewportElementRef.current;
     if (!viewport) return;
     // An empty chat opens at the top; only a conversation follows its latest message.
     const top = hasContentRef.current
@@ -70,18 +77,17 @@ export default function useChatScrollFollow({
   }, [content?.length]);
 
   useEffect(() => {
-    const viewport = viewportRef.current;
     if (!viewport) return undefined;
     viewport.addEventListener("scroll", updateScrollState, { passive: true });
     updateScrollState();
     return () => viewport.removeEventListener("scroll", updateScrollState);
-  }, [updateScrollState]);
+  }, [updateScrollState, viewport]);
 
   useEffect(() => {
     shouldFollowRef.current = true;
     setShowJumpToLatest(false);
     scheduleFollow();
-  }, [activeKey, scheduleFollow]);
+  }, [activeKey, scheduleFollow, viewport]);
 
   useEffect(() => {
     scheduleFollow("auto");
@@ -89,7 +95,6 @@ export default function useChatScrollFollow({
   }, [content, isStreaming, scheduleFollow]);
 
   useEffect(() => {
-    const viewport = viewportRef.current;
     if (!viewport) return undefined;
 
     const handleResize = () => {
@@ -108,7 +113,7 @@ export default function useChatScrollFollow({
       resizeObserver?.disconnect();
       visualViewport?.removeEventListener("resize", handleResize);
     };
-  }, [scheduleFollow, updateScrollState]);
+  }, [scheduleFollow, updateScrollState, viewport]);
 
   const jumpToLatest = useCallback(() => {
     shouldFollowRef.current = true;

@@ -1021,7 +1021,7 @@ export default function AiAssistant() {
             aria-live="off"
             aria-busy={isStreaming}
             aria-label="Transkrip percakapan APPI"
-            className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-hidden"
+            className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto"
           >
             <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
               {historyError && !conversationsError && (
