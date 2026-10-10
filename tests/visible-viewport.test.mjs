@@ -39,3 +39,41 @@ test('resizes-content keyboards are detected and pinch zoom is not treated as a 
   state.handlers.get('resize')();
   assert.equal(state.root.dataset.keyboard, 'closed');
 });
+
+test('a keyboard moves the active editor field above draft actions using only the inner scrollport', () => {
+  const state = viewportFixture();
+  let scrollTop = 0;
+  const panel = {
+    scrollHeight: 1600, clientHeight: 420,
+    getBoundingClientRect: () => ({ top: 60, bottom: 480 }),
+    scrollBy: ({ top, behavior }) => { assert.equal(behavior, 'instant'); scrollTop += top; },
+  };
+  state.document.activeElement = {
+    matches: () => true, closest: () => panel,
+    getBoundingClientRect: () => ({ top: 650 - scrollTop, bottom: 746 - scrollTop, height: 96 }),
+  };
+  state.document.querySelector = () => ({ getBoundingClientRect: () => ({ top: 388, bottom: 480 }) });
+  state.viewport.height = 480;
+  state.handlers.get('resize')();
+  assert.equal(scrollTop, 358);
+  state.handlers.get('resize')();
+  assert.equal(scrollTop, 358, 'a field already clear of the toolbar is not scrolled again');
+});
+
+test('an editor field taller than the visible area aligns its top rather than losing its beginning', () => {
+  const state = viewportFixture();
+  let shift = 0;
+  const panel = {
+    scrollHeight: 1600, clientHeight: 420,
+    getBoundingClientRect: () => ({ top: 60, bottom: 480 }),
+    scrollBy: ({ top }) => { shift += top; },
+  };
+  state.document.activeElement = {
+    matches: () => true, closest: () => panel,
+    getBoundingClientRect: () => ({ top: 500 - shift, bottom: 1100 - shift, height: 600 }),
+  };
+  state.document.querySelector = () => null;
+  state.viewport.height = 480;
+  state.handlers.get('resize')();
+  assert.equal(shift, 440);
+});
