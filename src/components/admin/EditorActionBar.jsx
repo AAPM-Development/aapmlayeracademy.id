@@ -70,8 +70,11 @@ export default function EditorActionBar({
       const height = `${rect.height}px`;
       content.style.setProperty('--aapm-editor-footer-height', height);
       root.style.setProperty('--aapm-editor-footer-height', height);
-      root.style.setProperty('--aapm-shell-footer-offset', `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`);
+      const offset = `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`;
+      const changed = root.style.getPropertyValue('--aapm-shell-footer-offset') !== offset;
+      root.style.setProperty('--aapm-shell-footer-offset', offset);
       root.dataset.shellFooter = 'true';
+      if (changed) document.dispatchEvent(new Event('aapm:footer-resize'));
     };
     let frame = 0;
     const schedule = () => {
@@ -82,11 +85,15 @@ export default function EditorActionBar({
     const observer = new ResizeObserver(update);
     observer.observe(bar);
     window.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
     document.addEventListener('scroll', schedule, true);
     return () => {
       observer.disconnect();
       window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('scroll', schedule);
       document.removeEventListener('scroll', schedule, true);
       content.style.removeProperty('--aapm-editor-footer-height');
       root.style.removeProperty('--aapm-editor-footer-height');

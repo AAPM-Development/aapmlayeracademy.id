@@ -150,7 +150,7 @@ html[data-shell-footer="true"] .aapm-ai-floating-panel {
 .aapm-app[data-collapsed="true"] { --aapm-action-sidebar-width: var(--aapm-component-nav-collapsed-width); }
 .aapm-page > .aapm-curriculum-editor { animation: none; }
 .aapm-editor-content:has([data-editor-actionbar]) { padding-bottom: calc(var(--aapm-editor-footer-height, 100px) + var(--aapm-primitive-space-4)); }
-.aapm-curriculum-editor { padding-bottom: calc(var(--aapm-shell-footer-offset, 100px) + var(--aapm-primitive-space-4)); }
+.aapm-curriculum-editor { padding-bottom: calc(var(--aapm-curriculum-footer-height, 100px) + var(--aapm-primitive-space-4)); }
 @media (min-width: 860px) {
   .aapm-app :is(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
     position: fixed;
@@ -164,10 +164,25 @@ html[data-shell-footer="true"] .aapm-ai-floating-panel {
   }
 }
 @media (max-width: 859px) {
+  .aapm-editor-actionbar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    margin-inline: 0;
+    border-radius: 0;
+  }
   .aapm-curriculum-actionbar {
     inset-inline: 0;
     bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom));
     border-radius: 0;
     background: var(--aapm-semantic-surface);
+  }
+}
+/* The keyboard replaces the phone navigation clearance. Keep both draft
+ * bars at the visible screen edge, including tablets with a tall layout viewport. */
+@media (max-width: 1023px) {
+  html[data-keyboard="open"] .aapm-app :is(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
+    position: fixed;
+    bottom: var(--aapm-visible-bottom, 0px);
   }
 }
