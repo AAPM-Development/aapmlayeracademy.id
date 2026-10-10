@@ -57,12 +57,15 @@ export default function useVisibleViewport() {
     viewport.addEventListener("scroll", schedule);
     document.addEventListener("focusin", schedule);
     document.addEventListener("focusout", schedule);
+    // Footer measurement can move APPI one frame after viewport resizing.
+    document.addEventListener("aapm:footer-resize", schedule);
     return () => {
       cancelAnimationFrame(frame);
       viewport.removeEventListener("resize", schedule);
       viewport.removeEventListener("scroll", schedule);
       document.removeEventListener("focusin", schedule);
       document.removeEventListener("focusout", schedule);
+      document.removeEventListener("aapm:footer-resize", schedule);
       delete root.dataset.keyboard;
       ["--aapm-visible-height", "--aapm-visible-top", "--aapm-visible-bottom"].forEach((property) => root.style.removeProperty(property));
     };
