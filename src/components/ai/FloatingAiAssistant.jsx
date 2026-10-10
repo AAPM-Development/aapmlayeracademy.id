@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
+import AiResponseDetails from "@/components/ai/AiResponseDetails";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
@@ -565,6 +566,7 @@ export default function FloatingAiAssistant() {
                       aria-label="Jawaban APPI"
                     >
                       {message.streaming && <span className="sr-only">APPI sedang menjawab</span>}
+                      <AiResponseDetails message={message} compact />
                       {message.streaming && (
                         <AiStreamActivity
                           label={streamStatus}

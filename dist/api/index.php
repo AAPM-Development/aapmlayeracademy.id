@@ -1134,7 +1134,7 @@ try {
         try {
             $database = db();
             $database->beginTransaction();
-            ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback']);
+            ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback'], $response['responseDetails'] ?? []);
             ai_record_activity(
                 (int) $user['id'],
                 (int) $conversation['id'],
@@ -1245,7 +1245,7 @@ try {
         }
         // Bound the payload to the latest turns, then restore reading order. Taking
         // the first 240 erased newly streamed answers when long chats reconciled.
-        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, created_at FROM (SELECT id, role, content, provider, model, used_fallback, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 240) AS recent_messages ORDER BY id ASC');
+        $messageStmt = db()->prepare('SELECT id, role, content, provider, model, used_fallback, response_details, created_at FROM (SELECT id, role, content, provider, model, used_fallback, response_details, created_at FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 240) AS recent_messages ORDER BY id ASC');
         $messageStmt->execute([(int) $conversation['id']]);
         json_response(['conversation' => present_ai_conversation($conversation), 'messages' => array_map('present_ai_chat_message', $messageStmt->fetchAll())]);
     }
@@ -1422,10 +1422,10 @@ function ai_account_memory_for_user(int $userId): string
     return implode("\n", $lines);
 }
 
-function ai_record_chat_message(int $conversationId, string $role, string $content, ?string $provider = null, ?string $model = null, bool $fallback = false): void
+function ai_record_chat_message(int $conversationId, string $role, string $content, ?string $provider = null, ?string $model = null, bool $fallback = false, array $responseDetails = []): void
 {
-    $insert = db()->prepare('INSERT INTO ai_chat_messages (conversation_id, role, content, provider, model, used_fallback) VALUES (?, ?, ?, ?, ?, ?)');
-    $insert->execute([$conversationId, $role, $content, $provider, $model, $fallback ? 1 : 0]);
+    $insert = db()->prepare('INSERT INTO ai_chat_messages (conversation_id, role, content, provider, model, used_fallback, response_details) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    $insert->execute([$conversationId, $role, $content, $provider, $model, $fallback ? 1 : 0, json_encode(['reasoningSummary' => substr((string) ($responseDetails['reasoningSummary'] ?? ''), 0, 12000), 'reasoningObserved' => (bool) ($responseDetails['reasoningObserved'] ?? false)], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
 }
 
 function ai_record_activity(int $userId, ?int $conversationId, string $type, string $label, string $detail = ''): void
@@ -1573,3 +1573,4 @@ function native_ai_reply(string $message, $farmContext): string
 
     return 'Saya adalah asisten lokal Layer Farm Academy. Saya bisa membantu membaca HDP, FCR, feed intake, konsumsi air, egg weight, mortalitas, biosecurity, dan rencana perbaikan. Sertakan angka, periode, dan perubahan dari minggu sebelumnya agar analisis lebih tajam.' . $contextNote;
 }
+

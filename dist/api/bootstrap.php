@@ -793,8 +793,25 @@ function ensure_schema(PDO $pdo, string $driver): void
     ensure_user_profile_avatar($pdo, $driver);
     ensure_user_ai_supports_vision($pdo, $driver);
     ensure_ai_conversation_archive($pdo, $driver);
+    ensure_ai_response_details($pdo, $driver);
     ensure_default_course_module_videos($pdo);
     ensure_editorial_course_module_videos($pdo);
+}
+
+function ensure_ai_response_details(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        foreach ($pdo->query('PRAGMA table_info(ai_chat_messages)')->fetchAll() as $column) {
+            if (($column['name'] ?? '') === 'response_details') return;
+        }
+        $pdo->exec('ALTER TABLE ai_chat_messages ADD COLUMN response_details TEXT NULL');
+        return;
+    }
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['ai_chat_messages', 'response_details']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE ai_chat_messages ADD COLUMN response_details TEXT NULL');
+    }
 }
 
 function ensure_ai_conversation_archive(PDO $pdo, string $driver): void
@@ -2922,6 +2939,8 @@ function present_ai_conversation(array $row): array
 
 function present_ai_chat_message(array $row): array
 {
+    $details = json_decode((string) ($row['response_details'] ?? ''), true);
+    $details = is_array($details) ? $details : [];
     return [
         'id' => (int) $row['id'],
         'role' => (string) $row['role'],
@@ -2930,6 +2949,8 @@ function present_ai_chat_message(array $row): array
         'model' => $row['model'] ?? null,
         'fallback' => (bool) ($row['used_fallback'] ?? false),
         'createdAt' => $row['created_at'] ?? null,
+        'reasoningSummary' => (string) ($details['reasoningSummary'] ?? ''),
+        'reasoningObserved' => (bool) ($details['reasoningObserved'] ?? false),
     ];
 }
 

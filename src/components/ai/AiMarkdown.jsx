@@ -23,6 +23,7 @@ function fenceLanguage(node) {
 
 /** Fenced code: a labelled frame with a copy action; Mermaid draws a diagram. */
 function CodeBlock({ node }) {
+  const [wrap, setWrap] = React.useState(false);
   const code = node?.children?.find((child) => child.tagName === "code");
   const language = fenceLanguage(code);
   const source = nodeText(code).replace(/\n$/, "");
@@ -37,9 +38,12 @@ function CodeBlock({ node }) {
     <figure className="aapm-ai-code">
       <figcaption className="aapm-ai-code__bar">
         <span>{language || "Teks"}</span>
-        <AiCopyButton text={source} label="Salin kode" tone="inverse" />
+        <div className="aapm-ai-code__actions">
+          <button type="button" aria-pressed={wrap} onClick={() => setWrap((value) => !value)}>{wrap ? "Baris asli" : "Lipat baris"}</button>
+          <AiCopyButton text={source} label="Salin kode" tone="inverse" />
+        </div>
       </figcaption>
-      <pre className="aapm-ai-code-block"><code>{source}</code></pre>
+      <pre className="aapm-ai-code-block" data-wrap={wrap ? "true" : undefined} tabIndex={0} aria-label={`Kode ${language || "teks"}`}><code>{source}</code></pre>
     </figure>
   );
 }
