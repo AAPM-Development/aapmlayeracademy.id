@@ -245,10 +245,10 @@ function aapm_seed_assessment_policy(PDO $pdo): void
     }
 }
 
-function aapm_assessment_policy(PDO $pdo): array
+function aapm_assessment_policy(PDO $pdo, string $version = AAPM_ASSESSMENT_POLICY_VERSION): array
 {
     $row = $pdo->prepare('SELECT policy_version, required_modules_json, module_pass_percent, final_pass_percent FROM assessment_policies WHERE policy_version = ? LIMIT 1');
-    $row->execute([AAPM_ASSESSMENT_POLICY_VERSION]);
+    $row->execute([$version]);
     $policy = $row->fetch();
     if (!$policy) {
         throw new RuntimeException('assessment policy missing');
@@ -348,13 +348,16 @@ function aapm_assessment_user_lock(PDO $pdo, int $userId): void
     $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE')->execute([$userId]);
 }
 
-function aapm_module_catalog(PDO $pdo): array
+function aapm_module_catalog(PDO $pdo, int $userId): array
 {
     $catalog = [];
-    foreach ($pdo->query('SELECT module_number, level_number, title FROM course_modules ORDER BY sort_order, module_number')->fetchAll() as $row) {
+    // Match the learner catalogue: archived material stays available only when
+    // the account's assigned academic policy still requires that module.
+    foreach (aapm_cur_learner_modules($pdo, $userId) as $row) {
         $catalog[(int) $row['module_number']] = [
             'levelNumber' => (int) $row['level_number'],
             'title' => (string) $row['title'],
+            'assessmentMode' => (string) $row['assessment_mode'],
         ];
     }
 
@@ -531,9 +534,13 @@ function aapm_grade(array $items, int $passingGrade): array
  */
 function aapm_academic_snapshot(PDO $pdo, int $userId): array
 {
-    $policy = aapm_assessment_policy($pdo);
-    $catalog = aapm_module_catalog($pdo);
+    $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
+    $catalog = aapm_module_catalog($pdo, $userId);
     $quizCounts = aapm_quiz_counts($pdo);
+    $modeRows = $pdo->prepare('SELECT module_number, assessment_mode FROM curriculum_policy_modules WHERE policy_version = ?');
+    $modeRows->execute([$policy['version']]);
+    $modes = [];
+    foreach ($modeRows->fetchAll() as $mode) $modes[(int) $mode['module_number']] = $mode['assessment_mode'];
     $now = aapm_utc_now();
 
     $attemptStatement = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? ORDER BY id ASC');
@@ -554,14 +561,20 @@ function aapm_academic_snapshot(PDO $pdo, int $userId): array
     }
 
     $modules = [];
-    $moduleNumbers = array_unique(array_merge(array_keys($catalog), [0], array_keys($legacyRows), array_keys($quizCounts)));
+    // Preserve historical progress outside today's available catalogue as evidence.
+    // Its quiz nature comes from stored attempts, never from the mutable live bank.
+    $historicalQuizzes = [];
+    foreach ($attempts as $attempt) {
+        if ($attempt['assessment_type'] === 'module_quiz') $historicalQuizzes[(int) $attempt['module_number']] = true;
+    }
+    $moduleNumbers = array_unique(array_merge(array_keys($catalog), [0], array_keys($legacyRows), array_keys($modes), array_keys($historicalQuizzes), array_map('intval', array_column($events, 'module_number'))));
     sort($moduleNumbers);
     foreach ($moduleNumbers as $number) {
         $modules[$number] = [
             'moduleNumber' => $number,
             'levelNumber' => $catalog[$number]['levelNumber'] ?? null,
             'title' => $catalog[$number]['title'] ?? ($number === 0 ? 'Ujian akhir' : null),
-            'hasQuiz' => ($quizCounts[$number] ?? 0) > 0,
+            'hasQuiz' => $number === 0 ? ($quizCounts[0] ?? 0) > 0 : (isset($modes[$number]) ? $modes[$number] === 'quiz' : isset($historicalQuizzes[$number])),
             'quizAttempted' => false,
             'quizPassed' => false,
             'bestPercent' => null,
@@ -791,6 +804,11 @@ function aapm_assessment_start(array $user, array $input): array
     aapm_tx_begin($pdo);
     try {
         aapm_assessment_user_lock($pdo, $userId);
+        // A publisher and a new final attempt share this lock. Snapshot selection
+        // therefore sees one complete publication; existing attempts keep their items.
+        if ($type === 'final_exam') {
+            aapm_cur_final_bank_locked($pdo, null);
+        }
         $generation = aapm_current_generation($pdo, $userId);
 
         $same = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? AND start_request_key = ? LIMIT 1');
@@ -819,13 +837,17 @@ function aapm_assessment_start(array $user, array $input): array
             }
         }
 
-        $catalog = aapm_module_catalog($pdo);
+        $catalog = aapm_module_catalog($pdo, $userId);
         $quizCounts = aapm_quiz_counts($pdo);
-        $policy = aapm_assessment_policy($pdo);
+        $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
 
         if ($type === 'module_quiz' && !isset($catalog[$moduleNumber])) {
             aapm_tx_rollback($pdo);
             aapm_assessment_fail(404, 'assessment_not_found', 'Modul tidak ditemukan.');
+        }
+        if ($type === 'module_quiz' && $catalog[$moduleNumber]['assessmentMode'] !== 'quiz') {
+            aapm_tx_rollback($pdo);
+            aapm_assessment_fail(409, 'assessment_unavailable', 'Kebijakan Anda menggunakan konfirmasi belajar untuk modul ini.');
         }
         if (($quizCounts[$moduleNumber] ?? 0) < 1) {
             aapm_tx_rollback($pdo);
@@ -1128,7 +1150,7 @@ function aapm_acknowledge_module(array $user, int $moduleNumber): array
 {
     $pdo = db();
     $userId = (int) $user['id'];
-    $catalog = aapm_module_catalog($pdo);
+    $catalog = aapm_module_catalog($pdo, $userId);
     if (!isset($catalog[$moduleNumber])) {
         aapm_assessment_fail(404, 'assessment_not_found', 'Modul tidak ditemukan.');
     }
@@ -1158,7 +1180,7 @@ function aapm_record_module_event(array $user, int $moduleNumber, string $eventT
     }
     $pdo = db();
     $userId = (int) $user['id'];
-    $catalog = aapm_module_catalog($pdo);
+    $catalog = aapm_module_catalog($pdo, $userId);
     if (!isset($catalog[$moduleNumber])) {
         aapm_assessment_fail(404, 'assessment_not_found', 'Modul tidak ditemukan.');
     }

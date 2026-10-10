@@ -4,7 +4,7 @@
     {
       "name": "academy-api",
       "runtimeExecutable": "php",
-      "runtimeArgs": ["-d", "extension=php_sqlite3.dll", "-d", "extension=php_pdo_sqlite.dll", "-S", "127.0.0.1:8000", "-t", "public", "public/router.php"],
+      "runtimeArgs": ["-d", "extension=php_sqlite3.dll", "-d", "extension=php_pdo_sqlite.dll", "-d", "curl.cainfo=C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt", "-d", "openssl.cafile=C:/Program Files/Git/mingw64/etc/ssl/certs/ca-bundle.crt", "-d", "upload_max_filesize=300M", "-d", "post_max_size=310M", "-S", "127.0.0.1:8000", "-t", "public", "public/router.php"],
       "port": 8000
     },
     {

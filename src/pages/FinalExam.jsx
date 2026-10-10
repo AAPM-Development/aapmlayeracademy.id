@@ -1,8 +1,9 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, ConfirmDialog, Skeleton, StateView, useToast } from "@/design-system";
+import { Button, ConfirmDialog, Skeleton, useToast } from "@/design-system";
 import { FocusShell, Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
+import AppiMascot from "@/components/appi/AppiMascot";
 import { AssessmentBar, AssessmentResult, QuestionNavigator, QuizQuestion } from "@/components/academy/AssessmentComponents";
 import { useAnswerAssessment, useFinalEligibility, useStartAssessment, useSubmitAssessment } from "@/lib/useCourseData";
 
@@ -155,25 +156,34 @@ export default function FinalExam() {
     const prerequisitesMissing = eligibility && !eligibility.eligible && !eligibility.activeAttemptId;
     const limitReached = eligibility && eligibility.attemptsRemaining < 1 && !eligibility.activeAttemptId;
     const missing = (eligibility?.missingModuleNumbers ?? []).join(", ");
-    let body;
+    const back = <Button asChild variant="ghost" size="lg"><Link to="/"><AapmIcon name="arrowLeft" />Kembali ke beranda</Link></Button>;
+    let intro;
     if (finished) {
-      body = <StateView kind="empty" icon="exam" title="Ujian akhir sudah lulus" description="Hasil ujian Anda sudah tercatat." action={<Button asChild variant="secondary"><Link to="/certification"><AapmIcon name="certificate" />Status sertifikat</Link></Button>} />;
+      intro = { mood: "proud", title: "Ujian akhir sudah lulus", text: "Hasil ujian Anda sudah tercatat. Lihat status sertifikat Expert Anda.", action: <Button asChild variant="learn" size="lg"><Link to="/certification"><AapmIcon name="certificate" />Status sertifikat</Link></Button> };
     } else if (prerequisitesMissing) {
-      body = <StateView kind="empty" icon="roadmap" title="Ujian akhir belum terbuka" description={`Selesaikan kuis atau aktivitas belajar pada modul berikut: ${missing || "—"}.`} action={<Button asChild variant="secondary"><Link to="/modules"><AapmIcon name="arrowLeft" />Jalur belajar</Link></Button>} />;
+      intro = { mood: "curious", title: "Ujian akhir belum terbuka", text: `Selesaikan kuis atau aktivitas belajar pada modul berikut: ${missing || "—"}.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Buka jalur belajar</Link></Button> };
     } else if (limitReached) {
-      body = <StateView kind="empty" icon="exam" title="Batas percobaan tercapai" description={`Coba lagi setelah ${eligibility.nextEligibleAt ? new Date(eligibility.nextEligibleAt).toLocaleString("id-ID") : "beberapa saat"}.`} action={<Button asChild variant="secondary"><Link to="/modules"><AapmIcon name="arrowLeft" />Jalur belajar</Link></Button>} />;
+      intro = { mood: "concerned", title: "Batas percobaan tercapai", text: `Coba lagi setelah ${eligibility.nextEligibleAt ? new Date(eligibility.nextEligibleAt).toLocaleString("id-ID") : "beberapa saat"}. Sambil menunggu, ulas lagi modul yang sulit.`, action: <Button asChild variant="learn" size="lg"><Link to="/modules"><AapmIcon name="roadmap" />Jalur belajar</Link></Button> };
     } else {
-      body = (
-        <StateView
-          kind="empty"
-          icon="exam"
-          title={eligibility?.activeAttemptId ? "Ujian Anda belum selesai" : "Siap mengikuti ujian akhir?"}
-          description={`Nilai lulus ${FINAL_PASSING_GRADE}%.${eligibility?.attemptsRemaining !== undefined ? ` Kesempatan tersisa: ${eligibility.attemptsRemaining} dari ${eligibility.attemptLimit}.` : ""}`}
-          action={<Button variant="learn" size="lg" loading={busy} onClick={begin}>{eligibility?.activeAttemptId ? "Lanjutkan ujian" : "Mulai ujian"}</Button>}
-        />
-      );
+      const resume = Boolean(eligibility?.activeAttemptId);
+      intro = {
+        mood: resume ? "talk" : "wink",
+        title: resume ? "Ujian Anda belum selesai" : "Siap mengikuti ujian akhir?",
+        text: `Nilai lulus ${FINAL_PASSING_GRADE}%.${eligibility?.attemptsRemaining !== undefined ? ` Kesempatan tersisa: ${eligibility.attemptsRemaining} dari ${eligibility.attemptLimit}.` : ""} Ujian dikerjakan tanpa bantuan APPI.`,
+        action: <Button variant="learn" size="lg" loading={busy} onClick={begin}>{resume ? "Lanjutkan ujian" : "Mulai ujian"}<AapmIcon name="arrowRight" /></Button>,
+      };
     }
-    return <Page width="narrow" className="min-h-[60vh] justify-center">{body}</Page>;
+    // Start screen (Duolingo-style): APPI, one headline, the next step and a way back.
+    const body = (
+      <section className="aapm-exam-intro" aria-labelledby="exam-intro-title">
+        <AppiMascot mood={intro.mood} size="hero" />
+        <p className="aapm-exam-intro__eyebrow">Ujian akhir · Sertifikasi Expert</p>
+        <h1 id="exam-intro-title" className="aapm-exam-intro__title">{intro.title}</h1>
+        <p className="aapm-exam-intro__text">{intro.text}</p>
+        <div className="aapm-exam-intro__actions">{intro.action}{back}</div>
+      </section>
+    );
+    return <Page width="narrow" className="aapm-exam-intro-page">{body}</Page>;
   }
 
   const navigator = (

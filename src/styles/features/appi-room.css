@@ -1,0 +1,84 @@
+/* APPI room: the chat workspace in the ChatGPT / Claude pattern. A quiet
+ * history rail, one centred reading column, answers as plain text beside a
+ * small APPI, the learner's turns as soft bubbles on the right, and one
+ * composer that starts in the middle of an empty chat and floats at the
+ * bottom once the conversation begins. */
+
+.aapm-room.aapm-ai-frame { border: 0; border-radius: 0; box-shadow: none; background: var(--aapm-semantic-background); }
+.aapm-room .aapm-ai-workspace__main { background: var(--aapm-semantic-surface); }
+.aapm-room .aapm-ai-conversation-sidebar { background: var(--aapm-semantic-background); border-inline-end: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border); }
+.aapm-history-heading { display: grid; gap: var(--aapm-primitive-space-1); padding: var(--aapm-primitive-space-4) var(--aapm-primitive-space-4) 0; }
+.aapm-history-heading strong { font-size: var(--aapm-component-type-body-size); }
+.aapm-history-heading > span { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
+.aapm-history-toolbar .aapm-history-search { min-height: var(--aapm-component-action-height); }
+.aapm-room .aapm-ai-history-row { margin-block: var(--aapm-primitive-space-1); border-radius: var(--aapm-primitive-radius-control); transition: background-color var(--aapm-primitive-motion-fast) var(--aapm-primitive-motion-ease); }
+.aapm-room .aapm-ai-history-row:hover { background: var(--aapm-semantic-surface-subtle); }
+.aapm-room .aapm-ai-history-row[data-active="true"] { background: var(--aapm-semantic-ai-soft); }
+.aapm-room .aapm-ai-history-row[data-selected="true"] { background: var(--aapm-semantic-primary-soft); }
+.aapm-room .aapm-ai-history-row > button:first-of-type { min-height: 56px; }
+.aapm-room .aapm-ai-history-row > button:first-of-type > span:first-child > span { font-size: var(--aapm-component-type-support-size); }
+.aapm-ai-history-row button[aria-haspopup="menu"] { min-width: 40px; min-height: 44px; }
+
+/* Header: a slim title line, no heavy chrome. */
+.aapm-room .aapm-ai-workspace__header { min-height: 3.25rem; border-bottom-color: transparent; background: var(--aapm-semantic-surface); }
+.aapm-room .aapm-chat-header__title { font-size: var(--aapm-component-type-body-size); }
+
+/* Empty chat: greeting, the big composer, then suggestion chips, centred. */
+.aapm-room__welcome {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--aapm-primitive-space-3);
+  min-height: min(68svh, 40rem);
+  padding-block: var(--aapm-primitive-space-6);
+  text-align: center;
+}
+.aapm-room__welcome .aapm-chat-welcome__title { font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; }
+.aapm-room__welcome .aapm-chat-welcome__text { max-width: 46ch; }
+.aapm-room__composer { width: 100%; margin-top: var(--aapm-primitive-space-3); text-align: start; }
+.aapm-room__composer .aapm-ai-composer-frame { border-radius: 24px; box-shadow: var(--aapm-semantic-shadow-raised); }
+.aapm-room__chips.aapm-chat-suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--aapm-primitive-space-2); width: 100%; margin-top: var(--aapm-primitive-space-2); }
+.aapm-room__chips .aapm-chat-suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aapm-primitive-space-2);
+  width: auto;
+  max-width: 100%;
+  min-height: 40px;
+  padding: var(--aapm-primitive-space-1-5) var(--aapm-primitive-space-3) var(--aapm-primitive-space-1-5) var(--aapm-primitive-space-1-5);
+  border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-primitive-radius-pill);
+  background: var(--aapm-semantic-surface);
+  text-align: start;
+}
+.aapm-room__chips .aapm-chat-suggestion:hover { border-color: var(--aapm-semantic-border-strong); background: var(--aapm-semantic-surface-subtle); }
+.aapm-room__chips .aapm-chat-suggestion .aapm-icon-tile { width: 28px; height: 28px; }
+.aapm-room__chips .aapm-chat-suggestion__detail { display: none; }
+.aapm-room__chips .aapm-chat-suggestion__title { font-size: var(--aapm-component-type-support-size); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Transcript: answers read like a document; the learner's turns are bubbles. */
+.aapm-room .aapm-chat-turn--user { justify-content: flex-end; }
+.aapm-room .aapm-ai-user-bubble { border: 0; border-radius: 20px 20px 6px 20px; background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-foreground); box-shadow: none; }
+
+/* Composer dock: floats over a soft fade at the bottom of the column. */
+.aapm-room__dock.aapm-ai-composer-dock {
+  position: relative;
+  padding: 0 var(--aapm-primitive-space-4) max(var(--aapm-primitive-space-3), env(safe-area-inset-bottom));
+  border-top: 0;
+  background: var(--aapm-semantic-surface);
+}
+.aapm-room__dock::before {
+  content: "";
+  position: absolute;
+  inset: -28px 0 100% 0;
+  background: linear-gradient(to bottom, transparent, var(--aapm-semantic-surface));
+  pointer-events: none;
+}
+.aapm-room__dock .aapm-ai-composer-frame { border-radius: 24px; box-shadow: var(--aapm-semantic-shadow-rest); }
+@media (min-width: 640px) {
+  .aapm-room__dock.aapm-ai-composer-dock { padding-inline: var(--aapm-primitive-space-8); }
+}
+@media (max-width: 639px) {
+  .aapm-room__welcome { min-height: 0; padding-block: var(--aapm-primitive-space-4); }
+  .aapm-room__welcome .aapm-chat-welcome__title { font-size: var(--aapm-component-type-section-size); line-height: var(--aapm-component-type-section-line); }
+}

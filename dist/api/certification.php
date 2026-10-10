@@ -320,7 +320,8 @@ function aapm_cert_present_legacy(array $row): array
  */
 function aapm_cert_evaluate(PDO $pdo, int $userId): array
 {
-    $policy = aapm_cert_policy($pdo);
+    $version = aapm_learner_policy_version($pdo, $userId);
+    $policy = aapm_cert_policy($pdo, $version);
     $snapshot = aapm_academic_snapshot($pdo, $userId);
     $done = [];
     foreach ($snapshot['modules'] as $number => $module) {
@@ -332,7 +333,7 @@ function aapm_cert_evaluate(PDO $pdo, int $userId): array
 
     $issued = [];
     $statement = $pdo->prepare('SELECT * FROM certificate_issuances WHERE user_id = ? AND policy_version = ?');
-    $statement->execute([$userId, AAPM_ASSESSMENT_POLICY_VERSION]);
+    $statement->execute([$userId, $version]);
     foreach ($statement->fetchAll() as $row) {
         $issued[(int) $row['tier_number']] = $row;
     }
@@ -361,7 +362,7 @@ function aapm_cert_evaluate(PDO $pdo, int $userId): array
         $tiers[$number] = [
             'tierNumber' => $number,
             'tierName' => $tier['name'],
-            'policyVersion' => AAPM_ASSESSMENT_POLICY_VERSION,
+            'policyVersion' => $version,
             'status' => $status,
             'requirementsMet' => $requirementsMet,
             'requiredModules' => $tier['required'],
@@ -405,7 +406,7 @@ function aapm_certification_eligibility(array $user): array
         ];
     }
 
-    return ['policyVersion' => AAPM_ASSESSMENT_POLICY_VERSION, 'emailVerified' => $verified, 'tiers' => $tiers];
+    return ['policyVersion' => aapm_learner_policy_version($pdo, $userId), 'emailVerified' => $verified, 'tiers' => $tiers];
 }
 
 function aapm_cert_holder_name(array $account): string
@@ -509,6 +510,7 @@ function aapm_cert_event(PDO $pdo, int $certificateId, ?int $actorId, string $ty
 function aapm_certificate_claim(array $user, array $input): array
 {
     $userId = (int) $user['id'];
+    $version = aapm_learner_policy_version(db(), $userId);
     $tier = $input['tierNumber'] ?? null;
     if ((!is_int($tier) && !(is_string($tier) && ctype_digit($tier))) || (int) $tier < 1 || (int) $tier > count(AAPM_CERT_TIERS_ACADEMY_V1)) {
         aapm_assessment_fail(422, 'invalid_tier', 'Tingkat sertifikat tidak valid.');
@@ -528,14 +530,14 @@ function aapm_certificate_claim(array $user, array $input): array
             aapm_assessment_fail(403, 'email_verification_required', 'Verifikasi email diperlukan sebelum mengklaim sertifikat.', ['verificationStatus' => aapm_verification_status($account)]);
         }
 
-        $existing = aapm_cert_issuance_row($pdo, $userId, AAPM_ASSESSMENT_POLICY_VERSION, $tier);
+        $existing = aapm_cert_issuance_row($pdo, $userId, $version, $tier);
         if ($existing) {
             aapm_tx_commit($pdo);
             if ((string) $existing['status'] === 'revoked') {
                 aapm_assessment_fail(409, 'certificate_revoked', 'Sertifikat tingkat ini sudah dicabut dan tidak dapat diklaim ulang.');
             }
 
-            return ['certificate' => aapm_cert_present($existing, count(aapm_cert_policy($pdo)[$tier]['required'])), 'created' => false];
+            return ['certificate' => aapm_cert_present($existing, count(aapm_cert_policy($pdo, $version)[$tier]['required'])), 'created' => false];
         }
 
         $evaluation = aapm_cert_evaluate($pdo, $userId);
@@ -572,7 +574,7 @@ function aapm_certificate_claim(array $user, array $input): array
                 $userId,
                 $tier,
                 $state['tierName'],
-                AAPM_ASSESSMENT_POLICY_VERSION,
+                $version,
                 $generation,
                 aapm_cert_holder_name($account),
                 'issued',
@@ -592,20 +594,20 @@ function aapm_certificate_claim(array $user, array $input): array
                 $item['attemptId'],
                 $item['eventId'],
                 $generation,
-                AAPM_ASSESSMENT_POLICY_VERSION,
+                $version,
                 json_encode($item['snapshot'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 $now,
             ]);
         }
         aapm_cert_event($pdo, $certificateId, $userId, 'certificate.issued', null, [
             'tier' => $tier,
-            'policyVersion' => AAPM_ASSESSMENT_POLICY_VERSION,
+            'policyVersion' => $version,
             'generation' => $generation,
             'evidenceCount' => count($evidence),
         ]);
         aapm_tx_commit($pdo);
 
-        $row = aapm_cert_issuance_row($pdo, $userId, AAPM_ASSESSMENT_POLICY_VERSION, $tier);
+        $row = aapm_cert_issuance_row($pdo, $userId, $version, $tier);
 
         return ['certificate' => aapm_cert_present($row, $state['totalRequiredModules']), 'created' => true];
     } catch (PDOException $exception) {
@@ -628,7 +630,8 @@ function aapm_certificate_list(array $user): array
     $pdo = db();
     $userId = (int) $user['id'];
     $totals = [];
-    foreach (aapm_cert_policy($pdo) as $number => $tier) {
+    $version = aapm_learner_policy_version($pdo, $userId);
+    foreach (aapm_cert_policy($pdo, $version) as $number => $tier) {
         $totals[$number] = count($tier['required']);
     }
     $entries = [];
@@ -656,7 +659,7 @@ function aapm_certificate_detail(array $user, string $id): array
         $statement->execute([$id, $userId]);
         $row = $statement->fetch();
         if ($row) {
-            return aapm_cert_present($row, count(aapm_cert_policy($pdo)[(int) $row['tier_number']]['required'] ?? []));
+            return aapm_cert_present($row, count(aapm_cert_policy($pdo, (string) $row['policy_version'])[(int) $row['tier_number']]['required'] ?? []));
         }
     } elseif (ctype_digit($id)) {
         $statement = $pdo->prepare('SELECT * FROM certificates WHERE id = ? AND user_id = ? LIMIT 1');

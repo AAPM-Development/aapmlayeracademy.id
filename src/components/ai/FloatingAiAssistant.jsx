@@ -25,6 +25,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
 import { useAiChat } from "@/components/ai/AiChatProvider";
+import AppiMascot from "@/components/appi/AppiMascot";
+import { ASK_APPI_EVENT } from "@/lib/askAppi";
 
 const quickActions = [
   {
@@ -61,11 +63,11 @@ function findLastAssistantMessageIndex(messages = []) {
 function pageContextForPath(pathname) {
   if (pathname === "/calculators") return "calculators";
   if (pathname === "/kpi") return "kpi";
-  if (pathname === "/modules" || pathname.startsWith("/module/")) {
+  if (pathname === "/modules" || pathname.startsWith("/modules/") || pathname.startsWith("/quiz/")) {
     return "learning";
   }
   if (pathname === "/certification") return "certification";
-  if (pathname === "/exam") return "exam";
+  if (pathname === "/final-exam") return "exam";
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/dashboard" || pathname === "/") return "dashboard";
   return "";
@@ -246,6 +248,21 @@ export default function FloatingAiAssistant() {
     open: historyOpen,
     onClose: () => setHistoryOpen(false),
   });
+  // Pages hand APPI a prepared question (a calculator result, the week's KPI);
+  // the learner reviews it in the composer before sending.
+  useEffect(() => {
+    const onAsk = (event) => {
+      const prompt = event.detail?.prompt;
+      if (prompt) setPromptDraft(prompt);
+      if (location.pathname === "/ai-assistant") return;
+      setHistoryOpen(false);
+      setClosing(false);
+      setOpen(true);
+    };
+    window.addEventListener(ASK_APPI_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_APPI_EVENT, onAsk);
+  }, [location.pathname, setPromptDraft]);
+  // The APPI workspace is the chat itself; everywhere else the launcher stays.
   if (location.pathname === "/ai-assistant") return null;
   const historySyncLabel = isStreaming
     ? "APPI sedang menjawab"
@@ -815,12 +832,12 @@ export default function FloatingAiAssistant() {
           type="button"
           ref={launcherRef}
           onClick={openPanel}
-          className="aapm-ai-launcher aapm-token-popover fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-[75] inline-flex h-10 w-10 items-center justify-center p-1 sm:bottom-5 sm:right-5 sm:h-10 sm:w-auto sm:justify-start sm:gap-1.5 sm:py-1 sm:pl-1.5 sm:pr-2"
+          className="aapm-ai-launcher aapm-appi-launcher"
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >
-          <AiProfileAvatar size="xs" state="idle" label="" />
-          <span className="hidden text-caption font-semibold text-foreground sm:inline">Tanya APPI</span>
+          <AppiMascot mood="idle" size={44} decor={false} presence={false} />
+          <span className="aapm-appi-launcher__label">Tanya APPI</span>
         </button>
       )}
     </>

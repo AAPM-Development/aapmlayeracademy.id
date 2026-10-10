@@ -5,6 +5,7 @@ import { Button, Skeleton, StateView } from "@/design-system";
 import { Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { nativeApi } from "@/api/nativeClient";
+import { tierAccent } from "@/components/certificate/CertificateDocument";
 
 /**
  * Public, read-only check of an Academy certificate. It confirms Academy issuance only;
@@ -42,7 +43,13 @@ export default function VerifyCertificate() {
   return (
     <Page width="narrow">
       <section className="aapm-card grid gap-4 p-6" data-hue={valid ? "green" : "orange"} aria-labelledby="verify-title">
-        <p className="aapm-text-overline m-0">Verifikasi sertifikat Academy</p>
+        <div className="flex items-center gap-3">
+          <span className="aapm-medal" data-status={valid ? "issued" : "locked"} style={/** @type {React.CSSProperties} */ ({ "--medal": tierAccent(data.tierNumber).accent, "--medal-ink": tierAccent(data.tierNumber).ink, "--medal-tint": tierAccent(data.tierNumber).tint })} aria-hidden="true">
+            <span className="aapm-medal__face">{data.tierNumber}</span>
+            {valid ? <span className="aapm-medal__badge"><AapmIcon name="glyphCheck" /></span> : null}
+          </span>
+          <p className="aapm-text-overline m-0">Verifikasi sertifikat Academy</p>
+        </div>
         <h1 id="verify-title" className="aapm-text-title m-0">
           {valid ? "Sertifikat valid" : revoked ? "Sertifikat dicabut" : "Sertifikat belum dapat dipastikan"}
         </h1>

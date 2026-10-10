@@ -38,11 +38,51 @@ export function certificateFileName(certificate) {
   return `sertifikat-aapm-tingkat-${tier || "x"}.pdf`;
 }
 
+/** PNG file name, from the tier only like the PDF. */
+export function certificateImageName(certificate) {
+  return certificateFileName(certificate).replace(/\.pdf$/, ".png");
+}
+
+async function templateCanvas(certificate) {
+  // The web template (src/components/certificate) is the export source; it
+  // is loaded on demand so this module stays importable without a browser.
+  const { renderCertificateCanvas } = await import("../components/certificate/CertificateDocument.jsx");
+  return renderCertificateCanvas(certificate);
+}
+
 /**
- * Renders the A4 landscape document. jsPDF and the QR generator are loaded on
- * demand so the model above stays importable without a browser.
+ * Exports the certificate exactly as the web template draws it: A4 landscape
+ * PDF from a 2× raster of the document. If rasterising fails, the plain
+ * vector layout below is used so the learner still gets a valid document.
  */
 export async function downloadVerifiedCertificatePdf(certificate) {
+  let canvas = null;
+  try { canvas = await templateCanvas(certificate); } catch { canvas = null; }
+  if (!canvas) return downloadVectorCertificatePdf(certificate);
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+  doc.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight());
+  const model = certificateModel(certificate);
+  doc.setProperties({ title: `${model.title} — ${model.tierName}`, subject: model.disclaimer, creator: "AAPM Layer Academy" });
+  doc.save(certificateFileName(certificate));
+}
+
+/** PNG of the same template, for sharing on chat or social media. */
+export async function downloadCertificateImage(certificate) {
+  const canvas = await templateCanvas(certificate);
+  const link = document.createElement("a");
+  link.href = canvas.toDataURL("image/png");
+  link.download = certificateImageName(certificate);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+/**
+ * Plain vector fallback. jsPDF and the QR generator are loaded on demand so
+ * the model above stays importable without a browser.
+ */
+export async function downloadVectorCertificatePdf(certificate) {
   const model = certificateModel(certificate);
   const [{ jsPDF }, QRCode] = await Promise.all([import("jspdf"), import("qrcode")]);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });

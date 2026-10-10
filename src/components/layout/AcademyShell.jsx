@@ -144,7 +144,7 @@ export default function AcademyShell() {
             <BottomNav
               items={[
                 ...academyBottomNavigation,
-                { label: "Menu", icon: "menu", onClick: () => setSheetOpen(true) },
+                { label: "Menu", icon: "menu", expanded: sheetOpen, onClick: () => setSheetOpen(true) },
               ]}
             />
           )}

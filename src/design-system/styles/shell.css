@@ -424,6 +424,26 @@
 .aapm-bottom-nav__item[data-accent="ai"] .aapm-bottom-nav__icon { color: var(--aapm-semantic-ai); }
 .aapm-bottom-nav__item[data-accent="ai"][aria-current="page"] .aapm-bottom-nav__icon { background: var(--aapm-semantic-ai-soft); color: var(--aapm-semantic-ai-soft-text); }
 .aapm-bottom-nav__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aapm-bottom-nav__item:focus-visible { outline: 3px solid var(--aapm-semantic-focus); outline-offset: -3px; border-radius: var(--aapm-primitive-radius-control); }
+@media (max-width: 859px) {
+  :root { --aapm-component-bottom-nav-height: 72px; }
+  .aapm-bottom-nav {
+    inset-inline: var(--aapm-primitive-space-2);
+    bottom: calc(var(--aapm-primitive-space-2) + env(safe-area-inset-bottom));
+    height: calc(var(--aapm-component-bottom-nav-height) - var(--aapm-primitive-space-2));
+    gap: var(--aapm-primitive-space-1);
+    padding: var(--aapm-primitive-space-1);
+    border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border);
+    border-radius: var(--aapm-primitive-radius-panel);
+    box-shadow: var(--aapm-semantic-shadow-overlay);
+  }
+  .aapm-bottom-nav__item { min-height: 44px; border-radius: var(--aapm-primitive-radius-control); transition: background-color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease), color var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease); }
+  .aapm-bottom-nav__icon { width: 44px; height: 28px; }
+  .aapm-bottom-nav__label { overflow: visible; text-overflow: clip; font-size: 12px; }
+  .aapm-bottom-nav__item[data-active="true"] { background: var(--aapm-semantic-primary-soft); color: var(--aapm-semantic-primary); font-weight: var(--aapm-primitive-weight-strong); }
+  .aapm-bottom-nav__item[data-accent="ai"][data-active="true"] { background: var(--aapm-semantic-ai-soft); color: var(--aapm-semantic-ai-soft-text); }
+  .aapm-bottom-nav__item[aria-current="page"] .aapm-bottom-nav__icon { background: transparent; }
+}
 
 /* ------------------------------------------------------ Navigation sheet */
 .aapm-nav-sheet.aapm-sheet {
@@ -643,8 +663,8 @@
 
 /* APPI launcher clears the focus action bar. */
 html[data-shell="focus"] .aapm-ai-launcher {
-  bottom: calc(var(--aapm-component-lesson-footer-height) + var(--aapm-primitive-space-3) + env(safe-area-inset-bottom)) !important;
+  bottom: calc(var(--aapm-focus-footer-height, var(--aapm-component-lesson-footer-height)) + var(--aapm-primitive-space-3)) !important;
 }
 html[data-shell="focus"] .aapm-ai-floating-panel {
-  bottom: calc(var(--aapm-component-lesson-footer-height) + var(--aapm-primitive-space-3) + env(safe-area-inset-bottom)) !important;
+  bottom: calc(var(--aapm-focus-footer-height, var(--aapm-component-lesson-footer-height)) + var(--aapm-primitive-space-3)) !important;
 }

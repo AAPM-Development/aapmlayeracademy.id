@@ -1,7 +1,45 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { bindNativeVideo, createYouTubeSession, loadYouTubeApi, mediaTime, YOUTUBE_API_URL } from "../src/lib/lessonVideo.js";
+import { trustedVideoSource } from "../src/lib/lessonVideoSource.js";
+
+test("lesson URLs preserve privacy hashes and provider IDs without trusting arbitrary embed hosts", () => {
+  const cases = [
+    ['https://vimeo.com/123456789/abcdef0123', 'Vimeo', 'https://player.vimeo.com/video/123456789?h=abcdef0123'],
+    ['https://player.vimeo.com/video/123456789?h=abcdef0123', 'Vimeo', 'https://player.vimeo.com/video/123456789?h=abcdef0123'],
+    ['https://drive.google.com/file/d/Abcdefghij_123/view?usp=sharing', 'Google Drive', 'https://drive.google.com/file/d/Abcdefghij_123/preview'],
+    ['https://drive.google.com/open?id=Abcdefghij_123', 'Google Drive', 'https://drive.google.com/file/d/Abcdefghij_123/preview'],
+    ['https://www.loom.com/share/0123456789abcdef0123456789abcdef', 'Loom', 'https://www.loom.com/embed/0123456789abcdef0123456789abcdef'],
+    ['https://geo.dailymotion.com/player/x8lr5.html?video=x84sh87&autoplay=1', 'Dailymotion', 'https://geo.dailymotion.com/player/x8lr5.html?video=x84sh87'],
+  ];
+  for (const [url, provider, src] of cases) assert.deepEqual(trustedVideoSource(url), { kind: 'embed', provider, src });
+  assert.deepEqual(trustedVideoSource('https://dai.ly/x84sh87'), { kind: 'link', provider: 'Dailymotion', src: 'https://www.dailymotion.com/video/x84sh87' });
+  assert.deepEqual(trustedVideoSource('/uploads/editorial/videos/2026/10/example.mp4'), { kind: 'file', src: '/uploads/editorial/videos/2026/10/example.mp4' });
+  for (const url of ['http://vimeo.com/123456789', 'https://user:pass@vimeo.com/123456789', 'https://drive.google.com/drive/folders/Abcdefghij_123', 'https://geo.dailymotion.com/player.html?video=x84sh87', 'https://loom.com/share/0123456789abcdef', 'https://vimeo.com.evil.example/123456789', '//example.com/video.mp4', '/uploads/%2e%2e/api/video.mp4', '/uploads/%5cvideo.mp4', '/uploads/%zz/video.mp4', 'javascript:alert(1)']) assert.equal(trustedVideoSource(url), null, url);
+});
+
+test("editorial video validation accepts the shipped MP4 and refuses disguised, truncated and Matroska files", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'academy-video-validation-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const php = fileURLToPath(new URL('../public/api/editorialMedia.php', import.meta.url));
+  const code = 'function error_response($message, $status = 500, $code = "error") { throw new RuntimeException($code); } require $argv[1]; try { echo json_encode(editorial_video_details($argv[2])); } catch (RuntimeException $e) { echo json_encode(["error" => $e->getMessage()]); }';
+  const inspect = (path) => {
+    const result = spawnSync('php', ['-r', code, php, path], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout);
+  };
+  assert.deepEqual(inspect(fileURLToPath(new URL('../public/assets/Video-Web_3.mp4', import.meta.url))), { mime: 'video/mp4', extension: 'mp4' });
+  for (const [name, content] of [['fake.mp4', Buffer.from('<?php echo "fake video";')], ['truncated.mp4', Buffer.from('000000206674797069736f6d', 'hex')], ['matroska.webm', Buffer.from('1a45dfa38b4282886d6174726f736b61', 'hex')]]) {
+    const file = join(dir, name);
+    writeFileSync(file, content);
+    assert.deepEqual(inspect(file), { error: 'invalid_video_type' }, name);
+  }
+});
 
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
 function environment() {

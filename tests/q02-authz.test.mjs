@@ -215,6 +215,38 @@ function concurrent(site, commands) {
 
 const login = (api, email, password) => api.mutate("POST", "/api/auth/login", { email, password });
 
+test("deleting all APPI history requires confirmation and CSRF, clears every page and archive, and preserves another account", async () => {
+  const site = makeSite("appi-delete-all");
+  const ownerId = seedAccount(site, { email: "appi-owner@example.test", verified: true });
+  const otherId = seedAccount(site, { email: "appi-other@example.test", verified: true });
+  const values = Array.from({ length: 85 }, (_, index) => `(${ownerId}, 'Chat ${index}', ${index % 2 ? "'2026-10-01 00:00:00'" : 'NULL'})`);
+  values.push(`(${otherId}, 'Other account chat', NULL)`);
+  sql(site, `INSERT INTO ai_conversations (user_id, title, archived_at) VALUES ${values.join(', ')}`);
+  sql(site, "INSERT INTO ai_chat_messages (conversation_id, role, content) SELECT id, 'user', 'Task-owned test message' FROM ai_conversations");
+  await withSite(site, async (api) => {
+    assert.equal((await api.mutate("DELETE", "/api/ai/conversations", { confirm: true })).status, 401);
+    assert.equal((await login(api, "appi-owner@example.test", PASSWORD)).status, 200);
+    const before = await api.get("/api/ai/conversations?format=paged&limit=40");
+    assert.equal(before.json.data.items.length, 40);
+    assert.equal(before.json.data.total, 85);
+    assert.ok(before.json.data.archivedTotal > 0);
+    assert.equal((await api.raw("DELETE", "/api/ai/conversations", { confirm: true })).json.error.code, "csrf_failed");
+    assert.equal((await api.mutate("DELETE", "/api/ai/conversations", {})).json.error.code, "confirmation_required");
+    assert.equal((await api.get("/api/ai/conversations?format=paged")).json.data.total, 85);
+    const cleared = await api.mutate("DELETE", "/api/ai/conversations", { confirm: true, userId: otherId });
+    assert.equal(cleared.status, 200);
+    assert.equal(cleared.json.data.deletedCount, 85);
+    const after = (await api.get("/api/ai/conversations?format=paged")).json.data;
+    assert.equal(after.total, 0);
+    assert.equal(after.activeTotal, 0);
+    assert.equal(after.archivedTotal, 0);
+    assert.deepEqual(after.items, []);
+    assert.equal(rows(site, 'SELECT COUNT(*) AS n FROM ai_chat_messages')[0].n, 1);
+    assert.equal(rows(site, 'SELECT user_id FROM ai_conversations')[0].user_id, otherId);
+    assert.equal((await api.mutate("DELETE", "/api/ai/conversations", { confirm: true })).json.data.deletedCount, 0);
+  });
+});
+
 async function registerAndGetToken(api, email) {
   const reply = await api.mutate("POST", "/api/auth/register", { email, password: PASSWORD, fullName: "Peserta" });
   assert.equal(reply.status, 202);

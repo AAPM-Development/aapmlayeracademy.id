@@ -12,6 +12,8 @@ import { useAcknowledgeModule, useModules, usePracticeAttestation, useQuizQuesti
 import { getProgressSummary, sortModules } from "@/lib/academyData";
 import { buildCurriculum, estimateMinutes, moduleFlowState, moduleVisual } from "@/lib/academyVisuals";
 import { celebrate } from "@/lib/celebrate";
+import { askAppi } from "@/lib/askAppi";
+import AppiMascot from "@/components/appi/AppiMascot";
 import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
 
@@ -50,6 +52,7 @@ export default function ModuleDetail() {
   // The practice check answers at once; the saved value takes over after refetch.
   const [practiceOverride, setPracticeOverride] = useState(null);
   const mainRef = useRef(null);
+  const progressRef = useRef(null);
   const isLoading = modulesLoading || progressLoading;
 
   const sortedModules = useMemo(() => sortModules(modules), [modules]);
@@ -80,6 +83,24 @@ export default function ModuleDetail() {
     const [contentSection, ...remaining] = visible;
     return [contentSection, ...editorialNavigationItems, ...remaining].filter(Boolean);
   }, [editorialNavigationItems, editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
+
+  // Reading progress: a thin bar under the lesson bar fills as the learner
+  // scrolls the lesson (transform only, no re-render per scroll event).
+  useEffect(() => {
+    const main = mainRef.current;
+    const bar = progressRef.current;
+    if (!main || !bar) return undefined;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const max = main.scrollHeight - main.clientHeight;
+      bar.style.transform = `scaleX(${max > 0 ? Math.min(1, main.scrollTop / max) : 1})`;
+    };
+    const onScroll = () => { if (!frame) frame = window.requestAnimationFrame(update); };
+    update();
+    main.addEventListener("scroll", onScroll, { passive: true });
+    return () => { main.removeEventListener("scroll", onScroll); window.cancelAnimationFrame(frame); };
+  });
 
   useEffect(() => {
     setActiveSection("content");
@@ -194,13 +215,24 @@ export default function ModuleDetail() {
       outline={outline}
       outlineOpen={outlineOpen}
       bar={(
-        <header className="aapm-topbar aapm-focus__bar" data-hue={visual.hue}>
+        <header className="aapm-topbar aapm-focus__bar aapm-lesson-bar" data-hue={visual.hue}>
+          <span className="aapm-lesson-bar__read" aria-hidden="true"><span ref={progressRef} /></span>
           <IconButton label="Keluar ke jalur belajar" icon="close" onClick={() => navigate("/modules")} />
           <div className="aapm-topbar__title">
             <span className="aapm-topbar__context">Modul {module.moduleNumber} dari {summary.total} · {module.levelName || module.category}</span>
             <p className="aapm-topbar__title-text">{module.title}</p>
           </div>
           <div className="aapm-topbar__actions">
+            {/* Lessons own the bottom of the screen, so APPI is asked from the bar. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="aapm-focus__appi"
+              aria-label="Tanya APPI tentang modul ini"
+              onClick={() => askAppi(`Saya sedang belajar Modul ${module.moduleNumber}: ${module.title}. Bantu saya memahami poin pentingnya dan cara menerapkannya di kandang.`)}
+            >
+              <AapmIcon name="ai" /><span>Tanya APPI</span>
+            </Button>
             <IconButton className="hidden lg:inline-flex" label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} icon="sidebar" onClick={toggleOutline} />
             <IconButton className="lg:hidden" label="Buka kurikulum" icon="list" onClick={() => setOutlineSheet(true)} />
             <div className="aapm-focus__progress">
@@ -280,7 +312,7 @@ export default function ModuleDetail() {
             ) : null}
             <div className="aapm-callout" data-hue={flow.completed ? "green" : "orange"}>
               <div className="aapm-callout__head">
-                <span className="aapm-icon-tile" data-hue={flow.completed ? "green" : "orange"} data-variant="badge" data-shape="circle"><AapmIcon name={flow.completed ? "check" : flow.hasQuiz ? "quiz" : "flag"} /></span>
+                <AppiMascot mood={flow.completed ? "proud" : flow.hasQuiz ? "wink" : "talk"} size="lg" />
                 <div className="min-w-0 flex-1">
                   <h3 className="aapm-callout__title">
                     {flow.completed ? "Modul ini sudah selesai" : flow.hasQuiz ? "Siap uji pemahaman?" : "Selesai membaca?"}

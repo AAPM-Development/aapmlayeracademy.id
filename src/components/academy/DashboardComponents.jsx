@@ -1,28 +1,54 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, IconTile, Progress, ProgressRing, SectionHeader } from "@/design-system";
+import { Button, IconTile, Progress, SectionHeader } from "@/design-system";
 import { ModuleRow } from "@/components/academy/CourseElements";
+import AppiMascot, { AppiSays } from "@/components/appi/AppiMascot";
+import CountUp from "@/components/motion/CountUp";
+import { estimateMinutes } from "@/lib/academyVisuals";
 
 function firstName(user) {
   const name = String(user?.full_name || user?.email || "").trim();
   return name.split(/[\s@]/)[0] || "Peserta";
 }
 
-/** Greeting hero: where you are in the course and the single next action. */
+function greeting(hour = new Date().getHours()) {
+  if (hour >= 4 && hour < 11) return "Selamat pagi";
+  if (hour >= 11 && hour < 15) return "Selamat siang";
+  if (hour >= 15 && hour < 19) return "Selamat sore";
+  return "Selamat malam";
+}
+
+/** What APPI says on the home hero: one short line that fits the learner's moment. */
+function heroCoach(summary, nextModule) {
+  const remaining = Math.max(0, summary.total - summary.completed);
+  if (!nextModule) return { mood: "cheer", line: "Semua modul tuntas. Saatnya ujian akhir!" };
+  if (summary.completed === 0) return { mood: "wink", line: `Modul 1 kira-kira ${estimateMinutes(nextModule)} menit. Yuk mulai!` };
+  if (remaining <= 3) return { mood: "proud", line: `Tinggal ${remaining} modul lagi. Hampir sampai!` };
+  return { mood: "happy", line: `${summary.completed} modul tuntas. Lanjut ke modul ${nextModule.moduleNumber}?` };
+}
+
+/**
+ * Greeting hero: where you are in the course and the single next action.
+ * APPI sits inside the course progress ring and says one line about the
+ * learner's moment, so the mascot and the progress read as one thing.
+ */
 export function DashboardHero({ user, nextModule, summary }) {
   const started = summary.completed > 0;
+  const coach = heroCoach(summary, nextModule);
   return (
-    <section className="aapm-hero" data-hue="green" aria-labelledby="dashboard-hero-title">
+    <section className="aapm-hero aapm-hero--appi" data-hue="green" aria-labelledby="dashboard-hero-title">
       <div className="min-w-0">
         <h1 id="dashboard-hero-title" className="aapm-hero__title">
-          Halo, {firstName(user)}! {started ? "Siap lanjut belajar?" : "Mari mulai perjalanan Anda."}
+          {greeting()}, {firstName(user)}! {!nextModule ? "Semua modul tuntas!" : started ? "Siap lanjut belajar?" : "Mari mulai perjalanan Anda."}
         </h1>
         <p className="aapm-hero__text">
           {nextModule
             ? `Berikutnya: Modul ${nextModule.moduleNumber} · ${nextModule.title}.`
             : "Semua modul selesai. Ambil ujian akhir untuk sertifikasi Expert."}
         </p>
+        {/* Phones: the ring art steps aside, so APPI speaks here instead. */}
+        <AppiSays className="aapm-hero__coach" mood={coach.mood} size={56} hue="green">{coach.line}</AppiSays>
         <div className="aapm-hero__actions">
           <Button asChild variant="learn" size="lg">
             <Link to={nextModule ? `/modules/${nextModule.moduleNumber}` : "/final-exam"}>
@@ -35,13 +61,12 @@ export function DashboardHero({ user, nextModule, summary }) {
           </Button>
         </div>
       </div>
-      <div className="aapm-hero__art">
-        <ProgressRing value={summary.percent} size={148} stroke={12} label={`Progress course ${summary.percent}%`}>
-          <span className="grid justify-items-center leading-tight">
-            <span className="text-title font-semibold aapm-numeric">{summary.percent}%</span>
-            <span className="text-caption text-muted-foreground">{summary.completed}/{summary.total} modul</span>
-          </span>
-        </ProgressRing>
+      <div className="aapm-hero__art aapm-hero__appi">
+        <p className="aapm-hero__bubble">{coach.line}</p>
+        <AppiMascot mood={coach.mood} size="hero" />
+        <span className="aapm-hero__score aapm-numeric" aria-label={`Progress course ${summary.percent} persen`}>
+          <CountUp value={summary.percent} format={(value) => `${Math.round(value)}%`} /> · {summary.completed}/{summary.total} modul
+        </span>
       </div>
     </section>
   );

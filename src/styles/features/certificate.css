@@ -1,0 +1,251 @@
+/* Certificate document (A4 landscape, 1123 × 794 CSS px). A print artefact:
+ * a fixed palette in plain hex, no color-mix and no theme tokens, so the
+ * on-screen preview and the html2canvas export are the same pixels. The tier
+ * accent arrives as --cert-accent / --cert-ink / --cert-tint. */
+.aapm-cert {
+  position: relative;
+  width: 1123px;
+  height: 794px;
+  box-sizing: border-box;
+  padding: 26px;
+  overflow: hidden;
+  background: #fbfaf5;
+  color: #1c1c1a;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+.aapm-cert *, .aapm-cert *::before, .aapm-cert *::after { box-sizing: border-box; }
+.aapm-cert__frame {
+  position: relative;
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  height: 100%;
+  border: 2px solid var(--cert-accent);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 6px #ffffff, inset 0 0 0 7px #e7e3d6;
+  overflow: hidden;
+}
+
+/* Ribbon with the tier medal. */
+.aapm-cert__ribbon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 0 28px;
+  background: var(--cert-tint);
+  border-right: 2px solid var(--cert-accent);
+}
+.aapm-cert__medal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  background: var(--cert-accent);
+  color: #ffffff;
+  box-shadow: 0 6px 0 var(--cert-ink), 0 16px 30px rgba(0, 0, 0, 0.12);
+}
+.aapm-cert__medal-ring { position: absolute; inset: 7px; border: 2px dashed rgba(255, 255, 255, 0.55); border-radius: 50%; }
+.aapm-cert__medal-label { margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; opacity: 0.92; }
+.aapm-cert__medal-number { font-size: 54px; line-height: 1; font-weight: 800; }
+.aapm-cert__ribbon-tail {
+  width: 0;
+  height: 0;
+  margin-top: 6px;
+  border-left: 38px solid var(--cert-accent);
+  border-right: 38px solid var(--cert-accent);
+  border-bottom: 34px solid transparent;
+  filter: brightness(0.92);
+}
+.aapm-cert__ribbon-text {
+  position: absolute;
+  left: 50%;
+  bottom: 150px;
+  margin: 0;
+  color: var(--cert-ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%) rotate(-90deg);
+}
+
+/* Body. */
+.aapm-cert__body { position: relative; z-index: 1; display: flex; flex-direction: column; padding: 40px 56px 26px 56px; }
+.aapm-cert__brand { display: flex; align-items: center; gap: 16px; }
+.aapm-cert__logo { width: 170px; height: auto; }
+.aapm-cert__brand-sub { padding-left: 16px; border-left: 1px solid #d9d5c7; color: #6b6a62; font-size: 12px; line-height: 1.4; max-width: 260px; }
+.aapm-cert__title { margin: 40px 0 0; color: var(--cert-ink); font-size: 15px; font-weight: 800; letter-spacing: 6px; }
+.aapm-cert__lead { margin: 18px 0 0; color: #6b6a62; font-size: 15px; font-style: italic; font-family: Georgia, "Times New Roman", serif; }
+.aapm-cert__holder {
+  margin: 6px 0 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e7e3d6;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 50px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #1c1c1a;
+  overflow-wrap: anywhere;
+}
+.aapm-cert__tier { margin: 6px 0 0; color: var(--cert-accent); font-size: 28px; line-height: 1.2; font-weight: 800; }
+.aapm-cert__achievement {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 14px 0 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--cert-tint);
+  color: var(--cert-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.aapm-cert__footer { display: grid; grid-template-columns: 1.1fr 1fr 1.2fr; align-items: end; gap: 28px; margin-top: auto; }
+.aapm-cert__meta { display: grid; gap: 2px; }
+.aapm-cert__meta-label { color: #8a887e; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.aapm-cert__meta-label + .aapm-cert__meta-value + .aapm-cert__meta-label { margin-top: 8px; }
+.aapm-cert__meta-value { font-size: 15px; font-weight: 600; }
+.aapm-cert__meta-id { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #3d3c37; word-break: break-all; }
+.aapm-cert__seal { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.aapm-cert__seal-line { width: 180px; height: 2px; margin-bottom: 8px; background: #1c1c1a; }
+.aapm-cert__seal-name { font-size: 15px; font-weight: 700; }
+.aapm-cert__seal-role { color: #6b6a62; font-size: 12px; }
+.aapm-cert__verify { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 12px; }
+.aapm-cert__qr { width: 88px; height: 88px; padding: 6px; border: 1px solid #e7e3d6; border-radius: 10px; background: #ffffff; }
+.aapm-cert__qr--empty { display: block; background: #f3f1ea; }
+.aapm-cert__verify-text { color: #6b6a62; font-size: 11px; line-height: 1.45; }
+.aapm-cert__disclaimer { margin: 16px 0 0; color: #8a887e; font-size: 10.5px; line-height: 1.4; }
+.aapm-cert__watermark { position: absolute; right: -60px; top: 120px; z-index: 0; width: 420px; height: auto; opacity: 0.05; pointer-events: none; }
+
+/* Expert tier: a gold double rule. */
+.aapm-cert[data-expert="true"] .aapm-cert__frame { box-shadow: inset 0 0 0 6px #ffffff, inset 0 0 0 8px #e9cf8f; }
+
+/* Preview wrapper: the document scaled to the container width. */
+.aapm-cert-preview { position: relative; width: 100%; overflow: hidden; border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08); }
+.aapm-cert-preview__stage { position: absolute; left: 0; top: 0; width: 1123px; height: 794px; transform-origin: 0 0; }
+
+/* ------------------------------------------------- Certification page
+ * Hero with the six-medal path and APPI, medal tier cards, and owned
+ * certificates shown as the real document. Theme-aware (app UI). */
+.aapm-cert-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--aapm-primitive-space-6);
+  padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-8);
+  border-radius: var(--aapm-primitive-radius-feature);
+  background: var(--aapm-semantic-hue-amber-tint);
+}
+.dark .aapm-cert-hero { background: var(--aapm-semantic-hue-amber-soft); }
+.aapm-cert-hero__eyebrow { margin: 0; color: var(--aapm-semantic-hue-amber-ink); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: .06em; text-transform: uppercase; }
+.aapm-cert-hero__title { margin: var(--aapm-primitive-space-1) 0 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); }
+.aapm-cert-hero__text { max-width: 56ch; margin: var(--aapm-primitive-space-2) 0 0; color: color-mix(in srgb, var(--aapm-semantic-foreground) 72%, transparent); }
+.aapm-cert-hero__appi { display: grid; justify-items: center; gap: var(--aapm-primitive-space-2); width: 13rem; }
+.aapm-cert-hero__bubble {
+  position: relative;
+  margin: 0 0 var(--aapm-primitive-space-1);
+  padding: var(--aapm-primitive-space-2) var(--aapm-primitive-space-3);
+  border-radius: 16px;
+  background: var(--aapm-semantic-surface);
+  box-shadow: var(--aapm-semantic-shadow-rest);
+  font-size: var(--aapm-component-type-support-size);
+  font-weight: var(--aapm-primitive-weight-label);
+  text-align: center;
+  text-wrap: balance;
+  animation: aapm-appi-bubble-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) 300ms both;
+}
+.aapm-cert-hero__bubble::after { content: ""; position: absolute; left: calc(50% - 6px); bottom: -6px; width: 12px; height: 12px; background: inherit; transform: rotate(45deg); }
+
+/* Six medals on one line, joined by a track that fills as tiers are owned. */
+.aapm-medal-path { display: flex; align-items: center; gap: 0; margin: var(--aapm-primitive-space-5) 0 0; padding: 0; list-style: none; }
+.aapm-medal-path > li { position: relative; display: flex; align-items: center; flex: 1; }
+.aapm-medal-path > li:last-child { flex: none; }
+.aapm-medal-path > li:not(:last-child)::after { content: ""; flex: 1; height: 4px; margin: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--aapm-semantic-foreground) 12%, transparent); }
+.aapm-medal-path > li[data-status="issued"]:not(:last-child)::after { background: var(--aapm-semantic-hue-amber); }
+
+.aapm-medal { position: relative; display: inline-grid; flex: none; width: 52px; height: 52px; }
+.aapm-medal[data-size="sm"] { width: 40px; height: 40px; }
+.aapm-medal__face {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--medal);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: var(--aapm-primitive-weight-strong);
+  box-shadow: 0 3px 0 var(--medal-ink);
+}
+.aapm-medal[data-size="sm"] .aapm-medal__face { font-size: .95rem; }
+.aapm-medal__face .aapm-icon { width: 18px; height: 18px; }
+.aapm-medal[data-status="locked"] .aapm-medal__face,
+.aapm-medal[data-status="in_progress"] .aapm-medal__face { background: var(--aapm-semantic-surface); color: var(--aapm-semantic-muted); box-shadow: inset 0 0 0 3px var(--medal-tint), 0 3px 0 color-mix(in srgb, var(--aapm-semantic-foreground) 14%, transparent); }
+.aapm-medal[data-status="in_progress"] .aapm-medal__face { color: var(--medal-ink); box-shadow: inset 0 0 0 3px var(--medal), 0 3px 0 var(--medal-ink); }
+.aapm-medal[data-status="eligible"] .aapm-medal__face { animation: aapm-medal-glow 1.8s var(--aapm-primitive-motion-ease-in-out) infinite; }
+.aapm-medal__badge { position: absolute; right: -4px; bottom: -2px; display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid var(--aapm-semantic-surface); border-radius: 50%; background: var(--aapm-semantic-success); color: #fff; }
+.aapm-medal__badge .aapm-icon { width: 12px; height: 12px; }
+@keyframes aapm-medal-glow {
+  0%, 100% { box-shadow: 0 3px 0 var(--medal-ink), 0 0 0 0 color-mix(in srgb, var(--medal) 45%, transparent); }
+  50% { box-shadow: 0 3px 0 var(--medal-ink), 0 0 0 10px color-mix(in srgb, var(--medal) 0%, transparent); }
+}
+
+/* Tier cards. */
+.aapm-tier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: var(--aapm-primitive-space-3); }
+.aapm-tier-card {
+  display: grid;
+  align-content: start;
+  gap: var(--aapm-primitive-space-3);
+  padding: var(--aapm-primitive-space-4);
+  border: 2px solid var(--aapm-semantic-border);
+  border-radius: var(--aapm-primitive-radius-surface);
+  background: var(--aapm-semantic-surface);
+  box-shadow: 0 3px 0 var(--aapm-semantic-border);
+}
+.aapm-tier-card[data-status="eligible"] { border-color: var(--medal); box-shadow: 0 3px 0 var(--medal-ink); }
+.aapm-tier-card[data-status="issued"] { background: color-mix(in srgb, var(--medal-tint) 45%, var(--aapm-semantic-surface)); }
+.aapm-tier-card[data-status="locked"] { opacity: .78; }
+.aapm-tier-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--aapm-primitive-space-2); }
+.aapm-tier-card__status { display: inline-flex; align-items: center; gap: 4px; padding: 2px var(--aapm-primitive-space-2-5) 2px var(--aapm-primitive-space-2); border-radius: var(--aapm-primitive-radius-pill); background: var(--aapm-semantic-surface-subtle); color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); white-space: nowrap; }
+.aapm-tier-card__status .aapm-icon { width: 14px; height: 14px; }
+.aapm-tier-card__status[data-tone="issued"] { background: var(--aapm-semantic-primary-soft); color: var(--aapm-semantic-primary-soft-text); }
+.aapm-tier-card__status[data-tone="eligible"] { background: var(--medal-tint); color: var(--medal-ink); }
+.aapm-tier-card__status[data-tone="revoked"] { background: color-mix(in srgb, var(--aapm-semantic-danger) 12%, var(--aapm-semantic-surface)); color: var(--aapm-semantic-danger); }
+.aapm-tier-card__eyebrow { margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: .04em; text-transform: uppercase; }
+.aapm-tier-card__title { margin: 2px 0 0; font-size: var(--aapm-component-type-heading-size); line-height: var(--aapm-component-type-heading-line); font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-tier-card__progress { display: grid; gap: var(--aapm-primitive-space-1); }
+.aapm-tier-card__progress .aapm-progress { --progress-fill: var(--medal); }
+.aapm-tier-card__progress span { color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
+.aapm-tier-card__note { margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); line-height: var(--aapm-component-type-caption-line); }
+.aapm-tier-card__actions { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); margin-top: auto; }
+
+/* Owned certificates: the real document as a thumbnail. */
+.aapm-owned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: var(--aapm-primitive-space-4); }
+.aapm-owned-cert { display: grid; gap: var(--aapm-primitive-space-3); padding: var(--aapm-primitive-space-3); border: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-surface); background: var(--aapm-semantic-surface); }
+.aapm-owned-cert__thumb { display: block; padding: 0; border: 0; border-radius: 12px; background: none; cursor: zoom-in; transition: transform var(--aapm-primitive-motion-base) var(--aapm-primitive-motion-ease); }
+.aapm-owned-cert__thumb:hover { transform: translateY(-2px); }
+.aapm-owned-cert__thumb:focus-visible { outline: 3px solid var(--aapm-semantic-focus); outline-offset: 3px; }
+.aapm-owned-cert__title { margin: 0; font-weight: var(--aapm-primitive-weight-heading); }
+.aapm-owned-cert__sub { display: flex; align-items: center; gap: 4px; margin: 2px 0 0; color: var(--aapm-semantic-success); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-label); }
+.aapm-owned-cert__sub .aapm-icon { width: 14px; height: 14px; }
+.aapm-owned-cert__actions { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); }
+.aapm-owned-empty { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); padding: var(--aapm-primitive-space-5); border: 2px dashed var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-surface); color: var(--aapm-semantic-muted); }
+.aapm-owned-empty p { margin: 0; }
+.aapm-owned-empty .aapm-icon { width: 28px; height: 28px; flex: none; }
+
+.aapm-cert-dialog { display: grid; gap: var(--aapm-primitive-space-3); }
+.aapm-cert-dialog__actions { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); }
+
+@media (max-width: 767px) {
+  .aapm-cert-hero { grid-template-columns: minmax(0, 1fr); padding: var(--aapm-primitive-space-5); }
+  .aapm-cert-hero__appi { display: none; }
+  .aapm-cert-hero__title { font-size: var(--aapm-component-type-title-compact-size); line-height: var(--aapm-component-type-title-compact-line); }
+  .aapm-medal-path > li:not(:last-child)::after { margin: 0 3px; }
+}

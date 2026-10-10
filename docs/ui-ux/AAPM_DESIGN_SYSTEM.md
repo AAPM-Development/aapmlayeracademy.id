@@ -43,14 +43,70 @@ are separate entries so Recharts and cmdk only load on routes that use them.
 ## Shells
 
 - **Learner** (`AcademyShell`): sidebar with course progress ring, grouped nav,
-  topbar breadcrumbs + "Tanya APPI" + account menu; phones get a bottom nav
+  topbar breadcrumbs + account menu; phones get a bottom nav
   (Beranda · Belajar · APPI · KPI · Menu) and a navigation sheet.
+  The mobile bar is inset, clears safe areas, keeps labels visible, and marks
+  Menu when the current destination is in the sheet. Menu exposes its open state.
 - **Focus** (`FocusShell`): lesson player and assessments. Course bar, outline,
   one scrolling stage, persistent action bar. Bounded module flow:
   Materi → Praktik → Kuis → Selesai → next module. In a quiz the action bar
-  becomes the verdict after Periksa (`footerTone`).
+  becomes the verdict after Periksa (`footerTone`). A quiz opens with an
+  introduction; only Mulai kuis starts or resumes a saved attempt. The APPI
+  launcher clears the actual action-bar height, including expanded feedback.
 - **Admin** (`AdminShell`): same anatomy with a "Ruang admin" context and
   breadcrumbs by depth (Admin › Manajemen course › Kurikulum › Editor modul).
+  The phone bottom nav holds four destinations plus Menu.
+  APPI is available in the admin shell. On phones the editor owns the bottom
+  action bar; its measured height reserves content space and keeps APPI clear.
+
+## APPI, the mascot
+
+APPI is the rooster from `public/assets/avatar` (faces `Asset 1–12`, decor
+`Asset 13–24`), rendered only through `AppiMascot` / `AppiSays`
+(`src/components/appi/AppiMascot.jsx`); the chat avatar (`AiAvatar`) wraps it.
+
+- **One contextual APPI per screen, plus the launcher.** APPI appears at meaningful moments (home
+  coach, lesson end, quiz streak and result, calculator verdict, KPI reading,
+  empty states), the way Duolingo uses Duo. Navigation uses glyph icons.
+- **Moods carry meaning**: `idle`, `happy`, `cheer`, `proud`, `wink`, `talk`,
+  `think`, `idea`, `curious`, `data`, `concerned`, `surprised`, `loading`.
+- **Alive, not busy**: character sizes breathe with squash and stretch over a
+  ground shadow, blink, and every few seconds wink, glance, nod, hop or turn
+  left/right. Reduced motion holds APPI still.
+- **Launcher**: a round tactile button on all screen sizes outside the APPI
+  workspace. It clears mobile navigation, calculator results and the measured
+  focus and editor footers. Each mascot has an independent animation rhythm.
+- Pages hand APPI a prepared question with `askAppi(prompt)`
+  (`src/lib/askAppi.js`); the learner reviews it before sending.
+- Chat management shares search, date grouping, sorting, active/archive filters,
+  selection, rename and deletion across desktop, mobile and the floating panel.
+  Hapus semua percakapan confirms the whole account history, including unloaded
+  pages and archives. The authenticated DELETE command clears conversations and
+  their messages; the provider then clears related account drafts and re-reads
+  the history. Other accounts are outside the command's scope.
+
+## Celebration and motion
+
+- `celebrate(kind, { origin })` in `src/lib/celebrate.js`: `burst` (quiz
+  passed, module done), `milestone` (perfect score; side cannons and stars),
+  `streak` (three right answers, from the action bar). Skipped under reduced
+  motion.
+- `CountUp` (`src/components/motion/CountUp.jsx`) animates scores and metrics;
+  screen readers get the final value once.
+- Result screens use APPI over a pulsing glow (and slow rays when passed).
+
+## Farm tools
+
+- **Calculators** are data-driven (`tools` in `src/pages/Calculators.jsx`):
+  inputs, `compute`, and a reference `scale` whose zones (good / watch / act)
+  give the verdict. Cards size their layout with a container query; phones get
+  a sticky result dock.
+- **Farm KPI**: APPI's weekly reading first, six indicator tiles (latest week,
+  change vs the previous week, sparkline) that select the one `TrendChart`
+  (padded domain, auto-width axis, optional reference band), then finance and
+  history.
+  Missing current-week fields do not borrow an older value for APPI's current
+  reading. Indicator tiles retain the last known value with its source week.
 - **Auth** (`AuthLayout`): form column + brand media panel for every auth route.
   The column is top-anchored so the brand and title never move between
   routes; below 1024px the panel becomes a poster band above the form. Forms

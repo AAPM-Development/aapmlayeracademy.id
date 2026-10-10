@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { isConversationArchived } from "@/lib/aiHistoryState";
+import { useAiChat } from "@/components/ai/AiChatProvider";
 import {
   Button,
   Checkbox,
@@ -20,6 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  ConfirmDialog,
+  useToast,
 } from "@/components/primitives";
 
 export const HISTORY_SORT_OPTIONS = [
@@ -267,9 +270,26 @@ export function AiHistoryToolbar({
   archivedCount = 0,
   selectionMode = false,
   onToggleSelectionMode,
+  selectedCount = 0,
+  compact = false,
 }) {
+  const { deleteAllConversations, isStreaming } = useAiChat();
+  const { toast } = useToast();
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const clearHistory = async () => {
+    if (deletingAll || isStreaming) return;
+    setDeletingAll(true);
+    try {
+      const result = await deleteAllConversations();
+      setDeleteAllOpen(false);
+      toast({ title: "Riwayat chat dihapus", description: `${result.deletedCount} percakapan dihapus dari akun Anda.` });
+    } catch (error) {
+      toast({ title: "Riwayat belum dihapus", description: error?.message || "Periksa koneksi lalu coba lagi.", variant: "destructive" });
+    } finally { setDeletingAll(false); }
+  };
   return (
-    <div className="min-w-0 max-w-full space-y-2.5">
+    <div className="aapm-history-toolbar min-w-0 max-w-full space-y-2.5" data-compact={compact || undefined}>
       <SegmentedControl
         label="Jenis riwayat"
         block
@@ -331,8 +351,8 @@ export function AiHistoryToolbar({
                   variant="ghost"
                   size="icon"
                   className={`h-10 w-10 shrink-0 ${selectionMode ? "text-brand-orange" : "text-muted-foreground"} hover:text-foreground`}
-                  aria-label="Urutkan dan pilih percakapan"
-                  title="Urutkan dan pilih"
+                  aria-label="Kelola riwayat chat"
+                  title="Kelola riwayat"
                 >
                   <AapmIcon name="solar:sort-vertical-bold-duotone" className="h-4 w-4" />
                 </Button>
@@ -359,6 +379,10 @@ export function AiHistoryToolbar({
                     Muat ulang riwayat
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem tone="danger" disabled={!totalConversationCount || deletingAll || isStreaming} onSelect={() => setDeleteAllOpen(true)}>
+                  <AapmIcon name="solar:trash-bin-trash-bold" className="mr-2 h-4 w-4" />Hapus semua percakapan
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -368,6 +392,8 @@ export function AiHistoryToolbar({
           Jejak pertanyaan dan respons APPI di akun ini.
         </p>
       )}
+      {selectionMode ? <p className="aapm-text-caption m-0" role="status">{selectedCount} percakapan dipilih</p> : null}
+      <ConfirmDialog open={deleteAllOpen} onOpenChange={(open) => !deletingAll && setDeleteAllOpen(open)} title="Hapus semua percakapan?" description={`Seluruh ${totalConversationCount} percakapan di akun Anda akan dihapus, termasuk arsip dan riwayat yang belum dimuat. Pesan dan draf terkait tidak dapat dipulihkan.`} confirmLabel="Hapus semua percakapan" destructive loading={deletingAll} onConfirm={(event) => { event.preventDefault(); clearHistory(); }} />
     </div>
   );
 }
@@ -379,13 +405,15 @@ export function AiHistoryBulkBar({
   onToggleAll,
   onArchive,
   onDelete,
+  onCancel = undefined,
   disabled = false,
 }) {
   if (!selectedCount && !allVisibleSelected) {
     return (
       <div className="aapm-ai-history-bulkbar flex min-w-0 items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground" role="status">
         <AapmIcon name="solar:checklist-bold-duotone" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
-        <span className="min-w-0 truncate">Mode pilih aktif · pilih chat di bawah.</span>
+        <span className="min-w-0 flex-1">Pilih chat untuk diarsipkan atau dihapus.</span>
+        {onCancel ? <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={disabled}>Batal</Button> : null}
       </div>
     );
   }
@@ -403,6 +431,7 @@ export function AiHistoryBulkBar({
         <span className="truncate">{selectedCount} dipilih</span>
       </label>
       <div className="flex shrink-0 items-center gap-1">
+        {onCancel ? <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={disabled}>Batal</Button> : null}
         <Button
           type="button"
           variant="ghost"
@@ -469,6 +498,7 @@ export function AiConversationRow({
         type="button"
         onClick={() => onSelect(conversation.id)}
         disabled={disabled}
+        aria-current={active ? "true" : undefined}
         className="min-w-0 flex-1 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
       >
         <span className="flex min-w-0 items-center gap-2">

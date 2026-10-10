@@ -237,9 +237,11 @@ export function AccountMenu({ user, context, items = [], onLogout, variant = "to
 /** Mobile bottom navigation. Items: { to, label, icon, end?, accent?, onClick? }. */
 export function BottomNav({ items = [], label = "Navigasi cepat" }) {
   const location = useLocation();
+  const hasDirectDestination = items.some((item) => !item.onClick && isItemActive(item, location.pathname));
   return (
     <nav className="aapm-bottom-nav" aria-label={label}>
       {items.map((item) => {
+        const active = item.onClick ? (item.expanded || !hasDirectDestination) : isItemActive(item, location.pathname);
         const content = (
           <>
             <span className="aapm-bottom-nav__icon"><AapmIcon name={item.icon} /></span>
@@ -248,14 +250,13 @@ export function BottomNav({ items = [], label = "Navigasi cepat" }) {
         );
         if (item.onClick) {
           return (
-            <button key={item.label} type="button" className="aapm-bottom-nav__item" data-accent={item.accent} onClick={item.onClick} aria-haspopup="dialog">
+            <button key={item.label} type="button" className="aapm-bottom-nav__item" data-accent={item.accent} data-active={active || undefined} onClick={item.onClick} aria-haspopup="dialog" aria-expanded={item.expanded}>
               {content}
             </button>
           );
         }
-        const active = isItemActive(item, location.pathname);
         return (
-          <NavLink key={item.to} to={item.to} end={item.end} className="aapm-bottom-nav__item" data-accent={item.accent} aria-current={active ? "page" : undefined}>
+          <NavLink key={item.to} to={item.to} end={item.end} className="aapm-bottom-nav__item" data-accent={item.accent} data-active={active || undefined} aria-current={active ? "page" : undefined}>
             {content}
           </NavLink>
         );
@@ -304,14 +305,23 @@ export const FocusShell = React.forwardRef(function FocusShell(
   ref,
 ) {
   const mainRef = React.useRef(null);
+  const footerRef = React.useRef(null);
   React.useImperativeHandle(ref, () => mainRef.current);
   useResetScroll(mainRef, resetKey);
 
   React.useEffect(() => {
     const root = document.documentElement;
     root.dataset.shell = "focus";
-    return () => { delete root.dataset.shell; };
-  }, []);
+    const update = () => root.style.setProperty("--aapm-focus-footer-height", `${footerRef.current?.getBoundingClientRect().height || 0}px`);
+    update();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    if (footerRef.current) observer?.observe(footerRef.current);
+    return () => {
+      observer?.disconnect();
+      delete root.dataset.shell;
+      root.style.removeProperty("--aapm-focus-footer-height");
+    };
+  }, [Boolean(footer)]);
 
   return (
     <div className={cn("aapm-focus", className)} data-outline={outline && outlineOpen ? "true" : "false"}>
@@ -323,7 +333,7 @@ export const FocusShell = React.forwardRef(function FocusShell(
           {children}
         </main>
       </div>
-      {footer ? <div className="aapm-focus__footer" data-tone={footerTone || undefined}>{footer}</div> : null}
+      {footer ? <div ref={footerRef} className="aapm-focus__footer" data-tone={footerTone || undefined}>{footer}</div> : null}
     </div>
   );
 });

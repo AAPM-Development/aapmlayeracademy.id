@@ -3,11 +3,13 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { Badge, IconButton, Segments } from "@/design-system";
 import { StatTile } from "@/components/academy/CourseElements";
 import { formatDuration } from "@/lib/learningPath";
+import AppiMascot from "@/components/appi/AppiMascot";
+import CountUp from "@/components/motion/CountUp";
 
 const KEYS = ["A", "B", "C", "D", "E", "F"];
 
 /** Slim assessment bar: exit, segmented progress, counter. */
-export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title, context, children }) {
+export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title = undefined, context = undefined, children = null }) {
   return (
     <header className="aapm-topbar aapm-focus__bar">
       <IconButton label="Keluar" icon="close" onClick={onExit} />
@@ -91,9 +93,16 @@ export function checkAnnouncement(question, feedback, run = 0) {
 export function CheckFeedback({ question, feedback, run = 0 }) {
   if (!question || !feedback) return null;
   const correct = feedback.isCorrect;
+  // A run of three or more is an APPI moment: the mascot cheers in place of
+  // the check mark, which stays as a small badge so the verdict never
+  // depends on the character alone.
+  const streak = correct && run >= 3;
   return (
-    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"}>
-      <span className="aapm-check-feedback__icon" aria-hidden="true"><AapmIcon name={correct ? "glyphCheck" : "close"} /></span>
+    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"} data-streak={streak ? "true" : undefined}>
+      <span className="aapm-check-feedback__icon" aria-hidden="true">
+        {streak ? <AppiMascot mood="cheer" size={52} decor={false} /> : null}
+        <AapmIcon name={correct ? "glyphCheck" : "close"} />
+      </span>
       <div className="aapm-check-feedback__body">
         <p className="aapm-check-feedback__title">
           {correct ? "Tepat sekali!" : "Belum tepat"}
@@ -140,23 +149,32 @@ export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagge
 }
 
 /**
- * Result screen: badge, headline, stat tiles; actions are passed as children.
- * With `duration` (ms) the third tile shows the time taken instead of the
- * passing grade, like a lesson-complete screen.
+ * Result screen (lesson-complete style): APPI reacts to the outcome over a
+ * sunburst, the headline, then stat tiles whose numbers count up; actions are
+ * passed as children. With `duration` (ms) the third tile shows the time
+ * taken instead of the passing grade.
  */
-export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title, description, children }) {
+export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title = undefined, description = undefined, children = null }) {
   const percent = total ? Math.round((score / total) * 100) : 0;
+  const perfect = passed && total > 0 && score === total;
+  const outcome = perfect ? "perfect" : passed ? "passed" : "retry";
+  const mood = { perfect: "proud", passed: "cheer", retry: "wink" }[outcome];
+  const headline = { perfect: "Sempurna!", passed: "Luar biasa!", retry: "Hampir sampai" }[outcome];
   return (
     <div className="aapm-quiz">
-      <div className="aapm-result" data-hue={passed ? "green" : "orange"}>
-        <div className="aapm-result__badge"><AapmIcon name={passed ? "exam" : "refresh"} /></div>
+      <div className="aapm-result" data-hue={passed ? "green" : "orange"} data-outcome={outcome}>
+        <div className="aapm-result__badge aapm-result__badge--appi">
+          {passed ? <span className="aapm-result__rays" aria-hidden="true" /> : null}
+          <span className="aapm-result__glow" aria-hidden="true" />
+          <AppiMascot mood={mood} size="hero" />
+        </div>
         {/* The assessment bar already holds the screen's h1 (quiz or exam title). */}
-        <h2 className="aapm-result__title">{title || (passed ? "Luar biasa!" : "Hampir sampai")}</h2>
-        <p className="aapm-result__text">{description || (passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi.`)}</p>
+        <h2 className="aapm-result__title">{title || headline}</h2>
+        <p className="aapm-result__text">{description || (perfect ? "Semua jawaban benar. Anda siap untuk modul berikutnya." : passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi — APPI yakin Anda bisa.`)}</p>
       </div>
       <div className="aapm-stat-grid aapm-stat-grid--result">
-        <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={`${percent}%`} />
-        <StatTile icon="check" hue="blue" label="Jawaban benar" value={`${score}/${total}`} />
+        <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={<CountUp value={percent} format={(value) => `${Math.round(value)}%`} duration={900} />} />
+        <StatTile icon="check" hue="blue" label="Jawaban benar" value={<><CountUp value={score} duration={900} />/{total}</>} />
         {duration !== undefined
           ? <StatTile icon="timer" hue="violet" label="Waktu" value={formatDuration(duration)} />
           : <StatTile icon="flag" hue="violet" label="Nilai lulus" value={`${passingGrade}%`} />}

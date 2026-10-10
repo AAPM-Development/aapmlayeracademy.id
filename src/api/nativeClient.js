@@ -409,6 +409,7 @@ export const nativeApi = {
         request(`/ai/conversations/${encodeURIComponent(id)}`, {
           method: "DELETE",
         }),
+      deleteAll: () => request("/ai/conversations", { method: "DELETE", body: JSON.stringify({ confirm: true }) }),
       stream: ({
         id,
         message,
@@ -553,6 +554,11 @@ export const nativeApi = {
         const formData = new FormData();
         formData.append("file", file, file.name);
         return upload("/admin/media/presentations", formData, options);
+      },
+      uploadVideo: (file, options) => {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        return upload("/admin/media/videos", formData, options);
       },
     },
     aiSettings: {

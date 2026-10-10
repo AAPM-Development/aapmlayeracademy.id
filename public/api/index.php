@@ -467,6 +467,15 @@ try {
         json_response(['presentation' => admin_upload_editorial_presentation()], 201);
     }
 
+    if ($path === 'admin/media/videos' && $method === 'POST') {
+        $actor = require_admin();
+        require_csrf();
+        $identity = 'editorial-media-' . (int) ($actor['id'] ?? 0);
+        rate_limit_guard('editorial_upload', $identity, 100, 900, 900);
+        rate_limit_failure('editorial_upload', $identity, 100, 900, 900);
+        json_response(['video' => admin_upload_editorial_video()], 201);
+    }
+
     if ($path === 'admin/modules' && $method === 'POST') {
         $actor = require_admin();
         require_csrf();
@@ -973,6 +982,29 @@ try {
         $stmt = db()->prepare('SELECT id, conversation_id, event_type, label, detail, created_at FROM ai_activity_log WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 80');
         $stmt->execute([(int) $user['id']]);
         json_response(array_map('present_ai_activity', $stmt->fetchAll()));
+    }
+
+    if ($path === 'ai/conversations' && $method === 'DELETE') {
+        $user = require_user();
+        require_csrf();
+        $input = request_json();
+        if (($input['confirm'] ?? false) !== true) {
+            error_response('Konfirmasi penghapusan semua percakapan diperlukan.', 422, 'confirmation_required');
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $activity = $pdo->prepare('DELETE FROM ai_activity_log WHERE user_id = ? AND conversation_id IN (SELECT id FROM ai_conversations WHERE user_id = ?)');
+            $activity->execute([(int) $user['id'], (int) $user['id']]);
+            $delete = $pdo->prepare('DELETE FROM ai_conversations WHERE user_id = ?');
+            $delete->execute([(int) $user['id']]);
+            $count = $delete->rowCount();
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        json_response(['ok' => true, 'deletedCount' => $count]);
     }
 
     if ($path === 'ai/conversations' && $method === 'POST') {

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 const EDITORIAL_IMAGE_MAX_BYTES = 20971520;
 const EDITORIAL_PRESENTATION_MAX_BYTES = 52428800;
+const EDITORIAL_VIDEO_MAX_BYTES = 314572800;
 const EDITORIAL_IMAGE_MAX_WIDTH = 8000;
 const EDITORIAL_IMAGE_MAX_HEIGHT = 8000;
 const EDITORIAL_IMAGE_MAX_PIXELS = 40000000;
@@ -184,7 +185,7 @@ function editorial_store_upload(string $tmpName, string $kind, string $extension
 function editorial_managed_upload_relative_path(string $value): ?string
 {
     $path = ltrim(str_replace('\\', '/', trim($value)), '/');
-    if (!preg_match('#^uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf))$#i', $path)) {
+    if (!preg_match('#^uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf)|videos/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:mp4|webm))$#i', $path)) {
         return null;
     }
     return substr($path, strlen('uploads/'));
@@ -207,7 +208,7 @@ function editorial_referenced_uploads(): ?array
                 (string) ($row['video_url'] ?? ''),
                 (string) ($row['video_script'] ?? ''),
             ]));
-            if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf))#i', $source, $matches)) {
+            if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf)|videos/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:mp4|webm))#i', $source, $matches)) {
                 continue;
             }
             foreach ($matches[0] as $url) {
@@ -224,7 +225,7 @@ function editorial_referenced_uploads(): ?array
             }
             foreach (db()->query('SELECT content_payload_json FROM ' . $table)->fetchAll() as $row) {
                 $source = str_replace('\\/', '/', (string) $row['content_payload_json']);
-                if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf))#i', $source, $matches)) {
+                if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf)|videos/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:mp4|webm))#i', $source, $matches)) {
                     continue;
                 }
                 foreach ($matches[0] as $url) {
@@ -314,6 +315,40 @@ function editorial_image_details(string $tmpName): array
         'extension' => $extensions[$mime],
         'width' => $width,
         'height' => $height,
+    ];
+}
+
+/** MP4 (ISO BMFF "ftyp") or WebM (EBML) by content, never by the file name. */
+function editorial_video_details(string $tmpName): array
+{
+    $mime = editorial_detect_mime($tmpName);
+    $handle = @fopen($tmpName, 'rb');
+    $head = $handle ? (string) fread($handle, 4096) : '';
+    if ($handle) {
+        fclose($handle);
+    }
+    $boxSize = strlen($head) >= 4 ? (int) unpack('Nsize', substr($head, 0, 4))['size'] : 0;
+    $brand = substr($head, 8, 4);
+    if ($boxSize >= 16 && $boxSize <= (int) filesize($tmpName) && substr($head, 4, 4) === 'ftyp' && preg_match('/^(?:isom|iso[2-9]|mp4[12]|avc1|MSNV|M4V |dash)$/', $brand) && in_array($mime, ['video/mp4', 'application/octet-stream', 'video/x-m4v'], true)) {
+        return ['mime' => 'video/mp4', 'extension' => 'mp4'];
+    }
+    if (strncmp($head, "\x1A\x45\xDF\xA3", 4) === 0 && strpos($head, "\x42\x82\x84webm") !== false && in_array($mime, ['video/webm', 'application/octet-stream', 'video/x-matroska'], true)) {
+        return ['mime' => 'video/webm', 'extension' => 'webm'];
+    }
+    error_response('Gunakan video MP4 (H.264) atau WebM.', 422, 'invalid_video_type');
+}
+
+function admin_upload_editorial_video(): array
+{
+    $upload = editorial_upload_file('file', EDITORIAL_VIDEO_MAX_BYTES);
+    $details = editorial_video_details($upload['tmp_name']);
+    $url = editorial_store_upload($upload['tmp_name'], 'videos', $details['extension']);
+    editorial_prune_orphaned_uploads();
+
+    return [
+        'url' => $url,
+        'mime' => $details['mime'],
+        'size' => (int) ($upload['size'] ?? 0),
     ];
 }
 

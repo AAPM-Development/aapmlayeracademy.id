@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/assessment.php';
 require_once __DIR__ . '/certification.php';
+require_once __DIR__ . '/curriculum.php';
 
 /**
  * Shared native API bootstrap.
@@ -310,6 +311,7 @@ function db(): PDO
         aapm_ensure_auth_security_schema($connection, $driver);
         aapm_ensure_assessment_schema($connection, $driver);
         aapm_ensure_certification_schema($connection, $driver);
+        aapm_ensure_curriculum_schema($connection, $driver);
         $schemaReady = true;
     }
 
@@ -1565,7 +1567,7 @@ function admin_course_id(): string
 
 function admin_module_rows(): array
 {
-    return db()->query('SELECT id, level_number, level_name, module_number, title, category, summary, sort_order, created_at, updated_at FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();
+    return db()->query('SELECT id, level_number, level_name, module_number, title, category, summary, sort_order, created_at, updated_at, lifecycle_status, published_revision_id, archived_at, archive_reason FROM course_modules ORDER BY sort_order ASC, module_number ASC')->fetchAll();
 }
 
 function admin_module_number_exists(int $moduleNumber): bool
@@ -1630,22 +1632,51 @@ function admin_attach_progress_totals(array $rows): array
     }, $rows);
 }
 
-function admin_course_data(): array
+/** Read-only editorial projection; never initialise drafts while listing a course. */
+function admin_course_module_rows(): array
 {
-    $modules = admin_module_rows();
+    $pdo = db();
+    $rows = $pdo->query('SELECT cm.*, md.draft_version, md.content_payload_json, md.question_payload_json, md.updated_at AS draft_updated_at
+        FROM course_modules cm LEFT JOIN module_drafts md ON md.module_id = cm.id
+        ORDER BY cm.sort_order ASC, cm.module_number ASC')->fetchAll();
+    foreach ($rows as &$row) {
+        $payload = $row['content_payload_json'] === null ? null : json_decode((string) $row['content_payload_json'], true);
+        $questions = $row['question_payload_json'] === null ? null : json_decode((string) $row['question_payload_json'], true);
+        $row['has_unpublished_changes'] = is_array($payload) && (
+            aapm_cur_checksum($payload) !== aapm_cur_checksum(aapm_cur_payload_from_row($row))
+            || aapm_cur_checksum(aapm_cur_question_content(is_array($questions) ? $questions : [])) !== aapm_cur_checksum(aapm_cur_question_content(aapm_cur_live_questions($pdo, (int) $row['module_number'])))
+        );
+        $row['editorial_title'] = is_array($payload) && isset($payload['title']) ? (string) $payload['title'] : (string) $row['title'];
+    }
+    unset($row);
+    return $rows;
+}
+
+function admin_course_data(?array $moduleRows = null): array
+{
+    $modules = $moduleRows ?? admin_course_module_rows();
     $learnerCount = count(admin_learner_metric_rows());
     $latestUpdate = null;
+    $counts = ['draft' => 0, 'published' => 0, 'unpublished' => 0, 'archived' => 0];
     foreach ($modules as $module) {
-        $updatedAt = $module['updated_at'] ?? null;
-        if ($updatedAt && ($latestUpdate === null || strcmp((string) $updatedAt, (string) $latestUpdate) > 0)) {
-            $latestUpdate = $updatedAt;
+        $state = (string) $module['lifecycle_status'];
+        if ($state === 'archived') $counts['archived']++;
+        elseif ($state === 'draft' || $module['published_revision_id'] === null) $counts['draft']++;
+        else $counts['published']++;
+        // This count overlaps Terbit/Arsip; a brand-new draft already has the Draf label.
+        if ($module['published_revision_id'] !== null && $module['has_unpublished_changes']) $counts['unpublished']++;
+        foreach ([$module['updated_at'] ?? null, $module['draft_updated_at'] ?? null] as $updatedAt) {
+            if ($updatedAt && ($latestUpdate === null || strcmp((string) $updatedAt, (string) $latestUpdate) > 0)) {
+                $latestUpdate = $updatedAt;
+            }
         }
     }
 
     return [
         'id' => admin_course_id(),
         'title' => 'Layer Poultry Farm Management',
-        'status' => count($modules) ? 'published' : 'unavailable',
+        'status' => $counts['published'] ? 'published' : ($counts['draft'] ? 'draft' : ($counts['archived'] ? 'archived' : 'unavailable')),
+        'lifecycleCounts' => $counts,
         'moduleCount' => count($modules),
         'learnerCount' => $learnerCount,
         'updatedAt' => $latestUpdate,
@@ -1653,9 +1684,10 @@ function admin_course_data(): array
             'create' => true,
             'edit' => true,
             'publish' => true,
-            'reorder' => true,
+            'reorder' => false,
+            'renameChapter' => false,
         ],
-        'availabilityNote' => 'Kurikulum Academy dikelola langsung dari katalog modul native. Perubahan modul dan bank soal tersedia untuk admin; nomor modul tidak dapat diganti setelah learner menyimpan progres agar riwayat tetap konsisten.',
+        'availabilityNote' => 'Perubahan materi dan bank soal disimpan sebagai draf sebelum validasi dan penerbitan. Urutan serta persyaratan akademik dikelola melalui draf kebijakan kurikulum. Nomor modul tetap; riwayat, nilai, progres, dan sertifikat peserta dipertahankan.',
     ];
 }
 
@@ -1725,8 +1757,8 @@ function admin_overview_data(): array
 
 function admin_course_detail_data(): array
 {
-    $course = admin_course_data();
-    $modules = admin_module_rows();
+    $modules = admin_course_module_rows();
+    $course = admin_course_data($modules);
     $levels = [];
     foreach ($modules as $module) {
         $levelNumber = (int) $module['level_number'];
@@ -1740,11 +1772,20 @@ function admin_course_detail_data(): array
         $levels[$levelNumber]['modules'][] = [
             'id' => (int) $module['id'],
             'moduleNumber' => (int) $module['module_number'],
-            'title' => (string) $module['title'],
+            'title' => (string) $module['editorial_title'],
+            'publishedTitle' => $module['published_revision_id'] === null ? null : (string) $module['title'],
             'category' => (string) $module['category'],
             'summary' => (string) $module['summary'],
             'order' => (int) $module['sort_order'],
             'updatedAt' => $module['updated_at'] ?? null,
+            'lifecycleStatus' => (string) $module['lifecycle_status'],
+            'publishedRevisionId' => $module['published_revision_id'] === null ? null : (int) $module['published_revision_id'],
+            'archivedAt' => $module['archived_at'] ?? null,
+            'archiveReason' => $module['archive_reason'] ?? null,
+            'draft' => [
+                'version' => $module['draft_version'] === null ? null : (int) $module['draft_version'],
+                'hasUnpublishedChanges' => (bool) $module['has_unpublished_changes'],
+            ],
         ];
     }
 
@@ -2038,6 +2079,7 @@ function admin_create_user(array $actor, array $input): array
         $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)')
             ->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user', aapm_utc_now()]);
         $id = (int) $pdo->lastInsertId();
+        aapm_assign_new_learner_policy($pdo, $id, 'admin_create');
         $token = aapm_issue_verification_token($pdo, $id);
         aapm_audit('admin.user_created', 'ok', (int) $actor['id'], $id, ['role_to' => $requestedRole === 'admin' ? 'admin' : 'learner']);
         aapm_tx_commit($pdo);
@@ -2765,173 +2807,7 @@ function admin_validate_chapter_name(int $levelNumber, string $levelName, ?int $
     }
 }
 
-function admin_create_module(array $input): array
-{
-    $data = admin_module_input($input);
-    admin_validate_chapter_name($data['levelNumber'], $data['levelName']);
-    $duplicate = db()->prepare('SELECT id FROM course_modules WHERE module_number = ? LIMIT 1');
-    $duplicate->execute([$data['moduleNumber']]);
-    if ($duplicate->fetch()) {
-        error_response('Nomor modul sudah digunakan.', 409, 'module_number_exists');
-    }
-    if ($data['sortOrder'] === 0) {
-        $data['sortOrder'] = ((int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM course_modules')->fetchColumn()) + 1;
-    }
-    $insert = db()->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, editorial_content, video_script, video_url, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $insert->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['editorialContent'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder']]);
-    return present_module(admin_module_from_id((int) db()->lastInsertId()) ?: []);
-}
-
-function admin_update_module(int $moduleId, array $input): array
-{
-    $existing = admin_module_from_id($moduleId);
-    if (!$existing) {
-        error_response('Modul tidak ditemukan.', 404, 'not_found');
-    }
-    $data = admin_module_input($input, $existing);
-    if ($data['levelNumber'] !== (int) $existing['level_number']) {
-        admin_validate_chapter_name($data['levelNumber'], $data['levelName'], $moduleId);
-    }
-    if ($data['moduleNumber'] !== (int) $existing['module_number']) {
-        $duplicate = db()->prepare('SELECT id FROM course_modules WHERE module_number = ? AND id != ? LIMIT 1');
-        $duplicate->execute([$data['moduleNumber'], $moduleId]);
-        if ($duplicate->fetch()) {
-            error_response('Nomor modul sudah digunakan.', 409, 'module_number_exists');
-        }
-        if (aapm_module_evidence_count(db(), (int) $existing['module_number']) > 0) {
-            error_response('Nomor modul tidak dapat diubah karena sudah memiliki progres learner.', 422, 'module_number_locked');
-        }
-    }
-    db()->beginTransaction();
-    try {
-        $update = db()->prepare('UPDATE course_modules SET level_number = ?, level_name = ?, module_number = ?, title = ?, category = ?, summary = ?, content = ?, editorial_content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-        $update->execute([$data['levelNumber'], $data['levelName'], $data['moduleNumber'], $data['title'], $data['category'], $data['summary'], $data['content'], $data['editorialContent'], $data['videoScript'], $data['videoUrl'], $data['learningObjectives'], $data['keyTakeaways'], $data['checklist'], $data['practicalAssignment'], $data['sortOrder'], $moduleId]);
-        // Editing the chapter name is intentionally a chapter-wide operation.
-        // This keeps every module in the same number/name bucket consistent.
-        $renameChapter = db()->prepare('UPDATE course_modules SET level_name = ?, updated_at = CURRENT_TIMESTAMP WHERE level_number = ?');
-        $renameChapter->execute([$data['levelName'], $data['levelNumber']]);
-        db()->commit();
-    } catch (Throwable $exception) {
-        if (db()->inTransaction()) {
-            db()->rollBack();
-        }
-        throw $exception;
-    }
-    return present_module(admin_module_from_id($moduleId) ?: []);
-}
-
-function admin_delete_module(int $moduleId, bool $purgeProgress = false): array
-{
-    $module = admin_module_from_id($moduleId);
-    if (!$module) {
-        error_response('Modul tidak ditemukan.', 404, 'not_found');
-    }
-    if (aapm_module_academic_history_count(db(), (int) $module['module_number']) > 0) {
-        error_response('Modul ini memiliki riwayat akademik (ujian, aktivitas belajar, atau bukti sertifikat) dan tidak dapat dihapus. Modul harus diarsipkan melalui alur arsip modul.', 409, 'module_has_academic_history');
-    }
-    $progressCount = aapm_module_evidence_count(db(), (int) $module['module_number']);
-    if ($progressCount > 0 && !$purgeProgress) {
-        error_response('Modul memiliki progres learner. Konfirmasi penghapusan bersama progres untuk melanjutkan.', 422, 'module_has_progress');
-    }
-    db()->beginTransaction();
-    try {
-        db()->prepare('DELETE FROM quiz_questions WHERE module_number = ?')->execute([(int) $module['module_number']]);
-        if ($progressCount > 0) {
-            aapm_delete_module_evidence(db(), (int) $module['module_number']);
-        }
-        db()->prepare('DELETE FROM course_modules WHERE id = ?')->execute([$moduleId]);
-        db()->commit();
-    } catch (Throwable $exception) {
-        if (db()->inTransaction()) {
-            db()->rollBack();
-        }
-        throw $exception;
-    }
-
-    return [
-        'moduleId' => $moduleId,
-        'moduleNumber' => (int) $module['module_number'],
-        'deletedProgressEntries' => $progressCount,
-    ];
-}
-
-function admin_reorder_modules(array $items): array
-{
-    if (!is_array($items) || count($items) < 1 || count($items) > 999) {
-        error_response('Urutan modul tidak valid.', 422, 'validation_error');
-    }
-    $moduleIds = [];
-    foreach ($items as $item) {
-        $moduleId = (int) (is_array($item) ? ($item['id'] ?? 0) : $item);
-        if ($moduleId < 1 || isset($moduleIds[$moduleId])) {
-            error_response('Data modul tidak valid.', 422, 'validation_error');
-        }
-        $moduleIds[$moduleId] = true;
-    }
-    $existing = db()->prepare('SELECT COUNT(*) FROM course_modules WHERE id = ?');
-    foreach (array_keys($moduleIds) as $moduleId) {
-        $existing->execute([$moduleId]);
-        if ((int) $existing->fetchColumn() !== 1) {
-            error_response('Salah satu modul tidak ditemukan.', 404, 'not_found');
-        }
-    }
-    // A reorder is a replacement for the complete roadmap, not a partial
-    // patch. Reject subsets so omitted modules cannot retain colliding or
-    // stale sort_order values and later jump between chapters unexpectedly.
-    $allIds = array_map('intval', db()->query('SELECT id FROM course_modules')->fetchAll(PDO::FETCH_COLUMN));
-    $submittedIds = array_map('intval', array_keys($moduleIds));
-    sort($allIds, SORT_NUMERIC);
-    sort($submittedIds, SORT_NUMERIC);
-    if ($allIds !== $submittedIds) {
-        error_response('Urutan modul harus memuat seluruh modul aktif.', 422, 'incomplete_reorder');
-    }
-    db()->beginTransaction();
-    try {
-        $update = db()->prepare('UPDATE course_modules SET sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-        foreach (array_keys($moduleIds) as $index => $moduleId) {
-            $update->execute([$index + 1, $moduleId]);
-        }
-        db()->commit();
-    } catch (Throwable $exception) {
-        if (db()->inTransaction()) {
-            db()->rollBack();
-        }
-        throw $exception;
-    }
-    return admin_course_detail_data();
-}
-
 /** Renames a chapter: the name lives on each module in it, so one write covers them all. */
-function admin_rename_chapter(int $levelNumber, string $levelName): array
-{
-    if ($levelNumber < 1 || $levelNumber > 20) {
-        error_response('Nomor chapter tidak valid.', 422, 'validation_error');
-    }
-    $trimmed = trim($levelName);
-    $name = trim(function_exists('mb_substr') ? mb_substr($trimmed, 0, 120, 'UTF-8') : substr($trimmed, 0, 120));
-    if ($name === '') {
-        error_response('Nama chapter wajib diisi.', 422, 'validation_error');
-    }
-    $existing = db()->prepare('SELECT COUNT(*) FROM course_modules WHERE level_number = ?');
-    $existing->execute([$levelNumber]);
-    if ((int) $existing->fetchColumn() < 1) {
-        error_response('Chapter tidak ditemukan.', 404, 'not_found');
-    }
-    db()->prepare('UPDATE course_modules SET level_name = ?, updated_at = CURRENT_TIMESTAMP WHERE level_number = ?')->execute([$name, $levelNumber]);
-    return admin_course_detail_data();
-}
-
-function admin_module_questions(int $moduleId): array
-{
-    $module = admin_module_from_id($moduleId);
-    if (!$module) {
-        error_response('Modul tidak ditemukan.', 404, 'not_found');
-    }
-    $statement = db()->prepare('SELECT * FROM quiz_questions WHERE module_number = ? ORDER BY id ASC');
-    $statement->execute([(int) $module['module_number']]);
-    return array_map('present_question', $statement->fetchAll());
-}
-
 function admin_question_input(array $input, int $moduleNumber): array
 {
     $question = profile_text($input['question'] ?? '', 5000);
@@ -2944,57 +2820,13 @@ function admin_question_input(array $input, int $moduleNumber): array
     if ($question === '' || count($options) < 2 || $correctIndex < 0 || $correctIndex >= count($options)) {
         error_response('Pertanyaan, minimal dua opsi, dan jawaban benar wajib valid.', 422, 'validation_error');
     }
-    if (!in_array($difficulty, ['easy', 'medium', 'hard'], true)) {
+    if (!in_array($difficulty, ['easy', 'medium', 'hard', 'expert'], true)) {
         $difficulty = 'medium';
     }
     if ($type !== 'mcq') {
         error_response('Tipe soal yang didukung saat ini adalah pilihan ganda.', 422, 'validation_error');
     }
     return [$moduleNumber, $question, json_encode($options, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $correctIndex, $explanation, $difficulty, $type, $learningObjective];
-}
-
-function admin_create_question(int $moduleId, array $input): array
-{
-    $module = admin_module_from_id($moduleId);
-    if (!$module) {
-        error_response('Modul tidak ditemukan.', 404, 'not_found');
-    }
-    $data = admin_question_input($input, (int) $module['module_number']);
-    db()->prepare('INSERT INTO quiz_questions (module_number, question, options, correct_index, explanation, difficulty, type, learning_objective) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')->execute($data);
-    $statement = db()->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
-    $statement->execute([(int) db()->lastInsertId()]);
-    return present_question($statement->fetch() ?: []);
-}
-
-function admin_update_question(int $moduleId, int $questionId, array $input): array
-{
-    $module = admin_module_from_id($moduleId);
-    if (!$module) {
-        error_response('Modul tidak ditemukan.', 404, 'not_found');
-    }
-    $existing = db()->prepare('SELECT id FROM quiz_questions WHERE id = ? AND module_number = ? LIMIT 1');
-    $existing->execute([$questionId, (int) $module['module_number']]);
-    if (!$existing->fetch()) {
-        error_response('Soal tidak ditemukan.', 404, 'not_found');
-    }
-    $data = admin_question_input($input, (int) $module['module_number']);
-    db()->prepare('UPDATE quiz_questions SET module_number = ?, question = ?, options = ?, correct_index = ?, explanation = ?, difficulty = ?, type = ?, learning_objective = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute(array_merge($data, [$questionId]));
-    $statement = db()->prepare('SELECT * FROM quiz_questions WHERE id = ? LIMIT 1');
-    $statement->execute([$questionId]);
-    return present_question($statement->fetch() ?: []);
-}
-
-function admin_delete_question(int $moduleId, int $questionId): void
-{
-    $module = admin_module_from_id($moduleId);
-    if (!$module) {
-        error_response('Modul tidak ditemukan.', 404, 'not_found');
-    }
-    $delete = db()->prepare('DELETE FROM quiz_questions WHERE id = ? AND module_number = ?');
-    $delete->execute([$questionId, (int) $module['module_number']]);
-    if ($delete->rowCount() < 1) {
-        error_response('Soal tidak ditemukan.', 404, 'not_found');
-    }
 }
 
 function present_certificate(array $row): array
@@ -3075,4 +2907,38 @@ function present_ai_activity(array $row): array
         'detail' => (string) ($row['detail'] ?? ''),
         'createdAt' => $row['created_at'] ?? null,
     ];
+}
+
+/** Provision only a verified server-fetched Google profile; client policy fields are ignored.
+ * Kept separate from the network callback so its persistence contract can be tested offline.
+ */
+function aapm_provision_google_account(PDO $pdo, array $profile): int
+{
+    $email = normalize_email($profile['email'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($profile['email_verified'])) {
+        throw new InvalidArgumentException('Verified Google email required');
+    }
+    $find = $pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+    $find->execute([$email]);
+    $existing = $find->fetch();
+    if ($existing) return (int) $existing['id'];
+    $name = trim(substr(preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? '')), 0, 160));
+    if ($name === '') $name = ucfirst((string) strtok($email, '@'));
+    aapm_tx_begin($pdo);
+    try {
+        $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, email_verified_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)')
+            ->execute([$email, app_password_hash(bin2hex(random_bytes(32))), $name, 'user', aapm_utc_now()]);
+        $id = (int) $pdo->lastInsertId();
+        aapm_assign_new_learner_policy($pdo, $id, 'oauth_registration');
+        aapm_tx_commit($pdo);
+        return $id;
+    } catch (PDOException $exception) {
+        aapm_tx_rollback($pdo);
+        if (strpos(strtolower($exception->getMessage()), 'unique') === false && strpos(strtolower($exception->getMessage()), 'duplicate') === false) throw $exception;
+        $find->execute([$email]);
+        return (int) ($find->fetch()['id'] ?? 0);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
 }

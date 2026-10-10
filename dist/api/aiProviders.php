@@ -376,9 +376,9 @@ function ai_registry_record_settings(array $record, ?string $privateApiKey = nul
     ];
 }
 
-function ai_registry_public_provider(array $record, string $activeId = ''): array
+function ai_registry_public_provider(array $record, string $activeId = '', ?string $privateApiKey = null, bool $private = false): array
 {
-    $settings = ai_registry_record_settings($record);
+    $settings = ai_registry_record_settings($record, $privateApiKey, $private);
     return [
         'id' => $record['id'],
         'type' => $record['type'],
@@ -455,7 +455,7 @@ function ai_registry_runtime_status(): array
         return ai_registry_record_settings($record, $private['apiKey'], true) + [
             'activeProviderId' => 'private-config',
             'managedByPrivateConfig' => true,
-            'providers' => [ai_registry_public_provider($record, 'private-config')],
+            'providers' => [ai_registry_public_provider($record, 'private-config', $private['apiKey'], true)],
             'presets' => ai_registry_presets(),
         ];
     }

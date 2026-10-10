@@ -648,11 +648,8 @@
   .aapm-auth .aapm-field .aapm-link { margin-block: calc((var(--aapm-component-type-support-line) - var(--aapm-component-action-height)) / 2); }
 }
 
-/* Phones: the floating APPI pill steps aside where a bottom bar or a focus footer already holds the space. */
-@media (max-width: 859px) {
-  html[data-shell="focus"] .aapm-ai-launcher,
-  html:has(.aapm-app[data-bottom-nav="true"]) .aapm-ai-launcher { display: none; }
-}
+/* Phones: the APPI launcher stays, lifted above the bottom bar or the focus
+ * footer (see features/mascot.css), so it never covers their buttons. */
 @media (max-width: 639px) {
   .aapm-tabs-trigger { min-width: var(--aapm-component-action-height); }
 }

@@ -44,6 +44,7 @@ export function AddElementMenu({ groups = [], onAddElement }) {
  * The editor's one save surface: where the work stands, what can be added, and
  * the single Simpan action (also Ctrl/⌘ S). It stays at the bottom of the canvas.
  */
+/** @param {{ elementGroups?: any[], onAddElement?: ((type: string) => void) | null, onSave?: () => void, onRetry?: () => void, onOpenOutline?: () => void, onOpenInspector?: (section: string) => void, isSaving?: boolean, isDirty?: boolean, isNew?: boolean, saveError?: string, savedAt?: Date | null, disabled?: boolean }} props */
 export default function EditorActionBar({
   elementGroups = [],
   onAddElement = null,
@@ -58,6 +59,41 @@ export default function EditorActionBar({
   savedAt = null,
   disabled = false,
 }) {
+  const barRef = React.useRef(null);
+  React.useEffect(() => {
+    const bar = barRef.current;
+    const content = bar?.closest('.aapm-editor-content');
+    if (!bar || !content) return undefined;
+    const root = document.documentElement;
+    const update = () => {
+      const rect = bar.getBoundingClientRect();
+      const height = `${rect.height}px`;
+      content.style.setProperty('--aapm-editor-footer-height', height);
+      root.style.setProperty('--aapm-editor-footer-height', height);
+      root.style.setProperty('--aapm-editor-footer-offset', `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`);
+      root.dataset.editorFooter = 'true';
+    };
+    let frame = 0;
+    const schedule = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(update);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    window.addEventListener('resize', schedule);
+    document.addEventListener('scroll', schedule, true);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', schedule);
+      document.removeEventListener('scroll', schedule, true);
+      content.style.removeProperty('--aapm-editor-footer-height');
+      root.style.removeProperty('--aapm-editor-footer-height');
+      root.style.removeProperty('--aapm-editor-footer-offset');
+      delete root.dataset.editorFooter;
+    };
+  }, []);
   const status = isSaving ? "saving" : saveError ? "error" : isDirty ? "dirty" : "saved";
   const primaryAction = curriculumPrimaryAction({ dirty: isDirty, isNew });
   const label = {
@@ -68,7 +104,7 @@ export default function EditorActionBar({
   }[status];
 
   return (
-    <div className="aapm-editor-actionbar" data-editor-actionbar>
+    <div ref={barRef} className="aapm-editor-actionbar" data-editor-actionbar>
       <span className="aapm-editor-save-status" data-status={status} role="status" aria-live="polite">
         <span className="aapm-chip__dot" aria-hidden="true" />
         <span className="aapm-editor-save-status__label">{label}</span>
