@@ -4,6 +4,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
+import AiResponseDetails from "@/components/ai/AiResponseDetails";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
@@ -191,6 +192,7 @@ function AssistantMessage({
           <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
         </div>
       )}
+      <AiResponseDetails message={message} />
       {message.streaming && (
         <AiStreamActivity
           label={message.streamStatus}

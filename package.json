@@ -8,7 +8,7 @@
     "build": "node scripts/release/build-artifact.mjs --channel=local",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "test": "node --test --test-concurrency=1 tests/academy-hardening.test.mjs tests/q01-environment-artifact.test.mjs tests/q02-authz.test.mjs tests/q03-assessment.test.mjs tests/q04-evidence.test.mjs tests/q04-certification.test.mjs tests/q04-frontend.test.mjs tests/q05-curriculum.test.mjs tests/q05-policy-admin.test.mjs tests/q05-course-lifecycle.test.mjs tests/q05-frontend.test.mjs tests/lesson-video.test.mjs tests/lesson-navigation.test.mjs tests/visible-viewport.test.mjs tests/pwa-install.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/academy-hardening.test.mjs tests/q01-environment-artifact.test.mjs tests/q02-authz.test.mjs tests/q03-assessment.test.mjs tests/q04-evidence.test.mjs tests/q04-certification.test.mjs tests/q04-frontend.test.mjs tests/q05-curriculum.test.mjs tests/q05-policy-admin.test.mjs tests/q05-course-lifecycle.test.mjs tests/q05-frontend.test.mjs tests/lesson-video.test.mjs tests/lesson-navigation.test.mjs tests/visible-viewport.test.mjs tests/pwa-install.test.mjs tests/ai-reasoning.test.mjs",
     "test:q05:mysql": "node scripts/testing/test-q05-mysql.mjs",
     "test:q03-q04:mysql": "node scripts/testing/test-q05-mysql.mjs --q03-q04",
     "typecheck": "tsc -p ./jsconfig.json",

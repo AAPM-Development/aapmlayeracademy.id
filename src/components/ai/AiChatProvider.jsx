@@ -63,6 +63,9 @@ function clientMessage(message) {
     error: Boolean(message.error),
     image: message.image ?? null,
     createdAt: message.createdAt ?? null,
+    reasoningSummary: message.reasoningSummary ?? "",
+    reasoningObserved: Boolean(message.reasoningObserved),
+    processSteps: message.processSteps ?? [],
   };
 }
 
@@ -260,11 +263,11 @@ export function AiChatProvider({ children }) {
             latestMessage?.content === expectedAssistantContent);
         if (detail?.conversation) upsertConversation(detail.conversation);
         if (replaceMessages && activeRef.current === id) {
-          setMessages(
-            detailMessages.map((message) =>
-              clientMessage({ ...message, persisted: true }),
-            ),
-          );
+          setMessages((current) => detailMessages.map((message, index) => {
+            const local = current.find((item) => item.id === message.id)
+              || (index === detailMessages.length - 1 && message.role === "assistant" && message.content === expectedAssistantContent ? current.at(-1) : null);
+            return clientMessage({ ...local, ...message, persisted: true });
+          }));
           setIsDraft(false);
         }
         return { ok: true, assistantPersisted };
@@ -491,6 +494,8 @@ export function AiChatProvider({ children }) {
             ? current
             : [...current, nextLabel].slice(-4),
         );
+        setMessages((current) => current.map((item) => item.id === assistantId
+          ? { ...item, processSteps: [...new Set([...(item.processSteps || []), nextLabel])].slice(-8) } : item));
       };
 
       try {
@@ -506,6 +511,11 @@ export function AiChatProvider({ children }) {
           onEvent: ({ event, data }) => {
             if (!isCurrentRequest()) return;
             if (event === "status") reportStep(data.label);
+            if (event === "response_meta") updateAssistant({ provider: data.provider, model: data.model });
+            if (event === "reasoning") {
+              setMessages((current) => current.map((item) => item.id === assistantId
+                ? { ...item, reasoningObserved: true, reasoningSummary: (item.reasoningSummary + (data.summary || "")).slice(0, 12000) } : item));
+            }
             if (event === "delta" && data.text) {
               setStreamPhase("responding");
               queueDelta(data.text);

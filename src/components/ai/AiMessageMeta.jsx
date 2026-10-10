@@ -98,7 +98,7 @@ export default function AiMessageMeta({
   }
 
   const warning = Boolean(message?.fallback || !message?.persisted);
-  const provider = providerLabel(message);
+  const provider = message.model ? "" : providerLabel(message);
   const label = message?.fallback
     ? message.persisted
       ? "Respons lokal · tersimpan"
