@@ -6,12 +6,14 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { useAdminLearner, useResetAdminUserProgress } from "@/lib/useAdminData";
 import { AdminError, AdminLoading, AdminPageFrame, AdminUnavailable } from "@/components/admin/AdminPage";
 import { formatAdminDate, formatMinutes } from "@/components/admin/adminUtils";
+import { useAuth } from "@/lib/AuthContext";
 
 function initialOf(learner) {
   return (learner.full_name || learner.email || "?").slice(0, 1).toUpperCase();
 }
 
 export default function AdminLearnerDetail() {
+  const { user: actor } = useAuth();
   const { learnerId } = useParams();
   const { data, isLoading, error, refetch } = useAdminLearner(learnerId);
   const learner = data?.learner;
@@ -45,7 +47,7 @@ export default function AdminLearnerDetail() {
       back={{ to: "/admin/learners", label: "Peserta" }}
       title="Detail peserta"
       description="Progres modul, nilai kuis, dan sertifikat learner ini."
-      actions={learner ? (
+      actions={learner && actor?.canManageUsers ? (
         <Button type="button" variant="danger-soft" onClick={() => setResetConfirmationOpen(true)} disabled={resetProgress.isPending}>
           <AapmIcon name="refresh" />
           {resetProgress.isPending ? "Mereset…" : "Reset progress"}

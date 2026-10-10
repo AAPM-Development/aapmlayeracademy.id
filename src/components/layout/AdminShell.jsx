@@ -119,7 +119,7 @@ export default function AdminShell() {
                 />
                 <AccountMenu
                   user={user}
-                  context="Admin Academy"
+                  context={user?.role === "super_admin" ? "Super Admin Academy" : "Admin Academy"}
                   themeMode={themeMode}
                   onToggleTheme={toggleTheme}
                   onLogout={() => logout()}

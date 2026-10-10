@@ -54,12 +54,12 @@ export default function AcademyShell() {
   const { mode: themeMode, toggleTheme } = useThemeMode();
   const [collapsedPreference, setCollapsedPreference] = useState(readCollapsed);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const isAdmin = user?.role === "admin";
+  const isAdmin = ["admin", "super_admin"].includes(user?.role);
   const isAiWorkspace = location.pathname === "/ai-assistant";
   const focus = isFocusRoute(location.pathname);
   const page = getNavigationMeta(location.pathname);
   const collapsed = isAiWorkspace || collapsedPreference;
-  const accountContext = isAdmin ? "Admin Academy" : "Peserta Layer Farm";
+  const accountContext = user?.role === "super_admin" ? "Super Admin Academy" : isAdmin ? "Admin Academy" : "Peserta Layer Farm";
 
   useEffect(() => setSheetOpen(false), [location.pathname]);
 

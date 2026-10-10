@@ -476,10 +476,22 @@
 /* ----------------------------------------------------------- Focus shell */
 /* Lesson player and assessments: global navigation steps back, the course
  * context (outline, progress, next action) moves forward. */
+/* The document is not a second scrollport while a lesson or quiz is open.
+ * Embedded presentation content may extend its scrollable overflow beyond
+ * the root even when the three shell rows themselves fit the viewport. */
+html[data-shell="focus"],
+html[data-shell="focus"] body,
+html[data-shell="focus"] #root {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 .aapm-focus {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100svh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--aapm-semantic-background);
   color: var(--aapm-semantic-foreground);

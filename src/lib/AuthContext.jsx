@@ -1,10 +1,12 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { nativeApi } from '@/api/nativeClient';
 import { ConfirmDialog } from '@/components/primitives';
+import useVisibleViewport from '@/lib/useVisibleViewport';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  useVisibleViewport();
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
