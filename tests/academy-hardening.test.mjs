@@ -475,14 +475,17 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 
-test("lesson footer separates section browsing from the quiz or next-module action", () => {
+test("scrollable lesson reserves its footer for quiz or module navigation", () => {
   const lesson = readWorkspaceFile("../src/pages/ModuleDetail.jsx");
   const quiz = readWorkspaceFile("../src/pages/Quiz.jsx");
   const shell = readWorkspaceFile("../src/design-system/patterns/AppShell.jsx");
 
   assert.doesNotMatch(lesson, /const primaryAction = sectionNavigation\.next/);
-  assert.match(lesson, /className="aapm-focus__footer-group">\s*\{completionAction\}/);
-  assert.match(lesson, /onClick=\{\(\) => setSectionSheet\(true\)\}/);
+  assert.doesNotMatch(lesson, /ModuleFlow|sectionSheet|sectionNavigation|Bagian sebelumnya/);
+  const footer = lesson.slice(lesson.indexOf("footer={("), lesson.indexOf('<div className="aapm-lesson-layout">'));
+  assert.doesNotMatch(footer, /markComplete|jumpToSection/);
+  assert.match(footer, /flow\.completed \|\| flow\.hasQuiz/);
+  assert.match(lesson, /label="Keluar ke jalur belajar" variant="danger" icon="close"/);
   assert.match(lesson, /flow\.activeAttempt \? "Lanjutkan kuis"/);
   assert.match(lesson, /Link to=\{`\/modules\/\$\{next\.moduleNumber\}`\}/);
   assert.match(quiz, /outlineLabel="Navigasi soal"/);

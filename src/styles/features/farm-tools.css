@@ -188,7 +188,7 @@
 .aapm-kpi-chart .recharts-cartesian-grid line { stroke: var(--aapm-semantic-border); }
 .aapm-kpi-chart .recharts-text { fill: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); }
 .aapm-kpi-chart--trend { gap: var(--aapm-primitive-space-3); padding: var(--aapm-primitive-space-4); }
-.aapm-kpi-chart--trend .aapm-trend-chart__plot { height: var(--aapm-trend-chart-height, 224px); }
+.aapm-kpi-chart--trend .aapm-trend-chart__plot { height: var(--aapm-trend-chart-height, 184px); }
 .aapm-trend-chart__latest { animation: aapm-glow-pulse 2s var(--aapm-primitive-motion-ease-in-out) infinite; transform-box: fill-box; transform-origin: center; }
 
 .aapm-kpi-empty { display: grid; justify-items: center; gap: var(--aapm-primitive-space-3); padding: var(--aapm-primitive-space-10) var(--aapm-primitive-space-5); border: 2px dashed var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-feature); text-align: center; }
@@ -272,6 +272,6 @@
   .aapm-kpi-tile { min-height: 7.5rem; padding-inline: var(--aapm-primitive-space-3); }
   .aapm-kpi-tile .aapm-sparkline { margin-inline: calc(-1 * var(--aapm-primitive-space-3)); width: calc(100% + 2 * var(--aapm-primitive-space-3)); }
   .aapm-kpi-chart--trend { gap: var(--aapm-primitive-space-2); padding: var(--aapm-primitive-space-3); }
-  .aapm-kpi-chart--trend .aapm-trend-chart__plot { height: 184px; }
+  .aapm-kpi-chart--trend .aapm-trend-chart__plot { height: 160px; }
 }
 .aapm-kpi-reading__list { grid-column: 1 / -1; }
