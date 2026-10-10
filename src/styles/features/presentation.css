@@ -328,3 +328,52 @@
       padding: var(--space-3);
     }
   }
+
+/* The PPTX viewer injects its default button styles after the app stylesheet,
+   so keep this high-contrast exit control explicit for the learner. */
+.flyfish-pptx-presentation .flyfish-pptx-presentation-exit {
+    top: max(16px, env(safe-area-inset-top, 0px)) !important;
+    right: max(16px, env(safe-area-inset-right, 0px)) !important;
+    z-index: 2 !important;
+    display: grid !important;
+    width: 3rem !important;
+    height: 3rem !important;
+    min-width: 3rem;
+    min-height: 3rem;
+    place-items: center;
+    padding: 0 !important;
+    border: 2px solid #fff !important;
+    border-radius: 50% !important;
+    background: var(--aapm-semantic-danger) !important;
+    box-shadow: 0 4px 18px rgb(0 0 0 / 48%);
+    color: #fff !important;
+    font-family: inherit !important;
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 28%);
+    touch-action: manipulation;
+    transition: background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+  }
+
+.flyfish-pptx-presentation .flyfish-pptx-presentation-exit:hover {
+    background: color-mix(in srgb, var(--aapm-semantic-danger) 84%, #000) !important;
+    box-shadow: 0 6px 22px rgb(0 0 0 / 58%);
+    transform: scale(1.05);
+  }
+
+.flyfish-pptx-presentation .flyfish-pptx-presentation-exit:active {
+    transform: scale(0.94);
+  }
+
+.flyfish-pptx-presentation .flyfish-pptx-presentation-exit:focus-visible {
+    outline: 3px solid #fff !important;
+    outline-offset: 4px !important;
+    box-shadow: 0 0 0 7px rgb(0 0 0 / 68%), 0 4px 18px rgb(0 0 0 / 48%);
+  }
+
+@media (prefers-reduced-motion: reduce) {
+    .flyfish-pptx-presentation .flyfish-pptx-presentation-exit {
+      transition: none;
+    }
+  }

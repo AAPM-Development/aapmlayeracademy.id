@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, CheckboxField, IconButton, Progress, Sheet, SheetContent, SheetTitle, useToast } from "@/design-system";
+import { Alert, Button, CheckboxField, IconButton, Progress, Sheet, SheetContent, SheetDescription, SheetTitle, useToast } from "@/design-system";
 import { FocusShell, Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
@@ -50,6 +50,7 @@ export default function ModuleDetail() {
   const [activeSection, setActiveSection] = useState("content");
   const [outlineOpen, setOutlineOpen] = useState(readOutlinePreference);
   const [outlineSheet, setOutlineSheet] = useState(false);
+  const [sectionSheet, setSectionSheet] = useState(false);
   // The practice check answers at once; the saved value takes over after refetch.
   const [practiceOverride, setPracticeOverride] = useState(null);
   const mainRef = useRef(null);
@@ -106,6 +107,7 @@ export default function ModuleDetail() {
   useEffect(() => {
     setActiveSection("content");
     setPracticeOverride(null);
+    setSectionSheet(false);
   }, [number]);
 
   useEffect(() => {
@@ -199,14 +201,11 @@ export default function ModuleDetail() {
       ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span className="sm:hidden">Lanjut</span><span className="hidden sm:inline">Modul berikutnya</span><AapmIcon name="arrowRight" /></Link></Button>
       : <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
   } else if (flow.hasQuiz) {
-    const quizLabel = flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Kerjakan kuis";
+    const quizLabel = flow.activeAttempt ? "Lanjutkan kuis" : flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Mulai kuis";
     completionAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
   } else {
     completionAction = <Button variant="learn" loading={acknowledge.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
   }
-  const primaryAction = sectionNavigation.next
-    ? <Button variant="learn" onClick={() => jumpToSection(sectionNavigation.next.id)}>Berikutnya: {sectionNavigation.next.label}<AapmIcon name="arrowRight" /></Button>
-    : completionAction;
 
   return (
     <FocusShell
@@ -247,23 +246,28 @@ export default function ModuleDetail() {
         <>
           <div className="aapm-focus__footer-group">
             {sectionNavigation.previous ? (
-              <Button variant="secondary" leadingIcon="arrowLeft" onClick={() => jumpToSection(sectionNavigation.previous.id)}>Bagian sebelumnya</Button>
+              <Button variant="secondary" leadingIcon="arrowLeft" aria-label={`Bagian sebelumnya: ${sectionNavigation.previous.label}`} onClick={() => jumpToSection(sectionNavigation.previous.id)}><span className="sm:hidden">Sebelumnya</span><span className="hidden sm:inline">Bagian sebelumnya</span></Button>
             ) : previous ? (
               <Button asChild variant="secondary" data-hide-label-mobile="">
                 <Link to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}><AapmIcon name="arrowLeft" /><span>Sebelumnya</span></Link>
               </Button>
             ) : null}
           </div>
-          <p className="aapm-focus__footer-center">
-            Bagian {sectionIndex + 1} dari {learnerSections.length} · {learnerSections[sectionIndex]?.label}
-          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="aapm-focus__footer-center aapm-lesson__section-trigger"
+            aria-label={`Pilih bagian materi. Bagian ${sectionIndex + 1} dari ${learnerSections.length}: ${learnerSections[sectionIndex]?.label}`}
+            onClick={() => setSectionSheet(true)}
+          >
+            <AapmIcon name="list" />
+            <span>Bagian {sectionIndex + 1}/{learnerSections.length}</span>
+            <span className="hidden sm:inline">· {learnerSections[sectionIndex]?.label}</span>
+            <AapmIcon name="chevronDown" />
+          </Button>
           <div className="aapm-focus__footer-group">
-            {flow.completed && flow.hasQuiz ? (
-              <Button asChild variant="secondary">
-                <Link to={`/quiz/${number}`} aria-label={`Ulangi kuis modul ${number}`}><AapmIcon name="quiz" /><span className="sm:hidden">Kuis</span><span className="hidden sm:inline">Ulangi kuis</span></Link>
-              </Button>
-            ) : null}
-            {primaryAction}
+            {completionAction}
           </div>
         </>
       )}
@@ -351,6 +355,17 @@ export default function ModuleDetail() {
         <SheetContent side="left" className="aapm-nav-sheet" aria-describedby={undefined}>
           <SheetTitle className="aapm-visually-hidden">Kurikulum course</SheetTitle>
           {outline}
+        </SheetContent>
+      </Sheet>
+      <Sheet open={sectionSheet} onOpenChange={setSectionSheet}>
+        <SheetContent side="bottom" className="aapm-section-sheet">
+          <SheetTitle className="aapm-visually-hidden">Pilih bagian materi</SheetTitle>
+          <SheetDescription className="aapm-visually-hidden">Pindah ke bagian materi lain dalam modul ini.</SheetDescription>
+          <LessonToc
+            sections={learnerSections}
+            activeSection={activeSection}
+            onSectionChange={(section) => { setSectionSheet(false); jumpToSection(section); }}
+          />
         </SheetContent>
       </Sheet>
     </FocusShell>

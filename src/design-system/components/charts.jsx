@@ -86,7 +86,7 @@ function TrendChart({ labels = [], values = [], label, hue = "green", height = 2
   const scale = niceScale(values, band);
   return (
     <figure className={cn("aapm-trend-chart m-0", className)} aria-label={ariaLabel}>
-      <div style={{ height }}>
+      <div className="aapm-trend-chart__plot" style={{ "--aapm-trend-chart-height": `${height}px` }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 14, right: 18, bottom: 0, left: 0 }}>
             <defs>

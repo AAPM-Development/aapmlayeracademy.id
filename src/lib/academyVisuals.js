@@ -92,6 +92,7 @@ export function moduleFlowState({ module, progress, hasPractice, quizCount = 0 }
     acknowledged: Boolean(progress?.acknowledged),
     quizAttempted: Boolean(progress?.quizAttempted) || quizTotal > 0,
     quizPercent,
+    activeAttempt: Boolean(progress?.activeAttempt),
     quizPassed: Boolean(progress?.quizPassed),
     practicalDone: Boolean(progress?.practicalDone),
     hasQuiz: module?.assessmentMode ? module.assessmentMode === "quiz" : typeof progress?.hasQuiz === "boolean" ? progress.hasQuiz : quizCount > 0,

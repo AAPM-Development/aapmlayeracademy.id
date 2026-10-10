@@ -1209,6 +1209,7 @@ function aapm_progress_shape(array $module): array
         'quizPercent' => $module['bestPercent'],
         'quizAttempted' => $module['quizAttempted'],
         'quizPassed' => $module['quizPassed'],
+        'activeAttempt' => $module['activeAttemptId'] !== null,
         'acknowledged' => $module['acknowledged'],
         'hasQuiz' => $module['hasQuiz'],
         'practicalDone' => $module['practiceAttested'],
