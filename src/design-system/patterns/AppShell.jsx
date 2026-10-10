@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AppBrand from "@/components/AppBrand";
 import ProfileAvatar from "@/components/ProfileAvatar";
+import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "../components/tooltip";
 import {
@@ -63,6 +64,11 @@ function useRoutePending(pathname) {
 export function AppShell({ sidebar, topbar, bottomNav, collapsed = false, children, className, label = "Navigasi utama", mainLabel = "Konten" }) {
   const location = useLocation();
   const mainRef = React.useRef(null);
+  const scrollFadeRef = useScrollEdgeFade({ stateRef: mainRef });
+  const setMainRef = React.useCallback((node) => {
+    mainRef.current = node;
+    scrollFadeRef(node);
+  }, [scrollFadeRef]);
   useResetScroll(mainRef, location.pathname);
   const [pending, checkPending] = useRoutePending(location.pathname);
 
@@ -78,7 +84,7 @@ export function AppShell({ sidebar, topbar, bottomNav, collapsed = false, childr
       <div className="aapm-app__canvas">
         <div className="aapm-route-progress" data-active={pending ? "true" : undefined} aria-hidden="true" />
         {topbar}
-        <main id="aapm-main" ref={mainRef} tabIndex={-1} className="aapm-app__main" aria-label={mainLabel} aria-busy={pending || undefined}>
+        <main id="aapm-main" ref={setMainRef} tabIndex={-1} className="aapm-app__main aapm-scroll-fade" aria-label={mainLabel} aria-busy={pending || undefined}>
           {/* The chrome paints at once on a hard load; only the canvas waits
               for the first route chunk. */}
           <React.Suspense fallback={<StateView kind="loading" title="Menyiapkan halaman…" framed={false} />}>
@@ -301,11 +307,16 @@ export function Topbar({ title, subtitle, breadcrumbs, actions, mobileBrandTo = 
  * answer-feedback bar after a quiz check.
  */
 export const FocusShell = React.forwardRef(function FocusShell(
-  { bar, outline, outlineOpen = true, footer, footerTone, children, className, label = "Konten belajar", resetKey },
+    { bar, outline, outlineLabel = "Kurikulum", outlineOpen = true, outlineSide = "left", footer, footerTone, children, className, label = "Konten belajar", resetKey },
   ref,
 ) {
   const mainRef = React.useRef(null);
   const footerRef = React.useRef(null);
+  const scrollFadeRef = useScrollEdgeFade({ stateRef: mainRef });
+  const setMainRef = React.useCallback((node) => {
+    mainRef.current = node;
+    scrollFadeRef(node);
+  }, [scrollFadeRef]);
   React.useImperativeHandle(ref, () => mainRef.current);
   useResetScroll(mainRef, resetKey);
 
@@ -325,12 +336,12 @@ export const FocusShell = React.forwardRef(function FocusShell(
   }, [Boolean(footer)]);
 
   return (
-    <div className={cn("aapm-focus", className)} data-outline={outline && outlineOpen ? "true" : "false"}>
+    <div className={cn("aapm-focus", className)} data-outline={outline && outlineOpen ? "true" : "false"} data-outline-side={outlineSide}>
       <a className="aapm-skip-link" href="#aapm-focus-main">Lewati ke konten</a>
       {bar}
       <div className="aapm-focus__body">
-        {outline ? <aside className="aapm-focus__outline" aria-label="Kurikulum">{outline}</aside> : null}
-        <main id="aapm-focus-main" ref={mainRef} tabIndex={-1} className="aapm-focus__main" aria-label={label}>
+        {outline ? <aside className="aapm-focus__outline" aria-label={outlineLabel}>{outline}</aside> : null}
+        <main id="aapm-focus-main" ref={setMainRef} tabIndex={-1} className="aapm-focus__main aapm-scroll-fade" aria-label={label}>
           {children}
         </main>
       </div>

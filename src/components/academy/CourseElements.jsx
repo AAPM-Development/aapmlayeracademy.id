@@ -219,9 +219,11 @@ export function ModuleFlow({ flow, active = "content", onSelect, quizTo }) {
     ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted && !flow.quizPassed && !flow.completed ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", done: flow.completed || flow.quizPassed, to: quizTo }] : []),
     { id: "done", label: "Selesai", icon: "check", done: flow.completed },
   ];
-  // The current step is the first unfinished one, so a later tick never sits
-  // beside an earlier step that still reads as "current".
-  const currentIndex = draft.findIndex((step) => !step.done);
+  // Show where the learner is reading without turning scroll position into
+  // completion evidence. If the active step is already done, point to the
+  // next unfinished step.
+  const activeIndex = draft.findIndex((step) => step.id === active && !step.done);
+  const currentIndex = activeIndex >= 0 ? activeIndex : draft.findIndex((step) => !step.done);
   const steps = draft.map((step, index) => ({ ...step, state: step.done ? "done" : index === currentIndex ? "current" : undefined }));
   return (
     <ol className="aapm-flow" aria-label="Alur modul">

@@ -235,6 +235,7 @@ export default function PptxCarousel({ src, title = "Presentasi", name = "", dec
           lazyMedia: true,
           listOptions: { windowed: true, initialSlides: 1, batchSize: 1, overscanViewport: 0.25 },
           zipLimits: { maxFileBytes: MAX_PPTX_BYTES },
+          presentationLabels: { exit: "Keluar dari layar penuh" },
           presentationFullscreen: true,
           onProgress: (progress) => {
             if (cancelled) return;

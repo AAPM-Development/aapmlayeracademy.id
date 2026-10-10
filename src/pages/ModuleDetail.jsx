@@ -6,7 +6,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonHeader, LessonMedia, LessonSection, LessonToc, lessonSections } from "@/components/academy/LessonWorkspace";
-import { CourseOutline, ModuleFlow } from "@/components/academy/CourseElements";
+import { CourseOutline } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useAcknowledgeModule, useModules, usePracticeAttestation, useQuizQuestions, useStudyTimeIncrement, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, sortModules } from "@/lib/academyData";
@@ -16,7 +16,7 @@ import { askAppi } from "@/lib/askAppi";
 import AppiMascot from "@/components/appi/AppiMascot";
 import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
-import { lessonNavigation, scrollLessonSection } from "@/lib/lessonNavigation";
+import { scrollLessonSection } from "@/lib/lessonNavigation";
 
 const OUTLINE_KEY = "aapm-lesson-outline";
 const hasText = (value) => typeof value === "string" && value.trim().length > 0;
@@ -178,9 +178,6 @@ export default function ModuleDetail() {
     return <StandaloneState><LearningEmptyState title="Modul belum tersedia" description="Materi ini belum tersedia atau tautannya sudah berubah. Kembali ke jalur belajar untuk memilih materi lain." actionLabel="Kembali ke jalur belajar" actionTo="/modules" /></StandaloneState>;
   }
 
-  const sectionNavigation = lessonNavigation(learnerSections, activeSection);
-  const sectionIndex = sectionNavigation.index;
-  const activeStep = activeSection === "practical" ? "practice" : "content";
   const outline = (
     <CourseOutline
       curriculum={curriculum}
@@ -196,17 +193,14 @@ export default function ModuleDetail() {
   let completionAction;
   if (flow.completed) {
     completionAction = next
-      ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span className="sm:hidden">Lanjut</span><span className="hidden sm:inline">Modul berikutnya</span><AapmIcon name="arrowRight" /></Link></Button>
+      ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span>Modul berikutnya</span><AapmIcon name="arrowRight" /></Link></Button>
       : <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
   } else if (flow.hasQuiz) {
-    const quizLabel = flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Kerjakan kuis";
+    const quizLabel = flow.activeAttempt ? "Lanjutkan kuis" : flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Mulai kuis";
     completionAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
   } else {
     completionAction = <Button variant="learn" loading={acknowledge.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
   }
-  const primaryAction = sectionNavigation.next
-    ? <Button variant="learn" onClick={() => jumpToSection(sectionNavigation.next.id)}>Berikutnya: {sectionNavigation.next.label}<AapmIcon name="arrowRight" /></Button>
-    : completionAction;
 
   return (
     <FocusShell
@@ -214,11 +208,12 @@ export default function ModuleDetail() {
       resetKey={number}
       label={`Lesson modul ${number}`}
       outline={outline}
+      outlineSide="right"
       outlineOpen={outlineOpen}
       bar={(
         <header className="aapm-topbar aapm-focus__bar aapm-lesson-bar" data-hue={visual.hue}>
           <span className="aapm-lesson-bar__read" aria-hidden="true"><span ref={progressRef} /></span>
-          <IconButton label="Keluar ke jalur belajar" icon="close" onClick={() => navigate("/modules")} />
+          <IconButton label="Keluar ke jalur belajar" variant="danger" icon="close" onClick={() => navigate("/modules")} />
           <div className="aapm-topbar__title">
             <span className="aapm-topbar__context">Modul {module.moduleNumber} dari {summary.total} · {module.levelName || module.category}</span>
             <p className="aapm-topbar__title-text">{module.title}</p>
@@ -246,33 +241,23 @@ export default function ModuleDetail() {
       footer={(
         <>
           <div className="aapm-focus__footer-group">
-            {sectionNavigation.previous ? (
-              <Button variant="secondary" leadingIcon="arrowLeft" onClick={() => jumpToSection(sectionNavigation.previous.id)}>Bagian sebelumnya</Button>
-            ) : previous ? (
+            {previous ? (
               <Button asChild variant="secondary" data-hide-label-mobile="">
-                <Link to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}><AapmIcon name="arrowLeft" /><span>Sebelumnya</span></Link>
+                <Link to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}><AapmIcon name="arrowLeft" /><span>Modul sebelumnya</span></Link>
               </Button>
             ) : null}
           </div>
-          <p className="aapm-focus__footer-center">
-            Bagian {sectionIndex + 1} dari {learnerSections.length} · {learnerSections[sectionIndex]?.label}
-          </p>
           <div className="aapm-focus__footer-group">
-            {flow.completed && flow.hasQuiz ? (
-              <Button asChild variant="secondary">
-                <Link to={`/quiz/${number}`} aria-label={`Ulangi kuis modul ${number}`}><AapmIcon name="quiz" /><span className="sm:hidden">Kuis</span><span className="hidden sm:inline">Ulangi kuis</span></Link>
-              </Button>
-            ) : null}
-            {primaryAction}
+            {flow.completed || flow.hasQuiz ? completionAction : (
+              next ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`}>Modul berikutnya<AapmIcon name="arrowRight" /></Link></Button>
+                : <Button asChild variant="secondary"><Link to="/modules">Jalur belajar<AapmIcon name="arrowRight" /></Link></Button>
+            )}
           </div>
         </>
       )}
     >
       <div className="aapm-lesson-layout">
         <article className="aapm-lesson" data-hue={visual.hue}>
-          <div className="mb-6">
-            <ModuleFlow flow={flow} active={activeStep} onSelect={(step) => jumpToSection(step === "practice" ? "practical" : "content")} quizTo={`/quiz/${number}`} />
-          </div>
           <LessonHeader module={module} completed={flow.completed} hue={visual.hue} minutes={estimateMinutes(module)} />
 
           <LessonSection id="content" title="Materi" icon="lesson" hue={visual.hue}>
@@ -348,7 +333,7 @@ export default function ModuleDetail() {
       </div>
 
       <Sheet open={outlineSheet} onOpenChange={setOutlineSheet}>
-        <SheetContent side="left" className="aapm-nav-sheet" aria-describedby={undefined}>
+        <SheetContent side="right" className="aapm-nav-sheet" aria-describedby={undefined}>
           <SheetTitle className="aapm-visually-hidden">Kurikulum course</SheetTitle>
           {outline}
         </SheetContent>

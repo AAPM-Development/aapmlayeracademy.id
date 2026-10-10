@@ -475,6 +475,23 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(styles, /--aapm-primitive-motion-ease-spring/);
 });
 
+test("scrollable lesson reserves its footer for quiz or module navigation", () => {
+  const lesson = readWorkspaceFile("../src/pages/ModuleDetail.jsx");
+  const quiz = readWorkspaceFile("../src/pages/Quiz.jsx");
+  const shell = readWorkspaceFile("../src/design-system/patterns/AppShell.jsx");
+
+  assert.doesNotMatch(lesson, /const primaryAction = sectionNavigation\.next/);
+  assert.doesNotMatch(lesson, /ModuleFlow|sectionSheet|sectionNavigation|Bagian sebelumnya/);
+  const footer = lesson.slice(lesson.indexOf("footer={("), lesson.indexOf('<div className="aapm-lesson-layout">'));
+  assert.doesNotMatch(footer, /markComplete|jumpToSection/);
+  assert.match(footer, /flow\.completed \|\| flow\.hasQuiz/);
+  assert.match(lesson, /label="Keluar ke jalur belajar" variant="danger" icon="close"/);
+  assert.match(lesson, /flow\.activeAttempt \? "Lanjutkan kuis"/);
+  assert.match(lesson, /Link to=\{`\/modules\/\$\{next\.moduleNumber\}`\}/);
+  assert.match(quiz, /outlineLabel="Navigasi soal"/);
+  assert.match(shell, /aria-label=\{outlineLabel\}/);
+});
+
 test("progress writes are retired; academic results and study time are server-recorded", () => {
   const api = readWorkspaceFile("../public/api/index.php");
   const assessment = readWorkspaceFile("../public/api/assessment.php");
@@ -707,6 +724,7 @@ test("editorial document players keep a shared reading-stage contract", () => {
   assert.match(pptx, /--pptx-slide-ratio/);
   assert.match(pptx, /setReloadToken/);
   assert.match(pptx, /Buka slide \$\{index \+ 1\}/);
+  assert.match(pptx, /presentationLabels:\s*\{\s*exit: "Keluar dari layar penuh"/);
   assert.match(presentation, /function PdfViewer/);
   assert.match(presentation, /aapm-pdf-viewport/);
   assert.match(presentation, /Buka tab baru/);
@@ -714,6 +732,10 @@ test("editorial document players keep a shared reading-stage contract", () => {
   assert.match(styles, /\.aapm-pptx-viewport/);
   assert.match(styles, /svg\.drawing[\s\S]*max-width: none/);
   assert.match(styles, /\.aapm-pdf-canvas/);
+  assert.match(styles, /\.flyfish-pptx-presentation \.flyfish-pptx-presentation-exit/);
+  assert.match(styles, /background: var\(--aapm-semantic-danger\) !important/);
+  assert.match(styles, /color: #fff !important/);
+  assert.match(styles, /width: 3rem !important/);
 });
 
 test("native cPanel APPI companion stays provider-backed in the module draft editor and preview-first", () => {
