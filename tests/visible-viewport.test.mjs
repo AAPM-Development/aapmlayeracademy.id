@@ -98,7 +98,7 @@ test('the active field clears the available APPI launcher only when their horizo
   state.handlers.get('resize')();
   assert.equal(shift, 0, 'a launcher outside the field width does not consume reading space');
   launcherLeft = 326;
-  state.handlers.get('resize')();
+  state.handlers.get('aapm:footer-resize')();
   assert.equal(shift, 64);
   state.handlers.get('resize')();
   assert.equal(shift, 64, 'the field stays clear without repeated scrolling');

@@ -31,8 +31,10 @@ export function CurriculumActionBar({ actions, primaryKey, status }) {
       const rect = bar.getBoundingClientRect();
       content?.style.setProperty('--aapm-curriculum-footer-height', `${rect.height}px`);
       const offset = rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0;
+      const changed = root.style.getPropertyValue('--aapm-shell-footer-offset') !== `${offset}px`;
       root.style.setProperty('--aapm-shell-footer-offset', `${offset}px`);
       root.dataset.shellFooter = 'true';
+      if (changed) document.dispatchEvent(new Event('aapm:footer-resize'));
     };
     let frame = 0;
     const schedule = () => {

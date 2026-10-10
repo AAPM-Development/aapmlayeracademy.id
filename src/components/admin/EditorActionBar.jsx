@@ -70,8 +70,11 @@ export default function EditorActionBar({
       const height = `${rect.height}px`;
       content.style.setProperty('--aapm-editor-footer-height', height);
       root.style.setProperty('--aapm-editor-footer-height', height);
-      root.style.setProperty('--aapm-shell-footer-offset', `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`);
+      const offset = `${rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0}px`;
+      const changed = root.style.getPropertyValue('--aapm-shell-footer-offset') !== offset;
+      root.style.setProperty('--aapm-shell-footer-offset', offset);
       root.dataset.shellFooter = 'true';
+      if (changed) document.dispatchEvent(new Event('aapm:footer-resize'));
     };
     let frame = 0;
     const schedule = () => {
