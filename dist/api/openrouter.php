@@ -496,6 +496,17 @@ function ai_provider_completion(array $settings, string $apiKey, string $systemP
     return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt, $allowWebSearch, $imageDataUrl);
 }
 
+function ai_public_reasoning_summaries(array $delta): array
+{
+    $summaries = [];
+    foreach ((is_array($delta['reasoning_details'] ?? null) ? $delta['reasoning_details'] : []) as $detail) {
+        if (is_array($detail) && ($detail['type'] ?? '') === 'reasoning.summary' && is_string($detail['summary'] ?? null)) {
+            $summaries[] = substr($detail['summary'], 0, 12000);
+        }
+    }
+    return $summaries;
+}
+
 function ai_sse_start(): void
 {
     // A streamed answer may outlive the visible panel. Keep the server-side
@@ -533,8 +544,8 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         'stream' => true,
     ];
     // Keep the request compatible with every OpenRouter model. The provider
-    // may choose internal reasoning, but the stream handler only relays
-    // message content and never forwards reasoning fields.
+    // may choose reasoning. Relay public summaries separately from the final
+    // answer; never relay raw reasoning or encrypted reasoning payloads.
     if ($allowWebSearch && $settings['provider'] === 'openrouter') {
         // OpenRouter runs this server-side tool only when the model needs current
         // information. The low cap keeps the learner-facing mode predictable.
@@ -552,6 +563,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     $receivedText = false;
     $responseText = '';
     $streamError = '';
+    $reasoningObserved = false;
     $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . ($settings['chatPath'] ?? '/chat/completions'));
     curl_setopt_array($handle, [
         CURLOPT_RETURNTRANSFER => false,
@@ -564,7 +576,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         CURLOPT_HTTPHEADER => array_merge(['Accept: text/event-stream', 'Content-Type: application/json'], $headers),
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$responseText, &$streamError): int {
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$responseText, &$streamError, &$reasoningObserved): int {
             $lineBuffer .= str_replace("\r\n", "\n", $chunk);
             while (($lineEnd = strpos($lineBuffer, "\n")) !== false) {
                 $line = trim(substr($lineBuffer, 0, $lineEnd));
@@ -585,7 +597,17 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                     $streamError = $error;
                     continue;
                 }
-                $content = $decoded['choices'][0]['delta']['content'] ?? '';
+                $delta = $decoded['choices'][0]['delta'] ?? [];
+                if (!is_array($delta)) continue;
+                foreach (ai_public_reasoning_summaries($delta) as $summary) {
+                    ai_sse_emit('reasoning', ['summary' => $summary]);
+                }
+                if (!$reasoningObserved && (!empty($delta['reasoning']) || !empty($delta['reasoning_content']) || !empty($delta['reasoning_details']))) {
+                    $reasoningObserved = true;
+                    ai_sse_emit('reasoning', ['summary' => '']);
+                    ai_sse_emit('status', ['label' => 'Model sedang menelaah pertanyaan']);
+                }
+                $content = $delta['content'] ?? '';
                 if (is_array($content)) {
                     $content = implode('', array_filter(array_map(static fn ($part): string => is_array($part) ? (string) ($part['text'] ?? '') : '', $content)));
                 }
@@ -623,6 +645,7 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
         if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
             throw new RuntimeException('Provider belum dikonfigurasi.');
         }
+        ai_sse_emit('response_meta', ['provider' => $settings['provider'], 'model' => $settings['model']]);
         if ($accountMemory !== '') {
             ai_sse_emit('status', ['label' => 'APPI mengingat konteks percakapan']);
         }
