@@ -602,6 +602,8 @@ test("OpenRouter requests stay model-compatible and surface upstream diagnostics
 
 test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bounded", () => {
   const aiPage = readWorkspaceFile("../src/pages/AiAssistant.jsx");
+  const academyShell = readWorkspaceFile("../src/components/layout/AcademyShell.jsx");
+  const appiRoomStyles = readWorkspaceFile("../src/styles/features/appi-room.css");
   const floatingAi = readWorkspaceFile("../src/components/ai/FloatingAiAssistant.jsx");
   const historyControls = readWorkspaceFile("../src/components/ai/AiHistoryControls.jsx");
   const chatProvider = readWorkspaceFile("../src/components/ai/AiChatProvider.jsx");
@@ -619,7 +621,13 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   const iconBridge = readWorkspaceFile("../src/design-system/icons/iconData.js");
   const styles = readStyles();
 
-  assert.match(aiPage, /aapm-ai-workspace--full-mobile/);
+  // The route shell owns viewport height and bottom-nav clearance. Keeping
+  // the old page-level mobile height would restore the outer scroll gap.
+  assert.match(academyShell, /className=\{isAiWorkspace \? "aapm-app--chat" : undefined\}/);
+  assert.doesNotMatch(aiPage, /aapm-ai-workspace--full-mobile/);
+  assert.match(appiRoomStyles, /\.aapm-app--chat\s*\{\s*height: 100dvh;/);
+  assert.match(appiRoomStyles, /\.aapm-app\.aapm-app--chat\[data-bottom-nav="true"\] \.aapm-app__main\s*\{[^}]*padding: 0;[^}]*overflow: hidden;/);
+  assert.match(aiPage, /aapm-ai-transcript[^"\n]*overflow-x-hidden overflow-y-auto/);
   assert.match(aiPage, /AiHistoryBulkBar/);
   assert.match(floatingAi, /AiHistoryBulkBar/);
   assert.match(historyControls, /Beri nama singkat agar mudah ditemukan/);
