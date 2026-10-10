@@ -10,7 +10,7 @@
 .aapm-scroll-fade {
     isolation: isolate;
     position: relative;
-    --scroll-fade-size: 1.35rem;
+    --scroll-fade-size: var(--aapm-component-scroll-shadow-size, 1.35rem);
     --scroll-fade-color: hsl(var(--background) / 0.76);
     --scroll-fade-shadow-top: inset 0 0 0 transparent;
     --scroll-fade-shadow-right: inset 0 0 0 transparent;

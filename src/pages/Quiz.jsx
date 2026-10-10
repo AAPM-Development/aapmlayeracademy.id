@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Button, Skeleton, StateView, useToast } from "@/design-system";
+import { Button, IconButton, Sheet, SheetContent, SheetDescription, SheetTitle, Skeleton, StateView, useToast } from "@/design-system";
 import { FocusShell, Page } from "@/design-system/patterns/AppShell";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AppiMascot from "@/components/appi/AppiMascot";
-import { AnswerReview, AssessmentBar, AssessmentResult, CheckFeedback, QuizQuestion, checkAnnouncement } from "@/components/academy/AssessmentComponents";
+import { AnswerReview, AssessmentBar, AssessmentResult, CheckFeedback, QuestionNavigator, QuizQuestion, checkAnnouncement } from "@/components/academy/AssessmentComponents";
 import { useAnswerAssessment, useModules, useQuizQuestions, useStartAssessment, useSubmitAssessment, useUserProgress } from "@/lib/useCourseData";
 import { sortModules } from "@/lib/academyData";
 import { celebrate, originOf } from "@/lib/celebrate";
 import { correctRun } from "@/lib/learningPath";
+import { moduleQuizNavigation } from "@/lib/quizNavigation";
 
 const CHOICE_LETTERS = "abcdef";
 
@@ -35,6 +36,7 @@ export default function Quiz() {
   const [choices, setChoices] = useState({});
   const [busy, setBusy] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [questionSheetOpen, setQuestionSheetOpen] = useState(false);
   const busyRef = useRef(false);
   const actionRef = useRef(null);
   const visit = useRef(0);
@@ -42,15 +44,27 @@ export default function Quiz() {
   const keyActions = useRef(/** @type {{ choose: (index: number) => boolean, advance: () => void }} */ ({ choose: () => false, advance: () => {} }));
 
   const questions = attempt?.questions ?? [];
+  const results = questions.map((item) => (item.checked && item.feedback ? item.feedback.isCorrect : undefined));
+  const states = results.map((result) => (result === undefined ? undefined : result ? "done" : "wrong"));
+  const navigation = moduleQuizNavigation(questions, current);
+  const checkedAnswers = Object.fromEntries(questions.flatMap((item, index) => item.checked ? [[index, item.selectedIndex]] : []));
+  const questionNavigator = (
+    <QuestionNavigator
+      total={questions.length}
+      current={current}
+      answers={checkedAnswers}
+      results={results.map((result) => result === undefined ? null : result ? "correct" : "wrong")}
+      answeredLabel="diperiksa"
+      onSelect={(index) => { setCurrent(index); setQuestionSheetOpen(false); }}
+    />
+  );
   const question = questions[current];
   const feedback = question?.feedback ?? null;
   const isChecked = Boolean(question?.checked);
   const answerIndex = isChecked ? question.selectedIndex : choices[current];
   const hasAnswer = answerIndex !== undefined && answerIndex !== null;
-  const isLast = current === questions.length - 1;
+  const isLast = navigation.isLast;
   const optionCount = Math.min(question?.options?.length || 0, CHOICE_LETTERS.length);
-  const results = questions.map((item) => (item.checked && item.feedback ? item.feedback.isCorrect : undefined));
-  const states = results.map((result) => (result === undefined ? undefined : result ? "done" : "wrong"));
   const run = isChecked && feedback?.isCorrect ? correctRun(results, current) : 0;
   const result = attempt?.result ?? null;
   const submitted = Boolean(result);
@@ -131,6 +145,10 @@ export default function Quiz() {
 
   const finish = async () => {
     if (!attempt || busyRef.current) return;
+    if (!navigation.allChecked) {
+      if (navigation.firstUnansweredIndex >= 0) setCurrent(navigation.firstUnansweredIndex);
+      return;
+    }
     busyRef.current = true;
     setBusy(true);
     try {
@@ -152,10 +170,10 @@ export default function Quiz() {
     if (busy || submitted || !question) return;
     if (!isChecked) {
       if (hasAnswer) check();
-    } else if (isLast) {
+    } else if (isLast && navigation.allChecked) {
       finish();
     } else {
-      setCurrent((value) => value + 1);
+      setCurrent(navigation.nextIndex ?? 0);
     }
   };
   keyActions.current = {
@@ -231,11 +249,11 @@ export default function Quiz() {
             <span className="aapm-chip" data-tone="outline"><AapmIcon name="quiz" />{introQuestions.length} soal</span>
             <span className="aapm-chip" data-tone="outline"><AapmIcon name="check" />Umpan balik langsung</span>
           </div>
-          <p className="aapm-exam-intro__text">Pilih jawaban, tekan Periksa, lalu baca penjelasannya sebelum lanjut. Jawaban yang sudah diperiksa tetap tersimpan saat Anda kembali.</p>
+          <p className="aapm-exam-intro__text">Jawab soal lewat urutan pilihan Anda. Setelah diperiksa, jawaban dan penjelasannya bisa ditinjau kembali, tetapi pilihannya terkunci. Semua soal perlu diperiksa sebelum hasil ditampilkan.</p>
           <p className="aapm-exam-intro__text">Belajar sesuai ritme Anda. Kuis bisa diulang kapan saja; mencoba ulang tidak menghapus hasil lulus sebelumnya.</p>
           {previousProgress?.quizTotal ? <p className="aapm-exam-intro__eyebrow">Skor sebelumnya {Math.round(((previousProgress.quizScore || 0) / previousProgress.quizTotal) * 100)}%</p> : null}
           <div className="aapm-exam-intro__actions">
-            <Button variant="learn" size="lg" loading={busy} onClick={begin}>{startState === "loading" ? "Menyiapkan kuis…" : "Mulai kuis"}<AapmIcon name="arrowRight" /></Button>
+            <Button variant="learn" size="lg" loading={busy} onClick={begin}>{startState === "loading" ? "Menyiapkan kuis…" : previousProgress?.activeAttempt ? "Lanjutkan kuis" : "Mulai kuis"}<AapmIcon name="arrowRight" /></Button>
             <Button asChild variant="secondary" size="lg"><Link to={`/modules/${number}`}><AapmIcon name="lesson" />Baca ulang materi</Link></Button>
           </div>
         </section>
@@ -271,7 +289,18 @@ export default function Quiz() {
     <FocusShell
       resetKey={current}
       label={`Kuis modul ${number}`}
-      bar={<AssessmentBar onExit={exit} title={barTitle} context={barContext} total={questions.length} current={current} states={states} />}
+      outlineLabel="Navigasi soal"
+      outline={questionNavigator}
+      bar={(
+        <AssessmentBar onExit={exit} title={barTitle} context={barContext} total={questions.length} current={current} states={states}>
+          <IconButton
+            className="lg:hidden"
+            label={`Daftar soal, ${navigation.checkedCount} dari ${navigation.total} diperiksa`}
+            icon="list"
+            onClick={() => setQuestionSheetOpen(true)}
+          />
+        </AssessmentBar>
+      )}
       footerTone={isChecked ? (feedback?.isCorrect ? "success" : "danger") : undefined}
       footer={(
         <>
@@ -293,8 +322,10 @@ export default function Quiz() {
           <div className="aapm-focus__footer-group" ref={actionRef}>
             {!isChecked ? (
               <Button variant="learn" size="lg" disabled={!hasAnswer || busy} onClick={check}>Periksa</Button>
-            ) : isLast ? (
+            ) : isLast && navigation.allChecked ? (
               <Button variant="learn" size="lg" loading={busy} onClick={finish}>Lihat hasil<AapmIcon name="arrowRight" /></Button>
+            ) : isLast ? (
+              <Button variant="learn" size="lg" onClick={() => setCurrent(navigation.nextIndex ?? 0)}>Ke soal {Number(navigation.nextIndex) + 1}<AapmIcon name="arrowRight" /></Button>
             ) : (
               <Button variant="learn" size="lg" onClick={() => setCurrent((value) => value + 1)}>Lanjut<AapmIcon name="arrowRight" /></Button>
             )}
@@ -312,6 +343,13 @@ export default function Quiz() {
         onAnswer={(index) => { if (!isChecked) setChoices((value) => ({ ...value, [current]: index })); }}
         meta={previousProgress?.quizTotal ? <span className="aapm-chip" data-tone="outline">Skor sebelumnya {Math.round(((previousProgress.quizScore || 0) / previousProgress.quizTotal) * 100)}%</span> : null}
       />
+      <Sheet open={questionSheetOpen} onOpenChange={setQuestionSheetOpen}>
+        <SheetContent side="bottom" className="aapm-question-sheet">
+          <SheetTitle className="aapm-visually-hidden">Pilih soal kuis</SheetTitle>
+          <SheetDescription className="aapm-visually-hidden">Pilih soal untuk menjawab atau meninjau jawaban yang sudah diperiksa.</SheetDescription>
+          {questionNavigator}
+        </SheetContent>
+      </Sheet>
     </FocusShell>
   );
 }

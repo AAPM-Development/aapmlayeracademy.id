@@ -330,7 +330,7 @@ export default function KpiDashboard() {
             </div>
             <p className="aapm-kpi-board__note">Nilai terakhir yang tercatat · perubahan dibanding catatan sebelumnya. Pilih indikator untuk melihat trennya.</p>
 
-            <section id="kpi-trend-panel" role="tabpanel" aria-labelledby={`kpi-tab-${active.metric.id}`} className="aapm-card aapm-kpi-chart" data-hue={active.metric.hue}>
+            <section id="kpi-trend-panel" role="tabpanel" aria-labelledby={`kpi-tab-${active.metric.id}`} className="aapm-card aapm-kpi-chart aapm-kpi-chart--trend" data-hue={active.metric.hue}>
               <header className="aapm-kpi-chart__head">
                 <div className="min-w-0">
                   <h3 className="aapm-kpi-chart__title">Tren {active.metric.label}</h3>
@@ -348,7 +348,7 @@ export default function KpiDashboard() {
                   hue={active.metric.hue}
                   band={active.metric.band}
                   valueFormatter={active.metric.format}
-                  height={280}
+                  height={224}
                 />
               ) : (
                 <ChartEmpty message="Catat minimal dua minggu untuk melihat tren indikator ini." />
