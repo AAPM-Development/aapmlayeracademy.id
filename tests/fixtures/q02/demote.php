@@ -10,6 +10,6 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../public/api/bootstrap.php';
 
-$actor = ['id' => (int) ($argv[1] ?? 0)];
+$actor = ['id' => (int) ($argv[1] ?? 0), 'role' => 'super_admin'];
 $updated = admin_update_user($actor, (int) ($argv[2] ?? 0), ['role' => 'learner']);
 echo json_encode(['ok' => true, 'role' => $updated['role']]);

@@ -355,6 +355,37 @@ test("legacy learners keep access, and a legacy administrator without verificati
 });
 
 /* -------------------------------------------------------- CLI provisioning */
+test("CLI Super Admin promotion is explicit, requires a verified admin, and revokes old sessions", () => {
+  const site = makeSite('super-provision');
+  const id = seedAccount(site, { email: 'promotion@example.test', role: 'admin', verified: true });
+  const args = ['--expect-environment=local', `--user-id=${id}`, '--actor=owner-test', '--evidence-ref=OWNER-PROMOTION-001', '--role=super_admin'];
+  assert.equal(cli(site, 'scripts/security/provision-admin.php', [...args, '--dry-run']).status, 0);
+  assert.equal(rows(site, 'SELECT role FROM users WHERE id = ?', [id])[0].role, 'admin');
+  const applied = cli(site, 'scripts/security/provision-admin.php', [...args, '--apply']);
+  assert.equal(applied.status, 0, applied.stderr);
+  assert.match(applied.stdout, /effectiveRole: super_admin/);
+  assert.equal(Number(rows(site, 'SELECT auth_version FROM users WHERE id = ?', [id])[0].auth_version), 2);
+  const pending = seedAccount(site, { email: 'pending-owner@example.test', role: 'admin' });
+  assert.notEqual(cli(site, 'scripts/security/provision-admin.php', args.map(arg => arg.startsWith('--user-id=') ? `--user-id=${pending}` : arg).concat('--apply')).status, 0);
+});
+test("Super Admin manages admin access while ordinary admins cannot escalate or change accounts", async () => {
+  const site = makeSite("super-admin");
+  const ownerId = seedAccount(site, { email: "owner@example.test", role: "super_admin", verified: true });
+  const adminId = seedAccount(site, { email: "ordinary@example.test", role: "admin", verified: true });
+  const targetId = seedAccount(site, { email: "target@example.test", verified: true });
+  await withSite(site, async (api) => {
+    const owner = new Api(api.port);
+    const admin = new Api(api.port);
+    const signedIn = await login(owner, "owner@example.test", PASSWORD);
+    assert.equal(signedIn.json.data.user.canManageUsers, true);
+    assert.equal((await owner.get('/api/admin/users')).status, 200);
+    await login(admin, "ordinary@example.test", PASSWORD);
+    assert.equal((await admin.mutate('PUT', `/api/admin/users/${targetId}`, { role: 'admin' })).json.error.code, 'super_admin_required');
+    assert.equal((await admin.mutate('PUT', `/api/admin/users/${adminId}`, { role: 'super_admin' })).status, 403);
+    assert.equal((await owner.mutate('PUT', `/api/admin/users/${ownerId}`, { role: 'learner' })).json.error.code, 'protected_super_admin');
+    assert.equal((await owner.mutate('PUT', `/api/admin/users/${targetId}`, { role: 'admin' })).status, 200);
+  });
+});
 
 test("CLI provisioning: dry-run is inert, apply grants verified administration, and repeated apply is idempotent", async () => {
   const site = makeSite("provision");
@@ -409,7 +440,7 @@ test("CLI provisioning refuses a wrong target, weak evidence, an email as target
 
 test("learners cannot reach admin APIs or escalate through a payload, and mutations need CSRF", async () => {
   const site = makeSite("escalation");
-  const adminId = seedAccount(site, { email: "admin-terverifikasi@example.test", role: "admin", verified: true });
+  const adminId = seedAccount(site, { email: "admin-terverifikasi@example.test", role: "super_admin", verified: true });
   seedAccount(site, { email: "peserta-biasa@example.test", verified: true });
   await withSite(site, async (api) => {
     const learner = new Api(api.port);
@@ -429,7 +460,7 @@ test("learners cannot reach admin APIs or escalate through a payload, and mutati
 
 test("demoting an administrator revokes that administrator's active session", async () => {
   const site = makeSite("demote-session");
-  const aId = seedAccount(site, { email: "a@example.test", role: "admin", verified: true });
+  const aId = seedAccount(site, { email: "a@example.test", role: "super_admin", verified: true });
   const bId = seedAccount(site, { email: "b@example.test", role: "admin", verified: true });
   await withSite(site, async (api) => {
     const adminA = new Api(api.port);
@@ -452,7 +483,7 @@ test("demoting an administrator revokes that administrator's active session", as
 
 test("an administrator password reset revokes the target's sessions and replaces the password", async () => {
   const site = makeSite("admin-reset");
-  seedAccount(site, { email: "pengelola@example.test", role: "admin", verified: true });
+  seedAccount(site, { email: "pengelola@example.test", role: "super_admin", verified: true });
   const learnerId = seedAccount(site, { email: "peserta-reset@example.test", verified: true });
   await withSite(site, async (api) => {
     const admin = new Api(api.port);
@@ -499,8 +530,8 @@ test("administrators cannot demote themselves", async () => {
     const admin = new Api(api.port);
     assert.equal((await login(admin, "diri-sendiri@example.test", PASSWORD)).status, 200);
     const reply = await admin.mutate("PUT", `/api/admin/users/${id}`, { role: "learner" });
-    assert.equal(reply.status, 422);
-    assert.equal(reply.json.error.code, "self_demotion");
+    assert.equal(reply.status, 403);
+    assert.equal(reply.json.error.code, "super_admin_required");
   });
 });
 
@@ -546,7 +577,7 @@ test("concurrent verification submissions consume the token exactly once", async
 
 test("the security audit is administrator-only and records privilege changes without secrets", async () => {
   const site = makeSite("audit");
-  seedAccount(site, { email: "auditor@example.test", role: "admin", verified: true });
+  seedAccount(site, { email: "auditor@example.test", role: "super_admin", verified: true });
   const targetId = seedAccount(site, { email: "target-audit@example.test", role: "admin", verified: true });
   await withSite(site, async (api) => {
     const admin = new Api(api.port);

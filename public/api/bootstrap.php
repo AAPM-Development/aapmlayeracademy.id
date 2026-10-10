@@ -1151,8 +1151,8 @@ function legacy_config_admin_emails(): array
 function effective_user_role(array $user): string
 {
     $storedRole = strtolower(trim((string) ($user['role'] ?? '')));
-    if ($storedRole === 'admin' && aapm_verification_status($user) === 'verified') {
-        return 'admin';
+    if (in_array($storedRole, ['admin', 'super_admin'], true) && aapm_verification_status($user) === 'verified') {
+        return $storedRole;
     }
 
     return 'learner';
@@ -1168,9 +1168,11 @@ function present_authenticated_user(array $user): array
         'email' => (string) ($user['email'] ?? ''),
         'full_name' => (string) ($user['full_name'] ?? ''),
         'role' => $role,
+        'assignedRole' => in_array($user['role'] ?? '', ['admin', 'super_admin'], true) ? $user['role'] : 'learner',
         'emailVerified' => $status === 'verified',
         'emailVerificationStatus' => $status,
-        'canAccessAdmin' => $role === 'admin',
+        'canAccessAdmin' => in_array($role, ['admin', 'super_admin'], true),
+        'canManageUsers' => $role === 'super_admin',
         'avatar' => (string) ($user['avatar_data'] ?? $user['avatar'] ?? ''),
         'created_at' => $user['created_at'] ?? null,
     ];
@@ -1179,8 +1181,17 @@ function present_authenticated_user(array $user): array
 function require_admin(): array
 {
     $user = require_user();
-    if (($user['role'] ?? 'learner') !== 'admin') {
+    if (!in_array($user['role'] ?? 'learner', ['admin', 'super_admin'], true)) {
         error_response('Akses admin diperlukan.', 403, 'admin_required');
+    }
+    return $user;
+}
+
+function require_super_admin(): array
+{
+    $user = require_admin();
+    if (($user['role'] ?? '') !== 'super_admin') {
+        error_response('Pengelolaan akses akun memerlukan Super Admin.', 403, 'super_admin_required');
     }
     return $user;
 }
@@ -1527,6 +1538,7 @@ function present_module(array $row): array
         'checklist' => decode_json_field($row['checklist']),
         'practicalAssignment' => $row['practical_assignment'],
         'order' => (int) $row['sort_order'],
+        'assessmentMode' => $row['assessment_mode'] ?? null,
     ];
 }
 
@@ -1608,7 +1620,7 @@ function admin_learner_metric_rows(): array
 {
     $rows = db()->query('SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u')->fetchAll();
     $learners = array_values(array_filter($rows, static function (array $row): bool {
-        return effective_user_role($row) !== 'admin';
+        return !in_array(effective_user_role($row), ['admin', 'super_admin'], true);
     }));
 
     return admin_attach_progress_totals($learners);
@@ -1712,7 +1724,7 @@ function admin_overview_data(): array
     $registrationCandidates = db()->query('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users ORDER BY created_at DESC, id DESC LIMIT 25')->fetchAll();
     $recentRegistrations = [];
     foreach ($registrationCandidates as $candidate) {
-        if (effective_user_role($candidate) === 'admin') {
+        if (in_array(effective_user_role($candidate), ['admin', 'super_admin'], true)) {
             continue;
         }
         $recentRegistrations[] = $candidate;
@@ -1724,7 +1736,7 @@ function admin_overview_data(): array
     $completionCandidates = admin_recent_completions(db(), 25);
     $recentCompletions = [];
     foreach ($completionCandidates as $candidate) {
-        if (effective_user_role($candidate) === 'admin') {
+        if (in_array(effective_user_role($candidate), ['admin', 'super_admin'], true)) {
             continue;
         }
         $recentCompletions[] = $candidate;
@@ -1797,7 +1809,7 @@ function admin_course_detail_data(): array
 function admin_learner_list(string $search = ''): array
 {
     return array_values(array_filter(admin_account_list($search), static function (array $user): bool {
-        return $user['role'] !== 'admin';
+        return !in_array($user['role'], ['admin', 'super_admin'], true);
     }));
 }
 
@@ -2008,7 +2020,7 @@ function hall_of_fame_data(): array
     $entries = [];
     foreach ($rows as $row) {
         $user = present_authenticated_user($row);
-        if ($user['role'] === 'admin' || trim($user['full_name']) === '') {
+        if (in_array($user['role'], ['admin', 'super_admin'], true) || trim($user['full_name']) === '') {
             continue;
         }
         $learning = profile_learning_summary((int) $user['id']);
@@ -2049,6 +2061,9 @@ function admin_effective_admin_count(): int
 
 function admin_create_user(array $actor, array $input): array
 {
+    if (($actor['role'] ?? '') !== 'super_admin') {
+        error_response('Pengelolaan akses akun memerlukan Super Admin.', 403, 'super_admin_required');
+    }
     $email = normalize_email($input['email'] ?? '');
     $password = (string) ($input['password'] ?? '');
     $fullName = profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160);
@@ -2099,6 +2114,9 @@ function admin_create_user(array $actor, array $input): array
 
 function admin_update_user(array $actor, int $userId, array $input): array
 {
+    if (($actor['role'] ?? '') !== 'super_admin') {
+        error_response('Pengelolaan akses akun memerlukan Super Admin.', 403, 'super_admin_required');
+    }
     $pdo = db();
     aapm_tx_begin($pdo);
     try {
@@ -2109,6 +2127,10 @@ function admin_update_user(array $actor, int $userId, array $input): array
         if (!$target) {
             aapm_tx_rollback($pdo);
             error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+        }
+        if (($target['role'] ?? '') === 'super_admin') {
+            aapm_tx_rollback($pdo);
+            error_response('Akun Super Admin dilindungi dari perubahan melalui formulir ini.', 403, 'protected_super_admin');
         }
         $fullName = array_key_exists('fullName', $input) || array_key_exists('full_name', $input)
             ? profile_text($input['fullName'] ?? $input['full_name'] ?? '', 160)
@@ -2157,8 +2179,21 @@ function admin_update_user(array $actor, int $userId, array $input): array
     return present_authenticated_user($fresh->fetch() ?: []);
 }
 
+function admin_require_manageable_account(array $actor, int $userId): void
+{
+    if (($actor['role'] ?? '') !== 'super_admin') {
+        error_response('Pengelolaan akses akun memerlukan Super Admin.', 403, 'super_admin_required');
+    }
+    $statement = db()->prepare('SELECT role FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    if ($statement->fetchColumn() === 'super_admin') {
+        error_response('Akun Super Admin dilindungi dari perubahan melalui formulir ini.', 403, 'protected_super_admin');
+    }
+}
+
 function admin_reset_user_password(array $actor, int $userId, string $password): void
 {
+    admin_require_manageable_account($actor, $userId);
     $passwordError = password_validation_error($password);
     if ($passwordError !== '') {
         error_response($passwordError, 422, 'validation_error');
@@ -2185,6 +2220,7 @@ function admin_reset_user_password(array $actor, int $userId, string $password):
 
 function admin_reset_user_progress(array $actor, int $userId, array $input): array
 {
+    admin_require_manageable_account($actor, $userId);
     if (($input['confirm'] ?? null) !== true) {
         error_response('Konfirmasi reset progress wajib dikirim.', 422, 'confirmation_required');
     }

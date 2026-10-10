@@ -88,12 +88,12 @@ function aapm_lock_admin_rows(PDO $pdo): void
     if (aapm_database_driver() === 'sqlite') {
         return;
     }
-    $pdo->query("SELECT id FROM users WHERE role = 'admin' FOR UPDATE")->fetchAll();
+    $pdo->query("SELECT id FROM users WHERE role IN ('admin', 'super_admin') FOR UPDATE")->fetchAll();
 }
 
 function aapm_verified_admin_count(PDO $pdo): int
 {
-    $statement = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin' AND email_verified_at IS NOT NULL");
+    $statement = $pdo->query("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'super_admin') AND email_verified_at IS NOT NULL");
 
     return (int) $statement->fetchColumn();
 }

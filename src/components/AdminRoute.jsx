@@ -27,5 +27,5 @@ export default function AdminRoute() {
     return <div className="aapm-boot-screen" role="status" aria-label="Memeriksa akses"><span className="aapm-spinner" aria-hidden="true" /></div>;
   }
 
-  return user?.role === "admin" ? <Outlet /> : <AdminAccessDenied />;
+  return ["admin", "super_admin"].includes(user?.role) ? <Outlet /> : <AdminAccessDenied />;
 }

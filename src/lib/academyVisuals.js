@@ -89,11 +89,12 @@ export function moduleFlowState({ module, progress, hasPractice, quizCount = 0 }
   const completed = Boolean(progress?.completed);
   return {
     completed,
-    quizAttempted: quizTotal > 0,
+    acknowledged: Boolean(progress?.acknowledged),
+    quizAttempted: Boolean(progress?.quizAttempted) || quizTotal > 0,
     quizPercent,
-    quizPassed: quizPercent !== null && quizPercent >= 70,
+    quizPassed: Boolean(progress?.quizPassed),
     practicalDone: Boolean(progress?.practicalDone),
-    hasQuiz: quizCount > 0,
+    hasQuiz: module?.assessmentMode ? module.assessmentMode === "quiz" : typeof progress?.hasQuiz === "boolean" ? progress.hasQuiz : quizCount > 0,
     hasPractice: Boolean(hasPractice),
     moduleNumber: module?.moduleNumber,
   };
