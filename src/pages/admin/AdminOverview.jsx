@@ -37,6 +37,7 @@ export default function AdminOverview() {
       title="Ringkasan"
       description="Pantau pembelajaran dari data native. Halaman ini hanya membaca dan tidak mengubah data produksi."
     >
+      <PwaInstallNotice />
       {isLoading ? (
         <AdminLoading />
       ) : error ? (
@@ -148,3 +149,4 @@ export default function AdminOverview() {
     </AdminPageFrame>
   );
 }
+import PwaInstallNotice from "@/components/PwaInstallNotice";
