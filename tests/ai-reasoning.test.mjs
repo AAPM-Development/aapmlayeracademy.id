@@ -1,6 +1,65 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { makeSite, seedCurriculum, seedAccount, startSite, signIn, Api, rows, cleanup } from './helpers/site.mjs';
+
+test.after(cleanup);
+
+test('admin imports server OpenAI into encrypted storage without leaking or redirecting the key', async () => {
+  const secret = 'fixture-openai-server-credential';
+  const site = makeSite('openai-admin-import', { openai_api_key: secret, ai_provider: 'openai-compatible', ai_api_key: secret, ai_base_url: 'https://api.openai.com/v1', ai_model: 'gpt-4o-mini', ai_settings_encryption_key: 'fixture-encryption-key-for-admin-tests' });
+  seedCurriculum(site);
+  seedAccount(site, { email: 'owner@example.test', role: 'super_admin', verified: true });
+  seedAccount(site, { email: 'learner@example.test', verified: true });
+  const server = await startSite(site);
+  try {
+    const owner = await signIn(server.port, 'owner@example.test');
+    const before = await owner.get('/api/admin/ai-settings');
+    assert.equal(before.json.data.managedByPrivateConfig, true);
+    assert.equal(before.json.data.serverOpenAiKeyAvailable, true);
+    const unauthorized = await new Api(server.port).mutate('PUT', '/api/admin/ai-settings', { action: 'importServerOpenAi' });
+    assert.equal(unauthorized.status, 401);
+    const learner = await signIn(server.port, 'learner@example.test');
+    assert.equal((await learner.mutate('PUT', '/api/admin/ai-settings', { action: 'importServerOpenAi' })).status, 403);
+    assert.equal((await owner.raw('PUT', '/api/admin/ai-settings', { action: 'importServerOpenAi' })).status, 419);
+    const imported = await owner.mutate('PUT', '/api/admin/ai-settings', { action: 'importServerOpenAi', config: { baseUrl: 'https://example.test/stolen' } });
+    assert.equal(imported.status, 200);
+    assert.equal(imported.text.includes(secret), false);
+    assert.equal(imported.json.data.managedByPrivateConfig, false);
+    const provider = imported.json.data.providers.find((item) => item.id === 'openai-server');
+    assert.equal(provider.keyStorage, 'encrypted_database');
+    assert.equal(provider.apiKeyConfigured, true);
+    assert.equal(provider.baseUrl, 'https://api.openai.com/v1');
+    const stored = rows(site, "SELECT setting_value FROM app_settings WHERE setting_key = 'ai_provider_registry'")[0];
+    assert.equal(JSON.stringify(stored).includes(secret), false);
+    const changed = await owner.mutate('PUT', '/api/admin/ai-settings', { config: { ...provider, model: 'gpt-4.1-mini' } });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.json.data.model, 'gpt-4.1-mini');
+    assert.equal(changed.json.data.apiKeyConfigured, true);
+    const redirect = await owner.mutate('PUT', '/api/admin/ai-settings', { config: { ...provider, baseUrl: 'https://example.test/v1' } });
+    assert.equal(redirect.status, 422);
+    assert.equal(redirect.json.error.code, 'ai_server_key_endpoint');
+    const other = await owner.mutate('PUT', '/api/admin/ai-settings', { config: { type: 'openai-compatible', label: 'Other gateway', baseUrl: 'https://example.test/v1', model: 'model-a', activate: false } });
+    assert.equal(other.status, 200);
+    assert.equal(other.json.data.providers.find((item) => item.label === 'Other gateway').apiKeyConfigured, false);
+    assert.equal(rows(site, 'SELECT COUNT(*) AS n FROM course_modules')[0].n, 22);
+  } finally { server.stop(); }
+});
+
+test('server key import fails without encryption and rolls back private provider management', async () => {
+  const site = makeSite('openai-import-no-encryption', { openai_api_key: 'fixture-openai-no-encryption', ai_provider: 'openai-compatible', ai_api_key: 'fixture-openai-no-encryption', ai_base_url: 'https://api.openai.com/v1' });
+  seedCurriculum(site);
+  seedAccount(site, { email: 'owner@example.test', role: 'super_admin', verified: true });
+  const server = await startSite(site);
+  try {
+    const owner = await signIn(server.port, 'owner@example.test');
+    const imported = await owner.mutate('PUT', '/api/admin/ai-settings', { action: 'importServerOpenAi' });
+    assert.equal(imported.status, 503);
+    const status = await owner.get('/api/admin/ai-settings');
+    assert.equal(status.json.data.managedByPrivateConfig, true);
+    assert.equal(rows(site, "SELECT COUNT(*) AS n FROM app_settings WHERE setting_key = 'ai_manage_in_admin'")[0].n, 0);
+  } finally { server.stop(); }
+});
 
 function summaries(delta) {
   const result = spawnSync('php', ['-r', 'require "public/api/openrouter.php"; echo json_encode(ai_public_reasoning_summaries(json_decode(stream_get_contents(STDIN), true)));'], { input: JSON.stringify(delta), encoding: 'utf8' });

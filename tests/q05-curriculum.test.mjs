@@ -96,6 +96,33 @@ test("P01 and P02 the 22 existing modules are published revisions, and question 
   assert.equal(bankItems, live, "backfilled question banks carry every live question unchanged");
 });
 
+test("explicit APPI metadata migration detects the missing column and preserves curriculum and messages on replay", async () => {
+  const { site, learnerA } = await setup("appi-metadata-plan");
+  const baseline = run(site, join(repo, "database/migrate.php"), ["--apply", "--verify", "--expect-environment=local"]);
+  assert.equal(baseline.status, 0, baseline.stdout + baseline.stderr);
+  sql(site, "INSERT INTO ai_conversations (user_id, title, message_count) VALUES (?, 'Percakapan lama', 1)", [learnerA]);
+  const conversationId = rows(site, "SELECT id FROM ai_conversations WHERE user_id = ?", [learnerA])[0].id;
+  sql(site, "INSERT INTO ai_chat_messages (conversation_id, role, content) VALUES (?, 'assistant', 'Jawaban lama tetap tersimpan')", [conversationId]);
+  const tables = ["course_modules", "quiz_questions", "module_revisions", "question_bank_revisions", "question_bank_revision_items", "curriculum_policy_versions", "curriculum_policy_modules", "curriculum_publication_events", "learner_curriculum_assignments", "user_progress", "assessment_attempts", "certificate_issuances"];
+  const before = Object.fromEntries(tables.map(table => [table, rows(site, `SELECT * FROM ${table}`)]));
+  // The fixture SQL helper bootstraps the API, so reconstruct the old schema last.
+  sql(site, "ALTER TABLE ai_chat_messages DROP COLUMN response_details");
+  const cli = args => run(site, join(repo, "database/migrate.php"), [...args, "--json"]);
+  const plan = cli(["--plan"]);
+  const detailColumn = JSON.parse(plan.stdout).columns.find(column => column.table === "ai_chat_messages" && column.name === "response_details");
+  assert.equal(detailColumn?.status, "missing", "operator plan must detect required APPI metadata storage");
+  assert.equal(cli(["--verify"]).status, 1, "verification cannot pass with the required column missing");
+  for (let replay = 0; replay < 2; replay++) {
+    const applied = cli(["--apply", "--verify", "--expect-environment=local"]);
+    assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+    assert.equal(JSON.parse(applied.stdout).columns.find(column => column.name === "response_details").status, "present");
+    for (const table of tables) assertSnapshot(rows(site, `SELECT * FROM ${table}`), before[table], `metadata migration preserves ${table}`);
+    const messages = rows(site, "SELECT content, response_details FROM ai_chat_messages WHERE conversation_id = ?", [conversationId]);
+    assert.deepEqual(messages, [{ content: "Jawaban lama tetap tersimpan", response_details: null }]);
+  }
+  assert.equal(cli(["--verify"]).status, 0);
+});
+
 test("P35 the v1 academic policy is identical after a migration replay", async () => {
   const { site } = await setup("p35");
   await withSite(site, async (api) => {
@@ -210,6 +237,43 @@ test("concurrent first-request Q04 upgrades create exactly one initial revision 
   assert.equal(rows(site, "SELECT COUNT(*) AS n FROM curriculum_publication_events WHERE event_type = 'module.published'")[0].n, 22);
   assert.equal(rows(site, "SELECT COUNT(*) AS n FROM question_bank_revisions WHERE scope_type = 'final'")[0].n, 1);
   assert.equal(rows(site, "SELECT COUNT(*) AS n FROM curriculum_publication_events WHERE event_type = 'final_bank.published'")[0].n, 1);
+});
+
+if (!process.env.AAPM_TEST_MYSQL_CONFIG) test("curriculum policy seeding waits for a competing SQLite writer instead of upgrading a live reader", async () => {
+  const { site } = await setup("seed-contention");
+  const ready = join(site.root, "writer-ready"), release = join(site.root, "writer-release"), started = join(site.root, "seed-started");
+  const fixture = join(repo, "tests/fixtures/q05/seed-contention.php");
+  const start = args => {
+    const child = spawn("php", [...SQLITE, fixture, ...args], { cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
+    let out = "", err = "";
+    child.stdout.on("data", chunk => out += chunk); child.stderr.on("data", chunk => err += chunk);
+    return new Promise(resolve => child.on("close", code => resolve({ code, out, err })));
+  };
+  const waitFor = async file => {
+    const deadline = Date.now() + 5000;
+    while (!existsSync(file)) { assert.ok(Date.now() < deadline, "fixture reaches barrier"); await new Promise(resolve => setTimeout(resolve, 10)); }
+  };
+  const holder = start(["hold", ready, release]);
+  let seeder;
+  try {
+    await waitFor(ready);
+    seeder = start(["seed", started]);
+    await waitFor(started);
+    // Keep a real write reservation across the seed's initial read/write boundary.
+    await new Promise(resolve => setTimeout(resolve, 150));
+  } finally { writeFileSync(release, "release"); }
+  assert.equal((await holder).code, 0);
+  const result = await seeder;
+  assert.equal(result.code, 0, result.err);
+  assert.deepEqual(JSON.parse(result.out), { seeded: true });
+  assert.equal(rows(site, "SELECT COUNT(*) AS n FROM curriculum_policy_modules WHERE policy_version = 'academy-v1'")[0].n, 22);
+});
+
+if (!process.env.AAPM_TEST_MYSQL_CONFIG) test("interrupted initial curriculum policy seeding rolls back policy and membership together", async () => {
+  const { site } = await setup("seed-rollback");
+  const result = run(site, join(repo, "tests/fixtures/q05/seed-contention.php"), ["rollback"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { failed: true, policies: 0, members: 0 });
 });
 
 if (process.env.AAPM_TEST_MYSQL_CONFIG) test("MariaDB initialization lock timeout leaves Q05 marker absent and preserves the other connection lock", async () => {

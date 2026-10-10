@@ -8,3 +8,12 @@ export function lessonNavigation(sections, activeSection) {
     atEnd: index === sections.length - 1,
   };
 }
+
+/** Scroll the lesson's panel only. scrollIntoView also scrolls hidden ancestors. */
+export function scrollLessonSection(panel, target, behavior = "smooth") {
+  if (!panel || !target || !panel.contains(target)) return;
+  panel.scrollTo({
+    top: Math.max(0, panel.scrollTop + target.getBoundingClientRect().top - panel.getBoundingClientRect().top),
+    behavior,
+  });
+}

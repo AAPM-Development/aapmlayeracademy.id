@@ -312,6 +312,7 @@ export const FocusShell = React.forwardRef(function FocusShell(
   React.useEffect(() => {
     const root = document.documentElement;
     root.dataset.shell = "focus";
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     const update = () => root.style.setProperty("--aapm-focus-footer-height", `${footerRef.current?.getBoundingClientRect().height || 0}px`);
     update();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);

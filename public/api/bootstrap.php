@@ -88,6 +88,7 @@ function aapm_default_config_values(): array
         'openrouter_api_key' => getenv('AAPLAYERACADEMY_OPENROUTER_API_KEY') ?: '',
         'ai_provider' => getenv('AAPLAYERACADEMY_AI_PROVIDER') ?: '',
         'ai_api_key' => getenv('AAPLAYERACADEMY_AI_API_KEY') ?: '',
+        'openai_api_key' => getenv('OPENAI_API_KEY') ?: '',
         'ai_model' => getenv('AAPLAYERACADEMY_AI_MODEL') ?: '',
         'ai_base_url' => getenv('AAPLAYERACADEMY_AI_BASE_URL') ?: '',
         'ai_allow_local' => getenv('AAPLAYERACADEMY_AI_ALLOW_LOCAL') ?: '',

@@ -175,7 +175,7 @@
     "layerSticky": "10",
     "layerHeader": "20",
     "layerFloating": "30",
-    "layerDropdown": "50",
+      "layerDropdown": "110",
     "layerOverlay": "100",
     "layerToast": "120",
     "layerTooltip": "130"

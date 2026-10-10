@@ -28,6 +28,9 @@ return [
     // Legacy direct OpenRouter secret. Prefer the provider-agnostic encrypted
     // Admin → AI Settings flow below for a configurable key.
     'openrouter_api_key' => '',
+    // Optional OpenAI server key; also accepts the OPENAI_API_KEY environment
+    // variable. Admin can explicitly import this into encrypted storage.
+    'openai_api_key' => '',
     // Optional provider-agnostic private configuration. This overrides Admin
     // settings and always stays outside git. Provider: openrouter,
     // openai-compatible, gemini, or anthropic.

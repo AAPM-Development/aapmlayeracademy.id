@@ -699,7 +699,7 @@ test("A26 to A28 at exactly 79% the final fails and at exactly 80% it passes, wi
   });
 });
 
-test("A29 a fourth final attempt within 24 hours is rate-limited with the next eligible time", async () => {
+test("A29 final exam retries remain available after three failed attempts without a daily penalty", async () => {
   const { site } = await setup("a29");
   await withSite(site, async (api) => {
     const learner = await signIn(api.port, "peserta-a@example.test");
@@ -710,10 +710,14 @@ test("A29 a fourth final attempt within 24 hours is rate-limited with the next e
       const submitted = await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/submit`, { requestKey: randomUUID() });
       assert.equal(submitted.status, 200, submitted.text);
     }
-    const limited = await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "final_exam", moduleNumber: 0, requestKey: randomUUID() });
-    assert.equal(limited.status, 429);
-    assert.equal(limited.json.error.code, "assessment_rate_limited");
-    assert.ok(limited.json.error.details.nextEligibleAt, "the next eligible time is shown");
+    const retry = await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "final_exam", moduleNumber: 0, requestKey: randomUUID() });
+    assert.equal(retry.status, 201, retry.text);
+    const eligibility = (await learner.get("/api/assessments/final-eligibility")).json.data;
+    assert.equal(eligibility.attemptLimit, null);
+    assert.equal(eligibility.attemptsRemaining, null);
+    assert.equal(eligibility.nextEligibleAt, null);
+    assert.equal(eligibility.retriesUnlimited, true);
+    assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM assessment_attempts WHERE assessment_type = 'final_exam'")[0].n), 4, "all earlier attempts remain recorded");
   });
 });
 

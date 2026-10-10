@@ -201,7 +201,10 @@ export function useSaveAdminAiSettings() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data) => nativeApi.admin.aiSettings.update(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "ai-settings"] }),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(["admin", "ai-settings"], settings);
+      return queryClient.invalidateQueries({ queryKey: ["admin", "ai-settings"] });
+    },
   });
 }
 

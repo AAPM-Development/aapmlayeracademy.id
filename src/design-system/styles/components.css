@@ -999,7 +999,7 @@ a.aapm-surface { text-decoration: none; }
   outline: none;
 }
 .aapm-menu-item[data-highlighted] { background: var(--aapm-semantic-surface-subtle); }
-.aapm-menu-item[data-disabled] { opacity: var(--aapm-primitive-disabled-opacity); pointer-events: none; }
+.aapm-menu-item:is([data-disabled=""], [data-disabled="true"]) { opacity: var(--aapm-primitive-disabled-opacity); pointer-events: none; }
 .aapm-menu-item[data-tone="danger"] { color: var(--aapm-semantic-danger); }
 .aapm-menu-item[data-tone="danger"][data-highlighted] { background: var(--aapm-semantic-feedback-danger-surface); }
 .aapm-menu-item > .aapm-icon { width: var(--aapm-primitive-icon-sm); height: var(--aapm-primitive-icon-sm); color: var(--aapm-semantic-muted); }
