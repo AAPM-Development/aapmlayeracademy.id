@@ -144,3 +144,30 @@ html[data-shell-footer="true"] .aapm-ai-floating-panel {
   .aapm-pwa-notice { align-items: stretch; flex-direction: column; }
   .aapm-pwa-notice__actions { flex-wrap: wrap; }
 }
+
+/* Draft controls dock to the shell edge, independent of document length. */
+.aapm-app { --aapm-action-sidebar-width: var(--aapm-component-nav-width); }
+.aapm-app[data-collapsed="true"] { --aapm-action-sidebar-width: var(--aapm-component-nav-collapsed-width); }
+.aapm-page > .aapm-curriculum-editor { animation: none; }
+.aapm-editor-content:has([data-editor-actionbar]) { padding-bottom: calc(var(--aapm-editor-footer-height, 100px) + var(--aapm-primitive-space-4)); }
+.aapm-curriculum-editor { padding-bottom: calc(var(--aapm-shell-footer-offset, 100px) + var(--aapm-primitive-space-4)); }
+@media (min-width: 860px) {
+  .aapm-app :is(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
+    position: fixed;
+    inset-inline-start: var(--aapm-action-sidebar-width);
+    inset-inline-end: 0;
+    bottom: 0;
+    margin: 0;
+    padding-inline: var(--aapm-component-page-inset);
+    border-radius: 0;
+    background: var(--aapm-semantic-surface);
+  }
+}
+@media (max-width: 859px) {
+  .aapm-curriculum-actionbar {
+    inset-inline: 0;
+    bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom));
+    border-radius: 0;
+    background: var(--aapm-semantic-surface);
+  }
+}

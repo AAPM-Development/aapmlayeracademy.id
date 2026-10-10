@@ -511,6 +511,10 @@ html[data-shell="focus"] #root {
   grid-template-columns: var(--aapm-component-lesson-outline-width) minmax(0, 1fr);
   min-height: 0;
 }
+/* Lesson outline follows its right-hand toggle; quizzes retain their own side. */
+.aapm-focus[data-outline="true"][data-outline-side="right"] .aapm-focus__body { grid-template-columns: minmax(0, 1fr) var(--aapm-component-lesson-outline-width); }
+.aapm-focus[data-outline-side="right"] .aapm-focus__main { grid-column: 1; grid-row: 1; }
+.aapm-focus[data-outline-side="right"] .aapm-focus__outline { grid-column: 2; grid-row: 1; border-inline-end: 0; border-inline-start: var(--aapm-primitive-border-width) solid var(--aapm-semantic-border); }
 .aapm-focus[data-outline="false"] .aapm-focus__body { grid-template-columns: minmax(0, 1fr); }
 .aapm-focus__outline {
   min-height: 0;
@@ -572,7 +576,8 @@ html[data-shell="focus"] #root {
 
 @media (max-width: 1023px) {
   .aapm-focus__body,
-  .aapm-focus[data-outline="true"] .aapm-focus__body { grid-template-columns: minmax(0, 1fr); }
+  .aapm-focus[data-outline="true"] .aapm-focus__body,
+  .aapm-focus[data-outline="true"][data-outline-side="right"] .aapm-focus__body { grid-template-columns: minmax(0, 1fr); }
   .aapm-focus__outline { display: none; }
 }
 @media (max-width: 639px) {

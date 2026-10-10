@@ -615,7 +615,6 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
 }
 .aapm-toc__link:hover { color: var(--aapm-semantic-foreground); }
 .aapm-toc__link[aria-current="true"] { border-inline-start-color: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary-soft-text); font-weight: var(--aapm-primitive-weight-label); }
-
 /* Callout cards inside the lesson (objectives, takeaways, practice). */
 .aapm-callout {
   display: grid;
@@ -694,12 +693,12 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
 .aapm-choice:disabled { cursor: default; }
 .aapm-choice:focus-visible { outline: var(--aapm-primitive-focus-width) solid var(--aapm-semantic-focus); outline-offset: 2px; }
 
-.aapm-question-nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: var(--aapm-primitive-space-1-5); }
+.aapm-question-nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: var(--aapm-primitive-space-1-5); }
 .aapm-question-nav button {
   position: relative;
   display: grid;
   place-items: center;
-  height: 36px;
+  min-height: 44px;
   border: 1.5px solid var(--aapm-semantic-border);
   border-radius: var(--aapm-primitive-radius-control);
   background: var(--aapm-semantic-surface);
@@ -710,8 +709,16 @@ a.aapm-flow__step:hover { background: var(--aapm-semantic-surface); color: var(-
   cursor: pointer;
 }
 .aapm-question-nav button[data-answered="true"] { border-color: transparent; background: var(--aapm-semantic-primary-soft); color: var(--aapm-semantic-primary-soft-text); }
+.aapm-question-nav button[data-result="correct"]:not([aria-current="step"]) { border-color: color-mix(in srgb, var(--aapm-semantic-success) 32%, var(--aapm-semantic-border)); background: var(--aapm-semantic-feedback-success-surface); color: var(--aapm-semantic-feedback-success-text); }
+.aapm-question-nav button[data-result="wrong"]:not([aria-current="step"]) { border-color: color-mix(in srgb, var(--aapm-semantic-danger) 32%, var(--aapm-semantic-border)); background: var(--aapm-semantic-feedback-danger-surface); color: var(--aapm-semantic-feedback-danger-text); }
 .aapm-question-nav button[aria-current="step"] { border-color: var(--aapm-semantic-primary); background: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary-foreground); }
 .aapm-question-nav button[data-flagged="true"]::after { content: ""; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border: 2px solid var(--aapm-semantic-surface); border-radius: 50%; background: var(--aapm-semantic-attention); }
+.aapm-question-nav__key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--aapm-semantic-primary-soft); }
+.aapm-question-nav__key[data-result="correct"] { background: var(--aapm-semantic-feedback-success-surface); box-shadow: inset 0 0 0 1px var(--aapm-semantic-success); }
+.aapm-question-nav__key[data-result="wrong"] { background: var(--aapm-semantic-feedback-danger-surface); box-shadow: inset 0 0 0 1px var(--aapm-semantic-danger); }
+.aapm-question-nav__key[data-result="pending"] { background: var(--aapm-semantic-surface); box-shadow: inset 0 0 0 1px var(--aapm-semantic-border-strong); }
+.aapm-question-sheet.aapm-sheet { gap: 0; padding-top: var(--aapm-primitive-space-2); }
+.aapm-question-sheet .aapm-question-nav { max-height: min(42dvh, 420px); overflow-y: auto; padding-block: var(--aapm-primitive-space-1); }
 
 /* Answer feedback inside the focus action bar (the bar takes the tone, see
  * shell.css): verdict, correct answer, explanation, run of correct answers. */

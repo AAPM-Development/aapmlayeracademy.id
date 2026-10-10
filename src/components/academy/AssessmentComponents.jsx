@@ -116,16 +116,17 @@ export function CheckFeedback({ question, feedback, run = 0 }) {
 }
 
 /** Numbered grid to move between questions; flagged items carry a dot. */
-export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagged = {}, onSelect = (_index) => {} }) {
+export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagged = {}, results = [], answeredLabel = "terjawab", onSelect = (_index) => {} }) {
   const answered = Object.keys(answers).length;
   const marked = Object.values(flagged).filter(Boolean).length;
+  const hasResults = results.some((result) => result === "correct" || result === "wrong");
   return (
     <div className="grid gap-4 p-4">
       <div>
         <p className="aapm-text-label m-0">Daftar soal</p>
-        <p className="aapm-text-caption m-0">{answered}/{total} terjawab{marked ? ` · ${marked} ditandai` : ""}</p>
+        <p className="aapm-text-caption m-0">{answered}/{total} {answeredLabel}{marked ? ` · ${marked} ditandai` : ""}</p>
       </div>
-      <div className="aapm-question-nav">
+      <div className="aapm-question-nav" role="group" aria-label="Pilih nomor soal">
         {Array.from({ length: total }, (_, index) => (
           <button
             key={index}
@@ -134,14 +135,21 @@ export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagge
             aria-current={index === current ? "step" : undefined}
             data-answered={answers[index] !== undefined ? "true" : undefined}
             data-flagged={flagged[index] ? "true" : undefined}
-            aria-label={`Soal ${index + 1}${answers[index] !== undefined ? ", terjawab" : ""}${flagged[index] ? ", ditandai" : ""}`}
+            data-result={results[index] || undefined}
+            aria-label={`Soal ${index + 1}${answers[index] !== undefined ? `, ${answeredLabel}` : ", belum dijawab"}${results[index] === "correct" ? ", jawaban tepat" : results[index] === "wrong" ? ", perlu ditinjau" : ""}${flagged[index] ? ", ditandai" : ""}`}
           >
             {index + 1}
           </button>
         ))}
       </div>
       <div className="grid gap-1.5 text-caption text-muted-foreground">
-        <span className="inline-flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-sm bg-[var(--aapm-semantic-primary-soft)]" />Terjawab</span>
+        {hasResults ? (
+          <>
+            <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" data-result="correct" />Tepat</span>
+            <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" data-result="wrong" />Perlu ditinjau</span>
+            <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" data-result="pending" />Belum dijawab</span>
+          </>
+        ) : <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" />{answeredLabel.charAt(0).toUpperCase() + answeredLabel.slice(1)}</span>}
         <span className="inline-flex items-center gap-2"><i className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--aapm-semantic-attention)]" />Ditandai untuk ditinjau</span>
       </div>
     </div>

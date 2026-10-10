@@ -553,10 +553,12 @@ test("A18 an interrupted response is recoverable by reading the attempt", async 
     const attempt = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 12, requestKey: randomUUID() })).json.data.attempt;
     const entry = attemptKey(site, attempt.id).get(attempt.questions[0].id);
     await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/answers`, { questionId: attempt.questions[0].id, answerIndex: entry.correct });
+    assert.equal((await progressRow(learner, 12)).activeAttempt, true, "the lesson CTA can distinguish a resumable quiz");
     await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/submit`, { requestKey: randomUUID() });
     const recovered = await learner.get(`/api/assessments/attempts/${attempt.id}`);
     assert.equal(recovered.json.data.attempt.status, "submitted");
     assert.equal(recovered.json.data.attempt.result.passed, true);
+    assert.equal((await progressRow(learner, 12)).activeAttempt, false, "a submitted attempt no longer appears resumable");
   });
 });
 
