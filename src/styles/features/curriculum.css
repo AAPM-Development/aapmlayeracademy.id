@@ -12,6 +12,16 @@
 .aapm-curriculum-policy-controls { display: flex; align-items: end; gap: var(--aapm-primitive-space-3); }
 .aapm-curriculum-policy-controls > :first-child { flex: 1; min-width: 0; }
 
+@media (min-width: 860px) {
+  /* The desktop draft controls dock to the viewport edge like the module
+     editor; the small inset is reserved for the phone navigation only. */
+  .aapm-curriculum-actionbar {
+    bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
 @media (max-width: 859px) {
   /* Match the existing editor exception: entrance transforms must not
      turn the form into the containing block of viewport-fixed controls. */

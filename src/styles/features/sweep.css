@@ -9,6 +9,9 @@
   .aapm-app__main:has(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
     padding-bottom: 0;
   }
+  .aapm-app__main:has(.aapm-editor-actionbar, .aapm-curriculum-actionbar) > .aapm-page {
+    padding-bottom: 0;
+  }
 }
 
 /* Editor action bar on phones: an opaque, edge-to-edge bar, so content never
