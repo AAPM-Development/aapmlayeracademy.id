@@ -36,6 +36,13 @@ export default function useVisibleViewport() {
           const actionBounds = actions.getBoundingClientRect();
           if (actionBounds.bottom > top && actionBounds.top < bottom) bottom = Math.max(top, actionBounds.top);
         }
+        const launcher = document.querySelector('.aapm-ai-launcher');
+        if (launcher) {
+          const launcherBounds = launcher.getBoundingClientRect();
+          if (launcherBounds.width > 0 && launcherBounds.right > rect.left && launcherBounds.left < rect.right && launcherBounds.bottom > top && launcherBounds.top < bottom) {
+            bottom = Math.max(top, launcherBounds.top);
+          }
+        }
         const delta = rect.height > bottom - top ? rect.top - top
           : rect.bottom > bottom ? rect.bottom - bottom
             : rect.top < top ? rect.top - top : 0;
