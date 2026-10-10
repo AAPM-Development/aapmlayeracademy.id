@@ -28,8 +28,12 @@ installation.
 ```powershell
 Copy-Item config.native.example.php config.php
 php -d extension=php_sqlite3.dll -d extension=php_pdo_sqlite.dll database/seed.php
-php -d extension=php_sqlite3.dll -d extension=php_pdo_sqlite.dll -S 127.0.0.1:8000 -t public public/router.php
+php -d extension=php_sqlite3.dll -d extension=php_pdo_sqlite.dll -d upload_max_filesize=300M -d post_max_size=310M -S 127.0.0.1:8000 -t public public/router.php
 ```
+
+The upload limits above allow the editor's MP4/WebM video uploads (up to
+300 MiB). Shared hosting must also allow these PHP limits and the request
+size; a lower server limit takes precedence over the app's limit.
 
 In a second terminal:
 

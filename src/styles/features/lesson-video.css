@@ -1,5 +1,8 @@
 /* Essential lesson controls use the Academy's current tokens and actions. */
 .aapm-video-player { min-width: 0; }
+/* Keep the width tied to the lesson column. Otherwise a 200px minimum
+ * height and the preferred 16:9 ratio can widen YouTube beyond a phone. */
+.aapm-video-player__viewport { width: 100%; }
 .aapm-video-player__viewport--youtube { min-height: 200px; }
 .aapm-video-player__viewport video,
 .aapm-video-player__embed,
