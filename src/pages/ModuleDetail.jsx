@@ -18,19 +18,10 @@ import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
 import { scrollLessonSection } from "@/lib/lessonNavigation";
 
-const OUTLINE_KEY = "aapm-lesson-outline";
 const hasText = (value) => typeof value === "string" && value.trim().length > 0;
 const hasListContent = (value) => Array.isArray(value)
   ? value.some((item) => hasText(String(item || "")))
   : hasText(value);
-
-function readOutlinePreference() {
-  try {
-    return window.localStorage.getItem(OUTLINE_KEY) !== "closed";
-  } catch {
-    return true;
-  }
-}
 
 function StandaloneState({ children }) {
   return <Page width="narrow" className="min-h-[60vh] justify-center">{children}</Page>;
@@ -48,7 +39,7 @@ export default function ModuleDetail() {
   const acknowledge = useAcknowledgeModule();
   const studyTime = useStudyTimeIncrement();
   const [activeSection, setActiveSection] = useState("content");
-  const [outlineOpen, setOutlineOpen] = useState(readOutlinePreference);
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const [outlineSheet, setOutlineSheet] = useState(false);
   // The practice check answers at once; the saved value takes over after refetch.
   const [practiceOverride, setPracticeOverride] = useState(null);
@@ -106,6 +97,8 @@ export default function ModuleDetail() {
   useEffect(() => {
     setActiveSection("content");
     setPracticeOverride(null);
+    setOutlineOpen(false);
+    setOutlineSheet(false);
   }, [number]);
 
   useEffect(() => {
@@ -120,16 +113,7 @@ export default function ModuleDetail() {
     return () => observer.disconnect();
   }, [module?.moduleNumber, learnerSections]);
 
-  const toggleOutline = () => {
-    setOutlineOpen((current) => {
-      try {
-        window.localStorage.setItem(OUTLINE_KEY, current ? "closed" : "open");
-      } catch {
-        // Optional preference.
-      }
-      return !current;
-    });
-  };
+  const toggleOutline = () => setOutlineOpen((current) => !current);
 
   // Active reading time goes to "Waktu belajar" when the learner leaves the lesson.
   // The server accepts at most 15 minutes per increment, so a longer session is sent in parts.
@@ -208,12 +192,14 @@ export default function ModuleDetail() {
       resetKey={number}
       label={`Lesson modul ${number}`}
       outline={outline}
-      outlineSide="right"
+      outlineSide="left"
       outlineOpen={outlineOpen}
       bar={(
         <header className="aapm-topbar aapm-focus__bar aapm-lesson-bar" data-hue={visual.hue}>
           <span className="aapm-lesson-bar__read" aria-hidden="true"><span ref={progressRef} /></span>
           <IconButton label="Keluar ke jalur belajar" variant="danger" icon="close" onClick={() => navigate("/modules")} />
+          <IconButton className="hidden lg:inline-flex" label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} aria-expanded={outlineOpen} icon="sidebar" onClick={toggleOutline} />
+          <IconButton className="lg:hidden" label="Buka kurikulum" aria-expanded={outlineSheet} icon="list" onClick={() => setOutlineSheet(true)} />
           <div className="aapm-topbar__title">
             <span className="aapm-topbar__context">Modul {module.moduleNumber} dari {summary.total} · {module.levelName || module.category}</span>
             <p className="aapm-topbar__title-text">{module.title}</p>
@@ -229,8 +215,6 @@ export default function ModuleDetail() {
             >
               <AapmIcon name="ai" /><span>Tanya APPI</span>
             </Button>
-            <IconButton className="hidden lg:inline-flex" label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} icon="sidebar" onClick={toggleOutline} />
-            <IconButton className="lg:hidden" label="Buka kurikulum" icon="list" onClick={() => setOutlineSheet(true)} />
             <div className="aapm-focus__progress">
               <Progress value={summary.percent} label="Progress course" />
               <span>{summary.percent}%</span>
@@ -333,7 +317,7 @@ export default function ModuleDetail() {
       </div>
 
       <Sheet open={outlineSheet} onOpenChange={setOutlineSheet}>
-        <SheetContent side="right" className="aapm-nav-sheet" aria-describedby={undefined}>
+        <SheetContent side="left" className="aapm-nav-sheet" aria-describedby={undefined}>
           <SheetTitle className="aapm-visually-hidden">Kurikulum course</SheetTitle>
           {outline}
         </SheetContent>
