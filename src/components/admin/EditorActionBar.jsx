@@ -113,18 +113,24 @@ export default function EditorActionBar({
 
   return (
     <div ref={barRef} className="aapm-editor-actionbar" data-editor-actionbar>
-      <span className={`chip chip-dot ${chip} aapm-editor-save-status`} data-status={status} role="status" aria-live="polite">
-        <span className="aapm-editor-save-status__label">{label}</span>
-        {status === "error" ? <span className="aapm-editor-save-status__detail">{saveError}</span> : null}
-      </span>
-      {status === "error" ? (
-        <Button type="button" size="sm" variant="secondary" onClick={onRetry}>Coba lagi</Button>
-      ) : null}
-      <div className="aapm-editor-actionbar__actions">
+      {/* Three groups: where the work stands, the panel drawers, and the actions.
+          Phones lay them out as two rows (status + save, then the drawers). */}
+      <div className="aapm-editor-actionbar__status">
+        <span className={`chip chip-dot ${chip} aapm-editor-save-status`} data-status={status} role="status" aria-live="polite">
+          <span className="aapm-editor-save-status__label">{label}</span>
+          {status === "error" ? <span className="aapm-editor-save-status__detail">{saveError}</span> : null}
+        </span>
+        {status === "error" ? (
+          <Button type="button" size="sm" variant="secondary" onClick={onRetry}>Coba lagi</Button>
+        ) : null}
+      </div>
+      <div className="aapm-editor-actionbar__drawers" role="group" aria-label="Panel editor">
         {/* Drawer triggers: Susun below 1200px; Blok and Modul below 640px, where the inspector is a sheet. */}
         <Button type="button" size="sm" variant="ghost" data-drawer="outline" onClick={onOpenOutline}><Ic name="list" />Susun</Button>
         <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("block")}><Ic name="layers" />Blok</Button>
         <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("module")}><Ic name="sliders" />Modul</Button>
+      </div>
+      <div className="aapm-editor-actionbar__actions">
         <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
         <span className="row gap-1-5 t-caption t-muted hide-sm aapm-editor-kbd-hint"><span className="kbd">Ctrl S</span>simpan cepat</span>
         <Button type="button" variant={primaryAction === "save" ? "primary" : "secondary"} data-editor-save loading={isSaving} disabled={disabled} onClick={onSave} title="Simpan draf (Ctrl/⌘ S)">

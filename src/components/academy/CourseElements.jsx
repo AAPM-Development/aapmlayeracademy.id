@@ -7,6 +7,7 @@ import { certificationTiers } from "@/lib/academyData";
 import { estimateMinutes, levelVisual, moduleVisual } from "@/lib/academyVisuals";
 import { moduleMeta } from "@/lib/learnerCopy";
 import { cn } from "@/lib/utils";
+import { moduleNo } from "@/lib/moduleNumber";
 
 // Course patterns of the Redesign v2 canvas (academy.css §16–17): covers,
 // catalog cards, the egg path with tier rewards, and the lesson outline.
@@ -18,15 +19,21 @@ const stateLabel = {
   locked: "terkunci",
 };
 
-/** Module/level artwork (`.cover`): hue tint, rings, white tile and the big number. */
+/**
+ * Module/level artwork (`.cover`): hue tint, rings, white tile and the big number,
+ * or the module's own banner image when the admin set one (see MODULE_COVER_TEMPLATE).
+ */
 export function ModuleCover({ module = undefined, level = undefined, number = undefined, size = undefined, state = undefined, className = undefined, style = undefined, children = undefined }) {
   const visual = module ? moduleVisual(module) : levelVisual(level);
-  const label = number ?? module?.moduleNumber;
+  const label = number ?? moduleNo(module);
+  const image = module ? visual.image : "";
   return (
-    <div className={cn("cover", className)} data-hue={visual.hue} data-size={size} data-state={state} style={{ borderRadius: 0, ...style }} aria-hidden="true">
-      <span className="tile"><Ic name={visual.ic} /></span>
+    <div className={cn("cover", className)} data-hue={visual.hue} data-size={size} data-state={state} data-image={image ? "true" : undefined} style={{ borderRadius: 0, ...style }} aria-hidden="true">
+      {image
+        ? <img className="cover-img" src={image} alt="" loading="lazy" decoding="async" style={{ objectPosition: `center ${visual.focus}` }} />
+        : <span className="tile"><Ic name={visual.ic} /></span>}
       {children}
-      {label !== undefined && label !== null ? <span className="cover-num">{String(label).padStart(2, "0")}</span> : null}
+      {!image && label !== undefined && label !== null ? <span className="cover-num">{String(label).padStart(2, "0")}</span> : null}
     </div>
   );
 }
@@ -77,9 +84,9 @@ export function ModuleRow({ module, state = "available", hue = undefined }) {
       className="li"
       data-hue={resolvedHue}
       style={{ minHeight: 64, ...(state === "current" ? { background: "var(--ai-soft)" } : null) }}
-      aria-label={`Modul ${module.moduleNumber}: ${module.title}, ${stateLabel[state] || ""}`}
+      aria-label={`Modul ${moduleNo(module)}: ${module.title}, ${stateLabel[state] || ""}`}
     >
-      <Egg size="xs" state={state === "completed" ? "done" : state === "current" ? "current" : undefined}>{state === "completed" ? <Ic name="check" /> : module.moduleNumber}</Egg>
+      <Egg size="xs" state={state === "completed" ? "done" : state === "current" ? "current" : undefined}>{state === "completed" ? <Ic name="check" /> : moduleNo(module)}</Egg>
       <span className="stack grow" style={{ minWidth: 0 }}>
         <span className="li-title t-clamp-1">{module.title}</span>
         <span className="li-meta">Level {module.level} · {moduleMeta(module, { short: true })}</span>
@@ -126,10 +133,10 @@ function PathModule({ module, x, size, coach }) {
       <Link
         to={`/modules/${module.moduleNumber}`}
         className={cn("egg", size && `egg-${size}`, state === "completed" && "is-done", state === "current" && "is-current anim-pulse anim-pop")}
-        aria-label={`Modul ${module.moduleNumber}: ${module.title}, ${stateLabel[state] || ""}`}
+        aria-label={`Modul ${moduleNo(module)}: ${module.title}, ${stateLabel[state] || ""}`}
         aria-current={state === "current" ? "step" : undefined}
       >
-        {state === "completed" ? <Ic name="check" /> : module.moduleNumber}
+        {state === "completed" ? <Ic name="check" /> : moduleNo(module)}
       </Link>
       <span className="path-label t-clamp-2">{state === "current" ? <span className="t-ai">{module.title}</span> : module.title}</span>
       {state === "current" && coach ? (
@@ -144,7 +151,7 @@ function PathModule({ module, x, size, coach }) {
 
 function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
   const done = level.total && level.completed === level.total;
-  const titleId = `l${level.number}-title`;
+  const titleId = `${level.anchor || `level-${level.number}`}-title`;
   const coach = level.modules.some((module) => module.state === "current")
     ? (level.modules.find((module) => module.state === "current")?.progress ? "Lanjutkan di sini!" : "Mulai di sini!")
     : null;
@@ -156,7 +163,8 @@ function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
       .forEach((tier) => items.push(<TierEgg key={`t-${tier.number}`} tier={tier} state={tierState(tier, completedSet, ownedTiers)} x={waveX(steps.next())} />));
   });
   return (
-    <section className="stack gap-3 anim-rise" id={`level-${level.number}`} data-hue={level.hue} style={{ "--i": Math.min(index + 1, 8), scrollMarginTop: 24 }} aria-labelledby={titleId}>
+    <section className="stack gap-3 anim-rise" id={level.anchor || `level-${level.number}`} data-hue={level.hue} style={{ "--i": Math.min(index + 1, 8), scrollMarginTop: 24 }} aria-labelledby={titleId}>
+      {level.curriculumStart ? <h2 className="t-overline t-muted" style={{ paddingTop: index ? "var(--s-4)" : 0 }}>Kurikulum · {level.curriculumTitle}</h2> : null}
       <div className="unit-banner">
         <span className="tile tile-lg hide-sm"><Ic name={level.ic} /></span>
         <div className="stack grow gap-0-5" style={{ minWidth: 0 }}>
@@ -193,7 +201,7 @@ export function LearningPath({ curriculum = [], completedSet = new Set(), ownedT
   return (
     <div className="stack gap-6">
       {shown.map((level, index) => (
-        <LevelSection key={level.number} level={level} index={index} steps={steps} completedSet={completedSet} ownedTiers={ownedTiers} />
+        <LevelSection key={level.key || level.number} level={level} index={index} steps={steps} completedSet={completedSet} ownedTiers={ownedTiers} />
       ))}
       {folded.length ? (
         <section className="card card-dashed card-pad stack gap-4 anim-rise" style={{ "--i": 5 }} aria-labelledby="more-title">
@@ -204,11 +212,11 @@ export function LearningPath({ curriculum = [], completedSet = new Set(), ownedT
             </div>
             <button className="btn btn-ghost btn-sm" type="button" aria-expanded="false" onClick={() => setExpanded(true)}>Tampilkan semua<Ic name="chev-down" /></button>
           </div>
-          <ol className="row wrap gap-2" aria-label={`Modul ${foldedModules[0]?.moduleNumber} sampai ${foldedModules[foldedModules.length - 1]?.moduleNumber}`}>
+          <ol className="row wrap gap-2" aria-label={`Modul ${moduleNo(foldedModules[0])} sampai ${moduleNo(foldedModules[foldedModules.length - 1])}`}>
             {foldedModules.map((module) => (
               <li key={module.moduleNumber}>
-                <Link to={`/modules/${module.moduleNumber}`} className={cn("egg egg-xs", module.state === "completed" && "is-done")} aria-label={`Modul ${module.moduleNumber}: ${module.title}, ${stateLabel[module.state] || ""}`}>
-                  {module.state === "completed" ? <Ic name="check" /> : module.moduleNumber}
+                <Link to={`/modules/${module.moduleNumber}`} className={cn("egg egg-xs", module.state === "completed" && "is-done")} aria-label={`Modul ${moduleNo(module)}: ${module.title}, ${stateLabel[module.state] || ""}`}>
+                  {module.state === "completed" ? <Ic name="check" /> : moduleNo(module)}
                 </Link>
               </li>
             ))}
@@ -228,7 +236,7 @@ export function ContinueCard({ module, summary, levelsDone = 0, levelTotal = 14 
       <ModuleCover module={module} style={{ minHeight: 112 }} />
       <div className="row wrap gap-5" style={{ padding: "var(--s-4) var(--s-5)", minWidth: 0 }}>
         <div className="stack grow gap-1" style={{ minWidth: 220 }}>
-          <span className="t-overline t-ink">Modul {module.moduleNumber} · {module.levelName}</span>
+          <span className="t-overline t-ink">Modul {moduleNo(module)} · {module.levelName}</span>
           <h2 className="t-heading t-clamp-2" id="cont-title">{module.title}</h2>
           <span className="t-support t-muted">{moduleMeta(module)}</span>
         </div>
@@ -268,7 +276,8 @@ export function CourseOutline({ curriculum = [], currentNumber, completed = 0, t
         <Bar value={percent} size="sm" label="Progres course" />
       </div>
       {curriculum.map((level) => (
-        <div key={level.number} className="stack gap-1">
+        <div key={level.key || level.number} className="stack gap-1">
+          {level.curriculumStart ? <span className="t-overline t-muted" style={{ padding: "8px 8px 0" }}>{level.curriculumTitle}</span> : null}
           <span className="row gap-2 t-caption t-strong" style={{ padding: "4px 8px" }} data-hue={level.hue}><i style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--h)" }} aria-hidden="true" />L{level.number} · {level.name}</span>
           {level.modules.map((module) => {
             const current = Number(module.moduleNumber) === Number(currentNumber);
@@ -281,7 +290,7 @@ export function CourseOutline({ curriculum = [], currentNumber, completed = 0, t
                 aria-current={current ? "page" : undefined}
                 onClick={onNavigate}
               >
-                <Egg size="xs" state={done ? "done" : current ? "current" : undefined}>{done ? <Ic name="check" /> : module.moduleNumber}</Egg>
+                <Egg size="xs" state={done ? "done" : current ? "current" : undefined}>{done ? <Ic name="check" /> : moduleNo(module)}</Egg>
                 <span className="t-clamp-2">{module.title}</span>
                 {done ? <span className="sr-only">, tuntas</span> : null}
               </Link>

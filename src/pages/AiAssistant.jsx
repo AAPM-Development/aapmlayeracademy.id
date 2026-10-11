@@ -27,6 +27,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
+import { moduleNo } from "@/lib/moduleNumber";
 
 // Starter cards (canvas "APPI — sambutan"): one hue and icon per prompt.
 const STARTER_LOOK = {
@@ -61,7 +62,7 @@ function personalizedSuggestions({ farm = [], progress = [], modules = [], user,
   const completed = getCompletedModuleSet(progress, modules).size;
   const nextModule = getNextModule(modules, progress);
   const nextModuleLabel = nextModule
-    ? `Modul ${nextModule.moduleNumber}: ${nextModule.title}`
+    ? `Modul ${moduleNo(nextModule)}: ${nextModule.title}`
     : "modul Academy yang belum selesai";
   const finite = (value) => Number.isFinite(Number(value));
   const formatValue = (value) =>

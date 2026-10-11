@@ -7,6 +7,7 @@ import AppiMascot from "@/components/appi/AppiMascot";
 import { AssessmentBar, AssessmentResult, QuestionNavigator, QuizQuestion } from "@/components/academy/AssessmentComponents";
 import { useAnswerAssessment, useFinalEligibility, useModules, useStartAssessment, useSubmitAssessment, useUserProgress } from "@/lib/useCourseData";
 import { getCompletedModuleSet, getNextModule, sortModules } from "@/lib/academyData";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const EXAM_TITLE = "Sertifikasi Tingkat 6 · Layer Poultry Farm Expert";
 
@@ -23,11 +24,11 @@ function RequirementEggs({ modules, completedSet, currentNumber, missing }) {
             return (
               <li key={module.moduleNumber}>
                 {done ? (
-                  <Egg size="xs" state="done"><Ic name="check" /><span className="sr-only">Modul {module.moduleNumber} terverifikasi</span></Egg>
+                  <Egg size="xs" state="done"><Ic name="check" /><span className="sr-only">Modul {moduleNo(module)} terverifikasi</span></Egg>
                 ) : current ? (
-                  <Egg size="xs" state="current" className="anim-pulse" aria-current="step">{module.moduleNumber}<span className="sr-only">, sedang dipelajari</span></Egg>
+                  <Egg size="xs" state="current" className="anim-pulse" aria-current="step">{moduleNo(module)}<span className="sr-only">, sedang dipelajari</span></Egg>
                 ) : (
-                  <Egg size="xs">{module.moduleNumber}</Egg>
+                  <Egg size="xs">{moduleNo(module)}</Egg>
                 )}
               </li>
             );

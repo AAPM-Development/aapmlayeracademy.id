@@ -31,17 +31,11 @@ export default function AdminQuickSearch() {
     }
   }, [open]);
 
-  const coursesQuery = useQuery({
-    queryKey: ["admin", "quick-search", "courses"],
-    queryFn: () => nativeApi.admin.courses.list(),
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
-  });
-  const courseId = coursesQuery.data?.courses?.[0]?.id;
+  // Modules from every curriculum are searchable.
   const courseQuery = useQuery({
-    queryKey: ["admin", "quick-search", "course", courseId],
-    queryFn: () => nativeApi.admin.courses.detail(courseId),
-    enabled: open && normalizedQuery.length >= 2 && Boolean(courseId),
+    queryKey: ["admin", "quick-search", "catalogue"],
+    queryFn: () => nativeApi.admin.courses.list({ withCurriculum: true }),
+    enabled: open && normalizedQuery.length >= 2,
     staleTime: 5 * 60 * 1000,
   });
   const learnersQuery = useQuery({
@@ -52,11 +46,13 @@ export default function AdminQuickSearch() {
   });
 
   const modules = useMemo(() => {
-    const chapters = courseQuery.data?.curriculum || [];
-    return chapters.flatMap((chapter) => (chapter.modules || []).map((module) => ({ ...module, levelName: chapter.levelName, courseId: courseQuery.data?.id || courseId })));
-  }, [courseId, courseQuery.data]);
+    const courses = courseQuery.data?.courses || [];
+    return courses.flatMap((course) => (course.curriculum || []).flatMap((chapter) => (chapter.modules || []).map((module) => ({
+      ...module, levelName: chapter.levelName, courseId: course.id, courseTitle: courses.length > 1 ? course.title : "",
+    }))));
+  }, [courseQuery.data]);
   const moduleMatches = normalizedQuery.length < 2 ? [] : modules.filter((module) => (
-    searchable(`${module.title} ${module.moduleNumber} ${module.levelName}`).includes(normalizedQuery)
+    searchable(`${module.title} ${module.displayNumber ?? module.moduleNumber} ${module.levelName} ${module.courseTitle}`).includes(normalizedQuery)
   )).slice(0, 6);
   const learnerMatches = (learnersQuery.data?.learners || []).slice(0, 6);
   const hasQuery = normalizedQuery.length >= 2;
@@ -109,8 +105,8 @@ export default function AdminQuickSearch() {
               key: `m-${module.id}`,
               ic: "book",
               hue: "blue",
-              title: module.title || `Modul ${module.moduleNumber}`,
-              meta: `Modul ${module.moduleNumber} · ${module.levelName}`,
+              title: module.title || `Modul ${module.displayNumber ?? module.moduleNumber}`,
+              meta: `${module.courseTitle ? `${module.courseTitle} · ` : ""}Modul ${module.displayNumber ?? module.moduleNumber} · ${module.levelName}`,
               onSelect: () => openResult(`/admin/courses/${module.courseId}/modules/${module.id}`),
             })),
           },

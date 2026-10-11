@@ -379,16 +379,34 @@ try {
 
     if ($path === 'admin/courses' && $method === 'GET') {
         require_admin();
-        json_response(['courses' => [admin_course_data()]]);
+        // ?include=curriculum adds chapters and modules (the policy catalogue spans every curriculum).
+        $withCurriculum = ($_GET['include'] ?? '') === 'curriculum';
+        json_response(['courses' => array_map(static function (array $curriculum) use ($withCurriculum): array {
+            return $withCurriculum ? admin_course_detail_data((string) $curriculum['id']) : admin_course_data(null, $curriculum);
+        }, aapm_curricula_rows())]);
     }
 
-    if (preg_match('#^admin/courses/([^/]+)$#', $path, $matches) && $method === 'GET') {
+    if ($path === 'admin/courses' && $method === 'POST') {
         require_admin();
-        $courseId = rawurldecode($matches[1]);
-        if ($courseId !== admin_course_id()) {
-            error_response('Course tidak ditemukan.', 404, 'not_found');
-        }
-        json_response(admin_course_detail_data());
+        require_csrf();
+        json_response(aapm_curriculum_create(request_json()), 201);
+    }
+
+    if (preg_match('#^admin/courses/([a-z0-9-]{1,80})$#', $path, $matches) && $method === 'GET') {
+        require_admin();
+        json_response(admin_course_detail_data($matches[1]));
+    }
+
+    if (preg_match('#^admin/courses/([a-z0-9-]{1,80})$#', $path, $matches) && $method === 'PUT') {
+        require_admin();
+        require_csrf();
+        json_response(aapm_curriculum_update($matches[1], request_json()));
+    }
+
+    if (preg_match('#^admin/courses/([a-z0-9-]{1,80})$#', $path, $matches) && $method === 'DELETE') {
+        require_admin();
+        require_csrf();
+        json_response(aapm_curriculum_delete($matches[1]));
     }
 
     if ($path === 'admin/certificates' && $method === 'GET') {
@@ -749,7 +767,15 @@ try {
 
     if ($path === 'modules' && $method === 'GET') {
         $user = require_user();
-        json_response(array_map('present_module', aapm_cur_learner_modules(db(), (int) $user['id'])));
+        // The shown number is the position in the learner's catalogue (per curriculum);
+        // moduleNumber stays the stable id used by links, progress, and attempts.
+        $positions = [];
+        json_response(array_map(static function (array $row) use (&$positions): array {
+            $module = present_module($row);
+            $positions[$module['curriculumId']] = ($positions[$module['curriculumId']] ?? 0) + 1;
+            $module['displayNumber'] = $positions[$module['curriculumId']];
+            return $module;
+        }, aapm_cur_learner_modules(db(), (int) $user['id'])));
     }
 
     if ($path === 'curriculum/me' && $method === 'GET') {

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800" font-family="Inter, Arial, sans-serif">
+  <title>Template sampul modul AAPM Academy — 1600 × 800 px</title>
+  <!-- Letakkan foto di layer bawah, lalu sembunyikan layer panduan ini sebelum ekspor. -->
+  <rect width="1600" height="800" fill="#eef2ec"/>
+  <g fill="none" stroke-width="4">
+    <!-- Kartu katalog: sekitar 3:1, memotong atas dan bawah. -->
+    <rect x="2" y="133" width="1596" height="534" stroke="#245d86" stroke-dasharray="24 14"/>
+    <!-- Baris lanjut: persegi, memotong kiri dan kanan. -->
+    <rect x="400" y="2" width="800" height="796" stroke="#d4451a" stroke-dasharray="24 14"/>
+    <!-- Area aman: objek utama di sini. -->
+    <rect x="400" y="200" width="800" height="400" stroke="#318139" stroke-width="8" fill="#318139" fill-opacity=".08"/>
+  </g>
+  <!-- Label status di kartu katalog dapat menutup area ini. -->
+  <rect x="1180" y="200" width="352" height="110" rx="55" fill="#7a4f0d" fill-opacity=".14" stroke="#7a4f0d" stroke-width="3" stroke-dasharray="12 8"/>
+  <g font-size="30" font-weight="700">
+    <text x="800" y="390" text-anchor="middle" fill="#1f5a26">AREA AMAN 800 × 400</text>
+    <text x="800" y="436" text-anchor="middle" fill="#1f5a26" font-size="24" font-weight="400">objek utama di sini · tanpa teks atau logo</text>
+    <text x="24" y="122" fill="#245d86">Kartu katalog (± 3:1)</text>
+    <text x="416" y="790" fill="#d4451a" font-size="24">Baris lanjut (persegi)</text>
+    <text x="1356" y="264" text-anchor="middle" fill="#7a4f0d" font-size="22">label status</text>
+  </g>
+  <text x="1576" y="40" text-anchor="end" font-size="22" fill="#5f6661">1600 × 800 px · JPG/WebP &lt; 1 MB</text>
+</svg>

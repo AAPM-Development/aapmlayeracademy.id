@@ -507,7 +507,17 @@ function aapm_cur_payload_from_row(array $row): array
         'checklist' => (string) ($row['checklist'] ?? '[]'),
         'practicalAssignment' => (string) ($row['practical_assignment'] ?? ''),
         'sortOrder' => (int) ($row['sort_order'] ?? 0),
+        'visual' => (string) ($row['visual_json'] ?? ''),
     ];
+}
+
+/**
+ * Drafts and revisions saved before a payload key existed get its default, in
+ * the same key order as aapm_cur_payload_from_row(), so checksums still match.
+ */
+function aapm_cur_payload_complete(array $payload): array
+{
+    return $payload === [] ? [] : $payload + ['visual' => ''];
 }
 
 /** The payload as the existing normaliser reads it: snake-case keys from a module row. */
@@ -529,6 +539,7 @@ function aapm_cur_row_from_payload(array $payload): array
         'checklist' => $payload['checklist'],
         'practical_assignment' => $payload['practicalAssignment'],
         'sort_order' => $payload['sortOrder'],
+        'visual_json' => $payload['visual'] ?? '',
     ];
 }
 
@@ -870,7 +881,7 @@ function aapm_cur_draft_view(array $draft): array
 {
     return [
         'version' => (int) $draft['draft_version'],
-        'payload' => json_decode((string) $draft['content_payload_json'], true) ?: [],
+        'payload' => aapm_cur_payload_complete(json_decode((string) $draft['content_payload_json'], true) ?: []),
         'questions' => json_decode((string) $draft['question_payload_json'], true) ?: [],
     ];
 }
@@ -907,11 +918,14 @@ function aapm_cur_check_number(array $module, array $input): void
 }
 
 /** Normalises module content exactly as the admin editor always did. Runs before any transaction opens. */
-function aapm_cur_normalise_content(array $input, array $existingPayload): array
+function aapm_cur_normalise_content(array $input, array $existingPayload, string $curriculumId = AAPM_PRIMARY_CURRICULUM): array
 {
     $existing = $existingPayload === [] ? [] : aapm_cur_row_from_payload($existingPayload);
-    $data = admin_module_input($input, $existing);
-    admin_validate_chapter_name($data['levelNumber'], $data['levelName'], null);
+    // Drafts may be saved before any material is written (a module added inline
+    // from the curriculum list starts with only a title). Publishing still
+    // requires material: aapm_cur_validate_draft() reports it.
+    $data = admin_module_input($input, $existing, false);
+    admin_validate_chapter_name($data['levelNumber'], $data['levelName'], null, $curriculumId);
     return [
         'levelNumber' => $data['levelNumber'],
         'levelName' => $data['levelName'],
@@ -928,6 +942,7 @@ function aapm_cur_normalise_content(array $input, array $existingPayload): array
         'checklist' => $data['checklist'],
         'practicalAssignment' => $data['practicalAssignment'],
         'sortOrder' => $data['sortOrder'],
+        'visual' => $data['visual'],
     ];
 }
 
@@ -946,11 +961,25 @@ function aapm_cur_normalise_question(array $input): array
     ];
 }
 
+function aapm_cur_next_module_number(PDO $pdo): int
+{
+    $catalogue = (int) $pdo->query('SELECT COALESCE(MAX(module_number), 0) FROM course_modules')->fetchColumn();
+    $allocated = (int) $pdo->query('SELECT COALESCE(MAX(module_number), 0) FROM module_number_allocations')->fetchColumn();
+    return max($catalogue, $allocated) + 1;
+}
+
 /** Creates a draft-only module. It is not learner-visible until a publish succeeds. */
 function aapm_cur_create_module(array $input, int $actorId): array
 {
     $pdo = db();
-    $payload = aapm_cur_normalise_content($input, []);
+    if ((int) ($input['moduleNumber'] ?? 0) < 1) {
+        // Inline creation leaves the number to the server: the next one never used,
+        // including numbers held by deleted drafts (numbers are never reused).
+        $input['moduleNumber'] = aapm_cur_next_module_number($pdo);
+    }
+    $curriculumId = (string) ($input['curriculumId'] ?? AAPM_PRIMARY_CURRICULUM);
+    aapm_curriculum_or_fail($curriculumId);
+    $payload = aapm_cur_normalise_content($input, [], $curriculumId);
     $moduleNumber = (int) $payload['moduleNumber'];
     if ($payload['sortOrder'] === 0) {
         $payload['sortOrder'] = ((int) $pdo->query('SELECT COALESCE(MAX(sort_order), 0) FROM course_modules')->fetchColumn()) + 1;
@@ -966,10 +995,10 @@ function aapm_cur_create_module(array $input, int $actorId): array
     aapm_tx_begin($pdo);
     try {
         $now = aapm_utc_now();
-        $pdo->prepare('INSERT INTO course_modules (level_number, level_name, module_number, title, category, summary, content, editorial_content, video_script, video_url, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order, lifecycle_status, published_revision_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)')
+        $pdo->prepare('INSERT INTO course_modules (curriculum_id, level_number, level_name, module_number, title, category, summary, content, editorial_content, video_script, video_url, visual_json, learning_objectives, key_takeaways, checklist, practical_assignment, sort_order, lifecycle_status, published_revision_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)')
             ->execute([
-                $payload['levelNumber'], $payload['levelName'], $moduleNumber, $payload['title'], $payload['category'], $payload['summary'],
-                $payload['content'], $payload['editorialContent'], $payload['videoScript'], $payload['videoUrl'], $payload['learningObjectives'],
+                $curriculumId, $payload['levelNumber'], $payload['levelName'], $moduleNumber, $payload['title'], $payload['category'], $payload['summary'],
+                $payload['content'], $payload['editorialContent'], $payload['videoScript'], $payload['videoUrl'], $payload['visual'], $payload['learningObjectives'],
                 $payload['keyTakeaways'], $payload['checklist'], $payload['practicalAssignment'], $payload['sortOrder'], 'draft',
             ]);
         $moduleId = (int) $pdo->lastInsertId();
@@ -995,7 +1024,7 @@ function aapm_cur_save_draft(int $moduleId, array $input, int $actorId): array
     $module = aapm_cur_module_or_fail($pdo, $moduleId);
     aapm_cur_check_number($module, $input);
     $existing = aapm_cur_draft_locked($pdo, $module, $actorId);
-    $payload = aapm_cur_normalise_content($input, json_decode((string) $existing['content_payload_json'], true) ?: aapm_cur_payload_from_row($module));
+    $payload = aapm_cur_normalise_content($input, json_decode((string) $existing['content_payload_json'], true) ?: aapm_cur_payload_from_row($module), (string) ($module['curriculum_id'] ?? AAPM_PRIMARY_CURRICULUM));
 
     aapm_tx_begin($pdo);
     try {
@@ -1151,7 +1180,7 @@ function aapm_cur_publish_preview(int $moduleId): array
     $draft = aapm_cur_draft_locked($pdo, $module, null);
     $view = aapm_cur_draft_view($draft);
     $current = $module['published_revision_id'] ? aapm_cur_revision_row($pdo, (int) $module['published_revision_id']) : null;
-    $currentPayload = $current ? json_decode((string) $current['content_payload_json'], true) : aapm_cur_payload_from_row($module);
+    $currentPayload = $current ? aapm_cur_payload_complete(json_decode((string) $current['content_payload_json'], true) ?: []) : aapm_cur_payload_from_row($module);
     $changed = [];
     foreach ($view['payload'] as $key => $value) {
         if (($currentPayload[$key] ?? null) !== $value) {
@@ -1233,10 +1262,10 @@ function aapm_cur_publish(int $moduleId, int $expectedVersion, int $actorId): ar
         $revision = aapm_cur_insert_revision($pdo, $moduleId, $moduleNumber, $payload, $bankId, $actorId, $now);
         $revisionId = (int) $pdo->query('SELECT id FROM module_revisions WHERE module_id = ' . $moduleId . ' AND revision_number = ' . $revision)->fetchColumn();
 
-        $pdo->prepare("UPDATE course_modules SET level_number = ?, level_name = ?, title = ?, category = ?, summary = ?, content = ?, editorial_content = ?, video_script = ?, video_url = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, lifecycle_status = 'active', published_revision_id = ?, lock_version = lock_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+        $pdo->prepare("UPDATE course_modules SET level_number = ?, level_name = ?, title = ?, category = ?, summary = ?, content = ?, editorial_content = ?, video_script = ?, video_url = ?, visual_json = ?, learning_objectives = ?, key_takeaways = ?, checklist = ?, practical_assignment = ?, sort_order = ?, lifecycle_status = 'active', published_revision_id = ?, lock_version = lock_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([
                 $payload['levelNumber'], $payload['levelName'], $payload['title'], $payload['category'], $payload['summary'], $payload['content'],
-                $payload['editorialContent'], $payload['videoScript'], $payload['videoUrl'], $payload['learningObjectives'], $payload['keyTakeaways'],
+                $payload['editorialContent'], $payload['videoScript'], $payload['videoUrl'], $payload['visual'] ?? '', $payload['learningObjectives'], $payload['keyTakeaways'],
                 $payload['checklist'], $payload['practicalAssignment'], $payload['sortOrder'], $revisionId, $moduleId,
             ]);
         $pdo->prepare('UPDATE module_drafts SET content_payload_json = ?, question_payload_json = ?, draft_version = draft_version + 1, updated_at = ? WHERE module_id = ?')
@@ -1459,7 +1488,7 @@ function aapm_cur_revision_detail(int $moduleId, int $revisionId): array
         'id' => (int) $row['id'],
         'revisionNumber' => (int) $row['revision_number'],
         'readOnly' => true,
-        'payload' => json_decode((string) $row['content_payload_json'], true) ?: [],
+        'payload' => aapm_cur_payload_complete(json_decode((string) $row['content_payload_json'], true) ?: []),
         'questions' => $questions,
         'publishedAt' => (string) $row['published_at'],
     ];
