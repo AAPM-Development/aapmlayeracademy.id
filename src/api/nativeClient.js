@@ -434,6 +434,7 @@ export const nativeApi = {
   },
   admin: {
     overview: () => request("/admin/overview"),
+    workspaceStatus: () => request("/admin/workspace-status"),
     courses: {
       list: () => request("/admin/courses"),
       detail: (courseId) =>

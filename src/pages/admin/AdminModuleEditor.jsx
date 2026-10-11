@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cancelQuestionEdit, curriculumModule, recoverCurriculumDraft } from "@/lib/curriculumEditorState";
 import useModalFocus from "@/components/ai/useModalFocus";
 import { levelVisual } from "@/lib/academyVisuals";
+import { Ic } from "@/design-system/canvas";
 import {
   Badge,
   Button,
@@ -41,7 +42,6 @@ import {
 import {
   AdminError,
   AdminLoading,
-  AdminPageFrame,
 } from "@/components/admin/AdminPage";
 import {
   useAdminModule,
@@ -540,9 +540,9 @@ const editorDraftPrefix = "aapm:academy:module-editor:v1";
 const moduleFormSnapshot = (value) => JSON.stringify(value || {});
 
 const EDITOR_SECTIONS = [
-  { id: "module-section-content", label: "Materi", shortLabel: "Materi", detail: "Teks, slide, gambar, dan video", icon: "lesson" },
-  { id: "module-section-outcomes", label: "Tujuan & insight", shortLabel: "Tujuan", detail: "Tujuan pembelajaran dan poin penting", icon: "target" },
-  { id: "module-section-practice", label: "Praktik", shortLabel: "Praktik", detail: "Tugas, checklist, dan naskah video", icon: "practice" },
+  { id: "module-section-content", label: "Materi", shortLabel: "Materi", detail: "Teks, slide, gambar, dan video", icon: "lesson", ic: "book", hue: "blue" },
+  { id: "module-section-outcomes", label: "Tujuan & insight", shortLabel: "Tujuan", detail: "Tujuan pembelajaran dan poin penting", icon: "target", ic: "target", hue: "green" },
+  { id: "module-section-practice", label: "Praktik", shortLabel: "Praktik", detail: "Tugas, checklist, dan naskah video", icon: "practice", ic: "egg", hue: "teal" },
 ];
 
 const INSPECTOR_TABS = [
@@ -776,189 +776,126 @@ function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onE
   };
   const set = (key, value) =>
     setForm((current) => { const next = { ...current, [key]: value }; formRef.current = next; return next; });
+  const dirtyForm = JSON.stringify(form) !== JSON.stringify(emptyQuestion);
+  const optionKeys = ["optionA", "optionB", "optionC", "optionD"];
+  const letters = "ABCD";
+  const difficultyLabel = { easy: "Mudah", medium: "Sedang", hard: "Sulit" };
+  const composition = Object.keys(difficultyLabel).map((key) => ({ key, label: difficultyLabel[key], count: questions.filter((item) => (item.difficulty || "medium") === key).length }));
+  const filledOptions = optionKeys.filter((key) => form[key]).length;
   return (
-    <>
+    <div className="page">
       {loadError && <AdminError error={loadError} onRetry={reloadQuestions} />}
-      {questionError && <p role="alert" className="mb-3">{questionError} Form soal tetap tersedia. {conflict ? "Pilih tindakan pemulihan konflik di atas." : "Periksa isian dan simpan soal kembali."}</p>}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.75fr)] xl:items-start">
-      <section className="aapm-editor-panel" aria-labelledby="question-list-title">
-        <header className="aapm-editor-panel__head">
-          <IconTile icon="quiz" hue="orange" size="sm" shape="circle" />
-          <div className="min-w-0 flex-1">
-            <h2 id="question-list-title" className="aapm-editor-panel__title">Bank soal</h2>
-            <p className="aapm-editor-panel__description">Pilihan ganda untuk modul ini.</p>
-          </div>
-          <Badge
-            variant="soft"
-            className="bg-tint-orange text-tint-orange-foreground"
-          >
-            {questions.length} soal
-          </Badge>
-        </header>
-        <div className="divide-y divide-border">
-          {isLoading ? (
-            <div className="p-5 text-sm text-muted-foreground">
-              Memuat soal…
+      {questionError && <div className="alert alert-danger" role="alert"><Ic name="alert" /><p>{questionError} Form soal tetap tersedia. {conflict ? "Pilih tindakan pemulihan konflik di atas." : "Periksa isian dan simpan soal kembali."}</p></div>}
+      <div className="row-start wrap gap-grid">
+        <div className="stack gap-grid" style={{ flex: "999 1 440px", minWidth: 0 }}>
+          <section className="card" aria-labelledby="question-list-title">
+            <div className="card-pad card-head">
+              <div className="stack gap-0-5">
+                <div className="row gap-2"><h2 className="card-title" id="question-list-title">Bank soal</h2><span className="chip t-num">{questions.length} soal</span></div>
+                <p className="card-desc">Pilihan ganda untuk modul ini.</p>
+              </div>
             </div>
-          ) : questions.length ? (
-            questions.map((question, index) => (
-              <div key={question.id} className="flex items-start gap-3 p-4">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-tint-green text-xs font-semibold text-brand-green">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{question.question}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {question.options.length} opsi · jawaban{" "}
-                    {Number(question.correctIndex) + 1} · {question.difficulty}
-                  </p>
+            {isLoading ? (
+              <div className="card-sect card-pad stack gap-2" aria-busy="true"><span className="skel" style={{ height: 44 }} /><span className="skel" style={{ height: 44 }} /></div>
+            ) : questions.length ? (
+              <ol className="list card-sect" aria-label="Daftar soal">
+                {questions.map((question, index) => {
+                  const current = selected?.id === question.id;
+                  return (
+                    <li key={question.id} className={`li${current ? " card-tint" : ""}`} aria-current={current ? "true" : undefined}>
+                      <span className={`tile tile-sm t-support t-strong t-num${current ? " tile-solid" : ""}`}>{index + 1}</span>
+                      <div className="stack grow" style={{ minWidth: 0 }}>
+                        <span className="li-title t-clamp-2">{question.question}</span>
+                        <span className="li-meta">{question.options.length} opsi · jawaban {letters[Number(question.correctIndex)] || Number(question.correctIndex) + 1} · {difficultyLabel[question.difficulty] || question.difficulty}</span>
+                      </div>
+                      <Ic name="check-circle" className="t-success" /><span className="sr-only">Valid</span>
+                      <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" onClick={() => edit(question)} disabled={busy} aria-label={`Edit soal ${index + 1}`}><Ic name="edit" /></button>
+                      <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" onClick={() => setPendingQuestionDelete(question)} disabled={busy || Boolean(conflict)} aria-label={`Hapus soal ${index + 1}`}><Ic name="trash" /></button>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <p className="card-sect card-pad t-support t-muted">Belum ada soal. Tambahkan soal pertama dari form di samping.</p>
+            )}
+            <div className="card-foot"><button type="button" className="btn btn-secondary btn-sm" disabled={questionWriteBusy} onClick={cancelEdit}><Ic name="plus" />Tambah soal</button></div>
+          </section>
+          <section className="card card-pad stack gap-4" aria-labelledby="h-komposisi">
+            <div className="stack gap-0-5"><h2 className="card-title" id="h-komposisi">Komposisi kesulitan</h2><p className="card-desc">Kuis modul · {questions.length} soal tersimpan di draf.</p></div>
+            <div className="cgrid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+              {composition.map((item) => <div key={item.key} className="inset stack gap-0-5" style={{ padding: "10px 12px" }}><span className="t-caption t-muted">{item.label}</span><span className="t-heading t-num">{item.count}</span></div>)}
+            </div>
+          </section>
+        </div>
+
+        <section className="card" aria-labelledby="question-form-title" style={{ flex: "1 1 420px", maxWidth: 420, minWidth: 0 }}>
+          <div className="card-pad card-head">
+            <div className="stack gap-0-5">
+              <h2 id="question-form-title" className="card-title">{selected ? `Edit soal ${questions.findIndex((item) => item.id === selected.id) + 1 || ""}` : "Tambah soal"}</h2>
+              <p className="card-desc">Pilihan ganda · 2–4 opsi.</p>
+            </div>
+            {selected && (
+              <button type="button" className="btn btn-ghost btn-sm" disabled={questionWriteBusy} onClick={cancelEdit}>Batal</button>
+            )}
+          </div>
+          <form onSubmit={save}>
+            <fieldset disabled={busy} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+              <div className="card-pad card-sect stack gap-5">
+                <div className="field">
+                  <label className="label" htmlFor="question-text"><span>Pertanyaan <span className="req" aria-hidden="true">*</span></span></label>
+                  <textarea className="textarea" id="question-text" value={form.question} onChange={(event) => set("question", event.target.value)} rows={3} required />
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => edit(question)}
-                    disabled={busy}
-                    aria-label="Edit soal"
-                  >
-                    <AapmIcon name="edit" className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setPendingQuestionDelete(question)}
-                    disabled={busy || Boolean(conflict)}
-                    aria-label="Hapus soal"
-                  >
-                    <AapmIcon name="delete" className="h-4 w-4 text-danger" />
-                  </Button>
+                <div className="field">
+                  <span className="label" id="lbl-opsi"><span>Opsi jawaban <span className="req" aria-hidden="true">*</span></span><span className="opt">Tandai satu jawaban benar</span></span>
+                  <div className="stack gap-2" role="radiogroup" aria-labelledby="lbl-opsi" aria-describedby="hint-opsi">
+                    {optionKeys.map((key, index) => (
+                      <div key={key} className="row gap-3">
+                        <label className="check"><input type="radio" name="question-correct" checked={form.correctIndex === String(index)} onChange={() => set("correctIndex", String(index))} aria-label={`Jawaban benar: opsi ${letters[index]}`} /></label>
+                        <div className="input grow">
+                          <span className="t-caption t-strong t-muted">{letters[index]}</span>
+                          <input id={`question-${key}`} type="text" value={form[key]} onChange={(event) => set(key, event.target.value)} required={index < 2} aria-label={`Opsi ${letters[index]}${index < 2 ? "" : " (opsional)"}`} />
+                          {form.correctIndex === String(index) && form[key] ? <span className="chip chip-success"><Ic name="check" />Benar</span> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="hint t-num" id="hint-opsi">{filledOptions} dari maks. 4 opsi · opsi A dan B wajib</span>
+                </div>
+                <div className="field">
+                  <span className="label" id="lbl-sulit">Kesulitan</span>
+                  <div className="seg seg-block" role="group" aria-labelledby="lbl-sulit">
+                    {Object.entries(difficultyLabel).map(([value, label]) => <button key={value} type="button" aria-pressed={form.difficulty === value} onClick={() => set("difficulty", value)}>{label}</button>)}
+                  </div>
+                </div>
+                <div className="field">
+                  <label className="label" htmlFor="question-explanation"><span>Penjelasan</span><span className="opt">Tampil setelah peserta menjawab</span></label>
+                  <textarea className="textarea" id="question-explanation" value={form.explanation} onChange={(event) => set("explanation", event.target.value)} rows={3} />
+                </div>
+                <div className="field">
+                  <label className="label" htmlFor="question-objective">Tujuan pembelajaran</label>
+                  <div className="input"><input id="question-objective" type="text" value={form.learningObjective} onChange={(event) => set("learningObjective", event.target.value)} /></div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="p-5 text-sm leading-6 text-muted-foreground">
-              Belum ada soal. Tambahkan soal pertama dari form di samping.
-            </div>
-          )}
-        </div>
-      </section>
-      <section className="aapm-editor-panel" aria-labelledby="question-form-title">
-        <header className="aapm-editor-panel__head">
-          <IconTile icon={selected ? "edit" : "add"} hue="green" size="sm" shape="circle" />
-          <div className="min-w-0 flex-1">
-            <h2 id="question-form-title" className="aapm-editor-panel__title">
-              {selected ? "Edit soal" : "Tambah soal"}
-            </h2>
-          </div>
-          {selected && (
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={questionWriteBusy}
-              onClick={cancelEdit}
-            >
-              Batal
-            </Button>
-          )}
-        </header>
-        <form onSubmit={save} className="grid gap-3">
-          <fieldset disabled={busy} className="grid gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="question-text">Pertanyaan</Label>
-            <Textarea
-              id="question-text"
-              value={form.question}
-              onChange={(event) => set("question", event.target.value)}
-              rows={3}
-              required
-            />
-          </div>
-          {[
-            ["optionA", "Opsi 1"],
-            ["optionB", "Opsi 2"],
-            ["optionC", "Opsi 3 (opsional)"],
-            ["optionD", "Opsi 4 (opsional)"],
-          ].map(([key, label]) => (
-            <div key={key} className="space-y-1.5">
-              <Label htmlFor={`question-${key}`}>{label}</Label>
-              <Input
-                id={`question-${key}`}
-                value={form[key]}
-                onChange={(event) => set(key, event.target.value)}
-                required={key === "optionA" || key === "optionB"}
-              />
-            </div>
-          ))}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="question-correct">Jawaban benar</Label>
-              <Select
-                value={form.correctIndex}
-                onValueChange={(value) => set("correctIndex", value)}
-              >
-                <SelectTrigger id="question-correct">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[0, 1, 2, 3].map((index) => (
-                    <SelectItem key={index} value={String(index)}>
-                      Opsi {index + 1}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="question-difficulty">Kesulitan</Label>
-              <Select
-                value={form.difficulty}
-                onValueChange={(value) => set("difficulty", value)}
-              >
-                <SelectTrigger id="question-difficulty">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">Mudah</SelectItem>
-                  <SelectItem value="medium">Sedang</SelectItem>
-                  <SelectItem value="hard">Sulit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="question-explanation">Penjelasan</Label>
-            <Textarea
-              id="question-explanation"
-              value={form.explanation}
-              onChange={(event) => set("explanation", event.target.value)}
-              rows={2}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="question-objective">Tujuan pembelajaran</Label>
-            <Input
-              id="question-objective"
-              value={form.learningObjective}
-              onChange={(event) => set("learningObjective", event.target.value)}
-            />
-          </div>
-          <Button
-            className="w-full"
-            type="submit"
-            variant={JSON.stringify(form) !== JSON.stringify(emptyQuestion) ? "primary" : "secondary"}
-            disabled={busy || Boolean(conflict) || saveQuestion.isPending}
-          >
-            {saveQuestion.isPending
-              ? "Menyimpan…"
-              : selected
-                ? "Simpan soal ke draf"
-                : "Tambah soal ke draf"}
-          </Button>
-          {JSON.stringify(form) !== JSON.stringify(emptyQuestion) && <Button type="button" variant="secondary" disabled={questionWriteBusy} onClick={cancelEdit}>Batalkan perubahan soal</Button>}
-          </fieldset>
-        </form>
-      </section>
+              <div className="card-foot wrap">
+                {dirtyForm && <button type="button" className="btn btn-ghost btn-sm btn-block-sm" disabled={questionWriteBusy} onClick={cancelEdit}>Batalkan perubahan soal</button>}
+                <Button
+                  className="btn-block-sm ml-auto"
+                  type="submit"
+                  variant={dirtyForm ? "primary" : "secondary"}
+                  disabled={busy || Boolean(conflict) || saveQuestion.isPending}
+                >
+                  {saveQuestion.isPending
+                    ? "Menyimpan…"
+                    : selected
+                      ? "Simpan soal ke draf"
+                      : "Tambah soal ke draf"}
+                </Button>
+              </div>
+            </fieldset>
+          </form>
+        </section>
       </div>
+      <p className="row gap-2 t-support t-muted" style={{ marginTop: "var(--s-4)" }}><Ic name="shield" size="sm" />Soal terbit dan percobaan aktif tetap utuh sampai revisi baru diterbitkan.</p>
       <ConfirmDialog
         open={Boolean(pendingQuestionDelete)}
         onOpenChange={(open) => !open && setPendingQuestionDelete(null)}
@@ -973,7 +910,21 @@ function QuestionEditor({ moduleId, draftVersion, busy, conflict, onVersion, onE
           if (question) remove(question);
         }}
       />
-    </>
+    </div>
+  );
+}
+
+/** Focus frame for the loading and error states, before the editor bar has data. */
+function EditorFrame({ courseId, children }) {
+  return (
+    <div className="focus aapm-editor-focus" data-tone="calm">
+      <header className="focus-bar">
+        <Link className="btn btn-ghost btn-icon btn-quiet" to={courseId ? `/admin/courses/${courseId}` : "/admin/courses"} aria-label="Kembali ke kurikulum"><Ic name="arrow-left" /></Link>
+        <span className="vr" style={{ margin: "14px 0" }} />
+        <h1 className="t-heading grow t-clamp-1">Editor modul</h1>
+      </header>
+      <div className="focus-body"><main className="focus-main"><div className="page page-narrow">{children}</div></main></div>
+    </div>
   );
 }
 
@@ -1035,6 +986,7 @@ export default function AdminModuleEditor() {
   const [savedAt, setSavedAt] = useState(null);
   // Which bottom sheet is open on small screens: the outline or the inspector.
   const [drawer, setDrawer] = useState(null);
+  const [barActions, setBarActions] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const handleBlockSelection = React.useCallback((selection) => {
     setSelectedBlock(selection);
@@ -1676,44 +1628,61 @@ export default function AdminModuleEditor() {
   };
   if ((!isNew && isLoading) || (isNew && isLoadingCourse))
     return (
-      <AdminPageFrame title="Editor modul">
+      <EditorFrame courseId={courseId}>
         <AdminLoading label="Memuat modul…" />
-      </AdminPageFrame>
+      </EditorFrame>
     );
   if (!isNew && error)
     return (
-      <AdminPageFrame title="Editor modul">
+      <EditorFrame courseId={courseId}>
         <AdminError error={error} onRetry={refetch} />
-      </AdminPageFrame>
+      </EditorFrame>
     );
   return (
-    <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); if (tab === "preview") loadServerPreview(); }}>
-      <AdminPageFrame
-        editor
-        title={isNew ? "Modul baru" : "Edit modul"}
-        actions={(
-          <>
-            <TabsList className="aapm-editor-mode" aria-label="Mode editor">
-              <TabsTrigger value="content" icon="edit">Konten</TabsTrigger>
-              <TabsTrigger value="preview" icon="eye" disabled={isNew}>Pratinjau</TabsTrigger>
-              <TabsTrigger value="assessment" icon="quiz" disabled={isNew}>Bank soal</TabsTrigger>
-            </TabsList>
-            <Button type="button" variant="secondary" onClick={() => requestNavigation(`/modules/${form.moduleNumber}`)} disabled={isNew || !serverView?.publishedRevisionId || serverView?.lifecycleStatus === "archived"}><AapmIcon name="eye" />Lihat di Academy</Button>
-          </>
-        )}
-      >
-        {conflict && <Surface className="mb-5 space-y-3 p-4" role="alert" tabIndex={-1} ref={conflictRef}>
-          <h2 className="font-semibold">Draf berubah di server</h2>
-          <p>Form dan draf browser Anda tetap dipertahankan. Muat ulang akan mengganti perubahan lokal dengan draf server. Pertahankan perubahan saya mengambil versi terbaru tanpa menggabungkan isi; simpan berikutnya mengganti draf server dengan form Anda.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" disabled={operationBusy} onClick={() => recoverConflict(false)}>Muat ulang draf terbaru</Button>
-            <Button type="button" disabled={operationBusy} onClick={() => recoverConflict(true)}>Pertahankan perubahan saya</Button>
+    <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); if (tab === "preview") loadServerPreview(); }} className="focus aapm-editor-focus" data-tone="calm">
+      <header className="focus-bar">
+        <div className="row gap-3" style={{ flex: "1 1 0", minWidth: 0 }}>
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Kembali ke kurikulum" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}><Ic name="arrow-left" /></button>
+          <span className="vr" style={{ margin: "14px 0" }} />
+          <div className="stack" style={{ minWidth: 0 }}>
+            <span className="t-caption t-muted t-clamp-1">Editor modul · Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</span>
+            <h1 className="t-heading t-clamp-1">{form.title || (isNew ? "Modul baru" : "Edit modul")}</h1>
           </div>
-          {saveError && <p>{saveError}</p>}
-        </Surface>}
+        </div>
+        <TabsList variant="segmented" className="hide-sm aapm-editor-mode" aria-label="Mode editor">
+          <TabsTrigger value="content"><Ic name="edit" />Konten</TabsTrigger>
+          <TabsTrigger value="preview" disabled={isNew}><Ic name="eye" />Pratinjau</TabsTrigger>
+          <TabsTrigger value="assessment" disabled={isNew}><Ic name="exam" />Bank soal</TabsTrigger>
+        </TabsList>
+        <div className="row gap-3 justify-end" style={{ flex: "1 1 0", minWidth: 0 }}>
+          <span className={`chip chip-dot hide-md ${isSaving ? "chip-ai" : saveError ? "chip-danger" : isDirty || questionDirty ? "chip-warning" : "chip-success"}`} aria-hidden="true">
+            {isSaving ? "Menyimpan…" : saveError ? "Gagal disimpan" : isDirty || questionDirty ? "Belum disimpan" : "Tersimpan"}
+          </span>
+          <span className="vr hide-md" style={{ margin: "14px 0" }} />
+          {isNew ? (
+            <button type="button" className="btn btn-primary btn-sm" disabled={operationBusy || Boolean(conflict)} onClick={submitEditorForm}>Simpan draf</button>
+          ) : <div ref={setBarActions} className="row" />}
+        </div>
+      </header>
+      <div className="focus-body">
+        <div className="aapm-editor-stage">
+        {conflict && <div className="alert alert-warning editor-notices" role="alert" tabIndex={-1} ref={conflictRef}>
+          <Ic name="alert" />
+          <div className="stack gap-2 grow">
+            <span className="alert-title">Draf berubah di server</span>
+            <p>Form dan draf browser Anda tetap dipertahankan. Muat ulang akan mengganti perubahan lokal dengan draf server. Pertahankan perubahan saya mengambil versi terbaru tanpa menggabungkan isi; simpan berikutnya mengganti draf server dengan form Anda.</p>
+            <div className="row wrap gap-2">
+              <Button type="button" size="sm" variant="secondary" disabled={operationBusy} onClick={() => recoverConflict(false)}>Muat ulang draf terbaru</Button>
+              <Button type="button" size="sm" disabled={operationBusy} onClick={() => recoverConflict(true)}>Pertahankan perubahan saya</Button>
+            </div>
+            {saveError && <p className="t-support">{saveError}</p>}
+          </div>
+        </div>}
         {!isNew && editorReady && <CurriculumPublishingPanel key={moduleId} moduleId={moduleId} view={serverView} draftVersion={draftVersion}
           dirty={isDirty || questionDirty} changeKey={formSnapshot} conflict={conflict} busy={operationBusy}
-          onMutation={mutateLifecycle} onError={handleEditorialError} onRecoverValidation={recoverValidation} />}
+          onMutation={mutateLifecycle} onError={handleEditorialError} onRecoverValidation={recoverValidation}
+          actionsContainer={barActions}
+          menuItems={[{ label: "Lihat di Academy", ic: "external", disabled: !serverView?.publishedRevisionId || serverView?.lifecycleStatus === "archived", onSelect: () => requestNavigation(`/modules/${form.moduleNumber}`) }]} />}
         <TabsContent value="content" className="aapm-editor-content">
           <form id="module-editor-form" onSubmit={save} onInvalid={handleInvalidField} className="aapm-editor-form aapm-editor-workspace">
             <EditorOutline
@@ -1732,12 +1701,12 @@ export default function AdminModuleEditor() {
             />
             <div className="aapm-editor-canvas">
               <header className="aapm-editor-doc-head">
-                <div className="aapm-meta-row">
-                  <button type="button" className="aapm-chip" data-hue={levelVisual(form.levelNumber).hue} onClick={() => openInspector("module")}>
-                    <AapmIcon name="layers" />Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}
+                <div className="row wrap gap-2">
+                  <button type="button" className="chip chip-hue" data-hue={levelVisual(form.levelNumber).hue} onClick={() => openInspector("module")}>
+                    Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}
                   </button>
-                  <button type="button" className="aapm-chip" data-tone="outline" onClick={() => openInspector("module")}>Modul {form.moduleNumber || "—"}</button>
-                  {form.category ? <span className="aapm-chip" data-tone="outline">{form.category}</span> : null}
+                  <button type="button" className="chip" onClick={() => openInspector("module")}>Modul {form.moduleNumber || "—"}</button>
+                  {form.category ? <span className="chip chip-outline">{form.category}</span> : null}
                 </div>
                 <label className="aapm-visually-hidden" htmlFor="module-title">Judul modul</label>
                 <textarea
@@ -1762,11 +1731,11 @@ export default function AdminModuleEditor() {
                 />
               </header>
               <section id="module-section-content" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-content" ? "true" : "false"} aria-labelledby="editor-content-title">
-                <header className="aapm-editor-panel__head">
-                  <IconTile icon="lesson" hue="green" size="sm" shape="circle" />
-                  <div className="min-w-0">
-                    <h2 id="editor-content-title" className="aapm-editor-panel__title">Materi</h2>
-                    <p className="aapm-editor-panel__description">Teks, gambar, slide, video, tabel, dan tautan — tersusun seperti yang dibaca learner.</p>
+                <header className="lesson-sect-head" data-hue="blue">
+                  <span className="tile tile-sm"><Ic name="book" /></span>
+                  <div className="stack grow" style={{ minWidth: 0 }}>
+                    <h2 id="editor-content-title" className="t-section">Materi</h2>
+                    <p className="t-caption t-muted">Teks, gambar, slide, video, tabel, dan tautan — tersusun seperti yang dibaca learner.</p>
                   </div>
                 </header>
                 <EditorialComposer
@@ -1789,11 +1758,11 @@ export default function AdminModuleEditor() {
               </section>
 
               <section id="module-section-outcomes" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-outcomes" ? "true" : "false"} aria-labelledby="editor-outcomes-title">
-                <header className="aapm-editor-panel__head">
-                  <IconTile icon="target" hue="orange" size="sm" shape="circle" />
-                  <div className="min-w-0">
-                    <h2 id="editor-outcomes-title" className="aapm-editor-panel__title">Tujuan & insight</h2>
-                    <p className="aapm-editor-panel__description">Satu baris = satu poin. Tekan Enter untuk menambah poin baru.</p>
+                <header className="lesson-sect-head" data-hue="green">
+                  <span className="tile tile-sm"><Ic name="target" /></span>
+                  <div className="stack grow" style={{ minWidth: 0 }}>
+                    <h2 id="editor-outcomes-title" className="t-section">Tujuan & insight</h2>
+                    <p className="t-caption t-muted">Satu baris = satu poin. Tekan Enter untuk menambah poin baru.</p>
                   </div>
                 </header>
                 <div className="aapm-editor-outcome-grid">
@@ -1816,11 +1785,11 @@ export default function AdminModuleEditor() {
               </section>
 
               <section id="module-section-practice" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-practice" ? "true" : "false"} aria-labelledby="editor-practice-title">
-                <header className="aapm-editor-panel__head">
-                  <IconTile icon="practice" hue="teal" size="sm" shape="circle" />
-                  <div className="min-w-0">
-                    <h2 id="editor-practice-title" className="aapm-editor-panel__title">Praktik</h2>
-                    <p className="aapm-editor-panel__description">Tugas yang dikerjakan di kandang dan checklist observasinya.</p>
+                <header className="lesson-sect-head" data-hue="teal">
+                  <span className="tile tile-sm"><Ic name="egg" /></span>
+                  <div className="stack grow" style={{ minWidth: 0 }}>
+                    <h2 id="editor-practice-title" className="t-section">Praktik</h2>
+                    <p className="t-caption t-muted">Tugas yang dikerjakan di kandang dan checklist observasinya.</p>
                   </div>
                 </header>
                 <div className="aapm-editor-practice-fields">
@@ -1846,7 +1815,7 @@ export default function AdminModuleEditor() {
               <div className="aapm-editor-inspector__head">
                 <IconButton className="aapm-editor-drawer-close" label="Tutup inspektor" tooltip={false} icon="close" size="sm" onClick={closeDrawer} />
               </div>
-              <div className="aapm-segmented aapm-inspector-tabs" role="tablist" aria-label="Panel inspektor">
+              <div className="seg seg-block aapm-inspector-tabs" role="tablist" aria-label="Panel inspektor">
                 {INSPECTOR_TABS.map((tab) => (
                   <button
                     key={tab.id}
@@ -1856,7 +1825,6 @@ export default function AdminModuleEditor() {
                     aria-selected={inspectorTab === tab.id}
                     aria-controls={tab.id === "module" ? "module-section-identity" : `inspector-panel-${tab.id}`}
                     tabIndex={inspectorTab === tab.id ? 0 : -1}
-                    className="aapm-tabs-trigger"
                     onClick={() => setInspectorTab(tab.id)}
                     onKeyDown={(event) => {
                       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -1869,22 +1837,22 @@ export default function AdminModuleEditor() {
                       document.getElementById(`inspector-tab-${nextTab}`)?.focus();
                     }}
                   >
-                    <AapmIcon name={tab.icon} />{tab.label}
+                    {tab.label}
                   </button>
                 ))}
               </div>
-              <section className="aapm-card" id="inspector-panel-block" role="tabpanel" aria-labelledby="inspector-tab-block" hidden={inspectorTab !== "block"}>
-                <div className="aapm-card__header">
-                  <h2 className="aapm-card__title">{selectedBlock ? "Pengaturan blok" : "Blok materi"}</h2>
+              <section className="card card-pad stack gap-4" id="inspector-panel-block" role="tabpanel" aria-labelledby="inspector-tab-block" hidden={inspectorTab !== "block"}>
+                <div className="stack gap-0-5">
+                  <h2 className="card-title">{selectedBlock ? "Pengaturan blok" : "Blok materi"}</h2>
                 </div>
-                <div className="aapm-card__content" ref={setBlockInspectorNode} />
+                <div className="stack gap-3" ref={setBlockInspectorNode} />
               </section>
-              <section className="aapm-card" id="module-section-identity" role="tabpanel" hidden={inspectorTab !== "module"} data-active={activeSection === "module-section-identity" ? "true" : "false"} aria-labelledby="inspector-tab-module">
-                <div className="aapm-card__header">
-                  <h2 id="editor-identity-title" className="aapm-card__title">Identitas modul</h2>
-                  <p className="aapm-card__description">Posisi di kurikulum dan informasi di katalog learner.</p>
+              <section className="card card-pad stack gap-4" id="module-section-identity" role="tabpanel" hidden={inspectorTab !== "module"} data-active={activeSection === "module-section-identity" ? "true" : "false"} aria-labelledby="inspector-tab-module">
+                <div className="stack gap-0-5">
+                  <h2 id="editor-identity-title" className="card-title">Identitas modul</h2>
+                  <p className="card-desc">Posisi di kurikulum dan informasi di katalog learner.</p>
                 </div>
-                <div className="aapm-card__content grid gap-3" id="module-identity-fields">
+                <div className="stack gap-3" id="module-identity-fields">
                   <div className="grid grid-cols-2 gap-3">
                     <Field id="module-level-number" label="No. chapter" required><Input type="number" min="1" max="20" value={form.levelNumber} onChange={(event) => {
                       const value = event.target.value;
@@ -1907,19 +1875,19 @@ export default function AdminModuleEditor() {
                 </div>
               </section>
 
-              <section className="aapm-card" aria-labelledby="editor-appearance-title" hidden={inspectorTab !== "module"}>
-                <div className="aapm-card__header">
-                  <h2 id="editor-appearance-title" className="aapm-card__title">Tampilan learner</h2>
-                  <p className="aapm-card__description">Atur bagaimana tujuan dan praktik tampil di lesson.</p>
+              <section className="card card-pad stack gap-4" aria-labelledby="editor-appearance-title" hidden={inspectorTab !== "module"}>
+                <div className="stack gap-0-5">
+                  <h2 id="editor-appearance-title" className="card-title">Tampilan learner</h2>
+                  <p className="card-desc">Atur bagaimana tujuan dan praktik tampil di lesson.</p>
                 </div>
-                <div className="aapm-card__content grid gap-3">
-                  <p className="aapm-text-overline m-0">Tujuan & insight</p>
+                <div className="stack gap-3">
+                  <p className="t-overline t-muted">Tujuan & insight</p>
                   <div className="grid grid-cols-2 gap-3">
                     <Field id="presentation-objectives-layout" label="Layout"><Select value={editorialPresentation.objectives.layout} onValueChange={(value) => setEditorialPresentation("objectives", "layout", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="columns">Dua kolom</SelectItem><SelectItem value="stacked">Satu kolom</SelectItem></SelectContent></Select></Field>
                     <Field id="presentation-objectives-density" label="Kepadatan"><Select value={editorialPresentation.objectives.density} onValueChange={(value) => setEditorialPresentation("objectives", "density", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></Field>
                   </div>
                   <Field id="presentation-objectives-tone" label="Warna"><HueSelect value={editorialPresentation.objectives.tone} onChange={(value) => setEditorialPresentation("objectives", "tone", value)} /></Field>
-                  <p className="aapm-text-overline m-0 mt-2">Praktik</p>
+                  <p className="t-overline t-muted" style={{ marginTop: 8 }}>Praktik</p>
                   <div className="grid grid-cols-2 gap-3">
                     <Field id="presentation-practical-density" label="Kepadatan"><Select value={editorialPresentation.practical.density} onValueChange={(value) => setEditorialPresentation("practical", "density", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="comfortable">Nyaman</SelectItem><SelectItem value="compact">Kompak</SelectItem></SelectContent></Select></Field>
                     <Field id="presentation-practical-checklist" label="Checklist"><Select value={editorialPresentation.practical.checklistStyle} onValueChange={(value) => setEditorialPresentation("practical", "checklistStyle", value)}><SelectTrigger size="sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="checkbox">Interaktif</SelectItem><SelectItem value="list">Daftar ringkas</SelectItem></SelectContent></Select></Field>
@@ -1928,15 +1896,15 @@ export default function AdminModuleEditor() {
                 </div>
               </section>
 
-              <section className="aapm-card aapm-editor-ai" id="inspector-panel-ai" role="tabpanel" aria-labelledby="inspector-tab-ai" hidden={inspectorTab !== "ai"}>
-                <div className="aapm-card__header">
+              <section className="card card-pad stack gap-3 aapm-editor-ai" id="inspector-panel-ai" role="tabpanel" aria-labelledby="inspector-tab-ai" hidden={inspectorTab !== "ai"}>
+                <div className="stack gap-0-5">
                   <div className="flex items-center gap-2">
                     <IconTile icon="ai" hue="orange" size="xs" shape="circle" />
-                    <h2 id="editor-ai-title" className="aapm-card__title">Bantuan APPI</h2>
+                    <h2 id="editor-ai-title" className="card-title">Bantuan APPI</h2>
                   </div>
-                  <p className="aapm-card__description">Semua saran tampil sebagai pratinjau dan baru diterapkan setelah Anda setujui.</p>
+                  <p className="card-desc">Semua saran tampil sebagai pratinjau dan baru diterapkan setelah Anda setujui.</p>
                 </div>
-                <div className="aapm-card__content grid gap-3">
+                <div className="stack gap-3">
                   <AdminModuleCompanion key={editorContextKey} module={form} onApplyModule={applyCompanionDraft} />
                   <AiModuleDraft form={form} toast={toast} onApply={applyCompanionDraft} />
                 </div>
@@ -1959,11 +1927,14 @@ export default function AdminModuleEditor() {
             disabled={operationBusy || Boolean(conflict)}
           />
         </TabsContent>
-        <TabsContent value="preview" className="mt-5">
-          <p role="status" className="mb-3 text-sm">Pratinjau draf server tersimpan{previewData ? ` · v${previewData.draft.version}` : ""}. {isDirty || questionDirty ? "Perubahan lokal belum termasuk; simpan draf untuk memperbarui pratinjau." : ""}</p>
-          <Button type="button" variant="secondary" disabled={previewLoading || operationBusy} onClick={loadServerPreview}>Muat ulang pratinjau</Button>
+        <TabsContent value="preview" className="aapm-editor-scroll">
+          <div className="stack gap-4" style={{ maxWidth: 880, margin: "0 auto", padding: "24px 24px 64px" }}>
+          <div className="row wrap between gap-3">
+          <p role="status" className="t-support t-muted">Pratinjau draf server tersimpan{previewData ? ` · v${previewData.draft.version}` : ""}. {isDirty || questionDirty ? "Perubahan lokal belum termasuk; simpan draf untuk memperbarui pratinjau." : ""}</p>
+          <Button type="button" size="sm" variant="secondary" disabled={previewLoading || operationBusy} onClick={loadServerPreview}><Ic name="refresh" />Muat ulang pratinjau</Button>
+          </div>
           {previewLoading && <AdminLoading label="Memuat pratinjau draf…" />}
-          {previewError && <p role="alert">{previewError}</p>}
+          {previewError && <div className="alert alert-danger" role="alert"><Ic name="alert" /><div>{previewError}</div></div>}
           {previewData && <>
           <Surface className="p-3 sm:p-5 lg:p-7">
             <div className="mx-auto max-w-[1280px]">
@@ -1997,13 +1968,15 @@ export default function AdminModuleEditor() {
             </div>
           </Surface>
           </>}
+          </div>
         </TabsContent>
-        <TabsContent value="assessment" forceMount hidden={activeTab !== "assessment"} className="mt-5 aapm-editor-content">
+        <TabsContent value="assessment" forceMount hidden={activeTab !== "assessment"} className="aapm-editor-scroll aapm-editor-content">
           {!isNew && <QuestionEditor key={moduleId} moduleId={Number(moduleId)} draftVersion={draftVersion} busy={operationBusy} conflict={conflict}
             beginWrite={beginEditorialWrite} endWrite={endEditorialWrite} onVersion={handleQuestionVersion} onError={handleEditorialError}
             onDirty={setQuestionDirty} resetKey={questionResetKey} />}
         </TabsContent>
-      </AdminPageFrame>
+        </div>
+      </div>
       <ConfirmDialog
         open={Boolean(pendingDraft)}
         onOpenChange={(open) => {

@@ -12,14 +12,14 @@ declare(strict_types=1);
  */
 
 const EDITORIAL_IMAGE_MAX_BYTES = 20971520;
-const EDITORIAL_PRESENTATION_MAX_BYTES = 52428800;
+const EDITORIAL_PRESENTATION_MAX_BYTES = 104857600;
 const EDITORIAL_VIDEO_MAX_BYTES = 314572800;
 const EDITORIAL_IMAGE_MAX_WIDTH = 8000;
 const EDITORIAL_IMAGE_MAX_HEIGHT = 8000;
 const EDITORIAL_IMAGE_MAX_PIXELS = 40000000;
 const EDITORIAL_PPTX_MAX_ENTRIES = 1000;
-const EDITORIAL_PPTX_MAX_ENTRY_BYTES = 52428800;
-const EDITORIAL_PPTX_MAX_UNCOMPRESSED_BYTES = 209715200;
+const EDITORIAL_PPTX_MAX_ENTRY_BYTES = 104857600;
+const EDITORIAL_PPTX_MAX_UNCOMPRESSED_BYTES = 419430400;
 // Manual editorial slides stay intentionally short, while an uploaded deck can
 // accommodate a complete training chapter without turning the learner UI into
 // an unbounded document viewer.

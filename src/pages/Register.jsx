@@ -3,12 +3,11 @@ import { Link, Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Button, Alert, Field, InputGroup } from "@/components/primitives";
-import AuthLayout from "@/components/AuthLayout";
+import AuthLayout, { AuthDivider, GoogleButton } from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
-import GoogleIcon from "@/components/GoogleIcon";
+import { Ic } from "@/design-system/canvas";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import {
-  NEW_PASSWORD_HINT,
   collectErrors,
   confirmPasswordError,
   emailError,
@@ -85,23 +84,28 @@ export default function Register() {
   if (submitted) {
     return (
       <AuthLayout
+        icon="check-circle"
+        tone="success"
         title="Periksa email Anda"
         subtitle="Jika alamat email dapat digunakan, instruksi verifikasi akan dikirim."
-        footer={
-          <Link to="/login" className="aapm-link">
-            Kembali ke masuk
-          </Link>
-        }
+        back={{ to: "/login", label: "Kembali ke masuk" }}
       >
-        <Alert tone="info" description="Buka tautan di email untuk mengaktifkan akun. Tautan berlaku 24 jam dan hanya dapat dipakai sekali." className="aapm-auth__alert" />
+        {email.trim() ? (
+          <div className="inset row gap-3" style={{ padding: "var(--s-2) var(--s-2) var(--s-2) var(--s-4)" }}>
+            <Ic name="mail" className="t-muted" />
+            <span className="grow t-clamp-1 t-medium">{email.trim()}</span>
+            <button type="button" className="btn btn-ghost btn-sm" aria-label="Ubah alamat email" onClick={() => setSubmitted(false)}>Ubah</button>
+          </div>
+        ) : null}
+        <div className="alert alert-info" role="note"><Ic name="clock" /><div>Buka tautan di email untuk mengaktifkan akun. Tautan berlaku 24 jam dan hanya dapat dipakai sekali.</div></div>
         {devLink && (
           <p className="aapm-text-caption">
-            Mode pengembangan: <a className="aapm-link" href={devLink}>buka tautan verifikasi</a>
+            Mode pengembangan: <a className="btn btn-link t-caption" href={devLink}>buka tautan verifikasi</a>
           </p>
         )}
-        {resendNote && <p className="aapm-text-caption">{resendNote}</p>}
+        {resendNote && <p className="t-caption t-muted" aria-live="polite">{resendNote}</p>}
         <Button type="button" variant="secondary" size="lg" block onClick={handleResend}>
-          Kirim ulang instruksi
+          <Ic name="refresh" />Kirim ulang instruksi
         </Button>
       </AuthLayout>
     );
@@ -116,14 +120,14 @@ export default function Register() {
           Sudah punya akun?{" "}
           <Link
             to={"/login" + (safeReturnTo() !== "/" ? "?returnTo=" + encodeURIComponent(safeReturnTo()) : "")}
-            className="aapm-link"
+            className="btn btn-link"
           >
             Masuk
           </Link>
         </>
       }
     >
-      {error && <Alert tone="danger" description={error} className="aapm-auth__alert" />}
+      {error && <Alert tone="danger" description={error} />}
 
       <form onSubmit={handleSubmit} noValidate>
         <Field id="email" label="Alamat email" error={fieldErrors.email}>
@@ -142,8 +146,7 @@ export default function Register() {
           id="password"
           label="Kata sandi"
           autoComplete="new-password"
-          placeholder="Minimal 8 karakter"
-          hint={NEW_PASSWORD_HINT}
+          requirements
           error={fieldErrors.password}
           value={password}
           onChange={(e) => { setPassword(e.target.value); clearError("password"); }}
@@ -165,17 +168,8 @@ export default function Register() {
       </form>
       {googleAvailable && (
         <>
-          <div className="aapm-auth__divider">atau</div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            block
-            onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(safeReturnTo())}`; }}
-          >
-            <GoogleIcon />
-            Daftar dengan Google
-          </Button>
+          <AuthDivider />
+          <GoogleButton label="Daftar dengan Google" onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(safeReturnTo())}`; }} />
         </>
       )}
     </AuthLayout>

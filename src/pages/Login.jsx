@@ -3,9 +3,8 @@ import { Link, Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Button, Alert, Field, InputGroup } from "@/components/primitives";
-import AuthLayout from "@/components/AuthLayout";
+import AuthLayout, { AuthDivider, GoogleButton } from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
-import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { collectErrors, emailError, focusFirstError, passwordError } from "@/lib/authValidation";
 
@@ -82,21 +81,21 @@ export default function Login() {
           Belum punya akun?{" "}
           <Link
             to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="aapm-link"
+            className="btn btn-link"
           >
             Buat akun
           </Link>
         </>
       }
     >
-      {error && <Alert tone="danger" description={error} className="aapm-auth__alert" />}
+      {error && <Alert tone="danger" description={error} />}
       {verificationPending && (
-        <div className="aapm-auth__resend">
-          <Alert tone="info" description="Verifikasi alamat email Anda untuk masuk. Periksa kotak masuk atau minta instruksi baru." className="aapm-auth__alert" />
+        <div className="stack gap-3">
+          <Alert tone="info" description="Verifikasi alamat email Anda untuk masuk. Periksa kotak masuk atau minta instruksi baru." />
           <Button type="button" variant="secondary" size="lg" block onClick={handleResend}>
             Kirim ulang instruksi verifikasi
           </Button>
-          {resendNote && <p className="aapm-text-caption">{resendNote}</p>}
+          {resendNote && <p className="t-caption t-muted" aria-live="polite">{resendNote}</p>}
         </div>
       )}
 
@@ -131,7 +130,7 @@ export default function Login() {
             setFieldErrors((current) => ({ ...current, password: "" }));
             setCredentialsRejected(false);
           }}
-          labelAction={<Link to="/forgot-password" className="aapm-link">Lupa kata sandi?</Link>}
+          labelAction={<Link to="/forgot-password" className="btn btn-sm btn-link">Lupa kata sandi?</Link>}
         />
         <Button type="submit" size="lg" block loading={loading}>
           {loading ? "Memeriksa akun…" : "Masuk"}
@@ -139,17 +138,8 @@ export default function Login() {
       </form>
       {googleAvailable && (
         <>
-          <div className="aapm-auth__divider">atau</div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            block
-            onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`; }}
-          >
-            <GoogleIcon />
-            Lanjutkan dengan Google
-          </Button>
+          <AuthDivider />
+          <GoogleButton label="Lanjutkan dengan Google" onClick={() => { window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`; }} />
         </>
       )}
     </AuthLayout>

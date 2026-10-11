@@ -20,9 +20,15 @@ const levelIcons = {
   14: "graduation",
 };
 
+// Canvas icon (`.ic-*`) per level, as drawn on the Redesign v2 path.
+const levelCanvasIcons = {
+  1: "book", 2: "thermo", 3: "egg", 4: "feed", 5: "drop", 6: "wind", 7: "heart",
+  8: "shield", 9: "egg", 10: "chart", 11: "wallet", 12: "layers", 13: "bulb", 14: "grad",
+};
+
 export function levelVisual(levelNumber) {
   const number = Number(levelNumber) || 1;
-  return { hue: hueFor(number), icon: levelIcons[number] || "modules" };
+  return { hue: hueFor(number), icon: levelIcons[number] || "modules", ic: levelCanvasIcons[number] || "book" };
 }
 
 export function moduleVisual(module) {

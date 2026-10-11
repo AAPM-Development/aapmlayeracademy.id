@@ -1,292 +1,294 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge, Button, IconTile, Progress, Segments } from "@/design-system";
+import AppiMascot from "@/components/appi/AppiMascot";
+import { Bar, Egg, Ic, Ring } from "@/design-system/canvas";
+import { certificationTiers } from "@/lib/academyData";
 import { estimateMinutes, levelVisual, moduleVisual } from "@/lib/academyVisuals";
+import { moduleMeta } from "@/lib/learnerCopy";
 import { cn } from "@/lib/utils";
 
+// Course patterns of the Redesign v2 canvas (academy.css §16–17): covers,
+// catalog cards, the egg path with tier rewards, and the lesson outline.
+
 const stateLabel = {
-  completed: "Selesai",
-  current: "Sedang dipelajari",
-  available: "Tersedia",
-  locked: "Terkunci",
+  completed: "tuntas",
+  current: "sedang dipelajari",
+  available: "belum mulai",
+  locked: "terkunci",
 };
 
-/** Colourful module/level artwork: hue tint, white badge icon, large number. */
-export function ModuleCover({ module, level, number, size, state, className, children }) {
+/** Module/level artwork (`.cover`): hue tint, rings, white tile and the big number. */
+export function ModuleCover({ module = undefined, level = undefined, number = undefined, size = undefined, state = undefined, className = undefined, style = undefined, children = undefined }) {
   const visual = module ? moduleVisual(module) : levelVisual(level);
   const label = number ?? module?.moduleNumber;
   return (
-    <div className={cn("aapm-cover", className)} data-hue={visual.hue} data-size={size} data-state={state} aria-hidden="true">
-      <span className="aapm-cover__badge"><AapmIcon name={visual.icon} /></span>
-      {label !== undefined && label !== null ? <span className="aapm-cover__number">{String(label).padStart(2, "0")}</span> : null}
+    <div className={cn("cover", className)} data-hue={visual.hue} data-size={size} data-state={state} style={{ borderRadius: 0, ...style }} aria-hidden="true">
+      <span className="tile"><Ic name={visual.ic} /></span>
       {children}
+      {label !== undefined && label !== null ? <span className="cover-num">{String(label).padStart(2, "0")}</span> : null}
     </div>
   );
 }
 
-/** Catalog card for a module (cover, level chip, title, summary, meta). */
-export function CourseCard({ module, state = "available", to }) {
+function quizPercentOf(module) {
+  return module.progress?.quizTotal ? Math.round(((module.progress.quizScore || 0) / module.progress.quizTotal) * 100) : null;
+}
+
+/** Catalog card: cover with state chip, level chip, title, summary; time and reward in the foot. */
+export function CourseCard({ module, state = "available", to = undefined, index = 0 }) {
   const visual = moduleVisual(module);
+  const quiz = quizPercentOf(module);
   return (
-    <Link to={to || `/modules/${module.moduleNumber}`} className="aapm-course-card" data-state={state}>
-      <ModuleCover module={module} state={state === "locked" ? "locked" : undefined}>
-        {state === "completed" ? <Badge className="aapm-cover__state" tone="solid" icon="check">Selesai</Badge> : null}
-        {state === "current" ? <Badge className="aapm-cover__state" tone="attention" dot>Lanjutkan</Badge> : null}
+    <Link
+      to={to || `/modules/${module.moduleNumber}`}
+      className="card card-tactile stack anim-rise"
+      data-hue={visual.hue}
+      style={{ overflow: "hidden", "--i": Math.min(index, 8) }}
+      aria-current={state === "current" ? "step" : undefined}
+    >
+      <ModuleCover module={module} style={{ height: 112 }}>
+        {state === "completed" ? <span className="chip chip-success cover-chip"><Ic name="check" />Selesai</span> : null}
+        {state === "current" ? <span className="chip chip-ai chip-dot cover-chip">Lanjutkan</span> : null}
       </ModuleCover>
-      <div className="aapm-course-card__body">
-        <div className="aapm-course-card__chips">
-          <Badge hue={visual.hue}>Level {module.level}</Badge>
-          {module.category ? <Badge>{module.category}</Badge> : null}
-        </div>
-        <h3 className="aapm-course-card__title">{module.title}</h3>
-        {module.summary ? <p className="aapm-course-card__summary">{module.summary}</p> : null}
-        <div className="aapm-course-card__meta">
-          <span><AapmIcon name="clock" /> ±{estimateMinutes(module)} menit</span>
-          {module.videoUrl ? <span><AapmIcon name="video" /> Video</span> : null}
-          {module.practicalAssignment ? <span><AapmIcon name="practice" /> Praktik</span> : null}
-        </div>
+      <div className="stack grow gap-2 card-pad">
+        <span className="chip chip-hue" style={{ alignSelf: "flex-start" }}>Level {module.level} · {module.levelName}</span>
+        <h3 className="card-title t-clamp-2">{module.title}</h3>
+        {module.summary ? <p className="t-support t-muted t-clamp-2">{module.summary}</p> : null}
+      </div>
+      <div className="card-foot" style={{ minHeight: 56 }}>
+        <span className="row gap-1 t-caption t-muted"><Ic name="clock" size="xs" />±{estimateMinutes(module)} menit</span>
+        {state === "completed" ? (
+          <span className="row gap-1 t-caption t-success t-strong ml-auto"><Ic name="check-circle" size="xs" />{quiz !== null ? `Kuis ${quiz}%` : "Tuntas"}</span>
+        ) : (
+          <span className="xp ml-auto"><Ic name="star" />+100</span>
+        )}
       </div>
     </Link>
   );
 }
 
-/** Compact row for path lists: numbered hue badge, title, meta, action. */
-export function ModuleRow({ module, state = "available", hue }) {
+/** Compact list row (`.li`) with the module egg. */
+export function ModuleRow({ module, state = "available", hue = undefined }) {
   const resolvedHue = hue || moduleVisual(module).hue;
   return (
     <Link
       to={`/modules/${module.moduleNumber}`}
-      className="aapm-module-row"
-      data-state={state}
+      className="li"
       data-hue={resolvedHue}
-      aria-label={`Modul ${module.moduleNumber}: ${module.title}. ${stateLabel[state] || ""}`}
+      style={{ minHeight: 64, ...(state === "current" ? { background: "var(--ai-soft)" } : null) }}
+      aria-label={`Modul ${module.moduleNumber}: ${module.title}, ${stateLabel[state] || ""}`}
     >
-      <span className="aapm-module-row__index" aria-hidden="true">
-        {state === "completed" ? <AapmIcon name="glyphCheck" /> : state === "locked" ? <AapmIcon name="lock" /> : module.moduleNumber}
+      <Egg size="xs" state={state === "completed" ? "done" : state === "current" ? "current" : undefined}>{state === "completed" ? <Ic name="check" /> : module.moduleNumber}</Egg>
+      <span className="stack grow" style={{ minWidth: 0 }}>
+        <span className="li-title t-clamp-1">{module.title}</span>
+        <span className="li-meta">Level {module.level} · {moduleMeta(module, { short: true })}</span>
       </span>
-      <span className="min-w-0">
-        <span className="aapm-module-row__title">{module.title}</span>
-        <span className="aapm-meta-row">
-          <span className="aapm-meta"><AapmIcon name="clock" />±{estimateMinutes(module)} mnt</span>
-          {module.progress?.quizTotal ? (
-            <span className="aapm-meta"><AapmIcon name="quiz" />Kuis {Math.round(((module.progress.quizScore || 0) / module.progress.quizTotal) * 100)}%</span>
-          ) : null}
-          {state === "current" ? <span className="aapm-meta aapm-module-row__hint">Lanjutkan di sini</span> : null}
-        </span>
-      </span>
-      {state === "locked" ? (
-        <AapmIcon name="chevronRight" className="aapm-module-row__chevron" />
-      ) : (
-        <span className="aapm-module-row__action" aria-hidden="true">
-          <AapmIcon name={state === "completed" ? "refresh" : "play"} />
-        </span>
-      )}
+      <Ic name="chev-right" className="t-muted" />
     </Link>
   );
 }
 
-const trackNodeIcon = { completed: "glyphCheck", locked: "lock" };
+/* ------------------------------------------------------------ Egg path */
+// The path zig-zags like a course map: one smooth wave across all steps.
+const waveX = (step) => Math.round(-Math.sin((step * Math.PI) / 4) * 96);
 
-/** One module on a level's track: state node on the rail, title, meta. */
-function TrackModule({ module }) {
-  const state = module.state || "available";
-  const quizPercent = module.progress?.quizTotal
-    ? Math.round(((module.progress.quizScore || 0) / module.progress.quizTotal) * 100)
-    : null;
+function tierState(tier, completedSet, ownedTiers) {
+  const remaining = tier.modules.filter((number) => !completedSet.has(number));
+  if (ownedTiers.has(tier.number)) return { kind: "owned", label: `Tingkat ${tier.number} · diraih` };
+  if (!remaining.length) return { kind: "ready", label: `Tingkat ${tier.number} · siap diklaim` };
+  if (remaining.length === 1) return { kind: "next", label: `Tingkat ${tier.number} · siap setelah Modul ${remaining[0]}` };
+  return { kind: "later", label: `Tingkat ${tier.number} · ${remaining.length} modul lagi` };
+}
+
+function TierEgg({ tier, state, x }) {
+  const name = `Tingkat ${tier.number} ${tier.name}`;
   return (
-    <li className="aapm-track__item" data-state={state}>
+    <li className="path-step" style={{ "--x": x }}>
       <Link
-        to={`/modules/${module.moduleNumber}`}
-        className="aapm-track__row"
-        aria-label={`Modul ${module.moduleNumber}: ${module.title}. ${stateLabel[state] || ""}`}
-        aria-current={state === "current" ? "step" : undefined}
+        to="/certification"
+        className={cn("egg", (state.kind === "owned" || state.kind === "ready") && "is-gold", state.kind === "ready" && "anim-pulse")}
+        style={state.kind === "owned" || state.kind === "ready" ? undefined : { background: "var(--gold-soft)", color: "var(--gold-ink)", "--egg-ledge": "var(--gold-tint)" }}
+        aria-label={`${name}, ${state.label.split(" · ")[1]}`}
       >
-        <span className="aapm-track__node" aria-hidden="true">
-          {trackNodeIcon[state] ? <AapmIcon name={trackNodeIcon[state]} /> : module.moduleNumber}
-        </span>
-        <span className="aapm-track__body" aria-hidden="true">
-          <span className="aapm-track__eyebrow">
-            Modul {module.moduleNumber}
-            {state === "current" ? <span className="aapm-track__now">{module.progress ? "Lanjutkan di sini" : "Mulai di sini"}</span> : null}
-          </span>
-          <span className="aapm-track__title">{module.title}</span>
-        </span>
-        <span className="aapm-track__meta aapm-meta-row" aria-hidden="true">
-          <span className="aapm-meta"><AapmIcon name="clock" />±{estimateMinutes(module)} mnt</span>
-          {quizPercent !== null ? <span className="aapm-meta"><AapmIcon name="quiz" />Kuis {quizPercent}%</span> : null}
-          {module.progress?.practicalDone ? <span className="aapm-meta"><AapmIcon name="practice" />Praktik</span> : null}
-        </span>
-        <AapmIcon name="chevronRight" className="aapm-track__chevron" />
+        <Ic name="award" />
+        {state.kind === "owned" ? <span className="medal-badge"><Ic name="check" style={{ "--ic": "12px" }} /></span> : null}
       </Link>
+      <span className="path-label">{state.label}</span>
     </li>
   );
 }
 
-/** A level card: a tinted unit band (level, name, progress) over its modules. */
-function LevelTrack({ level }) {
-  const titleId = `track-level-${level.number}`;
-  const done = level.percent === 100;
+function PathModule({ module, x, size, coach }) {
+  const state = module.state || "available";
   return (
-    <section id={`level-${level.number}`} className="aapm-track" data-hue={level.hue} data-current={level.hasCurrent ? "true" : undefined} aria-labelledby={titleId}>
-      <header className="aapm-track__unit">
-        <IconTile className="aapm-track__icon" icon={level.icon} hue={level.hue} size="md" shape="circle" variant="badge" />
-        <div className="aapm-track__unit-copy">
-          <p className="aapm-text-overline aapm-track__level">
-            Level {level.number}
-            {level.hasCurrent ? <Badge tone="attention" dot>Aktif</Badge> : done ? <Badge tone="success" icon="check">Tuntas</Badge> : null}
-          </p>
-          <h3 id={titleId} className="aapm-track__unit-title">{level.name}</h3>
-          {level.description ? <p className="aapm-track__unit-text">{level.description}</p> : null}
+    <li className="path-step" style={{ "--x": x }}>
+      <Link
+        to={`/modules/${module.moduleNumber}`}
+        className={cn("egg", size && `egg-${size}`, state === "completed" && "is-done", state === "current" && "is-current anim-pulse anim-pop")}
+        aria-label={`Modul ${module.moduleNumber}: ${module.title}, ${stateLabel[state] || ""}`}
+        aria-current={state === "current" ? "step" : undefined}
+      >
+        {state === "completed" ? <Ic name="check" /> : module.moduleNumber}
+      </Link>
+      <span className="path-label t-clamp-2">{state === "current" ? <span className="t-ai">{module.title}</span> : module.title}</span>
+      {state === "current" && coach ? (
+        <div className="appi-says hide-sm path-coach">
+          <div className="appi-stage"><AppiMascot mood="wink" size="lg" enter="pop" /></div>
+          <p className="bubble bubble-ai tail-left appi-say">{coach}</p>
         </div>
-        <div className="aapm-track__unit-progress">
-          <span className="aapm-numeric">{level.completed}/{level.total} modul</span>
-          <Progress value={level.percent} label={`Progress ${level.name}`} />
+      ) : null}
+    </li>
+  );
+}
+
+function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
+  const done = level.total && level.completed === level.total;
+  const titleId = `l${level.number}-title`;
+  const coach = level.modules.some((module) => module.state === "current")
+    ? (level.modules.find((module) => module.state === "current")?.progress ? "Lanjutkan di sini!" : "Mulai di sini!")
+    : null;
+  const items = [];
+  level.modules.forEach((module) => {
+    items.push(<PathModule key={`m-${module.moduleNumber}`} module={module} x={waveX(steps.next())} size={done ? "sm" : undefined} coach={coach} />);
+    certificationTiers
+      .filter((tier) => Math.max(...tier.modules) === Number(module.moduleNumber))
+      .forEach((tier) => items.push(<TierEgg key={`t-${tier.number}`} tier={tier} state={tierState(tier, completedSet, ownedTiers)} x={waveX(steps.next())} />));
+  });
+  return (
+    <section className="stack gap-3 anim-rise" id={`level-${level.number}`} data-hue={level.hue} style={{ "--i": Math.min(index + 1, 8), scrollMarginTop: 24 }} aria-labelledby={titleId}>
+      <div className="unit-banner">
+        <span className="tile tile-lg hide-sm"><Ic name={level.ic} /></span>
+        <div className="stack grow gap-0-5" style={{ minWidth: 0 }}>
+          <span className="t-overline">Level {level.number}</span>
+          <h2 className="unit-title" id={titleId}>{level.name}</h2>
+          {level.description ? <p className="t-support t-clamp-1">{level.description}</p> : null}
         </div>
-      </header>
-      <ol className="aapm-track__list">
-        {level.modules.map((module) => <TrackModule key={module.moduleNumber} module={module} />)}
+        <div className="stack items-end gap-1-5">
+          {done ? <span className="chip"><Ic name="check" />Tuntas</span> : level.hasCurrent ? <span className="chip chip-ai chip-dot">Aktif</span> : null}
+          <span className="t-caption t-strong t-num">{level.completed}/{level.total} modul</span>
+        </div>
+      </div>
+      <ol className="path" style={done ? { gap: "var(--s-4)" } : undefined} aria-label={`Modul Level ${level.number}`}>
+        {items}
       </ol>
     </section>
   );
 }
 
 /**
- * Learning track: every level as a card with a tinted unit band over a
- * vertical rail of its modules. The journey cues of a learning path (nodes on
- * a rail, the rail filling behind finished modules, the current step
- * highlighted) laid out on the page grid so the whole curriculum stays
- * scannable on desktop and phones.
+ * Learning path (canvas "Jalur belajar"): every level is a unit banner over
+ * a zig-zag of eggs, with certificate tiers as gold eggs where they unlock.
+ * Finished levels sit compact; levels after the next one fold into one card.
  */
-export function LearningPath({ curriculum = [] }) {
+export function LearningPath({ curriculum = [], completedSet = new Set(), ownedTiers = new Set() }) {
+  const [expanded, setExpanded] = useState(false);
+  const activeIndex = curriculum.findIndex((level) => level.hasCurrent);
+  const visibleUntil = activeIndex < 0 ? curriculum.length : activeIndex + 2;
+  const shown = expanded ? curriculum : curriculum.slice(0, visibleUntil);
+  const folded = expanded ? [] : curriculum.slice(visibleUntil);
+  let step = 0;
+  const steps = { next: () => step++ };
+  const foldedModules = folded.flatMap((level) => level.modules);
   return (
-    <div className="aapm-tracks">
-      {curriculum.map((level) => <LevelTrack key={level.number} level={level} />)}
+    <div className="stack gap-6">
+      {shown.map((level, index) => (
+        <LevelSection key={level.number} level={level} index={index} steps={steps} completedSet={completedSet} ownedTiers={ownedTiers} />
+      ))}
+      {folded.length ? (
+        <section className="card card-dashed card-pad stack gap-4 anim-rise" style={{ "--i": 5 }} aria-labelledby="more-title">
+          <div className="row wrap between gap-3">
+            <div className="stack gap-0-5" style={{ flex: "1 1 240px", minWidth: 0 }}>
+              <h2 className="t-heading" id="more-title">Level {folded[0].number}–{folded[folded.length - 1].number} · {foldedModules.length} modul berikutnya</h2>
+              <p className="t-support t-muted">{folded[0].name} sampai {folded[folded.length - 1].name}.</p>
+            </div>
+            <button className="btn btn-ghost btn-sm" type="button" aria-expanded="false" onClick={() => setExpanded(true)}>Tampilkan semua<Ic name="chev-down" /></button>
+          </div>
+          <ol className="row wrap gap-2" aria-label={`Modul ${foldedModules[0]?.moduleNumber} sampai ${foldedModules[foldedModules.length - 1]?.moduleNumber}`}>
+            {foldedModules.map((module) => (
+              <li key={module.moduleNumber}>
+                <Link to={`/modules/${module.moduleNumber}`} className={cn("egg egg-xs", module.state === "completed" && "is-done")} aria-label={`Modul ${module.moduleNumber}: ${module.title}, ${stateLabel[module.state] || ""}`}>
+                  {module.state === "completed" ? <Ic name="check" /> : module.moduleNumber}
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
     </div>
   );
 }
 
-/** "Continue learning" card with thumbnail, lesson meta and section progress. */
-export function ContinueCard({ module, completedModules = 0, totalModules = 0, title = "Lanjutkan belajar" }) {
+/** Continue strip: the next module with one action, and the course numbers beside it. */
+export function ContinueCard({ module, summary, levelsDone = 0, levelTotal = 14 }) {
   if (!module) return null;
   const visual = moduleVisual(module);
   return (
-    <section className="aapm-continue" data-hue={visual.hue} aria-label={title}>
-      <ModuleCover module={module} />
-      <div className="min-w-0">
-        <p className="aapm-text-overline aapm-continue__eyebrow">
-          Modul {module.moduleNumber} · {module.levelName || module.category}
-        </p>
-        <h3 className="aapm-continue__title">{module.title}</h3>
-        <div className="aapm-continue__progress">
-          <Segments total={Math.min(totalModules, 22)} current={completedModules} label="Progress course" />
-          <span>{completedModules}/{totalModules}</span>
+    <section className="card cover-row anim-rise" data-hue={visual.hue} aria-labelledby="cont-title">
+      <ModuleCover module={module} style={{ minHeight: 112 }} />
+      <div className="row wrap gap-5" style={{ padding: "var(--s-4) var(--s-5)", minWidth: 0 }}>
+        <div className="stack grow gap-1" style={{ minWidth: 220 }}>
+          <span className="t-overline t-ink">Modul {module.moduleNumber} · {module.levelName}</span>
+          <h2 className="t-heading t-clamp-2" id="cont-title">{module.title}</h2>
+          <span className="t-support t-muted">{moduleMeta(module)}</span>
         </div>
-      </div>
-      <div>
-        <Button asChild variant="learn">
-          <Link to={`/modules/${module.moduleNumber}`}>{completedModules ? "Lanjutkan" : "Mulai belajar"}<AapmIcon name="arrowRight" /></Link>
-        </Button>
+        <Link className="btn btn-learn btn-lg btn-block-sm" to={`/modules/${module.moduleNumber}`}>{summary.completed ? "Lanjutkan" : "Mulai belajar"}<Ic name="arrow-right" /></Link>
+        <span className="vr hide-md" />
+        <dl className="row wrap gap-5" aria-label="Ringkasan progres">
+          <div className="row gap-3">
+            <Ring value={summary.percent} hue="green" animate />
+            <div className="stack"><dt className="t-caption t-muted">Progres</dt><dd className="t-heading t-num">{summary.completed}/{summary.total} modul</dd></div>
+          </div>
+          <div className="stack"><dt className="t-caption t-muted">Level tuntas</dt><dd className="t-heading t-num">{levelsDone} dari {levelTotal}</dd></div>
+          <div className="stack"><dt className="t-caption t-muted">Sisa</dt><dd className="t-heading t-num">{summary.total - summary.completed} modul</dd></div>
+        </dl>
       </div>
     </section>
   );
 }
 
-/** Stat tile with a colourful icon circle (score, streak, lessons…). */
+/** Metric tile (`.card.metric`) with a solid hue icon. */
 export function StatTile({ icon, hue = "green", label, value, className = undefined }) {
   return (
-    <div className={cn("aapm-stat", className)} data-hue={hue}>
-      <span className="aapm-stat__icon" aria-hidden="true"><AapmIcon name={icon} /></span>
-      <span className="aapm-stat__copy">
-        <span className="aapm-stat__label">{label}</span>
-        <span className="aapm-stat__value">{value}</span>
-      </span>
+    <div className={cn("card metric", className)} data-hue={hue}>
+      <span className="metric-label"><span className="tile tile-sm tile-round tile-solid"><AapmIcon name={icon} /></span>{label}</span>
+      <span className="metric-value">{value}</span>
     </div>
   );
 }
 
-/**
- * Bounded module flow: Materi → Praktik → Kuis → Selesai. Steps are derived
- * from module content and saved progress; nothing here changes the contract.
- */
-export function ModuleFlow({ flow, active = "content", onSelect, quizTo }) {
-  const practiceDone = flow.practicalDone;
-  const draft = [
-    { id: "content", label: "Materi", icon: "lesson", done: flow.completed || flow.acknowledged },
-    ...(flow.hasPractice ? [{ id: "practice", label: "Praktik", icon: "practice", done: practiceDone }] : []),
-    // A passed quiz shows its tick; the score only matters while a retake is due
-    // (a done "Kuis 100%" also truncated to "Kuis 10…" on phones).
-    ...(flow.hasQuiz ? [{ id: "quiz", label: flow.quizAttempted && !flow.quizPassed && !flow.completed ? `Kuis ${flow.quizPercent}%` : "Kuis", icon: "quiz", done: flow.completed || flow.quizPassed, to: quizTo }] : []),
-    { id: "done", label: "Selesai", icon: "check", done: flow.completed },
-  ];
-  // Show where the learner is reading without turning scroll position into
-  // completion evidence. If the active step is already done, point to the
-  // next unfinished step.
-  const activeIndex = draft.findIndex((step) => step.id === active && !step.done);
-  const currentIndex = activeIndex >= 0 ? activeIndex : draft.findIndex((step) => !step.done);
-  const steps = draft.map((step, index) => ({ ...step, state: step.done ? "done" : index === currentIndex ? "current" : undefined }));
-  return (
-    <ol className="aapm-flow" aria-label="Alur modul">
-      {steps.map((step, index) => {
-        const content = (
-          <>
-            <span className="aapm-flow__dot">{step.state === "done" ? <AapmIcon name="glyphCheck" /> : index + 1}</span>
-            <span className="aapm-flow__text">{step.label}</span>
-          </>
-        );
-        return (
-          <li key={step.id} className="min-w-0">
-            {step.to ? (
-              <Link to={step.to} className="aapm-flow__step" data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>{content}</Link>
-            ) : onSelect && step.id !== "done" ? (
-              <button type="button" className="aapm-flow__step w-full" data-state={step.state} aria-current={step.state === "current" ? "step" : undefined} onClick={() => onSelect(step.id)}>{content}</button>
-            ) : (
-              <span className="aapm-flow__step" data-state={step.state} aria-current={step.state === "current" ? "step" : undefined}>{content}</span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-/** Lesson player outline: course progress + every module grouped by level. */
+/** Lesson outline content: course progress, then every module grouped by level. */
 export function CourseOutline({ curriculum = [], currentNumber, completed = 0, total = 0, onNavigate }) {
   const percent = total ? Math.round((completed / total) * 100) : 0;
   return (
-    <nav className="aapm-outline" aria-label="Kurikulum course">
-      <div className="aapm-outline__course">
-        <p className="aapm-text-overline">Layer Farm Academy</p>
-        <div className="flex items-center justify-between gap-2">
-          <p className="aapm-text-label">{completed}/{total} modul selesai</p>
-          <span className="aapm-text-caption aapm-numeric">{percent}%</span>
-        </div>
-        <div className="aapm-progress" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} aria-label="Progress course"><div className="aapm-progress__fill" style={{ width: `${percent}%` }} /></div>
+    <>
+      <div className="stack gap-2" style={{ padding: "4px 8px 12px", borderBottom: "1px solid var(--border)" }} data-hue="green">
+        <span className="t-overline t-muted">Layer Farm Academy</span>
+        <div className="row between"><span className="t-support t-strong">{completed}/{total} modul selesai</span><span className="t-caption t-muted t-num">{percent}%</span></div>
+        <Bar value={percent} size="sm" label="Progres course" />
       </div>
       {curriculum.map((level) => (
-        <div key={level.number} data-hue={level.hue} className="grid gap-0.5">
-          <p className="aapm-outline__level aapm-text-overline">L{level.number} · {level.name}</p>
+        <div key={level.number} className="stack gap-1">
+          <span className="row gap-2 t-caption t-strong" style={{ padding: "4px 8px" }} data-hue={level.hue}><i style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--h)" }} aria-hidden="true" />L{level.number} · {level.name}</span>
           {level.modules.map((module) => {
             const current = Number(module.moduleNumber) === Number(currentNumber);
+            const done = module.state === "completed";
             return (
               <Link
                 key={module.moduleNumber}
                 to={`/modules/${module.moduleNumber}`}
-                className="aapm-outline__item"
-                data-state={module.state}
+                className={cn("outline-item", done && "is-done", current && "is-current")}
                 aria-current={current ? "page" : undefined}
                 onClick={onNavigate}
               >
-                <span className="aapm-outline__mark" aria-hidden="true">
-                  {module.state === "completed" ? <AapmIcon name="glyphCheck" /> : module.state === "locked" ? <AapmIcon name="lock" /> : module.moduleNumber}
-                </span>
-                <span className="aapm-outline__label">{module.title}</span>
-                {module.state === "completed" ? <span className="aapm-visually-hidden">Selesai</span> : module.state === "locked" ? <span className="aapm-visually-hidden">Terkunci</span> : null}
+                <Egg size="xs" state={done ? "done" : current ? "current" : undefined}>{done ? <Ic name="check" /> : module.moduleNumber}</Egg>
+                <span className="t-clamp-2">{module.title}</span>
+                {done ? <span className="sr-only">, tuntas</span> : null}
               </Link>
             );
           })}
         </div>
       ))}
-    </nav>
+    </>
   );
 }

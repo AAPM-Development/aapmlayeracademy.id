@@ -3,20 +3,23 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { preloadRoute } from "@/lib/routePreloaders";
-import { Breadcrumbs, Button, IconButton } from "@/design-system";
+import { Breadcrumbs } from "@/design-system";
+import { Ic } from "@/design-system/canvas";
+import { Tooltip } from "@/design-system/components/tooltip";
 import {
   AccountMenu,
   AppShell,
   BottomNav,
+  MobileTop,
   NavigationSheet,
   Sidebar,
   SidebarNav,
   Topbar,
 } from "@/design-system/patterns/AppShell";
-import AapmIcon from "@/components/icons/AapmIcon";
 import FloatingAiAssistant from "@/components/ai/FloatingAiAssistant";
 import { AiChatProvider } from "@/components/ai/AiChatProvider";
-import { adminBottomNavigation, adminNavigationGroups, getAdminBreadcrumbs } from "@/components/admin/adminNavigationItems";
+import AdminQuickSearch from "@/components/admin/AdminQuickSearch";
+import { adminBottomNavigation, adminNavigationGroups, getAdminBreadcrumbs, getAdminNavigationMeta } from "@/components/admin/adminNavigationItems";
 
 const COLLAPSE_KEY = "aapm-admin-sidebar-collapsed";
 
@@ -28,22 +31,20 @@ function readCollapsed() {
   }
 }
 
-/** Workspace identity in the sidebar: the admin twin of the learner progress card. */
-function AdminWorkspaceCard() {
+/** Academy | Admin context switch: one control instead of scattered "back to Academy" links. */
+function WorkspaceSwitch({ onNavigate }) {
   return (
-    <Link to="/admin" className="aapm-sidebar-card" aria-label="Ruang admin, ringkasan">
-      <span className="aapm-sidebar-card__icon" aria-hidden="true"><AapmIcon name="admin" /></span>
-      <span className="min-w-0">
-        <span className="aapm-sidebar-card__title">Ruang admin</span>
-        <span className="aapm-sidebar-card__meta">Kelola data native</span>
-      </span>
-    </Link>
+    <nav className="ctx-switch" aria-label="Pilih ruang kerja">
+      <Link to="/" onClick={onNavigate}><Ic name="grad" size="sm" /><span className="ctx-text">Academy</span></Link>
+      <Link className="is-on" to="/admin" aria-current="page" onClick={onNavigate}><Ic name="shield" size="sm" /><span className="ctx-text">Admin</span></Link>
+    </nav>
   );
 }
 
 /**
- * Admin workspace: the same shell DNA as the learner Academy, with an
- * explicit workspace context so admins always know which side they are on.
+ * Admin workspace: the learner shell frame in the calm tone (1 px lines,
+ * 3 px ledges, no decorative motion), grouped navigation and linked
+ * breadcrumbs in the topbar.
  */
 export default function AdminShell() {
   const location = useLocation();
@@ -51,9 +52,9 @@ export default function AdminShell() {
   const { mode: themeMode, toggleTheme } = useThemeMode();
   const [collapsedPreference, setCollapsedPreference] = useState(readCollapsed);
   const [sheetOpen, setSheetOpen] = useState(false);
-  // The module editor is a wide workspace; give it the room by default.
   const isEditor = /^\/admin\/courses\/[^/]+\/modules\//.test(location.pathname);
   const collapsed = collapsedPreference || isEditor;
+  const roleLabel = user?.role === "super_admin" ? "Super Admin" : "Admin";
 
   useEffect(() => setSheetOpen(false), [location.pathname]);
 
@@ -74,15 +75,10 @@ export default function AdminShell() {
       <Sidebar
         brandTo="/admin"
         brandLabel="Ringkasan admin"
+        label="Navigasi admin"
         collapsed={inSheet ? false : collapsed}
         onToggle={inSheet || isEditor ? null : toggleCollapsed}
-        context={<AdminWorkspaceCard />}
-        footer={(
-          <Link to="/" className="aapm-nav-item" aria-label={collapsed ? "Kembali ke Academy" : undefined} onClick={close}>
-            <AapmIcon name="arrowLeft" />
-            <span className="aapm-nav-item__label">Kembali ke Academy</span>
-          </Link>
-        )}
+        context={<WorkspaceSwitch onNavigate={close} />}
       >
         <SidebarNav
           groups={adminNavigationGroups}
@@ -95,57 +91,70 @@ export default function AdminShell() {
     );
   };
 
+  const accountMenu = (compact = false) => (
+    <AccountMenu
+      user={user}
+      meta={roleLabel}
+      compact={compact}
+      context={`${roleLabel} Academy`}
+      themeMode={themeMode}
+      onToggleTheme={compact ? toggleTheme : undefined}
+      onLogout={() => logout()}
+      items={[
+        { label: "Buka Academy", icon: "graduation", to: "/" },
+        { label: "Profil saya", icon: "user", to: "/profile" },
+      ]}
+    />
+  );
+
+  // The module editor is a focus screen: its own bar, no sidebar or topbar.
+  if (isEditor) {
+    return (
+      <AiChatProvider>
+        <Outlet />
+        <FloatingAiAssistant showLauncher={false} />
+      </AiChatProvider>
+    );
+  }
+
   return (
     <AiChatProvider>
       <AppShell
+        tone="calm"
         collapsed={collapsed}
-        label="Navigasi admin"
         mainLabel="Konten admin"
         sidebar={navigation(false)}
         topbar={(
           <Topbar
-            mobileBrandTo="/admin"
             breadcrumbs={<Breadcrumbs items={getAdminBreadcrumbs(location.pathname)} />}
             actions={(
               <>
-                <Button asChild variant="ghost" size="sm" data-desktop-only="">
-                  <Link to="/"><AapmIcon name="dashboard" /> Lihat Academy</Link>
-                </Button>
-                <IconButton
-                  label={themeMode === "dark" ? "Mode terang" : "Mode gelap"}
-                  icon={themeMode === "dark" ? "themeLight" : "themeDark"}
-                  onClick={toggleTheme}
-                  data-desktop-only=""
-                />
-                <AccountMenu
-                  user={user}
-                  context={user?.role === "super_admin" ? "Super Admin Academy" : "Admin Academy"}
-                  themeMode={themeMode}
-                  onToggleTheme={toggleTheme}
-                  onLogout={() => logout()}
-                  items={[
-                    { label: "Buka Academy", icon: "dashboard", to: "/" },
-                    { label: "Profil saya", icon: "user", to: "/profile" },
-                  ]}
-                />
+                <AdminQuickSearch />
+                <Tooltip content={themeMode === "dark" ? "Mode terang" : "Mode gelap"}>
+                  <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label={themeMode === "dark" ? "Mode terang" : "Mode gelap"} onClick={toggleTheme}>
+                    <Ic name={themeMode === "dark" ? "sun" : "moon"} />
+                  </button>
+                </Tooltip>
+                {accountMenu()}
               </>
             )}
           />
         )}
+        mobileTop={<MobileTop brandTo="/admin" title={getAdminNavigationMeta(location.pathname).label} actions={accountMenu(true)} />}
         // The module editor brings its own bottom bar, so the shell's bar is off there.
         bottomNav={isEditor ? null : (
           <BottomNav
             label="Navigasi admin cepat"
-            items={[...adminBottomNavigation, { label: "Menu", icon: "menu", expanded: sheetOpen, onClick: () => setSheetOpen(true) }]}
+            items={[...adminBottomNavigation, { label: "Menu", ic: "menu", expanded: sheetOpen, onClick: () => setSheetOpen(true) }]}
           />
         )}
+        launcher={<FloatingAiAssistant />}
       >
         <Outlet />
       </AppShell>
       <NavigationSheet open={sheetOpen} onOpenChange={setSheetOpen} title="Navigasi admin">
         {navigation(true)}
       </NavigationSheet>
-      <FloatingAiAssistant />
     </AiChatProvider>
   );
 }

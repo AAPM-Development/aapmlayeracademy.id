@@ -1,6 +1,7 @@
 import React from "react";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { Ic } from "@/design-system/canvas";
 import { IconButton } from "@/components/primitives";
 import { AddElementMenu } from "@/components/admin/EditorActionBar";
 
@@ -32,18 +33,18 @@ export function EditorialOutlineList({ items = [], selectedId = "", onSelect = (
                     data-selected={item.id === selectedId ? "true" : undefined}
                   >
                     <span className="aapm-editor-outline__grip" aria-label={`Geser blok ${index + 1}`} {...draggable.dragHandleProps}>
-                      <AapmIcon name="grip" />
+                      <Ic name="grip" size="sm" />
                     </span>
                     <button
                       type="button"
-                      className="aapm-editor-outline__target"
+                      className={`toc-link aapm-editor-outline__target${item.id === selectedId ? " is-active" : ""}`}
                       aria-current={item.id === selectedId ? "true" : undefined}
                       onClick={() => onSelect(item.id)}
                     >
-                      <span className="aapm-editor-outline__index">{index + 1}</span>
-                      <span className="aapm-editor-outline__text">
-                        <span className="aapm-editor-outline__type">{item.label}</span>
-                        <span className="aapm-editor-outline__detail">{item.detail}</span>
+                      <span className="t-caption t-strong t-num">{index + 1}</span>
+                      <span className="stack" style={{ minWidth: 0 }}>
+                        <span className="t-medium t-clamp-1">{item.label}</span>
+                        <span className="t-caption t-clamp-1">{item.detail}</span>
                       </span>
                     </button>
                   </li>
@@ -77,7 +78,7 @@ export default function EditorOutline({
   return (
     <aside ref={asideRef} className="aapm-editor-outline" aria-label="Susun modul" role={drawerOpen ? "dialog" : undefined} aria-modal={drawerOpen ? true : undefined} tabIndex={drawerOpen ? -1 : undefined} data-editor-outline data-drawer-open={drawerOpen ? "true" : undefined}>
       <div className="aapm-editor-outline__head">
-        <h2 className="aapm-text-overline m-0">Susun</h2>
+        <h2 className="t-overline t-muted" style={{ padding: "4px 10px 0" }}>Susun</h2>
         <IconButton className="aapm-editor-drawer-close" label="Tutup Susun" tooltip={false} icon="close" size="sm" onClick={onClose} />
       </div>
       <nav className="aapm-editor-outline__nav" aria-label="Bagian editor">
@@ -85,13 +86,14 @@ export default function EditorOutline({
           <div key={section.id} className="aapm-editor-outline__group">
             <button
               type="button"
-              className="aapm-editor-outline__section"
+              className="row gap-2 t-support t-strong aapm-editor-outline__section"
+              data-hue={section.hue}
               aria-current={section.id === activeSection ? "step" : undefined}
               data-editor-section-link={section.id}
               onClick={() => onNavigate(section.id)}
             >
-              {section.icon ? <AapmIcon name={section.icon} /> : null}
-              <span>{section.label}</span>
+              <span className="tile tile-xs">{section.ic ? <Ic name={section.ic} /> : <AapmIcon name={section.icon} />}</span>
+              <span className="grow">{section.label}</span>
             </button>
             {section.id === "module-section-content" ? <div ref={blockSlotRef} className="aapm-editor-outline__blocks" /> : null}
           </div>

@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useRef, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { initialsOf } from "@/components/ProfileAvatar";
+import { Bar, Ic } from "@/design-system/canvas";
 import {
   Accordion,
   AccordionContent,
@@ -16,7 +18,6 @@ import {
   Input,
   Label,
   Progress,
-  SearchInput,
   Select,
   SelectContent,
   SelectItem,
@@ -28,7 +29,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Surface,
   useToast,
 } from "@/components/primitives";
 import {
@@ -40,18 +40,12 @@ import {
 } from "@/lib/useAdminData";
 import {
   AdminError,
-  AdminLoading,
   AdminPageFrame,
-  AdminUnavailable,
 } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
 import { useAuth } from "@/lib/AuthContext";
 
 const FORM_ID = "admin-user-form";
-
-function initialOf(user) {
-  return (user?.full_name || user?.email || "?").slice(0, 1).toUpperCase();
-}
 
 /* Kelola akun: identity first; security and progress reset are one step away. */
 function UserSheet({ user, open, onOpenChange }) {
@@ -172,8 +166,8 @@ function UserSheet({ user, open, onOpenChange }) {
                 <SheetDescription>Buat akses learner atau admin dengan password awal yang Anda tetapkan.</SheetDescription>
               </>
             ) : (
-              <div className="aapm-user-sheet__identity">
-                <span className="aapm-initial-avatar" data-size="lg" aria-hidden="true">{initialOf(user)}</span>
+              <div className="row gap-3" style={{ minWidth: 0 }}>
+                <span className="avatar avatar-lg" data-hue="green" aria-hidden="true">{initialsOf(user.full_name || user.email)}</span>
                 <div className="min-w-0">
                   <SheetTitle className="truncate">{user.full_name || user.email}</SheetTitle>
                   <SheetDescription className="truncate">{user.email}</SheetDescription>
@@ -191,16 +185,16 @@ function UserSheet({ user, open, onOpenChange }) {
                 <Field id="admin-user-email" label="Email" hint={isNew ? "Email menjadi identitas login." : "Email adalah identitas akun dan tidak dapat diubah."}>
                   <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={!isNew} required />
                 </Field>
-                <div className="aapm-field">
-                  <Label htmlFor="admin-user-role">Role</Label>
+                <div className="field">
+                  <Label htmlFor="admin-user-role">Peran</Label>
                   <Select value={role} onValueChange={setRole}>
                     <SelectTrigger id="admin-user-role"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="learner">Learner</SelectItem>
+                      <SelectItem value="learner">Peserta</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="aapm-field-hint">{role === "admin" ? "Admin mengelola materi dan operasional Academy. Pengelolaan akses akun hanya untuk Super Admin. Akses admin aktif setelah email terverifikasi." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
+                  <p className="hint">{role === "admin" ? "Admin mengelola materi dan operasional Academy. Pengelolaan akses akun hanya untuk Super Admin. Akses admin aktif setelah email terverifikasi." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
                 </div>
               </FormGrid>
             </FormSection>
@@ -218,8 +212,8 @@ function UserSheet({ user, open, onOpenChange }) {
                     <span>Keamanan & password</span>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <p className="aapm-accordion-note">Password baru tidak dikirim lewat email. Berikan secara aman kepada pengguna.</p>
-                    <div className="aapm-inline-field">
+                    <p className="t-support t-muted">Password baru tidak dikirim lewat email. Berikan secara aman kepada pengguna.</p>
+                    <div className="row gap-2">
                       <Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} placeholder="Password baru" aria-label="Password baru" autoComplete="new-password" />
                       <Button type="button" variant="outline" onClick={() => newPassword && setPasswordConfirmationOpen(true)} disabled={resetPassword.isPending || !newPassword}>
                         {resetPassword.isPending ? "Mengubah…" : "Ganti password"}
@@ -234,8 +228,8 @@ function UserSheet({ user, open, onOpenChange }) {
                   </AccordionTrigger>
                   <AccordionContent>
                     <Progress value={user.progressPercent || 0} aria-label={`Progress ${user.progressPercent || 0}%`} />
-                    <p className="aapm-accordion-note">{user.progressEntries || 0} entri tersimpan. Reset memulai periode belajar baru; riwayat nilai dan percobaan kuis tetap tersimpan.</p>
-                    <p className="aapm-accordion-note">Sertifikat, data farm, dan percakapan tidak ikut dihapus.</p>
+                    <p className="t-support t-muted">{user.progressEntries || 0} entri tersimpan. Reset memulai periode belajar baru; riwayat nilai dan percobaan kuis tetap tersimpan.</p>
+                    <p className="t-support t-muted">Sertifikat, data farm, dan percakapan tidak ikut dihapus.</p>
                     <Button type="button" variant="danger-soft" size="sm" onClick={() => setProgressConfirmationOpen(true)} disabled={resetProgress.isPending}>
                       <AapmIcon name="refresh" />
                       {resetProgress.isPending ? "Mereset…" : "Reset progress"}
@@ -286,123 +280,131 @@ function UserSheet({ user, open, onOpenChange }) {
   );
 }
 
+const PAGE_SIZE = 10;
+const AVATAR_HUES = ["green", "blue", "violet", "teal", "amber", "rose"];
+const ROLE_FILTERS = {
+  all: () => true,
+  learner: (user) => !["admin", "super_admin"].includes(user.assignedRole || user.role),
+  admin: (user) => ["admin", "super_admin"].includes(user.assignedRole || user.role),
+};
+
+function RoleCell({ user }) {
+  const role = user.assignedRole || user.role;
+  if (role === "super_admin") {
+    return (
+      <span className="row gap-2">
+        <span className="chip chip-hue" data-hue="violet"><Ic name="shield" />Super Admin</span>
+        <span className="row gap-1 t-caption t-muted t-nowrap"><Ic name="lock" size="xs" />Dilindungi</span>
+      </span>
+    );
+  }
+  if (role === "admin") return <span className="chip chip-hue" data-hue="blue">Admin</span>;
+  return <span className="chip">Peserta</span>;
+}
+
+function VerificationCell({ user }) {
+  // Server-computed state. Admin access needs verified identity; legacy accounts keep learner access.
+  if (user.emailVerificationStatus === "verified") return <span className="chip chip-success"><Ic name="check" />Terverifikasi</span>;
+  if (user.emailVerificationStatus === "pending") return <span className="chip chip-warning"><Ic name="clock" />Menunggu verifikasi</span>;
+  return <span className="chip chip-outline"><Ic name="history" />Verifikasi lama</span>;
+}
+
 export default function AdminUsers() {
   const { user: actor } = useAuth();
   const canManage = actor?.canManageUsers === true;
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [page, setPage] = useState(0);
   const [sheetUser, setSheetUser] = useState(undefined);
   const lastSheetUser = useRef(undefined);
   if (sheetUser !== undefined) lastSheetUser.current = sheetUser;
   const displayUser = sheetUser !== undefined ? sheetUser : lastSheetUser.current;
   const { data, isLoading, error, refetch } = useAdminUsers(search);
-  const users = data?.users || [];
+  const users = (data?.users || []).filter(ROLE_FILTERS[roleFilter]);
+  const pages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  useEffect(() => setPage(0), [search, roleFilter]);
+  const current = Math.min(page, pages - 1);
+  const visible = users.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE);
+  const isAdminRole = (user) => ["admin", "super_admin"].includes(user.assignedRole || user.role);
 
   return (
     <AdminPageFrame
       title="Pengguna"
-      description={canManage ? "Kelola akun dan akses Admin. Akun Super Admin dilindungi; Admin baru perlu memverifikasi email." : "Lihat akun dan status verifikasi. Perubahan akses dikelola oleh Super Admin."}
-      actions={
-        canManage && <Button onClick={() => setSheetUser(null)}>
-          <AapmIcon name="add" />
-          Buat akun
-        </Button>
-      }
+      description={canManage ? "Kelola akun dan akses admin. Akun Super Admin dilindungi; admin baru perlu memverifikasi email." : "Lihat akun dan status verifikasi. Perubahan akses dikelola oleh Super Admin."}
+      actions={canManage ? <button type="button" className="btn btn-primary" onClick={() => setSheetUser(null)}><Ic name="plus" />Buat akun</button> : null}
     >
-      <div className="aapm-toolbar mb-5">
-        <SearchInput
-          className="w-full sm:max-w-sm"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cari nama atau email pengguna"
-          aria-label="Cari pengguna"
-        />
-        <span className="aapm-toolbar__spacer" />
-        <Badge variant="soft">
-          <AapmIcon name="users" />
-          {users.length} akun tampil
-        </Badge>
-      </div>
-
-      {isLoading ? (
-        <AdminLoading label="Memuat akun pengguna…" />
-      ) : error ? (
-        <AdminError error={error} onRetry={refetch} />
-      ) : !users.length ? (
-        <AdminUnavailable
-          title="Tidak ada akun ditemukan"
-          description="Ubah kata kunci pencarian atau buat akun baru."
-        />
-      ) : (
-        <Surface className="p-0">
+      {error ? <AdminError error={error} onRetry={refetch} /> : (
+        <section className="card" aria-labelledby="list-title">
+          <h2 className="sr-only" id="list-title">Daftar pengguna</h2>
+          <div className="toolbar" style={{ padding: "12px var(--card-pad)" }}>
+            <label className="search" style={{ flex: "1 1 260px", maxWidth: 360 }}>
+              <Ic name="search" size="sm" /><span className="sr-only">Cari pengguna</span>
+              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau email pengguna" />
+            </label>
+            <div className="seg" role="group" aria-label="Filter peran">
+              {[["all", "Semua"], ["learner", "Peserta"], ["admin", "Admin"]].map(([value, label]) => (
+                <button key={value} type="button" aria-pressed={roleFilter === value} onClick={() => setRoleFilter(value)}>{label}</button>
+              ))}
+            </div>
+            {!isLoading ? <span className="t-support t-muted t-num ml-auto" aria-live="polite">{users.length} pengguna</span> : null}
+          </div>
           <DataTable
+            framed={false}
+            className="card-sect"
             caption="Daftar pengguna dan progres pembelajaran"
             responsive="stacked"
-            rows={users}
+            loading={isLoading}
+            rows={visible}
+            emptyMessage="Tidak ada akun ditemukan. Ubah kata kunci pencarian atau filter peran."
+            selectedKey={sheetUser ? String(sheetUser.id) : undefined}
             rowKey={(user) => String(user.id)}
             columns={[
               {
-                key: "user",
-                header: "Pengguna",
-                required: true,
-                overflow: "wrap",
+                key: "user", header: "Pengguna", required: true,
                 render: (user) => (
-                  <div className="aapm-user-cell">
-                    <span className="aapm-initial-avatar" aria-hidden="true">{initialOf(user)}</span>
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold">{user.full_name || user.email}</span>
-                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">{user.email}</span>
-                      <span className="mt-0.5 block text-[11px] text-muted-foreground">Aktif {formatAdminDate(user.lastActivity || user.created_at)}</span>
-                    </span>
-                  </div>
+                  <span className="row gap-3">
+                    <span className="avatar avatar-sm" data-hue={(user.assignedRole || user.role) === "super_admin" ? "neutral" : AVATAR_HUES[(Number(user.id) || 0) % AVATAR_HUES.length]}>{initialsOf(user.full_name || user.email)}</span>
+                    <span className="stack" style={{ minWidth: 0 }}><span className="t-medium t-clamp-1">{user.full_name || user.email}</span><span className="t-caption t-muted t-clamp-1">{user.email}</span></span>
+                  </span>
                 ),
               },
+              { key: "role", header: "Peran", render: (user) => <RoleCell user={user} /> },
+              { key: "verification", header: "Verifikasi", render: (user) => <VerificationCell user={user} /> },
               {
-                key: "role",
-                header: "Role",
-                overflow: "nowrap",
-                render: (user) => <Badge variant={["admin", "super_admin"].includes(user.assignedRole || user.role) ? "warning" : "success"}>{({ super_admin: "Super Admin", admin: "Admin", learner: "Learner" })[user.assignedRole || user.role]}</Badge>,
+                key: "progress", header: "Progres",
+                render: (user) => (isAdminRole(user)
+                  ? <span className="t-muted"><span aria-hidden="true">—</span><span className="sr-only">Tidak berlaku</span></span>
+                  : <div className="row gap-3"><Bar value={user.progressPercent} size="sm" style={{ width: 72 }} /><span className={`t-support t-num${user.progressPercent ? "" : " t-muted"}`}>{user.progressPercent}%</span></div>),
               },
+              { key: "lastActivity", header: "Aktif terakhir", render: (user) => <span className="t-muted t-nowrap">{user.lastActivity ? formatAdminDate(user.lastActivity) : "Belum pernah"}</span> },
               {
-                key: "verification",
-                header: "Verifikasi",
-                overflow: "nowrap",
+                key: "actions", header: <span className="sr-only">Tindakan</span>, align: "end", required: true,
                 render: (user) => {
-                  // Server-computed state. Admin access needs verified identity; legacy accounts keep learner access.
-                  if (user.emailVerificationStatus === "verified") return <Badge variant="success">Terverifikasi</Badge>;
-                  if (user.emailVerificationStatus === "pending") return <Badge variant="soft">Menunggu verifikasi</Badge>;
-                  return <Badge variant="soft">Verifikasi lama</Badge>;
-                },
-              },
-              {
-                key: "progress",
-                header: "Progress",
-                overflow: "wrap",
-                render: (user) => (
-                  <div className="aapm-user-progress">
-                    <div className="mb-1 flex justify-between gap-2 text-xs">
-                      <span>{user.completedModules} modul</span>
-                      <span className="tabular-nums">{user.progressPercent}%</span>
+                  const protectedAccount = user.assignedRole === "super_admin";
+                  return (
+                    <div className="row gap-1 justify-end">
+                      <button type="button" className="btn btn-secondary btn-sm" disabled={!canManage || protectedAccount} aria-expanded={sheetUser?.id === user.id || undefined} aria-label={protectedAccount ? `Kelola ${user.full_name || user.email} (dilindungi)` : undefined} onClick={() => setSheetUser(user)}>
+                        {protectedAccount ? <Ic name="lock" /> : null}Kelola
+                      </button>
                     </div>
-                    <Progress value={user.progressPercent} size="sm" aria-label={`Progress ${user.progressPercent}%`} />
-                  </div>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Kelola",
-                align: "right",
-                required: true,
-                overflow: "nowrap",
-                render: (user) => (
-                  <Button size="sm" variant="outline" disabled={!canManage || user.assignedRole === "super_admin"} onClick={() => setSheetUser(user)}>
-                    <AapmIcon name="edit" />
-                    Kelola
-                  </Button>
-                ),
+                  );
+                },
               },
             ]}
           />
-        </Surface>
+          {!isLoading && users.length ? (
+            <nav className="card-foot between" aria-label="Halaman daftar pengguna">
+              <span className="t-support t-muted t-num">{current * PAGE_SIZE + 1}–{Math.min(users.length, (current + 1) * PAGE_SIZE)} dari {users.length}</span>
+              <div className="row gap-3">
+                <span className="t-support t-muted t-num hide-sm">Halaman {current + 1} dari {pages}</span>
+                <div className="row gap-2">
+                  <button type="button" className="btn btn-secondary btn-sm btn-icon" disabled={current === 0} aria-label="Halaman sebelumnya" onClick={() => setPage(current - 1)}><Ic name="chev-left" /></button>
+                  <button type="button" className="btn btn-secondary btn-sm btn-icon" disabled={current >= pages - 1} aria-label="Halaman berikutnya" onClick={() => setPage(current + 1)}><Ic name="chev-right" /></button>
+                </div>
+              </div>
+            </nav>
+          ) : null}
+        </section>
       )}
       <UserSheet
         user={displayUser || undefined}

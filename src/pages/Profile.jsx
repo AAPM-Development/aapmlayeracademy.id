@@ -1,49 +1,30 @@
 import React, { useEffect, useRef, useState } from "react";
-import ContentContainer from "@/components/layout/ContentContainer";
-import PageHeader from "@/components/layout/PageHeader";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Page } from "@/design-system/patterns/AppShell";
 import { nativeApi } from "@/api/nativeClient";
+import ProfileAvatar, { initialsOf } from "@/components/ProfileAvatar";
+import { appiAsset } from "@/components/appi/AppiMascot";
 import AapmIcon from "@/components/icons/AapmIcon";
-import ProfileAvatar from "@/components/ProfileAvatar";
 import {
-  Badge,
-  Button,
   Field,
-  FormActions,
-  FormGrid,
-  FormSection,
-  IconTile,
   Input,
-  KPICluster,
-  Label,
-  Progress,
-  ProgressRing,
-  SectionHeader,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   StateView,
-  Surface,
-  SwitchField,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Textarea,
   useToast,
 } from "@/components/primitives";
+import { Bar, Ic } from "@/design-system/canvas";
 import { useAuth } from "@/lib/AuthContext";
-import {
-  useHallOfFame,
-  useLearningProfile,
-  useSaveLearningProfile,
-} from "@/lib/useProfileData";
-import {
-  useAiAccountSettings,
-  useSaveAiAccountSettings,
-} from "@/lib/useAiSettings";
+import { useCertificates } from "@/lib/useCourseData";
+import { useHallOfFame, useLearningProfile, useSaveLearningProfile } from "@/lib/useProfileData";
+import { useAiAccountSettings, useSaveAiAccountSettings } from "@/lib/useAiSettings";
 import { usePwaInstall } from "@/lib/usePwaInstall";
+import { getRankProgress, learnerRanks, TOTAL_CERTIFICATION_TIERS } from "@/lib/academyData";
+import { formatStudyTime } from "@/lib/learnerCopy";
 
 function resizeProfileImage(file) {
   return new Promise((resolve, reject) => {
@@ -79,16 +60,367 @@ function resizeProfileImage(file) {
   });
 }
 
-/* Label + control for controls that cannot take Field's id cloning (Radix Select roots). */
-function ControlField({ id, label, hint, children }) {
+const formatDate = (value, options) => {
+  if (!value) return "";
+  const date = new Date(String(value).replace(" ", "T"));
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("id-ID", options);
+};
+const formatPoints = (value) => Number(value || 0).toLocaleString("id-ID");
+
+// Achievement look per server id: canvas icon and hue.
+const ACHIEVEMENT_LOOK = {
+  "first-step": { ic: "flag", hue: "rose" },
+  "module-finisher": { ic: "book", hue: "green" },
+  "field-practice": { ic: "egg", hue: "amber" },
+  "farm-journal": { ic: "chart", hue: "violet" },
+  certified: { ic: "cert", hue: "teal" },
+  "quiz-ready": { ic: "target", hue: "blue" },
+};
+const ACHIEVEMENT_UNIT = { "farm-journal": "catatan", "module-finisher": "modul", "field-practice": "praktik", certified: "sertifikat" };
+
+const POINT_RULES = [
+  { ic: "book", hue: "green", reward: "+100", title: "Modul selesai", meta: "per modul" },
+  { ic: "egg", hue: "amber", reward: "+35", title: "Praktik selesai", meta: "per praktik" },
+  { ic: "cert", hue: "teal", reward: "+150", title: "Sertifikat terbit", meta: "per sertifikat" },
+  { ic: "target", hue: "blue", reward: "maks +100", title: "Rata-rata kuis", meta: "1 poin per 1%" },
+  { ic: "chart", hue: "violet", reward: "maks +120", title: "Catatan KPI", meta: "+10 per catatan" },
+  { ic: "clock", hue: "rose", reward: "maks +60", title: "Waktu belajar", meta: "+1 per 10 menit" },
+];
+
+const AVATAR_HUES = ["blue", "violet", "amber", "rose", "teal", "green", "orange"];
+
+/* -------------------------------------------------------------- summary */
+
+/** Identity on the left, the four-rank ladder with the gold progress rail on the right. */
+function ProfileHero({ user, profileUser, rank }) {
+  const index = learnerRanks.findIndex((item) => item.name === rank.name);
+  const segments = learnerRanks.length - 1;
+  const rail = Math.round(((index + (rank.to ? rank.percent / 100 : 0)) / segments) * 100);
+  const since = formatDate(user?.created_at || user?.createdAt, { month: "short", year: "numeric" });
   return (
-    <div className="aapm-field">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint ? <p className="aapm-field-hint">{hint}</p> : null}
+    <section className="card card-tint feature split-even anim-rise" data-hue="green" aria-labelledby="who-title" style={{ padding: "24px 28px", gap: "24px 40px", alignItems: "center" }}>
+      <div className="row wrap gap-5">
+        <ProfileAvatar user={profileUser} name={user?.full_name || user?.email} className="avatar-xl" alt="" />
+        <div className="stack gap-2" style={{ minWidth: 0 }}>
+          <div className="stack">
+            <h2 className="t-title-c" id="who-title">{user?.full_name || "Peserta Academy"}</h2>
+            <span className="t-support t-muted">{user?.email}</span>
+          </div>
+          {since ? <span className="chip chip-outline" style={{ width: "fit-content" }}><Ic name="calendar" />Peserta sejak {since}</span> : null}
+        </div>
+      </div>
+      <div className="stack gap-3">
+        <div className="row between wrap gap-3">
+          <span className="t-overline t-ink">Peringkat poin</span>
+          <span className="xp xp-lg anim-pop"><Ic name="star" />{formatPoints(rank.points)} poin</span>
+        </div>
+        <div className="rel">
+          <span aria-hidden="true" style={{ position: "absolute", left: "12.5%", right: "12.5%", top: 24, height: 56, display: "grid", alignItems: "center" }}>
+            <Bar value={rail} hue="gold" animate />
+          </span>
+          <ol className="rel" style={{ display: "grid", gridTemplateColumns: `repeat(${learnerRanks.length}, minmax(0, 1fr))` }} aria-label="Tangga peringkat">
+            {learnerRanks.map((item, position) => {
+              const current = position === index;
+              const reached = position < index;
+              return (
+                <li key={item.name} className="stack items-center gap-1-5 t-center" data-hue="gold" aria-current={current ? "step" : undefined}>
+                  <span className={`t-caption t-num ${current ? "t-strong t-ink" : "t-muted"}`}>{item.from}</span>
+                  <span className="row justify-center" style={{ height: 56 }}>
+                    {current ? (
+                      <span className="medal anim-pop" style={/** @type {React.CSSProperties} */ ({ "--i": 2 })} aria-hidden="true"><Ic name="star" size="xl" style={{ color: "var(--on-gold)" }} /></span>
+                    ) : reached ? (
+                      <span className="medal medal-sm" aria-hidden="true"><Ic name="check" style={{ color: "var(--on-gold)" }} /></span>
+                    ) : (
+                      <span className="medal medal-sm is-locked" aria-hidden="true"><Ic name="flag" /></span>
+                    )}
+                  </span>
+                  <span className={`t-caption t-strong${current ? " t-ink" : ""}`}>{item.name}{current ? <span className="sr-only"> (peringkat Anda)</span> : null}</span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+        <p className="t-support t-center">
+          {rank.nextName ? <><span className="t-strong">{formatPoints(rank.toNext)} poin lagi</span> <span className="t-muted">menuju {rank.nextName}</span></> : <span className="t-strong">Peringkat tertinggi tercapai</span>}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SummaryMetrics({ learning, user, certificates }) {
+  const total = learning.moduleTotal || 22;
+  const owned = certificates.filter((item) => item.source !== "legacy_unverified" && item.status !== "revoked");
+  const topTier = owned.reduce((max, item) => Math.max(max, Number(item.tierNumber) || 0), 0);
+  const since = formatDate(user?.created_at || user?.createdAt, { day: "2-digit", month: "short", year: "numeric" });
+  const items = [
+    { hue: "green", ic: "book", label: "Modul selesai", value: <>{learning.completedModules || 0} <small>dari {total}</small></>, note: `${learning.progressPercent || 0}% kurikulum` },
+    { hue: "blue", ic: "target", label: "Rata-rata kuis", value: learning.quizAverage === null || learning.quizAverage === undefined ? "—" : `${learning.quizAverage}%`, note: "Dihitung dari nilai tersimpan" },
+    { hue: "violet", ic: "clock", label: "Waktu belajar", value: formatStudyTime(learning.timeSpentMinutes), note: since ? `Sejak ${since}` : "Tercatat dari progres" },
+    { hue: "teal", ic: "cert", label: "Sertifikat", value: <>{owned.length} <small>dari {TOTAL_CERTIFICATION_TIERS}</small></>, note: topTier ? `Tingkat ${topTier}` : "Belum ada" },
+  ];
+  return (
+    <section className="grid-sm" aria-label="Ringkasan belajar">
+      {items.map((item, index) => (
+        <div key={item.label} className="card metric anim-rise" data-hue={item.hue} style={/** @type {React.CSSProperties} */ ({ "--i": index + 1 })}>
+          <span className="metric-label"><span className="tile tile-sm tile-round tile-solid"><Ic name={item.ic} /></span>{item.label}</span>
+          <span className="metric-value">{item.value}</span>
+          <span className="metric-note">{item.note}</span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function Achievements({ achievements }) {
+  const unlocked = achievements.filter((item) => item.unlocked).length;
+  // Unlocked first, in the server's order; locked ones keep a progress bar.
+  const ordered = [...achievements.filter((item) => item.unlocked), ...achievements.filter((item) => !item.unlocked)];
+  return (
+    <section className="card card-pad stack gap-4 anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 5 })} aria-labelledby="ach-title">
+      <div className="card-head">
+        <div className="stack gap-0-5">
+          <h2 className="card-title" id="ach-title">Pencapaian</h2>
+          <p className="card-desc">Dihitung dari aktivitas belajar dan data farm yang benar-benar tersimpan.</p>
+        </div>
+        <span className={`chip ${unlocked ? "chip-success" : ""}`}><Ic name="check" />{unlocked}/{achievements.length} terbuka</span>
+      </div>
+      {achievements.length ? (
+        <div className="grid-md">
+          {ordered.map((achievement) => {
+            const look = ACHIEVEMENT_LOOK[achievement.id] || { ic: "award", hue: "green" };
+            const current = Math.min(achievement.current, achievement.target);
+            const percent = achievement.target ? Math.round((current / achievement.target) * 100) : 0;
+            const unit = ACHIEVEMENT_UNIT[achievement.id];
+            const extra = achievement.unlocked && unit && achievement.current > achievement.target ? ` · ${achievement.current} ${unit}` : "";
+            return (
+              <article key={achievement.id} className={`achv${achievement.unlocked ? "" : " is-locked"}`} data-hue={look.hue}>
+                <span className={`tile tile-lg tile-round${achievement.unlocked ? " tile-solid rel" : ""}`}>
+                  <Ic name={look.ic} />
+                  {achievement.unlocked ? <span className="medal-badge"><Ic name="check" /></span> : null}
+                </span>
+                <div className="stack gap-1">
+                  <h3 className="t-heading">{achievement.title}</h3>
+                  <p className="t-caption t-muted">{achievement.description}</p>
+                  {achievement.unlocked ? (
+                    <span className="t-caption t-strong t-success row gap-1"><Ic name="check-circle" size="xs" />Terbuka{extra}</span>
+                  ) : (
+                    <div className="stack gap-1" style={{ paddingTop: 4 }}>
+                      <Bar value={percent} size="sm" animate label={`${achievement.title} ${percent}%`} />
+                      <span className="t-caption t-strong t-num">{achievement.id === "quiz-ready" ? `${current}% dari ${achievement.target}%` : `${current} dari ${achievement.target}`}</span>
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <StateView kind="empty" icon="award" title="Pencapaian belum tersedia" description="Pencapaian akan muncul setelah aktivitas belajar tercatat." framed={false} />
+      )}
+    </section>
+  );
+}
+
+function RankMarker({ rank }) {
+  if (rank === 1) return <span className="medal medal-sm" data-hue="gold" aria-hidden="true"><span style={{ color: "var(--on-gold)" }}>1</span></span>;
+  if (rank === 2) return <span className="medal medal-sm" data-hue="neutral" aria-hidden="true">2</span>;
+  if (rank === 3) return <span className="medal medal-sm" data-hue="amber" aria-hidden="true">3</span>;
+  return <span className="row justify-center t-support t-strong t-muted t-num none" style={{ width: 36 }} aria-hidden="true">{rank}</span>;
+}
+
+function HallOfFame({ hall, userId, me, profileUser }) {
+  const entries = hall?.entries ?? [];
+  const mine = entries.find((entry) => String(entry.userId) === String(userId));
+  return (
+    <section className="card stack anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 6 })} aria-labelledby="hof-title">
+      <div className="card-pad stack gap-0-5" style={{ paddingBottom: 12 }}>
+        <h2 className="card-title" id="hof-title">Hall of Fame</h2>
+        <p className="card-desc">Peringkat dari poin pembelajaran. Hanya peserta yang memilih tampil.</p>
+      </div>
+      {entries.length ? (
+        <ol className="list" aria-label="Lima teratas">
+          {entries.slice(0, 5).map((entry, index) => (
+            <li key={entry.userId} className="li">
+              <RankMarker rank={entry.rank} />
+              <span className="avatar avatar-sm" data-hue={AVATAR_HUES[index % AVATAR_HUES.length]} aria-hidden="true">{initialsOf(entry.name)}</span>
+              <div className="stack grow" style={{ minWidth: 0 }}>
+                <span className="li-title t-clamp-1"><span className="sr-only">Peringkat {entry.rank}, </span>{entry.name}</span>
+                <span className="li-meta">{entry.level}</span>
+              </div>
+              <span className="t-support t-strong t-num t-nowrap">{formatPoints(entry.points)} poin</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="card-pad t-support t-muted" style={{ paddingTop: 0 }}>Belum ada peserta yang memilih tampil di Hall of Fame.</p>
+      )}
+      <div className="card-sect list" aria-label="Posisi Anda">
+        <div className="li" style={{ background: "var(--primary-soft)" }}>
+          <span className="row justify-center t-support t-strong t-num none" style={{ width: 36 }}>{mine ? `#${mine.rank}` : "—"}</span>
+          <ProfileAvatar user={profileUser} name={profileUser?.full_name} className="avatar-sm" alt="" />
+          <div className="stack grow">
+            <span className="li-title t-strong">Anda</span>
+            <span className="li-meta">{me.optIn ? me.level : `${me.level} · belum tampil`}</span>
+          </div>
+          <span className="t-support t-strong t-num t-nowrap">{formatPoints(me.points)} poin</span>
+        </div>
+      </div>
+      <div className="card-foot mt-auto">
+        <Ic name="shield" size="sm" className="t-muted" />
+        <span className="t-caption t-muted grow">Email tidak pernah ditampilkan.</span>
+        <Link className="btn btn-link btn-sm" to="/profile/settings">Atur privasi</Link>
+      </div>
+    </section>
+  );
+}
+
+function PointRules() {
+  return (
+    <section className="card card-pad stack gap-4 anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 7 })} aria-labelledby="pts-title">
+      <div className="card-head">
+        <div className="stack gap-0-5">
+          <h2 className="card-title" id="pts-title">Cara mendapat poin</h2>
+          <p className="card-desc">Dihitung server dari aktivitas yang benar-benar tersimpan. Poin menentukan peringkat Anda.</p>
+        </div>
+      </div>
+      <ul className="grid-xs">
+        {POINT_RULES.map((rule) => (
+          <li key={rule.title} className="inset stack gap-2" data-hue={rule.hue} style={{ padding: 12 }}>
+            <div className="row between gap-2"><span className="tile tile-sm tile-round tile-solid"><Ic name={rule.ic} /></span><span className="chip chip-gold t-num">{rule.reward}</span></div>
+            <div className="stack"><span className="li-title">{rule.title}</span><span className="li-meta">{rule.meta}</span></div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------- settings */
+
+function SectionTitle({ id, tile, title, desc, extra = undefined }) {
+  return (
+    <div className="row gap-3" style={{ paddingBottom: 24 }}>
+      {tile}
+      <div className="stack gap-0-5 grow">
+        <div className="row wrap gap-2"><h2 className="card-title" id={id}>{title}</h2>{extra}</div>
+        <p className="card-desc">{desc}</p>
+      </div>
     </div>
   );
 }
+
+function FormRow({ title, desc, children, style = undefined }) {
+  return (
+    <div className="form-section" style={style}>
+      <div className="stack gap-1">
+        <h3 className="t-heading">{title}</h3>
+        <p className="t-support t-muted">{desc}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ProfileForm({ data, profileUser, onAvatarChange, avatarData }) {
+  const saveProfile = useSaveLearningProfile();
+  const { checkUserAuth } = useAuth();
+  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
+  const [optIn, setOptIn] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const avatarInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!data) return;
+    setName(data.user?.full_name || "");
+    setBio(data.profile?.bio || "");
+    setOptIn(Boolean(data.profile?.hallOfFameOptIn));
+  }, [data]);
+
+  const handleAvatarSelection = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
+      setAvatarError("Pilih foto JPG, PNG, atau WebP maksimal 8 MB.");
+      return;
+    }
+    try {
+      setAvatarError("");
+      onAvatarChange(await resizeProfileImage(file));
+    } catch (error) {
+      setAvatarError(error.message || "Foto belum dapat dipakai.");
+    }
+  };
+
+  const isDirty = name !== (data?.user?.full_name || "")
+    || bio !== (data?.profile?.bio || "")
+    || optIn !== Boolean(data?.profile?.hallOfFameOptIn)
+    || avatarData !== (data?.profile?.avatar || data?.user?.avatar || "");
+
+  const save = async () => {
+    try {
+      await saveProfile.mutateAsync({ fullName: name, bio, hallOfFameOptIn: optIn, avatarData });
+      await checkUserAuth();
+      toast({ title: "Profil disimpan", description: "Pengaturan profil dan privasi Anda telah diperbarui." });
+    } catch (saveError) {
+      toast({ variant: "destructive", title: "Profil belum tersimpan", description: saveError.message });
+    }
+  };
+
+  return (
+    <section className="card anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 1 })} aria-labelledby="profil-title">
+      <div className="card-pad-lg" style={{ paddingBottom: 0 }}>
+        <SectionTitle id="profil-title" tile={<span className="tile tile-round" data-hue="green"><Ic name="user" /></span>} title="Profil" desc="Cara Anda tampil bagi peserta lain di Academy." />
+        <FormRow title="Foto profil" desc="Foto dipotong persegi dan disimpan aman di akun Anda.">
+          <div className="row wrap gap-4">
+            <ProfileAvatar user={profileUser} name={name || profileUser?.full_name} className="avatar-lg" alt="" />
+            <div className="stack gap-2">
+              <div className="row wrap gap-2">
+                <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Pilih foto profil" onChange={handleAvatarSelection} className="sr-only" />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => avatarInputRef.current?.click()}><Ic name="camera" />{avatarData ? "Ganti foto" : "Tambah foto"}</button>
+                {avatarData ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => { onAvatarChange(""); setAvatarError(""); }}>Hapus</button> : null}
+              </div>
+              {avatarError ? <p className="hint hint-error" role="alert"><Ic name="alert" size="xs" />{avatarError}</p> : <p className="hint">JPG, PNG, atau WebP, maksimal 8 MB.</p>}
+            </div>
+          </div>
+        </FormRow>
+        <FormRow title="Identitas" desc="Nama dan tentang saya tampil di ruang belajar.">
+          <div className="stack gap-4" style={{ maxWidth: 560 }}>
+            <Field id="pf-name" label="Nama tampil">
+              <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={160} autoComplete="name" />
+            </Field>
+            <div className="field">
+              <label className="label" htmlFor="pf-bio">Tentang saya<span className="opt">Opsional</span></label>
+              <Textarea id="pf-bio" rows={3} maxLength={600} value={bio} onChange={(event) => setBio(event.target.value)} placeholder="Ceritakan fokus belajar atau farm Anda." aria-describedby="pf-bio-hint" />
+              <p className="hint" id="pf-bio-hint">Opsional. Fokus belajar atau konteks farm yang ingin Anda bagikan.</p>
+            </div>
+          </div>
+        </FormRow>
+        <FormRow title="Privasi" desc="Kendalikan apa yang terlihat oleh peserta lain.">
+          <div className="stack gap-1-5" style={{ maxWidth: 560 }}>
+            <label className="switch"><input type="checkbox" checked={optIn} onChange={(event) => setOptIn(event.target.checked)} aria-describedby="pf-hof-hint" />Tampilkan di Hall of Fame</label>
+            <p className="hint" id="pf-hof-hint" style={{ paddingLeft: 46 }}>Hanya nama, level, dan poin pembelajaran yang ditampilkan. Email tidak pernah ditampilkan.</p>
+          </div>
+        </FormRow>
+      </div>
+      <div className="card-foot wrap" style={{ padding: "16px 24px" }}>
+        <span className={`chip chip-dot ${isDirty ? "chip-warning" : "chip-success"}`} aria-live="polite">{isDirty ? "Ada perubahan belum disimpan" : "Semua perubahan tersimpan"}</span>
+        <button type="button" className="btn btn-primary ml-auto" onClick={save} disabled={!isDirty || saveProfile.isPending} aria-busy={saveProfile.isPending || undefined}>
+          {saveProfile.isPending ? <span className="typing" aria-hidden="true"><i /><i /><i /></span> : null}Simpan profil
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const SOURCE_OPTIONS = [
+  { value: "global", title: "Global AAPM (disarankan)", desc: "Dikelola Academy. Tidak perlu pengaturan apa pun." },
+  { value: "provider", title: "Penyedia global lain", desc: "Pilih penyedia lain yang sudah disiapkan admin Academy." },
+  { value: "custom", title: "Koneksi saya sendiri (lanjutan)", desc: "Pakai layanan AI milik Anda. Perlu alamat layanan dan kunci akses dari penyedia Anda." },
+];
 
 function AiAccountPreferences() {
   const { data, isLoading, error, refetch } = useAiAccountSettings();
@@ -117,6 +449,13 @@ function AiAccountPreferences() {
   }, [data]);
 
   const selectedProvider = data?.globalProviders?.find((item) => item.id === providerId);
+  const chooseMode = (value) => {
+    setMode(value);
+    if (value === "global") {
+      setProviderId(data?.globalProviderId || "");
+      setModel("");
+    }
+  };
   const savePreferences = async () => {
     try {
       await save.mutateAsync({
@@ -137,414 +476,266 @@ function AiAccountPreferences() {
     }
   };
 
-  if (isLoading) return <Surface variant="muted" className="min-h-40 animate-pulse" aria-busy="true" />;
+  const tile = <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}><img src={appiAsset(1)} alt="" style={{ width: 32, height: 32 }} /></span>;
+  const head = <SectionTitle id="appi-title" tile={tile} title="APPI" desc="Atur dari mana APPI mengambil jawaban untuk akun Anda." extra={<span className="chip chip-outline">Hanya akun ini</span>} />;
+
+  if (isLoading) {
+    return (
+      <section className="card card-pad-lg anim-rise" aria-labelledby="appi-title" aria-busy="true">
+        {head}
+        <div className="stack gap-3" style={{ maxWidth: 560 }}><span className="skel" style={{ height: 64 }} /><span className="skel" style={{ height: 64 }} /><span className="skel" style={{ height: 64 }} /></div>
+      </section>
+    );
+  }
   if (error) {
     return (
-      <StateView
-        kind="error"
-        title="Preferensi APPI belum tersedia"
-        description={error.message}
-        action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>}
-      />
+      <section className="card card-pad-lg anim-rise" aria-labelledby="appi-title">
+        {head}
+        <div className="alert alert-danger" role="alert">
+          <Ic name="alert" />
+          <div className="row wrap between gap-3 grow">
+            <p style={{ flex: "1 1 280px" }}><span className="alert-title">Preferensi APPI belum tersedia.</span> {error.message}</p>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => refetch()}><Ic name="refresh" />Coba lagi</button>
+          </div>
+        </div>
+      </section>
     );
   }
 
   return (
-    <Surface className="aapm-profile-panel p-5 sm:p-6">
-      <SectionHeader
-        title="Preferensi APPI"
-        description="Pilih provider global Academy atau gunakan koneksi AI milik Anda sendiri."
-        actions={<Badge variant="soft" hue="green">Per akun</Badge>}
-      />
-      <div className="aapm-profile-panel__body">
-        <ControlField id="account-ai-mode" label="Sumber provider" hint={data?.note}>
-          <Select value={mode} onValueChange={(value) => { setMode(value); if (value === "global") { setProviderId(data?.globalProviderId || ""); setModel(""); } }}>
-            <SelectTrigger id="account-ai-mode"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="global">Global AAPM Provider · default</SelectItem>
-              <SelectItem value="provider">Pilih provider global lain</SelectItem>
-              <SelectItem value="custom">Provider saya sendiri · BYOK</SelectItem>
-            </SelectContent>
-          </Select>
-        </ControlField>
-
-        {mode === "provider" ? (
-          <ControlField id="account-ai-provider" label="Provider global">
-            <Select value={providerId} onValueChange={setProviderId}>
-              <SelectTrigger id="account-ai-provider"><SelectValue placeholder="Pilih provider" /></SelectTrigger>
-              <SelectContent>
-                {(data?.globalProviders || []).map((provider) => <SelectItem key={provider.id} value={provider.id}>{provider.label} · {provider.model}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </ControlField>
-        ) : null}
-
-        {mode === "global" || mode === "provider" ? (
-          <Field id="account-ai-model" label="Model override" hint="Kosongkan agar mengikuti model yang dipilih admin. Isi ID model hanya jika provider mendukungnya.">
-            <Input value={model} onChange={(event) => setModel(event.target.value)} placeholder={selectedProvider?.model || data?.globalModel || "Biarkan memakai model global"} />
-          </Field>
-        ) : null}
-
-        {mode === "custom" ? (
-          <FormSection title="Koneksi BYOK" description="Endpoint dan key disimpan hanya untuk akun ini.">
-            <FormGrid columns={2}>
-              <Field id="account-ai-base-url" label="Base URL provider Anda" className="sm:col-span-2">
-                <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://gateway.example.com/v1" />
-              </Field>
-              <Field id="account-ai-custom-model" label="Model ID">
-                <Input value={model} onChange={(event) => setModel(event.target.value)} placeholder="llama3.2 atau model provider" />
-              </Field>
-              <ControlField id="account-ai-auth" label="Autentikasi">
-                <Select value={authMode} onValueChange={setAuthMode}>
-                  <SelectTrigger id="account-ai-auth"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bearer">Bearer</SelectItem>
-                    <SelectItem value="x-api-key">X-API-Key</SelectItem>
-                    <SelectItem value="none">Tanpa key / local</SelectItem>
-                  </SelectContent>
-                </Select>
-              </ControlField>
-              <Field id="account-ai-key" label="API key Anda" hint={data?.apiKeyConfigured ? "Kosongkan untuk mempertahankan key yang tersimpan." : "Opsional untuk endpoint lokal. Key hanya tersimpan di akun Anda."} className="sm:col-span-2">
-                <Input type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={data?.apiKeyConfigured ? "Tersimpan · isi untuk mengganti" : "Tempel API key"} />
-              </Field>
-            </FormGrid>
-            <FormGrid columns={2}>
-              <SwitchField id="account-ai-local" label="Endpoint privat / local" description="Izinkan HTTP loopback atau LAN privat." checked={allowLocal} onCheckedChange={setAllowLocal} />
-              <SwitchField id="account-ai-vision" label="Input gambar" description="Aktifkan jika model Anda mendukung vision." checked={supportsVision} onCheckedChange={setSupportsVision} />
-            </FormGrid>
-          </FormSection>
-        ) : null}
-
-        <SwitchField id="account-ai-enabled" label="Izinkan APPI pada akun ini" description="Jika dimatikan, APPI memakai fallback lokal saat dipanggil." checked={enabled} onCheckedChange={setEnabled} />
+    <section className="card anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 2 })} aria-labelledby="appi-title">
+      <div className="card-pad-lg" style={{ paddingBottom: 0 }}>
+        {head}
+        <FormRow title="Sumber jawaban" desc={data?.note || "Pilihan default sudah diatur admin Academy dan cocok untuk sebagian besar peserta."}>
+          <fieldset className="stack gap-3" style={{ maxWidth: 560, margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+            <legend className="sr-only">Sumber jawaban APPI</legend>
+            {SOURCE_OPTIONS.map((option) => (
+              <label key={option.value} className={`check card card-pad-sm w-full${mode === option.value ? " card-selected" : ""}`} data-hue={mode === option.value ? "green" : undefined}>
+                <input type="radio" name="appi-source" value={option.value} checked={mode === option.value} onChange={() => chooseMode(option.value)} />
+                <span className="stack gap-0-5">
+                  <span className="t-strong">{option.title}</span>
+                  <span className="t-caption t-muted">{option.desc}</span>
+                </span>
+              </label>
+            ))}
+            <details className="inset" open={mode === "custom" || undefined}>
+              <summary className="row gap-2 t-support t-strong" style={{ display: "flex", height: 44, padding: "0 12px", cursor: "pointer" }}>
+                <Ic name="sliders" size="sm" className="t-muted" /><span className="grow">Pengaturan lanjutan</span><Ic name="chev-down" size="sm" className="t-muted" />
+              </summary>
+              <div className="stack gap-4" style={{ padding: "4px 12px 16px" }}>
+                {mode === "provider" ? (
+                  <div className="field">
+                    <label className="label" htmlFor="account-ai-provider">Penyedia global</label>
+                    <Select value={providerId} onValueChange={setProviderId}>
+                      <SelectTrigger id="account-ai-provider"><SelectValue placeholder="Pilih penyedia" /></SelectTrigger>
+                      <SelectContent>
+                        {(data?.globalProviders || []).map((provider) => <SelectItem key={provider.id} value={provider.id}>{provider.label} · {provider.model}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+                {mode !== "custom" ? (
+                  <Field id="account-ai-model" label="Model khusus" hint="Kosongkan agar mengikuti model yang dipilih admin. Isi ID model hanya jika penyedia mendukungnya.">
+                    <Input value={model} onChange={(event) => setModel(event.target.value)} placeholder={selectedProvider?.model || data?.globalModel || "Ikuti model global"} />
+                  </Field>
+                ) : (
+                  <>
+                    <Field id="account-ai-base-url" label="Alamat layanan (base URL)">
+                      <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://gateway.example.com/v1" inputMode="url" />
+                    </Field>
+                    <div className="form-grid">
+                      <Field id="account-ai-custom-model" label="ID model">
+                        <Input value={model} onChange={(event) => setModel(event.target.value)} placeholder="llama3.2 atau model penyedia" />
+                      </Field>
+                      <div className="field">
+                        <label className="label" htmlFor="account-ai-auth">Autentikasi</label>
+                        <Select value={authMode} onValueChange={setAuthMode}>
+                          <SelectTrigger id="account-ai-auth"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bearer">Bearer</SelectItem>
+                            <SelectItem value="x-api-key">X-API-Key</SelectItem>
+                            <SelectItem value="none">Tanpa kunci / lokal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Field id="account-ai-key" label="Kunci akses (API key)" hint={data?.apiKeyConfigured ? "Kosongkan untuk mempertahankan kunci yang tersimpan." : "Opsional untuk layanan lokal. Kunci hanya tersimpan di akun Anda."}>
+                      <Input type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={data?.apiKeyConfigured ? "Tersimpan · isi untuk mengganti" : "Tempel API key"} />
+                    </Field>
+                    <label className="switch"><input type="checkbox" checked={allowLocal} onChange={(event) => setAllowLocal(event.target.checked)} />Izinkan layanan privat / lokal</label>
+                    <label className="switch"><input type="checkbox" checked={supportsVision} onChange={(event) => setSupportsVision(event.target.checked)} />Model mendukung input gambar</label>
+                  </>
+                )}
+              </div>
+            </details>
+          </fieldset>
+        </FormRow>
+        <FormRow title="Akses APPI" desc="Matikan jika Anda belum ingin memakai asisten.">
+          <div className="stack gap-1-5" style={{ maxWidth: 560 }}>
+            <label className="switch switch-ai"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} aria-describedby="appi-on-hint" />Izinkan APPI pada akun ini</label>
+            <p className="hint" id="appi-on-hint" style={{ paddingLeft: 46 }}>Jika dimatikan, APPI memakai balasan lokal.</p>
+          </div>
+        </FormRow>
       </div>
-      <FormActions className="aapm-profile-panel__actions">
-        <Button type="button" variant="ai" onClick={savePreferences} loading={save.isPending}>Simpan preferensi APPI</Button>
-      </FormActions>
-    </Surface>
+      <div className="card-foot wrap" style={{ padding: "16px 24px" }}>
+        <button type="button" className="btn btn-secondary ml-auto" onClick={savePreferences} disabled={save.isPending} aria-busy={save.isPending || undefined}>
+          {save.isPending ? <span className="typing" aria-hidden="true"><i /><i /><i /></span> : null}Simpan preferensi APPI
+        </button>
+      </div>
+    </section>
   );
 }
 
-function PwaInstallShortcut() {
+function DevicePanel() {
   const { canInstall, isInstalled, install } = usePwaInstall();
   const { toast } = useToast();
-
   const handleInstall = async () => {
     const result = await install();
     if (result?.outcome === "accepted") {
-      toast({ title: "AAPM Academy dipasang", description: "Buka kembali dari layar utama untuk pengalaman PWA yang lebih ringkas." });
+      toast({ title: "AAPM Academy dipasang", description: "Buka kembali dari layar utama untuk pengalaman yang lebih ringkas." });
     }
   };
-
+  const steps = [
+    <>Buka Academy di <span className="t-strong">Safari</span>.</>,
+    <span key="share" className="row wrap gap-1">Ketuk <span className="row gap-1 t-strong"><Ic name="upload" size="sm" />Bagikan</span></span>,
+    <>Pilih <span className="t-strong">Tambahkan ke Layar Utama</span>.</>,
+  ];
   return (
-    <Surface className="aapm-pwa-install-card p-5 sm:p-6">
-      <div className="aapm-profile-device">
-        <IconTile icon="download" hue="green" size="lg" />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold">Pasang AAPM di perangkat</h2>
-            {isInstalled ? <Badge variant="soft" hue="green">Sudah terpasang</Badge> : null}
+    <section className="card anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 3 })} aria-labelledby="device-title">
+      <div className="card-pad-lg">
+        <SectionTitle id="device-title" tile={<span className="tile tile-round" data-hue="blue"><Ic name="phone" /></span>} title="Perangkat" desc="Pasang Academy di perangkat untuk membuka materi, APPI, dan alat farm lebih cepat." />
+        <FormRow title="iPhone & iPad" desc="Safari tidak menampilkan tombol instal. Tambahkan dari menu Bagikan.">
+          <ol className="grid-xs" style={{ maxWidth: 720 }} aria-label="Langkah memasang di iPhone">
+            {steps.map((step, index) => (
+              <li key={index} className="inset row gap-3" style={{ padding: "12px 14px" }}>
+                <span className="tile tile-sm tile-round tile-solid" data-hue="blue"><span className="t-support t-strong">{index + 1}</span></span>
+                <span className="t-support">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </FormRow>
+        <FormRow title="Android & komputer" desc="Chrome dan Edge bisa memasang Academy langsung." style={{ paddingBottom: 0 }}>
+          <div className="row wrap gap-3">
+            {isInstalled ? (
+              <span className="chip chip-success"><Ic name="check" />Sudah terpasang</span>
+            ) : (
+              <button type="button" className="btn btn-secondary" onClick={handleInstall} disabled={!canInstall}><Ic name="download" />Instal Academy</button>
+            )}
+            <span className="t-caption t-muted">
+              {isInstalled ? "Academy sudah tersedia sebagai aplikasi di perangkat ini." : canInstall ? "Belum terpasang di perangkat ini." : "Jika tombol belum aktif, pilih Install app dari menu browser."}
+            </span>
           </div>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            {isInstalled
-              ? "AAPM Academy sudah tersedia sebagai aplikasi mandiri di perangkat ini."
-              : canInstall
-                ? "Tambahkan shortcut ke layar utama agar belajar dan membuka APPI lebih cepat."
-                : "Buka menu browser lalu pilih Install app / Tambahkan ke layar utama jika tombol belum tersedia."}
-          </p>
-          {!isInstalled ? (
-            <Button type="button" className="mt-4" leadingIcon="download" onClick={handleInstall} disabled={!canInstall}>
-              {canInstall ? "Install sekarang" : "Menunggu dukungan browser"}
-            </Button>
-          ) : null}
-        </div>
+        </FormRow>
       </div>
-    </Surface>
+    </section>
+  );
+}
+
+/** Quiet, dismissible reminder for legacy accounts. It never blocks learning. */
+function VerificationReminder() {
+  const { user } = useAuth();
+  const [hidden, setHidden] = useState(false);
+  const [note, setNote] = useState("");
+  if (user?.emailVerificationStatus !== "legacy_pending" || hidden) return null;
+  const send = async () => {
+    setNote("");
+    try {
+      await nativeApi.auth.resendVerification({});
+      setNote("Jika akun ini belum terverifikasi, instruksi baru telah dikirim ke email Anda.");
+    } catch {
+      setNote("Instruksi belum dapat dikirim. Coba lagi nanti.");
+    }
+  };
+  return (
+    <div className="alert alert-warning anim-rise" role="status">
+      <Ic name="mail" />
+      <div className="stack gap-2 grow">
+        <div className="row wrap between gap-3">
+          <p style={{ flex: "1 1 320px" }}><span className="alert-title">Verifikasi alamat email Anda untuk melindungi akun.</span> Akses belajar Anda tetap tersedia.</p>
+          <div className="row wrap gap-2">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={send}>Kirim instruksi verifikasi</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHidden(true)}>Nanti saja</button>
+          </div>
+        </div>
+        {note ? <p className="t-caption" aria-live="polite">{note}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function ProfileHeader() {
+  return (
+    <div className="stack gap-4">
+      <header className="ph">
+        <div className="ph-copy">
+          <h1 className="ph-title">Prestasi &amp; profil</h1>
+          <p className="ph-desc">Identitas belajar, pencapaian, dan preferensi akun Anda.</p>
+        </div>
+      </header>
+      <nav className="tabs" aria-label="Bagian profil">
+        <NavLink end to="/profile" className={({ isActive }) => `tab${isActive ? " is-on" : ""}`}><Ic name="medal" />Ringkasan</NavLink>
+        <NavLink to="/profile/settings" className={({ isActive }) => `tab${isActive ? " is-on" : ""}`}><Ic name="sliders" />Pengaturan</NavLink>
+      </nav>
+    </div>
   );
 }
 
 export default function Profile() {
+  const location = useLocation();
+  const settings = location.pathname.startsWith("/profile/settings");
   const { data, isLoading, error, refetch } = useLearningProfile();
   const { data: hall } = useHallOfFame();
-  const saveProfile = useSaveLearningProfile();
-  const { checkUserAuth, user: authUser } = useAuth();
-  const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [bio, setBio] = useState("");
-  const [optIn, setOptIn] = useState(false);
+  const { data: certificates = [] } = useCertificates();
+  const { user: authUser } = useAuth();
   const [avatarData, setAvatarData] = useState("");
-  const [avatarError, setAvatarError] = useState("");
-  const avatarInputRef = useRef(null);
-  const [verificationNoticeHidden, setVerificationNoticeHidden] = useState(false);
-  const [verificationNote, setVerificationNote] = useState("");
 
   useEffect(() => {
-    if (!data) return;
-    setName(data.user?.full_name || "");
-    setBio(data.profile?.bio || "");
-    setOptIn(Boolean(data.profile?.hallOfFameOptIn));
-    setAvatarData(data.profile?.avatar || data.user?.avatar || "");
+    if (data) setAvatarData(data.profile?.avatar || data.user?.avatar || "");
   }, [data]);
-
-  const handleAvatarSelection = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
-      setAvatarError("Pilih foto JPG, PNG, atau WebP maksimal 8 MB.");
-      return;
-    }
-    try {
-      setAvatarError("");
-      setAvatarData(await resizeProfileImage(file));
-    } catch (error) {
-      setAvatarError(error.message || "Foto belum dapat dipakai.");
-    }
-  };
-
-  const save = async () => {
-    try {
-      await saveProfile.mutateAsync({ fullName: name, bio, hallOfFameOptIn: optIn, avatarData });
-      await checkUserAuth();
-      toast({ title: "Profil disimpan", description: "Pengaturan profil dan privasi Anda telah diperbarui." });
-    } catch (saveError) {
-      toast({ variant: "destructive", title: "Profil belum tersimpan", description: saveError.message });
-    }
-  };
 
   if (isLoading) {
     return (
-      <ContentContainer>
-        <PageHeader title="Profil & prestasi" />
+      <Page>
+        <ProfileHeader />
         <StateView kind="loading" title="Memuat profil…" framed={false} />
-      </ContentContainer>
+      </Page>
     );
   }
   if (error) {
     return (
-      <ContentContainer>
-        <PageHeader title="Profil & prestasi" />
-        <StateView kind="error" title="Profil belum dapat dimuat" description={error.message} action={<Button variant="secondary" leadingIcon="refresh" onClick={refetch}>Coba lagi</Button>} />
-      </ContentContainer>
+      <Page>
+        <ProfileHeader />
+        <StateView kind="error" title="Profil belum dapat dimuat" description={error.message} action={<button type="button" className="btn btn-secondary" onClick={() => refetch()}><AapmIcon name="refresh" />Coba lagi</button>} />
+      </Page>
     );
   }
 
   const learning = data?.learning || {};
-  const profileName = data?.user?.full_name || data?.user?.email || "Learner";
-  const profileUser = { ...(data?.user || {}), avatar: avatarData };
-  const nextLevelProgress = learning.nextLevelAt
-    ? Math.min(100, Math.round((learning.points / learning.nextLevelAt) * 100))
-    : 100;
-  const achievements = learning.achievements || [];
-  const unlockedCount = achievements.filter((item) => item.unlocked).length;
-  const isDirty = name !== (data?.user?.full_name || "")
-    || bio !== (data?.profile?.bio || "")
-    || optIn !== Boolean(data?.profile?.hallOfFameOptIn)
-    || avatarData !== (data?.profile?.avatar || data?.user?.avatar || "");
-
-  // One quiet, dismissible reminder for legacy accounts. It never blocks learning.
-  const showVerificationNotice = authUser?.emailVerificationStatus === "legacy_pending" && !verificationNoticeHidden;
-  const sendVerificationInstructions = async () => {
-    setVerificationNote("");
-    try {
-      await nativeApi.auth.resendVerification({});
-      setVerificationNote("Jika akun ini belum terverifikasi, instruksi baru telah dikirim ke email Anda.");
-    } catch {
-      setVerificationNote("Instruksi belum dapat dikirim. Coba lagi nanti.");
-    }
-  };
+  const user = data?.user || authUser || {};
+  const profileUser = { ...user, avatar: avatarData };
+  const rank = getRankProgress(learning.points);
 
   return (
-    <ContentContainer>
-      {showVerificationNotice && (
-        <div className="aapm-profile__verify" role="status">
-          <p className="aapm-text-caption">Verifikasi alamat email Anda untuk melindungi akun. Akses belajar Anda tetap tersedia.</p>
-          <div className="aapm-profile__verify-actions">
-            <Button type="button" variant="secondary" onClick={sendVerificationInstructions}>Kirim instruksi verifikasi</Button>
-            <Button type="button" variant="secondary" onClick={() => setVerificationNoticeHidden(true)}>Nanti saja</Button>
-          </div>
-          {verificationNote && <p className="aapm-text-caption">{verificationNote}</p>}
-        </div>
-      )}
-      <PageHeader
-        title="Profil & prestasi"
-        description="Identitas belajar, pencapaian, dan preferensi akun Anda."
-      />
-
-      <Surface tone="green" className="aapm-profile-hero">
-        <ProfileAvatar user={profileUser} name={profileName} className="aapm-profile-hero__avatar" fallbackClassName="bg-background text-xl text-brand-green" />
-        <div className="min-w-0">
-          <Badge variant="soft" hue="green" icon="award">{learning.level || "Level belajar"}</Badge>
-          <h2 className="aapm-profile-hero__name">{profileName}</h2>
-          <p className="aapm-profile-hero__email">{data?.user?.email}</p>
-        </div>
-        <div className="aapm-profile-hero__progress">
-          <ProgressRing value={nextLevelProgress} size={76} stroke={7} hue="orange" label="Menuju level berikutnya" />
-          <p className="aapm-profile-hero__progress-text">
-            {learning.nextLevelAt ? `${learning.points || 0} / ${learning.nextLevelAt} poin` : "Level tertinggi tercapai"}
-          </p>
-        </div>
-      </Surface>
-
-      <KPICluster
-        className="aapm-profile-kpi"
-        label="Ringkasan profil belajar"
-        columns={4}
-        variant="cards"
-        items={[
-          {
-            icon: "book",
-            label: "Modul selesai",
-            value: String(learning.completedModules || 0),
-            note: `${learning.progressPercent || 0}% dari kurikulum`,
-            tone: "success",
-            colorway: 1,
-            emphasis: "solid",
-          },
-          {
-            icon: "analytics",
-            label: "Rata-rata kuis",
-            value: learning.quizAverage === null || learning.quizAverage === undefined ? "—" : `${learning.quizAverage}%`,
-            note: "Dihitung dari nilai tersimpan",
-            tone: "info",
-            colorway: 2,
-            emphasis: "solid",
-          },
-          {
-            icon: "clock",
-            label: "Waktu belajar",
-            value: `${Math.floor((learning.timeSpentMinutes || 0) / 60)}j`,
-            note: `${(learning.timeSpentMinutes || 0) % 60} menit tercatat`,
-            tone: "warning",
-            colorway: 3,
-            emphasis: "solid",
-          },
-          {
-            icon: "approve",
-            label: "Sertifikat",
-            value: String(learning.certificateCount || 0),
-            note: "Diterbitkan oleh Academy",
-            tone: "accent",
-            colorway: 4,
-            emphasis: "solid",
-          },
-        ]}
-      />
-
-      <Tabs defaultValue="summary" className="aapm-profile-tabs">
-        <TabsList variant="underline" aria-label="Bagian profil">
-          <TabsTrigger value="summary" icon="award">Ringkasan</TabsTrigger>
-          <TabsTrigger value="profile" icon="user">Profil</TabsTrigger>
-          <TabsTrigger value="appi" icon="ai">APPI</TabsTrigger>
-          <TabsTrigger value="device" icon="smartphone">Perangkat</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="summary" className="aapm-profile-summary">
-          <Surface className="p-5 sm:p-6">
-            <SectionHeader
-              title="Pencapaian Anda"
-              description={data?.achievementNote}
-              actions={<Badge variant="soft" hue="green">{unlockedCount}/{achievements.length} terbuka</Badge>}
-            />
-            {achievements.length ? (
-              <div className="aapm-achievement-grid">
-                {achievements.map((achievement) => {
-                  const percent = achievement.target ? Math.min(100, Math.round((Math.min(achievement.current, achievement.target) / achievement.target) * 100)) : 0;
-                  return (
-                    <article key={achievement.id} className="aapm-achievement" data-unlocked={achievement.unlocked ? "true" : "false"}>
-                      <IconTile icon={achievement.icon} hue={achievement.unlocked ? "green" : "neutral"} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold">{achievement.title}</h3>
-                          {achievement.unlocked ? <AapmIcon name="check" className="h-4 w-4 text-brand-green" /> : null}
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.description}</p>
-                        <Progress className="mt-3" value={percent} size="sm" hue={achievement.unlocked ? "green" : "neutral"} label={`${achievement.title} ${percent}%`} />
-                        <p className="mt-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">{Math.min(achievement.current, achievement.target)}/{achievement.target}</p>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <StateView kind="empty" icon="award" title="Pencapaian belum tersedia" description="Pencapaian akan muncul setelah aktivitas belajar tercatat." framed={false} />
-            )}
-          </Surface>
-
-          <Surface className="p-5 sm:p-6">
-            <SectionHeader
-              title="Hall of Fame"
-              description={hall?.criteria}
-            />
-            <div className="aapm-hof-list">
-              {hall?.entries?.length ? hall.entries.slice(0, 5).map((entry) => (
-                <div key={entry.userId} className="aapm-hof-row">
-                  <span className="aapm-hof-row__rank">{entry.rank}</span>
-                  <span className="aapm-hof-row__avatar" aria-hidden="true">{entry.name.slice(0, 1).toUpperCase()}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{entry.name}</span>
-                    <span className="block text-xs text-muted-foreground">{entry.level}</span>
-                  </span>
-                  <span className="text-sm font-semibold tabular-nums">{entry.points}</span>
-                </div>
-              )) : (
-                <p className="aapm-hof-empty">Belum ada peserta yang memilih tampil di Hall of Fame.</p>
-              )}
-            </div>
-          </Surface>
-        </TabsContent>
-
-        <TabsContent value="profile">
-          <Surface className="aapm-profile-panel p-5 sm:p-6">
-            <FormSection title="Foto profil" description="Foto dipotong persegi dan disimpan aman di akun Anda.">
-              <div className="aapm-profile-avatar-row">
-                <ProfileAvatar user={profileUser} name={profileName} className="h-16 w-16" fallbackClassName="bg-tint-green text-lg text-brand-green" />
-                <div className="aapm-profile-avatar-row__actions">
-                  <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Pilih foto profil" onChange={handleAvatarSelection} className="sr-only" />
-                  <Button type="button" variant="outline" size="sm" leadingIcon="camera" onClick={() => avatarInputRef.current?.click()}>
-                    {avatarData ? "Ganti foto" : "Tambah foto"}
-                  </Button>
-                  {avatarData ? <Button type="button" variant="ghost" size="sm" onClick={() => { setAvatarData(""); setAvatarError(""); }}>Hapus</Button> : null}
-                </div>
-              </div>
-              {avatarError ? <p className="aapm-field-error" role="alert">{avatarError}</p> : null}
-            </FormSection>
-
-            <FormSection title="Identitas" description="Nama dan tentang saya tampil di ruang belajar.">
-              <FormGrid columns={1}>
-                <Field id="profile-name" label="Nama tampil">
-                  <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={160} />
-                </Field>
-                <Field id="profile-bio" label="Tentang saya" hint="Opsional. Fokus belajar atau konteks farm yang ingin Anda bagikan.">
-                  <Textarea value={bio} onChange={(event) => setBio(event.target.value)} maxLength={600} rows={3} placeholder="Ceritakan fokus belajar atau farm Anda." />
-                </Field>
-              </FormGrid>
-            </FormSection>
-
-            <FormSection title="Privasi" description="Kendalikan apa yang terlihat oleh peserta lain.">
-              <SwitchField
-                id="profile-hall-of-fame"
-                label="Tampilkan di Hall of Fame"
-                description="Hanya nama, level, dan poin pembelajaran yang ditampilkan. Email tidak pernah ditampilkan."
-                checked={optIn}
-                onCheckedChange={setOptIn}
-              />
-            </FormSection>
-
-            <FormActions className="aapm-profile-panel__actions">
-              <span className="aapm-profile-panel__status" aria-live="polite">{isDirty ? "Ada perubahan belum disimpan" : "Semua perubahan tersimpan"}</span>
-              <Button type="button" onClick={save} loading={saveProfile.isPending} disabled={!isDirty}>Simpan profil</Button>
-            </FormActions>
-          </Surface>
-        </TabsContent>
-
-        <TabsContent value="appi">
+    <Page>
+      <ProfileHeader />
+      {settings ? (
+        <>
+          <VerificationReminder />
+          <ProfileForm data={data} profileUser={profileUser} avatarData={avatarData} onAvatarChange={setAvatarData} />
           <AiAccountPreferences />
-        </TabsContent>
-
-        <TabsContent value="device">
-          <PwaInstallShortcut />
-        </TabsContent>
-      </Tabs>
-    </ContentContainer>
+          <DevicePanel />
+        </>
+      ) : (
+        <>
+          <ProfileHero user={user} profileUser={profileUser} rank={rank} />
+          <SummaryMetrics learning={learning} user={user} certificates={Array.isArray(certificates) ? certificates : []} />
+          <div className="split stretch">
+            <Achievements achievements={learning.achievements || []} />
+            <HallOfFame hall={hall} userId={user.id} profileUser={profileUser} me={{ points: rank.points, level: rank.name, optIn: Boolean(data?.profile?.hallOfFameOptIn) }} />
+          </div>
+          <PointRules />
+        </>
+      )}
+    </Page>
   );
 }

@@ -31,14 +31,11 @@ export default function AiMessageMeta({
 
   if (message?.error) {
     return (
-      <div
-        className={`aapm-ai-status-line aapm-ai-status-line--error ${compact ? "aapm-ai-status-line--compact" : ""}`}
-        role="alert"
-      >
+      <div className="alert alert-danger aapm-ai-status-line--error" style={{ padding: "var(--s-2) var(--s-3)", alignItems: "center" }} role="alert">
         <AapmIcon name="alert" className="h-3.5 w-3.5 shrink-0" />
         <span className="min-w-0">{message.notice || "Permintaan tidak dapat diproses. Coba kirim ulang beberapa saat lagi."}</span>
         {retryPrompt && onRetry ? (
-          <button type="button" className="aapm-ai-status-line__action" disabled={disabled} onClick={() => onRetry(retryPrompt)}>
+          <button type="button" className="btn btn-secondary btn-sm ml-auto" disabled={disabled} onClick={() => onRetry(retryPrompt)}>
             Kirim ulang
           </button>
         ) : null}
@@ -66,7 +63,7 @@ export default function AiMessageMeta({
   // as a real button, so it cannot pass for a normal answer.
   if (message?.fallback) {
     return (
-      <div className="aapm-ai-fallback" role="status">
+      <div className="alert alert-warning aapm-ai-fallback" role="status">
         <AapmIcon name="solar:info-circle-bold-duotone" className="mt-px h-4 w-4 shrink-0" />
         <div className="aapm-ai-fallback__body">
           <p className="aapm-ai-fallback__title">Balasan lokal</p>
@@ -109,22 +106,23 @@ export default function AiMessageMeta({
 
   return (
     <div
-      className={`aapm-ai-status-line ${warning ? "aapm-ai-status-line--warning" : "aapm-ai-status-line--success"} ${compact ? "aapm-ai-status-line--compact" : ""}`}
+      className={`row wrap gap-1 t-caption aapm-ai-status-line ${warning ? "t-warning" : "t-success"}`}
+      style={{ padding: "0 var(--s-2)", minHeight: "var(--h-sm)" }}
       title={message.notice || undefined}
       role="status"
     >
       <AapmIcon
         name={warning ? (message.fallback ? "solar:info-circle-bold" : "solar:refresh-circle-bold-duotone") : "solar:check-circle-bold-duotone"}
-        className={`h-3.5 w-3.5 shrink-0 ${warning ? "text-brand-orange" : "text-brand-green"}`}
+        className="ic-xs"
       />
       <span className="min-w-0 truncate">{label}</span>
-      {provider && <span className="min-w-0 truncate text-muted-foreground/80">· {provider}</span>}
+      {provider && <span className="t-muted t-clamp-1">· {provider}</span>}
       <span className="sr-only">{message.notice || ""}</span>
       {canRetryProvider && (
         <button
           type="button"
           onClick={() => onRetry(retryPrompt)}
-          className="aapm-ai-status-line__action"
+          className="btn btn-link t-caption"
         >
           Coba provider lagi
         </button>
@@ -134,7 +132,7 @@ export default function AiMessageMeta({
           type="button"
           onClick={() => onRetryPersistence(message)}
           disabled={persistenceRetrying || disabled}
-          className="aapm-ai-status-line__action disabled:opacity-60"
+          className="btn btn-link t-caption"
         >
           {persistenceRetrying ? "Menyimpan…" : "Coba simpan lagi"}
         </button>

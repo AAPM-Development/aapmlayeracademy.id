@@ -4,20 +4,12 @@ import { nativeApi } from "@/api/nativeClient";
 import { Button, Alert } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
-import AapmIcon from "@/components/icons/AapmIcon";
 import {
-  NEW_PASSWORD_HINT,
   collectErrors,
   confirmPasswordError,
   focusFirstError,
   newPasswordError,
 } from "@/lib/authValidation";
-
-const backToLogin = (
-  <Link to="/login" className="aapm-link">
-    <AapmIcon name="arrowLeft" />Kembali ke halaman masuk
-  </Link>
-);
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -60,14 +52,14 @@ export default function ResetPassword() {
   if (!resetToken) {
     return (
       <AuthLayout
-        iconName="danger"
-        iconHue="rose"
+        icon="link"
+        tone="danger"
         title="Tautan reset tidak valid"
         subtitle="Tautan kata sandi ini tidak lengkap atau sudah tidak berlaku."
-        footer={backToLogin}
+        back={{ to: "/login" }}
       >
         <Button asChild size="lg" block>
-          <Link to="/forgot-password"><AapmIcon name="mail" />Minta tautan baru</Link>
+          <Link to="/forgot-password">Minta tautan baru</Link>
         </Button>
       </AuthLayout>
     );
@@ -75,16 +67,16 @@ export default function ResetPassword() {
 
   return (
     <AuthLayout
-      iconName="lock"
+      icon="lock"
       title="Buat kata sandi baru"
       subtitle="Gunakan kata sandi baru untuk mengamankan akun Academy."
-      footer={backToLogin}
+      back={{ to: "/login" }}
     >
       {error && (
         <Alert
           tone="danger"
           description={error}
-          className="aapm-auth__alert"
+         
           action={tokenRejected ? (
             <Button asChild variant="secondary" size="sm">
               <Link to="/forgot-password">Minta tautan baru</Link>
@@ -98,8 +90,7 @@ export default function ResetPassword() {
           label="Kata sandi baru"
           autoComplete="new-password"
           autoFocus
-          placeholder="Minimal 8 karakter"
-          hint={NEW_PASSWORD_HINT}
+          requirements
           error={fieldErrors.password}
           value={newPassword}
           onChange={(e) => { setNewPassword(e.target.value); clearError("password"); }}
@@ -107,9 +98,9 @@ export default function ResetPassword() {
         />
         <PasswordField
           id="confirm"
-          label="Konfirmasi kata sandi"
+          label="Konfirmasi kata sandi baru"
           autoComplete="new-password"
-          placeholder="Ulangi kata sandi"
+          placeholder="Ketik ulang kata sandi"
           error={fieldErrors.confirm}
           value={confirmPassword}
           onChange={(e) => { setConfirmPassword(e.target.value); clearError("confirm"); }}

@@ -11,10 +11,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="preload" href="/fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/Nunito-Variable-latin.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       // Apply the saved appearance before first paint (no light→dark flash).
       try {
-        if (localStorage.getItem("aapm-theme") === "dark") {
+        var savedTheme = localStorage.getItem("aapm-theme");
+        if (savedTheme === "dark" || (!savedTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
           document.documentElement.classList.add("dark");
           document.documentElement.style.colorScheme = "dark";
         }
@@ -37,10 +39,10 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="AAPM Layer Academy — Pelatihan Profesional Manajemen Peternakan Ayam Petelur" />
     <meta name="twitter:description" content="Platform e-learning profesional AAPM untuk manajemen peternakan ayam petelur komersial." />
-    <script type="module" crossorigin src="/assets/index-Cj3uwaKb.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CSFOavgE.css">
+    <script type="module" crossorigin src="/assets/index-HrfGTg_v.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DCSyEQVI.css">
   </head>
-  <body>
-    <div id="root"></div>
+  <body class="aapm">
+    <div id="root"></div>
   </body>
 </html>

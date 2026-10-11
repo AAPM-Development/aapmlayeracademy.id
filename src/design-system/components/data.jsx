@@ -1,13 +1,16 @@
 import * as React from "react";
-import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
+import { Ic } from "../canvas";
 import { IconTile, Skeleton } from "./display";
 
+// Canvas data display (academy.css §11): card › table-wrap › table, list
+// rows, metric cards, deltas and inline SVG charts.
+
 /* ----------------------------------------------------------------- Table */
-const Table = React.forwardRef(function Table({ className, wrapClassName, density, responsive, ...props }, ref) {
+const Table = React.forwardRef(/** @param {any} props @param {any} ref */ function Table({ className = undefined, wrapClassName = undefined, density = undefined, responsive = undefined, ...props }, ref) {
   return (
-    <div className={cn("aapm-table-wrap", wrapClassName)}>
-      <table ref={ref} className={cn("aapm-table", className)} data-density={density} data-responsive={responsive} {...props} />
+    <div className={cn("table-wrap", wrapClassName)}>
+      <table ref={ref} className={cn("table", className)} data-density={density} data-responsive={responsive} {...props} />
     </div>
   );
 });
@@ -15,8 +18,8 @@ const TableHeader = React.forwardRef(function TableHeader(props, ref) { return <
 const TableBody = React.forwardRef(function TableBody(props, ref) { return <tbody ref={ref} {...props} />; });
 const TableFooter = React.forwardRef(function TableFooter(props, ref) { return <tfoot ref={ref} {...props} />; });
 const TableRow = React.forwardRef(function TableRow(props, ref) { return <tr ref={ref} {...props} />; });
-const TableHead = React.forwardRef(function TableHead({ align, ...props }, ref) { return <th ref={ref} data-align={align} {...props} />; });
-const TableCell = React.forwardRef(function TableCell({ align, ...props }, ref) { return <td ref={ref} data-align={align} {...props} />; });
+const TableHead = React.forwardRef(/** @param {any} props @param {any} ref */ function TableHead({ align = undefined, className = undefined, ...props }, ref) { return <th ref={ref} className={cn(align === "right" && "num", className)} {...props} />; });
+const TableCell = React.forwardRef(/** @param {any} props @param {any} ref */ function TableCell({ align = undefined, className = undefined, ...props }, ref) { return <td ref={ref} className={cn(align === "right" && "num", className)} {...props} />; });
 const TableCaption = React.forwardRef(function TableCaption(props, ref) { return <caption ref={ref} {...props} />; });
 
 /**
@@ -39,6 +42,9 @@ function DataTable({
   sort,
   onSort,
   onRowClick,
+  selectedKey,
+  framed = true,
+  footer,
   className,
   columnVisibility,
   ...props
@@ -47,9 +53,9 @@ function DataTable({
   const primaryKey = (visible.find((column) => column.required) || visible[0])?.key;
 
   return (
-    <div className={cn("aapm-data-table", className)} {...props}>
+    <div className={cn(framed && "card", "data-table", className)} {...props}>
       <Table density={density === "dense" ? "compact" : density} responsive={responsive}>
-        {caption ? <caption className="aapm-visually-hidden">{caption}</caption> : null}
+        {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
           <tr>
             {visible.map((column) => {
@@ -58,13 +64,13 @@ function DataTable({
                 <th
                   key={column.key}
                   scope="col"
-                  data-align={column.align}
+                  className={cn(column.align === "right" && "num", column.align === "end" && "act")}
                   aria-sort={sorted ? (sorted === "asc" ? "ascending" : "descending") : undefined}
                 >
                   {column.sortable && onSort ? (
-                    <button type="button" className="aapm-table__sort" onClick={() => onSort(column.key)}>
+                    <button type="button" className="th-sort" onClick={() => onSort(column.key)}>
                       {column.header}
-                      <AapmIcon name={sorted === "asc" ? "arrowUp" : sorted === "desc" ? "arrowDown" : "sort"} />
+                      <Ic name={sorted === "asc" ? "arrow-up" : sorted === "desc" ? "arrow-down" : "sort"} size="xs" />
                     </button>
                   ) : column.header}
                 </th>
@@ -76,7 +82,7 @@ function DataTable({
           {loading ? (
             Array.from({ length: 3 }, (_, index) => (
               <tr key={`loading-${index}`}>
-                {visible.map((column) => <td key={column.key}><Skeleton className="h-4 w-full max-w-[10rem]" /></td>)}
+                {visible.map((column) => <td key={column.key}><Skeleton style={{ height: 14, maxWidth: 160 }} /></td>)}
               </tr>
             ))
           ) : error ? (
@@ -84,52 +90,58 @@ function DataTable({
           ) : rows.length === 0 ? (
             <tr>
               <td colSpan={visible.length} data-primary="true">
-                {emptyState || <p className="py-6 text-center text-muted-foreground">{emptyMessage}</p>}
+                {emptyState || <p className="t-center t-muted" style={{ padding: "24px 0" }}>{emptyMessage}</p>}
               </td>
             </tr>
           ) : (
-            rows.map((row, index) => (
-              <tr
-                key={rowKey(row, index)}
-                data-clickable={onRowClick ? "true" : undefined}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-              >
-                {visible.map((column) => (
-                  <td
-                    key={column.key}
-                    data-label={column.header}
-                    data-align={column.align}
-                    data-overflow={column.overflow}
-                    data-primary={column.key === primaryKey ? "true" : undefined}
-                  >
-                    {column.render ? column.render(row) : row?.[column.key]}
-                  </td>
-                ))}
-              </tr>
-            ))
+            rows.map((row, index) => {
+              const key = rowKey(row, index);
+              return (
+                <tr
+                  key={key}
+                  className={cn(onRowClick && "is-clickable", selectedKey !== undefined && selectedKey === key && "is-selected")}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
+                  {visible.map((column) => (
+                    <td
+                      key={column.key}
+                      data-label={typeof column.header === "string" ? column.header : undefined}
+                      className={cn(column.align === "right" && "num", column.align === "end" && "act")}
+                      data-overflow={column.overflow}
+                      data-primary={column.key === primaryKey ? "true" : undefined}
+                    >
+                      {column.render ? column.render(row) : row?.[column.key]}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </Table>
+      {footer ? <div className="card-foot">{footer}</div> : null}
     </div>
   );
 }
 
 /* ---------------------------------------------------------------- Trends */
+/** Change against the previous period (`.delta`). Sentiment carries meaning, the arrow carries direction. */
 function TrendIndicator({ direction = "flat", sentiment = "neutral", value, context, label, variant = "plain", className, ...props }) {
-  const icon = direction === "up" ? "arrowUp" : direction === "down" ? "arrowDown" : "glyphMinus";
+  const icon = direction === "up" ? "arrow-up" : direction === "down" ? "arrow-down" : "minus";
+  const tone = sentiment === "positive" || sentiment === "good" ? "delta-good" : sentiment === "negative" || sentiment === "bad" ? "delta-bad" : "delta-flat";
   return (
-    <span className={cn("aapm-trend", className)} data-sentiment={sentiment} data-variant={variant} aria-label={label} {...props}>
-      <AapmIcon name={icon} />
+    <span className={cn("delta", tone, className)} aria-label={label} {...props}>
+      <Ic name={icon} />
       <span>{value}</span>
-      {context ? <span className="aapm-trend__context">{context}</span> : null}
+      {context ? <span className="t-muted" style={{ fontWeight: 500 }}>{context}</span> : null}
     </span>
   );
 }
 
 const colorwayHue = { 1: "green", 2: "blue", 3: "orange", 4: "violet", 5: "teal" };
 
-/** Compact SVG signal; the parent supplies the business context. */
-function Sparkline({ values = [], label, tone, colorway, hue, className, height = 36, ...props }) {
+/** Compact SVG signal (`.spark`); the parent supplies the business context. */
+function Sparkline({ values = [], label = undefined, tone = undefined, colorway = undefined, hue = undefined, className = undefined, height = 28, ...props }) {
   const points = values.map(Number).filter((value) => Number.isFinite(value));
   if (points.length < 2) return null;
   const width = 120;
@@ -140,62 +152,63 @@ function Sparkline({ values = [], label, tone, colorway, hue, className, height 
   const coordinates = points.map((value, index) => [index * step, height - 3 - ((value - min) / range) * (height - 6)]);
   const line = coordinates.map(([x, y], index) => `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
   const area = `${line} L${width} ${height} L0 ${height} Z`;
-  const resolvedHue = hue || (tone && tone !== "chart" ? undefined : colorwayHue[colorway]);
+  const resolvedHue = hue || colorwayHue[colorway] || ({ success: "green", danger: "rose", warning: "amber", info: "blue" })[tone];
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
-      className={cn("aapm-sparkline", className)}
-      data-tone={tone && tone !== "chart" ? tone : undefined}
+      className={cn("spark", className)}
       data-hue={resolvedHue}
       role="img"
       aria-label={label}
       style={{ height }}
       {...props}
     >
-      <path d={area} fill="currentColor" opacity="0.12" />
-      <path d={line} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      <path className="area" d={area} />
+      <path className="line" d={line} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
 /* ----------------------------------------------------------------- KPIs */
-const toneHue = { success: "green", info: "blue", warning: "amber", danger: "rose", neutral: undefined, primary: "green", attention: "orange" };
+const toneHue = { success: "green", info: "blue", warning: "amber", danger: "rose", neutral: undefined, primary: "green", attention: "ai" };
 
 /**
- * One metric: label, value, optional icon/trend/note/chart. A `hue` (or the
- * legacy tone/colorway pair with `emphasis`) gives the colourful course tint.
+ * One metric (`.card.metric`): tile + label, value, optional trend, note,
+ * progress or chart. A hue makes it the tactile course card of the canvas.
  */
 function MetricCard({ label, value, note, icon, trend, chart, progress, footer, action, hue, tone, colorway, emphasis, className, ...props }) {
   const resolvedHue = hue || (emphasis ? colorwayHue[colorway] || toneHue[tone] : undefined);
   const iconHue = resolvedHue || toneHue[tone] || colorwayHue[colorway] || "green";
   return (
-    <div className={cn("aapm-metric", className)} data-hue={resolvedHue} {...props}>
-      <div className="aapm-metric__head">
-        <p className="aapm-metric__label">{label}</p>
-        {action || (icon ? <IconTile icon={icon} hue={iconHue} size="sm" shape="circle" variant={resolvedHue ? "badge" : undefined} /> : null)}
+    <div className={cn("card metric", resolvedHue && "card-tactile", className)} data-hue={iconHue} {...props}>
+      <div className="row between gap-2">
+        <span className="metric-label">
+          {icon ? <IconTile icon={icon} size="sm" shape="circle" variant={resolvedHue ? "solid" : undefined} /> : null}
+          {label}
+        </span>
+        {action}
       </div>
-      <div className="aapm-metric__value-row">
-        <p className="aapm-metric__value">{value}</p>
+      <div className="row wrap gap-2" style={{ alignItems: "baseline" }}>
+        <span className="metric-value">{value}</span>
         {trend}
       </div>
-      {note ? <p className="aapm-metric__note">{note}</p> : null}
+      {note ? <span className="metric-note">{note}</span> : null}
       {progress}
-      {chart ? <div className="aapm-metric__footer">{chart}</div> : null}
-      {footer ? <div className="aapm-metric__footer">{footer}</div> : null}
+      {chart ? <div className="metric-chart">{chart}</div> : null}
+      {footer ? <div className="metric-note">{footer}</div> : null}
     </div>
   );
 }
 
-/** Group of metrics (former KPICluster contract). */
+/** Group of metrics (former KPICluster contract) on the canvas metric grid. */
 function KPICluster({ items = [], columns = 4, label, variant = "cards", className, style, mobile, ...props }) {
   return (
     <section
       aria-label={label}
-      className={cn("aapm-kpi-group", className)}
+      className={cn(columns >= 4 ? "cols-4" : columns === 3 ? "cols-3" : columns === 2 ? "cols-2" : "grid-sm", "kpi-cluster", className)}
       data-variant={variant}
-      data-mobile={mobile}
-      style={{ "--kpi-columns": columns, ...style }}
+      style={style}
       {...props}
     >
       {items.map((item, index) => (
@@ -208,15 +221,15 @@ function KPICluster({ items = [], columns = 4, label, variant = "cards", classNa
 /* ----------------------------------------------------------- Chart panel */
 function ChartPanel({ title, description, chart, actions, className, children, ...props }) {
   return (
-    <section className={cn("aapm-chart-panel", className)} {...props}>
+    <section className={cn("card card-pad stack gap-4", className)} {...props}>
       {(title || description || actions) ? (
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            {title ? <h3 className="aapm-chart-panel__title">{title}</h3> : null}
-            {description ? <p className="aapm-chart-panel__description">{description}</p> : null}
+        <div className="card-head">
+          <div className="stack gap-0-5" style={{ minWidth: 0 }}>
+            {title ? <h3 className="card-title">{title}</h3> : null}
+            {description ? <p className="card-desc">{description}</p> : null}
           </div>
           {actions}
-        </header>
+        </div>
       ) : null}
       {chart}
       {children}
@@ -227,14 +240,14 @@ function ChartPanel({ title, description, chart, actions, className, children, .
 /* --------------------------------------------------------------- Filters */
 function FilterToolbar({ title, summary, actions, className, children, ...props }) {
   return (
-    <div className={cn("aapm-filter-toolbar", className)} {...props}>
+    <div className={cn("stack gap-3", className)} {...props}>
       {(title || summary) ? (
-        <div className="min-w-0">
-          {title ? <h2 className="aapm-filter-toolbar__title">{title}</h2> : null}
-          {summary ? <p className="aapm-filter-toolbar__summary">{summary}</p> : null}
+        <div className="stack gap-0-5">
+          {title ? <h2 className="t-section">{title}</h2> : null}
+          {summary ? <p className="t-support t-muted">{summary}</p> : null}
         </div>
       ) : null}
-      <div className="aapm-filter-toolbar__controls">
+      <div className="toolbar">
         {children}
         {actions}
       </div>

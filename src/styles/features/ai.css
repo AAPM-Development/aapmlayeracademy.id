@@ -873,7 +873,7 @@
   }
 
 .aapm-ai-composer-frame__footer {
-    background: hsl(var(--surface-subtle) / 0.68);
+    background: hsl(var(--tw-surface-subtle) / 0.68);
   }
 
 /* The floating composer is intentionally a two-level control: the message
@@ -893,7 +893,7 @@
     flex-wrap: nowrap;
     gap: 0.4rem;
     padding: 0.4rem 0.5rem;
-    background: hsl(var(--surface-subtle) / 0.54);
+    background: hsl(var(--tw-surface-subtle) / 0.54);
   }
 
 .aapm-ai-composer--compact .aapm-ai-composer-tools {
@@ -954,7 +954,7 @@
     padding: 0.125rem;
     border: 1px solid hsl(var(--surface-border) / 0.46);
     border-radius: var(--radius-control);
-    background: hsl(var(--surface-subtle));
+    background: hsl(var(--tw-surface-subtle));
   }
 
 .aapm-ai-segmented__item {
@@ -991,7 +991,7 @@
     padding: 0.125rem;
     border: 1px solid hsl(var(--surface-border) / 0.36);
     border-radius: var(--radius-control);
-    background: hsl(var(--surface-subtle) / 0.72);
+    background: hsl(var(--tw-surface-subtle) / 0.72);
   }
 
 .aapm-ai-history-scope__item {
@@ -1028,7 +1028,7 @@
 .aapm-ai-history-bulkbar {
     border-top: 1px solid hsl(var(--surface-border) / 0.3);
     border-bottom: 1px solid hsl(var(--surface-border) / 0.3);
-    background: hsl(var(--surface-subtle) / 0.68);
+    background: hsl(var(--tw-surface-subtle) / 0.68);
   }
 
 .aapm-ai-history-group {
@@ -1060,13 +1060,13 @@
   }
 
 .aapm-ai-history-row:not([data-active="true"]):hover {
-    background: hsl(var(--surface-subtle));
+    background: hsl(var(--tw-surface-subtle));
   }
 
 .aapm-ai-quick-action-chip {
     border: 1px solid hsl(var(--surface-border) / 0.42);
     border-radius: var(--radius-control);
-    background: hsl(var(--surface-subtle) / 0.72);
+    background: hsl(var(--tw-surface-subtle) / 0.72);
     transition:
       border-color var(--duration-fast),
       background-color var(--duration-fast),
@@ -1104,16 +1104,16 @@
     font-size: 0.625rem;
   }
 
-.aapm-ai-status-line--warning {
+.aapm-ai-status-line--tw-warning {
     color: hsl(var(--tint-orange-foreground));
   }
 
-.aapm-ai-status-line--success {
+.aapm-ai-status-line--tw-success {
     color: hsl(var(--muted-foreground));
   }
 
 .aapm-ai-status-line--error {
-    color: hsl(var(--danger));
+    color: hsl(var(--tw-danger));
   }
 
 .aapm-ai-status-line__action {
@@ -1297,13 +1297,13 @@
   }
 
 .aapm-ai-workspace__header {
-    box-shadow: inset 0 -1px 0 hsl(var(--border) / var(--aapm-shell-divider-alpha, 0.34));
+    box-shadow: inset 0 -1px 0 hsl(var(--tw-border) / var(--aapm-shell-divider-alpha, 0.34));
   }
 
 .aapm-ai-conversation-sidebar,
   .aapm-ai-context-sidebar {
     border-color: hsl(var(--surface-border) / var(--aapm-shell-divider-alpha, 0.34));
-    background: hsl(var(--surface-subtle) / 0.38);
+    background: hsl(var(--tw-surface-subtle) / 0.38);
     background-image: none;
   }
 
@@ -1319,7 +1319,7 @@
   }
 
 .aapm-ai-composer-dock {
-    box-shadow: inset 0 1px 0 hsl(var(--border) / var(--aapm-shell-divider-alpha, 0.34));
+    box-shadow: inset 0 1px 0 hsl(var(--tw-border) / var(--aapm-shell-divider-alpha, 0.34));
   }
 
 .aapm-ai-message {
@@ -1342,7 +1342,7 @@
 
 .aapm-ai-floating-panel__header,
   .aapm-ai-floating-composer {
-    background: hsl(var(--surface-subtle) / 0.58);
+    background: hsl(var(--tw-surface-subtle) / 0.58);
     box-shadow: inset 0 -1px 0 hsl(var(--surface-border) / 0.34);
   }
 
@@ -1374,7 +1374,7 @@
   }
 
 .aapm-ai-floating-panel__status-dot[data-state="attention"] {
-    background: hsl(var(--danger));
+    background: hsl(var(--tw-danger));
   }
 
 .aapm-ai-floating-panel__icon-button {
@@ -1573,7 +1573,7 @@
 .aapm-ai-inline-code {
     padding: 0.08rem 0.32rem;
     border-radius: var(--radius-sm);
-    background: hsl(var(--muted));
+    background: hsl(var(--tw-muted));
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.84em;

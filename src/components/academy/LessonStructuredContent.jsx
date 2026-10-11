@@ -1,5 +1,4 @@
-import React, { useMemo } from "react";
-import { Badge, IconTile } from "@/design-system";
+import React, { useMemo, useState } from "react";
 import {
   LessonChecklist,
   LessonInsightList,
@@ -25,13 +24,12 @@ export function lessonPresentation(document) {
   return parseEditorialDocument(document)?.presentation || normaliseEditorialPresentation();
 }
 
-function Callout({ hue, icon, title, count, children }) {
+function Callout({ hue, title, count, children }) {
   return (
-    <div className="aapm-callout min-w-0" data-hue={hue}>
-      <div className="aapm-callout__head">
-        <IconTile icon={icon} hue={hue} size="sm" shape="circle" variant="badge" />
-        <h3 className="aapm-callout__title min-w-0 flex-1">{title}</h3>
-        {count ? <Badge hue={hue}>{count} poin</Badge> : null}
+    <div className="callout" data-hue={hue} style={{ minWidth: 0 }}>
+      <div className="row between gap-2">
+        <span className="t-support t-strong">{title}</span>
+        {count ? <span className="chip chip-hue">{count} poin</span> : null}
       </div>
       {children}
     </div>
@@ -44,23 +42,32 @@ export function LessonObjectivesContent({ module, presentation }) {
   const takeawayItems = listItems(module?.keyTakeaways);
   return (
     <div
-      className="aapm-callout-grid"
-      data-layout={config.layout === "stacked" ? "stacked" : "split"}
+      className={config.layout === "stacked" ? "stack gap-grid" : "split-even"}
       data-lesson-objectives
       data-objectives-layout={config.layout}
       data-objectives-tone={config.tone}
       data-objectives-density={config.density}
     >
       {objectiveItems.length > 0 && (
-        <Callout hue={toneHue(config.tone)} icon="target" title="Tujuan pembelajaran" count={objectiveItems.length}>
+        <Callout hue={toneHue(config.tone)} title="Tujuan pembelajaran" count={objectiveItems.length}>
           <LessonInsightList items={objectiveItems} density={config.density} />
         </Callout>
       )}
       {takeawayItems.length > 0 && (
-        <Callout hue="orange" icon="insight" title="Inti pembelajaran" count={takeawayItems.length}>
+        <Callout hue="violet" title="Inti pembelajaran" count={takeawayItems.length}>
           <LessonInsightList items={takeawayItems} density={config.density} />
         </Callout>
       )}
+    </div>
+  );
+}
+
+function ObservationChecklist({ items, config }) {
+  const [count, setCount] = useState(0);
+  return (
+    <div className="card card-pad stack gap-3">
+      <div className="row between"><span className="t-support t-strong">Checklist observasi</span>{config.checklistStyle === "list" ? null : <span className="t-caption t-muted t-num">{count}/{items.length} dicatat</span>}</div>
+      <LessonChecklist items={items} style={config.checklistStyle} density={config.density} onCountChange={setCount} />
     </div>
   );
 }
@@ -72,22 +79,19 @@ export function LessonPracticalContent({ module, presentation }) {
   const hue = toneHue(config.tone, "teal");
   return (
     <div
-      className="aapm-callout-grid"
+      className="stack gap-grid"
       data-lesson-practical
       data-practical-tone={config.tone}
       data-practical-density={config.density}
       data-checklist-style={config.checklistStyle}
     >
       {assignmentPresent && (
-        <Callout hue={hue} icon="practice" title="Tugas praktik">
-          <p className="m-0 text-body">{module.practicalAssignment}</p>
-        </Callout>
+        <div className="callout" data-hue={hue}>
+          <span className="t-support t-strong">Tugas praktik</span>
+          <p className="t-body">{module.practicalAssignment}</p>
+        </div>
       )}
-      {hasListContent(module?.checklist) && (
-        <Callout hue="blue" icon="checkRead" title="Checklist observasi" count={checklistItems.length}>
-          <LessonChecklist items={checklistItems} style={config.checklistStyle} density={config.density} />
-        </Callout>
-      )}
+      {hasListContent(module?.checklist) && <ObservationChecklist items={checklistItems} config={config} />}
     </div>
   );
 }
@@ -100,12 +104,12 @@ export function LessonStructuredContent({ module, document, withSectionIds = tru
   return (
     <>
       {objectivesArePresent && (
-        <LessonSection id={withSectionIds ? "objectives" : undefined} title="Tujuan & insight" icon="target" hue="orange">
+        <LessonSection id={withSectionIds ? "objectives" : undefined} title="Tujuan & insight" ic="target" hue="green">
           <LessonObjectivesContent module={module} presentation={presentation} />
         </LessonSection>
       )}
       {practiceIsPresent && (
-        <LessonSection id={withSectionIds ? "practical" : undefined} title="Praktik di kandang" icon="practice" hue="teal">
+        <LessonSection id={withSectionIds ? "practical" : undefined} title="Praktik di kandang" ic="egg" hue="teal">
           <LessonPracticalContent module={module} presentation={presentation} />
           {practiceAction}
         </LessonSection>

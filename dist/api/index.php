@@ -364,6 +364,19 @@ try {
         json_response(admin_overview_data());
     }
 
+    if ($path === 'admin/workspace-status' && $method === 'GET') {
+        require_admin();
+        db();
+        $config = app_config();
+        json_response([
+            'environment' => (string) ($config['environment'] ?? ''),
+            'databaseDriver' => (string) ($config['db_driver'] ?? ''),
+            'phpVersion' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
+            // A required marker is checked before any query, so a connected database has passed it.
+            'environmentMarker' => !empty($config['environment_marker_required']) ? 'verified' : 'not_required',
+        ]);
+    }
+
     if ($path === 'admin/courses' && $method === 'GET') {
         require_admin();
         json_response(['courses' => [admin_course_data()]]);

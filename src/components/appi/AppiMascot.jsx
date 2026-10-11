@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import useReducedMotion from "@/lib/useReducedMotion";
 
-const asset = (number) => `/assets/avatar/Asset%20${number}.svg`;
+export const appiAsset = (number) => `/assets/avatar/Asset%20${number}.svg`;
 
-// APPI's moods. Each one is one face plus at most one decor badge from the
-// mascot sheet (faces 1–12, decor 13–24). Moods carry meaning, so pick the one
-// that matches what just happened rather than cycling for decoration.
+// APPI's moods (Redesign v2 rig). Each mood is one face, at most one decor
+// badge and one body motion (academy.css §20). Pick the mood from what just
+// happened — never cycle moods for decoration.
 export const APPI_MOODS = {
   idle: { face: 1, decor: null, label: "siap membantu" },
   neutral: { face: 12, decor: null, label: "memperhatikan" },
@@ -20,28 +20,38 @@ export const APPI_MOODS = {
   curious: { face: 6, decor: 17, label: "penasaran" },
   data: { face: 4, decor: 23, label: "membaca data" },
   concerned: { face: 10, decor: 21, label: "perlu perhatian" },
-  surprised: { face: 11, decor: 21, label: "terkejut" },
+  // The burst badge keeps "surprised" apart from "concerned".
+  surprised: { face: 11, decor: 16, label: "terkejut" },
   loading: { face: 5, decor: 24, label: "menyiapkan" },
 };
 
-// Moods that blink: calm faces with open eyes. Expressive faces stay as drawn.
+// Calm faces with open eyes blink (face 2 laid over for 150 ms every ~5 s).
 const BLINKING = new Set(["idle", "neutral", "happy", "talk", "curious", "data"]);
 const BLINK_FACE = 2;
-const GESTURING = new Set(["idle", "neutral", "happy", "talk", "wink", "curious", "data"]);
+// Idle life: a wink, a glance up or a small hop every 7–11 s.
+const GESTURING = new Set(["idle", "neutral", "happy", "talk", "curious", "data"]);
 const GESTURES = [
   { name: "wink", face: 3, duration: 700 },
   { name: "peek", face: 5, duration: 1100 },
   { name: "hop", face: 7, duration: 760 },
-  { name: "nod", face: 4, duration: 900 },
-  { name: "turn", face: 1, duration: 1600 },
-  { name: "turn", face: 6, duration: 1400 },
-  { name: "swap", face: 1, duration: 0 },
 ];
 
-const SIZES = { xs: 24, sm: 32, md: 44, lg: 64, xl: 96, hero: 132 };
+// The only APPI sizes: 24–32 chat avatars · 44 quiz feedback · 64 calculator
+// and lesson · 96 KPI and empty states · 132 home and results · 180 big
+// celebrations. Badge and ground shadow drop out under 44.
+export const APPI_SIZES = { xs: 24, sm: 32, md: 44, lg: 64, xl: 96, hero: 132, mega: 180 };
+const ENTRANCES = new Set(["pop", "peek", "slide", "drop"]);
 
-// Character-sized mascots report their visibility for contextual presentation.
-// The launcher remains available independently of this state.
+function sizeKey(size) {
+  if (typeof size === "string" && APPI_SIZES[size]) return size;
+  const pixels = Number(size) || APPI_SIZES.md;
+  return Object.entries(APPI_SIZES).reduce((best, [key, value]) => (
+    Math.abs(value - pixels) < Math.abs(APPI_SIZES[best] - pixels) ? key : best
+  ), "md");
+}
+
+// Character-sized mascots report their visibility so the launcher can step
+// back while a contextual APPI is on screen.
 let visibleCharacters = 0;
 function setOnScreen(delta) {
   visibleCharacters = Math.max(0, visibleCharacters + delta);
@@ -67,19 +77,19 @@ function useScreenPresence(ref, enabled) {
 }
 
 /**
- * APPI, the Academy mascot: a rooster head with one mood at a time. It bobs
- * gently and blinks when `animated`, pops into a new mood, and carries an
- * optional decor badge (sparkle, idea, check…) that explains the mood.
- * Decorative unless `label` is given; under reduced motion it holds still.
- * Character sizes (64px and up) report their presence;
- * pass `presence={false}` for the launcher itself.
- */
-/**
- * @param {{ mood?: string, size?: string | number, animated?: boolean, decor?: boolean, presence?: boolean, label?: string, className?: string, style?: Record<string, any> }} props
+ * APPI, the Academy mascot, on the layered rig of the Redesign v2 canvas:
+ * body motion by mood (pivoting at the feet), a CSS blink on calm faces, an
+ * occasional gesture, a moving decor badge and a ground shadow, each APPI on
+ * its own tempo. `enter` choreographs the arrival (pop · peek · slide ·
+ * drop). Decorative unless `label` is given; reduced motion holds it still.
+ *
+ * @param {{ mood?: string, size?: string | number, enter?: string, enterDelay?: number, animated?: boolean, decor?: boolean, presence?: boolean, label?: string, className?: string, style?: Record<string, any> }} props
  */
 export default function AppiMascot({
   mood = "idle",
   size = "md",
+  enter = undefined,
+  enterDelay = undefined,
   animated = true,
   decor = true,
   presence = undefined,
@@ -88,113 +98,75 @@ export default function AppiMascot({
   style = undefined,
 }) {
   const config = APPI_MOODS[mood] || APPI_MOODS.idle;
-  const pixels = typeof size === "number" ? size : SIZES[size] || SIZES.md;
-  const [blinking, setBlinking] = useState(false);
-  const timers = useRef([]);
+  const key = sizeKey(size);
+  const pixels = APPI_SIZES[key];
   const rootRef = useRef(null);
-  // Each APPI keeps its own rhythm, so two on one screen never move in step.
-  const [rhythm] = useState(() => ({ tempo: (0.82 + Math.random() * 0.4).toFixed(2), delay: `-${(Math.random() * 2.6).toFixed(2)}s` }));
-  const canBlink = animated && BLINKING.has(mood);
-  useScreenPresence(rootRef, presence ?? pixels >= SIZES.lg);
-
-  // Idle life: every few seconds a character-sized APPI does one small thing
-  // (a wink, a glance up, a hop) and settles back, so it reads as alive
-  // rather than a sticker. Never under reduced motion.
-  const [gesture, setGesture] = useState(null);
-  const [facing, setFacing] = useState("right");
   const reducedMotion = useReducedMotion();
-  const lively = animated && pixels >= SIZES.sm && GESTURING.has(mood);
+  // Personal tempo 0.8–1.2× so two APPIs never move in step.
+  const [rhythm] = useState(() => ({ tempo: (0.8 + Math.random() * 0.4).toFixed(2), delay: `-${(Math.random() * 2.6).toFixed(2)}s` }));
+  useScreenPresence(rootRef, presence ?? pixels >= APPI_SIZES.lg);
+
+  const [gesture, setGesture] = useState(null);
+  const lively = animated && !reducedMotion && pixels >= APPI_SIZES.md && GESTURING.has(mood);
   useEffect(() => {
-    if (!lively || reducedMotion) { setGesture(null); return undefined; }
+    if (!lively) { setGesture(null); return undefined; }
     let timer;
     let reset;
     const next = () => {
       timer = window.setTimeout(() => {
         const pick = GESTURES[Math.floor(Math.random() * GESTURES.length)];
-        // A turn looks the other way for a moment; a swap stays turned until
-        // the next one, so APPI does not always face the same side.
-        if (pick.name === "swap") { setFacing((side) => (side === "right" ? "left" : "right")); next(); return; }
-        if (pick.name === "turn") setFacing((side) => (side === "right" ? "left" : "right"));
         setGesture(pick);
-        reset = window.setTimeout(() => {
-          if (pick.name === "turn") setFacing((side) => (side === "right" ? "left" : "right"));
-          setGesture(null);
-          next();
-        }, pick.duration);
-      }, 3200 + Math.random() * 4200);
+        reset = window.setTimeout(() => { setGesture(null); next(); }, pick.duration);
+      }, 7000 + Math.random() * 4000);
     };
     next();
-    return () => { window.clearTimeout(timer); window.clearTimeout(reset); setGesture(null); setFacing("right"); };
-  }, [lively, mood, reducedMotion]);
+    return () => { window.clearTimeout(timer); window.clearTimeout(reset); };
+  }, [lively, mood]);
 
-  useEffect(() => {
-    if (!canBlink || reducedMotion) return undefined;
-    const list = timers.current;
-    const schedule = () => {
-      const wait = 2600 + Math.random() * 3600;
-      const timer = window.setTimeout(() => {
-        setBlinking(true);
-        const reset = window.setTimeout(() => {
-          setBlinking(false);
-          schedule();
-        }, 150);
-        list.splice(0, list.length, reset);
-      }, wait);
-      list.splice(0, list.length, timer);
-    };
-    schedule();
-    return () => {
-      list.forEach((timer) => window.clearTimeout(timer));
-      list.length = 0;
-      setBlinking(false);
-    };
-  }, [canBlink, reducedMotion]);
+  const showDecor = decor && config.decor && pixels >= APPI_SIZES.md;
 
   return (
     <span
       ref={rootRef}
-      className={cn("aapm-appi", className)}
+      className={cn("appi-rig", `appi-rig-${key}`, ENTRANCES.has(enter) && `appi-in-${enter}`, className)}
       data-mood={mood}
-      data-animated={animated ? "true" : undefined}
+      data-still={animated ? undefined : "true"}
       data-gesture={gesture?.name}
-      data-facing={facing === "left" ? "left" : undefined}
-      data-size={typeof size === "string" ? size : undefined}
-      style={/** @type {React.CSSProperties} */ ({ "--appi-size": `${pixels}px`, "--appi-tempo": rhythm.tempo, "--appi-delay": rhythm.delay, ...style })}
+      style={/** @type {React.CSSProperties} */ ({
+        "--appi-tempo": rhythm.tempo,
+        "--appi-delay": rhythm.delay,
+        ...(enterDelay ? { "--appi-in": `${enterDelay}ms` } : null),
+        ...style,
+      })}
       role={label ? "img" : undefined}
       aria-label={label || undefined}
       aria-hidden={label ? undefined : true}
     >
-      {animated && pixels >= SIZES.md ? <span className="aapm-appi__shadow" /> : null}
-      <span className="aapm-appi__head" data-blink={blinking && !gesture ? "true" : undefined}>
-        <span className="aapm-appi__turn">
-        <img key={mood} className="aapm-appi__face" src={asset(config.face)} alt="" width={pixels} height={pixels} draggable={false} decoding="async" />
-        {gesture ? <img className="aapm-appi__gesture" src={asset(gesture.face)} alt="" width={pixels} height={pixels} draggable={false} decoding="async" /> : null}
-        {canBlink ? (
-          <img className="aapm-appi__blink" src={asset(BLINK_FACE)} alt="" width={pixels} height={pixels} draggable={false} decoding="async" />
-        ) : null}
-        </span>
+      <span className="appi-body">
+        <img key={mood} className="appi-face" src={appiAsset(config.face)} alt="" width={pixels} height={pixels} draggable={false} decoding="async" />
+        {animated && BLINKING.has(mood) ? <img className="appi-blink" src={appiAsset(BLINK_FACE)} alt="" draggable={false} decoding="async" /> : null}
+        {gesture ? <img className="appi-gesture" src={appiAsset(gesture.face)} alt="" draggable={false} decoding="async" /> : null}
       </span>
-      {decor && config.decor ? (
-        <img key={`decor-${mood}`} className="aapm-appi__decor" src={asset(config.decor)} alt="" draggable={false} decoding="async" />
-      ) : null}
+      {showDecor ? <img key={`decor-${mood}`} className="appi-decor" src={appiAsset(config.decor)} alt="" draggable={false} decoding="async" /> : null}
     </span>
   );
 }
 
 /**
- * APPI speaking: the mascot beside a speech bubble. Use it where APPI reads
- * the learner's situation (greeting, a calculator verdict, the week's KPI).
- * `live` announces bubble changes politely.
+ * APPI speaking: the rig beside a speech bubble that pops 280 ms after APPI
+ * lands. Use it where APPI reads the learner's situation (home greeting, a
+ * calculator verdict, the week's KPI). `live` announces bubble changes.
+ *
+ * @param {{ mood?: string, size?: string | number, enter?: string, title?: React.ReactNode, children?: React.ReactNode, actions?: React.ReactNode, hue?: string, live?: boolean, layout?: string, tail?: string, className?: string }} props
  */
-/** @param {{ mood?: string, size?: string | number, title?: React.ReactNode, children?: React.ReactNode, actions?: React.ReactNode, hue?: string, live?: boolean, layout?: string, className?: string }} props */
-export function AppiSays({ mood = "talk", size = "lg", title = undefined, children = undefined, actions = undefined, hue = undefined, live = false, layout = "row", className = undefined }) {
+export function AppiSays({ mood = "talk", size = "lg", enter = "pop", title = undefined, children = undefined, actions = undefined, hue = undefined, live = false, layout = "row", tail = "left", className = undefined }) {
   return (
-    <div className={cn("aapm-appi-says", className)} data-hue={hue} data-layout={layout}>
-      <AppiMascot mood={mood} size={size} />
-      <div className="aapm-appi-says__bubble" aria-live={live ? "polite" : undefined}>
-        {title ? <p className="aapm-appi-says__title">{title}</p> : null}
-        {children ? <div className="aapm-appi-says__text">{children}</div> : null}
-        {actions ? <div className="aapm-appi-says__actions">{actions}</div> : null}
+    <div className={cn("appi-says", layout === "stack" && "stack items-center", className)} data-hue={hue}>
+      <AppiMascot mood={mood} size={size} enter={enter} />
+      <div className={cn("bubble appi-say stack gap-1", `tail-${layout === "stack" ? "down" : tail}`)} aria-live={live ? "polite" : undefined}>
+        {title ? <p className="t-heading">{title}</p> : null}
+        {children ? <div className="t-support">{children}</div> : null}
+        {actions ? <div className="row wrap gap-2" style={{ marginTop: 4 }}>{actions}</div> : null}
       </div>
     </div>
   );

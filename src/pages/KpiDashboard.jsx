@@ -1,137 +1,115 @@
 import React, { useMemo, useState } from "react";
-import ContentContainer from "@/components/layout/ContentContainer";
-import PageHeader from "@/components/layout/PageHeader";
-import AapmIcon from "@/components/icons/AapmIcon";
-import { LineChart, TrendChart } from "@/design-system/charts";
-import {
-  ConfirmDialog,
-  SectionHeader,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  StateView,
-  OverflowMenu,
-  Badge,
-  Button,
-  DataTable,
-  FormGrid,
-  Field,
-  FormSection,
-  Input,
-  Label,
-  Sparkline,
-  Textarea,
-} from "@/components/primitives";
+import { ConfirmDialog, DataTable, OverflowMenu, Sheet, SheetContent, SheetDescription, SheetTitle, StateView, useToast } from "@/design-system";
+import { Page } from "@/design-system/patterns/AppShell";
+import { Ic } from "@/design-system/canvas";
+import { Sparkline } from "@/design-system/components/data";
 import AppiMascot from "@/components/appi/AppiMascot";
 import CountUp from "@/components/motion/CountUp";
+import CanvasLineChart from "@/components/learn/CanvasChart";
 import { askAppi } from "@/lib/askAppi";
+import { formatMillion, formatNumber, KPI_METRICS, kpiPrompt, readingFor, sortByWeek, toNumber, weeklyReading } from "@/lib/kpiReading";
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
-import { useToast } from "@/components/primitives";
+import { cn } from "@/lib/utils";
 
-/** @typedef {{key: string, header: string, [key: string]: any}} DataTableColumn */
 /** @typedef {{key: string, direction: "asc" | "desc"}} DataTableSort */
 
+const FARM_ENTRY_POINTS_LIMIT = 12;
+
 function emptyForm() {
-  return {
-    week: "",
-    henDayProduction: "",
-    feedIntake: "",
-    eggWeight: "",
-    mortality: "",
-    waterIntake: "",
-    temperature: "",
-    humidity: "",
-    revenue: "",
-    cost: "",
-    fcr: "",
-    notes: "",
-  };
+  return { week: "", henDayProduction: "", eggWeight: "", mortality: "", feedIntake: "", waterIntake: "", temperature: "", humidity: "", revenue: "", cost: "", notes: "" };
 }
 
-const numberFields = [
-  { key: "week", label: "Umur (minggu)", required: true },
-  { key: "henDayProduction", label: "HDP (%)" },
-  { key: "feedIntake", label: "Asupan pakan (g)" },
-  { key: "eggWeight", label: "Berat telur (g)" },
-  { key: "fcr", label: "FCR" },
-  { key: "mortality", label: "Mortalitas (%)" },
-  { key: "waterIntake", label: "Air minum (ml)" },
-  { key: "temperature", label: "Suhu (°C)" },
-  { key: "humidity", label: "Kelembapan (%)" },
-  { key: "revenue", label: "Pendapatan (Rp)" },
-  { key: "cost", label: "Biaya (Rp)" },
+// The weekly entry sheet, grouped as on the canvas. `money` fields accept
+// "50.400.000"; `max` bounds a percentage.
+const GROUPS = [
+  { id: "prod", title: "Produksi", ic: "egg", fields: [
+    { key: "week", label: "Umur flock", unit: "minggu", required: true, integer: true },
+    { key: "henDayProduction", label: "HDP", unit: "%", max: 100 },
+    { key: "eggWeight", label: "Berat telur", unit: "g" },
+    { key: "mortality", label: "Mortalitas", unit: "%", max: 100 },
+  ] },
+  { id: "feed", title: "Pakan & air", ic: "feed", fields: [
+    { key: "feedIntake", label: "Asupan pakan", unit: "g/ekor/hari" },
+    { key: "waterIntake", label: "Air minum", unit: "ml/ekor/hari" },
+  ] },
+  { id: "env", title: "Lingkungan", ic: "thermo", fields: [
+    { key: "temperature", label: "Suhu", unit: "°C", placeholder: "Rata-rata harian", allowNegative: true },
+    { key: "humidity", label: "Kelembapan", unit: "%", placeholder: "Rata-rata harian", max: 100 },
+  ] },
+  { id: "fin", title: "Keuangan", ic: "wallet", fields: [
+    { key: "revenue", label: "Pendapatan", unit: "Rp", money: true },
+    { key: "cost", label: "Biaya", unit: "Rp", money: true },
+  ] },
 ];
+const ALL_FIELDS = GROUPS.flatMap((group) => group.fields);
 
-const primaryFields = numberFields.slice(0, 5);
-const contextFields = numberFields.slice(5);
+function parseField(field, value) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const normalised = field.money ? text.replace(/[^\d-]/g, "") : text.replace(/\s/g, "").replace(",", ".");
+  const number = Number.parseFloat(normalised);
+  return Number.isFinite(number) ? number : NaN;
+}
 
-const number = (value, digits = 1) => Number(value).toLocaleString("id-ID", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const million = (value) => `Rp ${number(value / 1e6, 1)} jt`;
+function fieldError(field, value) {
+  const number = parseField(field, value);
+  if (number === null) return field.required ? "Isi umur flock dalam minggu, misalnya 30." : null;
+  if (Number.isNaN(number)) return "Isi dengan angka.";
+  if (field.integer && (!Number.isInteger(number) || number < 1)) return "Isi minggu sebagai angka bulat, misalnya 30.";
+  if (!field.allowNegative && number < 0) return "Isi 0 atau lebih.";
+  if (field.max !== undefined && number > field.max) return `Isi angka 0–${field.max}.`;
+  return null;
+}
+
+/** FCR from the week's own numbers: feed ÷ (HDP × egg weight). */
+function computedFcr(form) {
+  const feed = parseField({}, form.feedIntake);
+  const hdp = parseField({}, form.henDayProduction);
+  const egg = parseField({}, form.eggWeight);
+  if (!(feed > 0 && hdp > 0 && hdp <= 100 && egg > 0)) return null;
+  return feed / ((hdp / 100) * egg);
+}
+
+const formatCell = (value, digits = 1) => {
+  const number = toNumber(value);
+  return Number.isFinite(number) ? formatNumber(number, digits) : <span className="t-muted" aria-label="Tidak dicatat">—</span>;
+};
+
+function SheetField({ field, value, error, hint, onChange }) {
+  const id = `farm-${field.key === "week" ? "week" : field.key}`;
+  const describedBy = error || hint ? `${id}-h` : undefined;
+  return (
+    <div className="field">
+      <label className="label" htmlFor={id}><span>{field.label}{field.required ? <span className="req" aria-hidden="true"> *</span> : null}</span></label>
+      <div className="input" data-invalid={error ? "true" : undefined}>
+        <input
+          id={id}
+          type="text"
+          inputMode={field.integer || field.money ? "numeric" : "decimal"}
+          autoComplete="off"
+          value={value}
+          placeholder={field.placeholder}
+          required={field.required || undefined}
+          aria-required={field.required || undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <span className="unit">{field.unit}</span>
+      </div>
+      {error ? <span className="hint hint-error" id={`${id}-h`}><Ic name="alert" size="xs" />{error}</span> : hint ? <span className="hint" id={`${id}-h`}>{hint}</span> : null}
+    </div>
+  );
+}
+
+const findingClass = { negative: "alert-warning", positive: "alert-success", neutral: "alert-info" };
 
 /**
- * The indicators a farm reads every week. `better` says which direction is
- * good, so a change is coloured by meaning, not by sign. FCR carries the same
- * general reference band as the calculator.
- */
-const METRICS = [
-  { id: "hdp", label: "HDP", long: "Hen day production", hue: "orange", icon: "chart", better: "up", read: (row) => toNumber(row.henDayProduction), format: (value) => `${number(value, 1)}%`, delta: (value) => `${number(Math.abs(value), 1)} poin` },
-  { id: "fcr", label: "FCR", long: "Feed conversion ratio", hue: "green", icon: "equalRatio", better: "down", read: (row) => toNumber(row.fcr), format: (value) => number(value, 2), delta: (value) => number(Math.abs(value), 2), band: { from: 1.6, to: 2.2, label: "acuan sangat baik ≤ 2,2" } },
-  { id: "egg", label: "Berat telur", long: "Berat telur rata-rata", hue: "violet", icon: "egg", better: "up", read: (row) => toNumber(row.eggWeight), format: (value) => `${number(value, 1)} g`, delta: (value) => `${number(Math.abs(value), 1)} g` },
-  { id: "mortality", label: "Mortalitas", long: "Mortalitas mingguan", hue: "rose", icon: "mortality", better: "down", read: (row) => toNumber(row.mortality), format: (value) => `${number(value, 2)}%`, delta: (value) => `${number(Math.abs(value), 2)} poin` },
-  { id: "feed", label: "Pakan", long: "Asupan pakan per ekor", hue: "teal", icon: "feed", better: null, read: (row) => toNumber(row.feedIntake), format: (value) => `${number(value, 0)} g`, delta: (value) => `${number(Math.abs(value), 0)} g` },
-  { id: "profit", label: "Laba", long: "Pendapatan dikurangi biaya", hue: "blue", icon: "finance", better: "up", read: (row) => toNumber(row.revenue) - toNumber(row.cost), format: million, delta: (value) => million(Math.abs(value)) },
-];
-
-/** Latest finite reading, the one before it, and the change between them. */
-function readingFor(rows, metric) {
-  const points = rows.map((row) => ({ week: row.week, value: metric.read(row) })).filter((point) => Number.isFinite(point.value));
-  const latest = points[points.length - 1] || null;
-  const previous = points[points.length - 2] || null;
-  const change = latest && previous ? latest.value - previous.value : null;
-  const sentiment = change === null || change === 0 || !metric.better ? "neutral" : (change > 0) === (metric.better === "up") ? "positive" : "negative";
-  return { latest, previous, change, sentiment, values: points.map((point) => point.value) };
-}
-
-/** APPI's reading of the latest week: a mood, a headline and up to three findings. */
-function weeklyReading(rows) {
-  const week = rows.length ? rows[rows.length - 1].week : null;
-  const readings = METRICS.map((metric) => ({ metric, ...readingFor(rows, metric) })).filter((item) => item.latest && item.latest.week === week);
-  const comparable = readings.filter((item) => item.change !== null && item.metric.better);
-  if (!readings.length) {
-    return { week, mood: "data", title: "Data minggu ini belum lengkap", findings: [{ tone: "neutral", text: "Isi indikator minggu ini agar APPI bisa membacanya. Angka terakhir tetap tersedia di setiap indikator." }] };
-  }
-  if (!comparable.length) {
-    return { week, mood: "data", title: "Belum cukup data untuk dibandingkan", findings: [{ tone: "neutral", text: "Catat indikator yang sama pada minggu berikutnya agar APPI bisa membaca arah perubahan." }] };
-  }
-  const relative = (item) => Math.abs(item.change / (item.previous.value || 1));
-  const findings = [...comparable].sort((a, b) => relative(b) - relative(a)).slice(0, 3).map(({ metric, change, latest, sentiment }) => ({
-    tone: sentiment,
-    text: change === 0 ? `${metric.label} stabil di ${metric.format(latest.value)}.` : `${metric.label} ${change > 0 ? "naik" : "turun"} ${metric.delta(change)} menjadi ${metric.format(latest.value)}.`,
-  }));
-  const fcr = readings.find((item) => item.metric.id === "fcr");
-  const fcrConcern = fcr && fcr.latest.value > 2.6;
-  if (fcrConcern) findings.unshift({ tone: "negative", text: `FCR ${fcr.metric.format(fcr.latest.value)} di atas acuan 2,6. Cek pakan tercecer dan kualitas ransum.` });
-  const negatives = comparable.filter((item) => item.sentiment === "negative").length + (fcrConcern && fcr.sentiment !== "negative" ? 1 : 0);
-  const mood = negatives === 0 ? "happy" : negatives === 1 ? "think" : "concerned";
-  const title = negatives === 0 ? "Minggu ini terlihat sehat" : negatives === 1 ? "Ada satu hal untuk dicek" : `${negatives} indikator perlu perhatian`;
-  return { week, mood, title, findings: findings.slice(0, 3) };
-}
-
-function kpiPrompt(rows, reading) {
-  const last = rows[rows.length - 1] || {};
-  const parts = METRICS.map((metric) => {
-    const value = metric.read(last);
-    return Number.isFinite(value) ? `${metric.label} ${metric.format(value)}` : null;
-  }).filter(Boolean).join(", ");
-  return `Tolong baca KPI flock saya minggu ke-${reading.week}: ${parts}. ${reading.findings.map((item) => item.text).join(" ")} Apa tiga pemeriksaan prioritas di kandang minggu ini?`;
-}
-
-/**
- * Farm KPI: APPI reads the latest week first, the indicator tiles pick what
- * the one trend chart shows, and the weekly history sits below for edits.
+ * Farm KPI (canvas "Farm KPI"): APPI reads the latest week first, the
+ * indicator tiles pick what the trend chart shows beside the week's context,
+ * revenue and cost follow, and the weekly history sits below for edits. The
+ * entry sheet groups the week by production, feed and water, environment and
+ * finance; FCR is calculated from the week's own numbers.
  */
 export default function KpiDashboard() {
   const { data: rows = [], isLoading, isError, refetch } = useFarmData();
@@ -143,41 +121,53 @@ export default function KpiDashboard() {
   const [editing, setEditing] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
-  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState(false);
   const [selected, setSelected] = useState("hdp");
   const [pendingDelete, setPendingDelete] = useState(null);
   const [tableSort, setTableSort] = useState(/** @type {DataTableSort} */ ({ key: "week", direction: "desc" }));
 
-  const sorted = useMemo(() => [...rows].sort((a, b) => toNumber(a.week) - toNumber(b.week)), [rows]);
+  const sorted = useMemo(() => sortByWeek(rows), [rows]);
   const labels = useMemo(() => sorted.map((row) => `M${row.week}`), [sorted]);
   const reading = useMemo(() => weeklyReading(sorted), [sorted]);
-  const tiles = useMemo(() => METRICS.map((metric) => ({ metric, ...readingFor(sorted, metric) })), [sorted]);
+  const tiles = useMemo(() => KPI_METRICS.map((metric) => ({ metric, ...readingFor(sorted, metric) })), [sorted]);
   const active = tiles.find((tile) => tile.metric.id === selected && tile.latest) || tiles.find((tile) => tile.latest) || tiles[0];
-  const visibleWeeklyRows = useMemo(() => sortRows(sorted, tableSort), [sorted, tableSort]);
-  const financeSeries = useMemo(() => {
-    const revenue = sorted.map((row) => toNumber(row.revenue) / 1e6);
-    const cost = sorted.map((row) => toNumber(row.cost) / 1e6);
-    if (revenue.filter(Number.isFinite).length < 2 || cost.filter(Number.isFinite).length < 2) return [];
-    return [
-      { id: "revenue", label: "Pendapatan", values: revenue, hue: "blue" },
-      { id: "cost", label: "Biaya", values: cost, hue: "orange" },
-    ];
-  }, [sorted]);
+  const latestRow = sorted[sorted.length - 1] || null;
+  const previousRow = sorted[sorted.length - 2] || null;
+  const visibleRows = useMemo(() => {
+    const direction = tableSort.direction === "asc" ? 1 : -1;
+    return [...sorted].sort((a, b) => {
+      const left = tableSort.key === "profit" ? toNumber(a.revenue) - toNumber(a.cost) : toNumber(a[tableSort.key]);
+      const right = tableSort.key === "profit" ? toNumber(b.revenue) - toNumber(b.cost) : toNumber(b[tableSort.key]);
+      if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
+      if (!Number.isFinite(left)) return 1;
+      if (!Number.isFinite(right)) return -1;
+      return (left - right) * direction;
+    });
+  }, [sorted, tableSort]);
+
+  const errors = Object.fromEntries(ALL_FIELDS.map((field) => [field.key, fieldError(field, form[field.key])]).filter(([, error]) => error));
+  const visibleErrors = touched ? errors : Object.fromEntries(Object.entries(errors).filter(([key]) => key !== "week"));
+  const fcr = computedFcr(form);
+  const reference = sorted.filter((row) => row.id !== editing?.id).slice(-1)[0] || null;
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!String(form.week ?? "").trim()) {
-      setFieldErrors({ week: "Isi umur flock dalam minggu, misalnya 12." });
-      document.getElementById("farm-week")?.focus();
+    setTouched(true);
+    if (Object.keys(errors).length) {
+      const first = ALL_FIELDS.find((field) => errors[field.key]);
+      document.getElementById(`farm-${first.key === "week" ? "week" : first.key}`)?.focus();
       return;
     }
-    setFieldErrors({});
-    const data = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, key === "notes" ? value : numeric(value)]));
+    /** @type {Record<string, any>} */
+    const data = Object.fromEntries(ALL_FIELDS.map((field) => [field.key, parseField(field, form[field.key])]));
+    data.notes = form.notes;
+    data.fcr = fcr !== null ? Number(fcr.toFixed(2)) : editing?.fcr ?? null;
     try {
       await saveFarmData({ id: editing?.id ?? null, data });
       toast({ title: editing ? "Data diperbarui" : "Data farm ditambahkan", description: "Bacaan APPI sudah diperbarui." });
       setForm(emptyForm());
       setEditing(null);
+      setTouched(false);
       setSheetOpen(false);
     } catch (error) {
       toast({ title: "Data belum tersimpan", description: error?.message || "Coba lagi dalam beberapa saat.", variant: "destructive" });
@@ -186,7 +176,22 @@ export default function KpiDashboard() {
 
   const startEdit = (row) => {
     setEditing(row);
-    setForm(/** @type {ReturnType<typeof emptyForm>} */ (Object.fromEntries(Object.keys(emptyForm()).map((key) => [key, key === "notes" ? row.notes || "" : row[key] ?? ""]))));
+    setTouched(false);
+    setForm(/** @type {ReturnType<typeof emptyForm>} */ (Object.fromEntries(Object.keys(emptyForm()).map((key) => {
+      if (key === "notes") return [key, row.notes || ""];
+      const value = row[key];
+      if (value === null || value === undefined || value === "") return [key, ""];
+      const field = ALL_FIELDS.find((item) => item.key === key);
+      return [key, field?.money ? Math.round(Number(value)).toLocaleString("id-ID") : String(value).replace(".", ",")];
+    }))));
+    setSheetOpen(true);
+  };
+
+  const openNewEntry = () => {
+    setEditing(null);
+    setTouched(false);
+    const nextWeek = latestRow ? String(Number(latestRow.week) + 1) : "";
+    setForm({ ...emptyForm(), week: nextWeek });
     setSheetOpen(true);
   };
 
@@ -199,90 +204,105 @@ export default function KpiDashboard() {
     }
   };
 
-  const changeTableSort = (key) => {
-    setTableSort((current) => ({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" }));
+  const hint = (key, digits = 1) => {
+    if (!reference) return null;
+    const value = toNumber(reference[key]);
+    return Number.isFinite(value) ? `M${reference.week}: ${formatNumber(value, digits)}` : null;
   };
 
-  const weeklyColumns = useMemo(
-    /** @returns {DataTableColumn[]} */ () => [
-      { key: "week", header: "Minggu", required: true, sortable: true, overflow: "nowrap", render: (row) => <span className="font-semibold tabular-nums">M{row.week}</span> },
-      { key: "henDayProduction", header: "HDP", align: "right", sortable: true, overflow: "nowrap", render: (row) => formatValue(row.henDayProduction, "%") },
-      { key: "fcr", header: "FCR", align: "right", sortable: true, overflow: "nowrap", render: (row) => formatValue(row.fcr) },
-      { key: "feedIntake", header: "Pakan (g)", align: "right", sortable: true, overflow: "nowrap", render: (row) => formatValue(row.feedIntake) },
-      { key: "eggWeight", header: "Telur (g)", align: "right", sortable: true, overflow: "nowrap", render: (row) => formatValue(row.eggWeight) },
-      { key: "mortality", header: "Mortalitas", align: "right", sortable: true, overflow: "nowrap", render: (row) => formatValue(row.mortality, "%") },
-      {
-        key: "actions",
-        header: "Aksi",
-        align: "right",
-        required: true,
-        sticky: "right",
-        overflow: "nowrap",
-        render: (row) => (
-          <div className="flex justify-end gap-1">
-            <Button size="sm" variant="secondary" onClick={() => startEdit(row)}><AapmIcon name="edit" />Edit</Button>
-            <OverflowMenu label={`Aksi minggu ${row.week}`} items={[{ id: "delete", label: "Hapus data minggu ini", icon: "delete", tone: "danger", onSelect: () => setPendingDelete(row) }]} />
-          </div>
-        ),
-      },
-    ],
-    [],
-  );
-
-  const openNewEntry = () => {
-    setEditing(null);
-    setForm(emptyForm());
-    setSheetOpen(true);
-  };
+  const columns = [
+    { key: "week", header: "Minggu", required: true, sortable: true, render: (row) => <span className="t-strong t-num">M{row.week}</span> },
+    { key: "henDayProduction", header: "HDP (%)", align: "right", sortable: true, render: (row) => formatCell(row.henDayProduction) },
+    { key: "fcr", header: "FCR", align: "right", sortable: true, render: (row) => formatCell(row.fcr, 2) },
+    { key: "eggWeight", header: "Berat telur (g)", align: "right", sortable: true, render: (row) => formatCell(row.eggWeight) },
+    { key: "feedIntake", header: "Pakan (g/ekor)", align: "right", sortable: true, render: (row) => formatCell(row.feedIntake, 0) },
+    { key: "mortality", header: "Mortalitas (%)", align: "right", sortable: true, render: (row) => formatCell(row.mortality, 2) },
+    { key: "profit", header: "Laba (Rp jt)", align: "right", sortable: true, render: (row) => { const value = toNumber(row.revenue) - toNumber(row.cost); return Number.isFinite(value) ? formatNumber(value / 1e6, 1) : <span className="t-muted" aria-label="Tidak dicatat">—</span>; } },
+    { key: "temperature", header: "Suhu (°C)", align: "right", render: (row) => formatCell(row.temperature) },
+    { key: "notes", header: "Catatan", render: (row) => (row.notes ? <span className="row gap-1 t-muted" title={row.notes}><Ic name="message" size="sm" /><span className="sr-only">{row.notes}</span></span> : <span className="t-muted" aria-label="Tidak dicatat">—</span>) },
+    {
+      key: "actions",
+      header: <span className="sr-only">Aksi</span>,
+      align: "end",
+      required: true,
+      render: (row) => (
+        <div className="row gap-1 justify-end">
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => startEdit(row)}>Edit<span className="sr-only"> minggu {row.week}</span></button>
+          <OverflowMenu label={`Aksi minggu ${row.week}`} items={[{ id: "delete", label: "Hapus data minggu ini", icon: "delete", tone: "danger", onSelect: () => setPendingDelete(row) }]} />
+        </div>
+      ),
+    },
+  ];
 
   const hasData = sorted.length > 0;
+  const weekRow = sorted.find((row) => row.week === reading.week) || latestRow;
+  const profitNow = latestRow ? toNumber(latestRow.revenue) - toNumber(latestRow.cost) : NaN;
+  const profitBefore = previousRow ? toNumber(previousRow.revenue) - toNumber(previousRow.cost) : NaN;
+  const profitChange = Number.isFinite(profitNow) && Number.isFinite(profitBefore) ? profitNow - profitBefore : null;
+  const financeReady = sorted.filter((row) => Number.isFinite(toNumber(row.revenue)) && Number.isFinite(toNumber(row.cost))).length >= 2;
+  const errorCount = Object.keys(visibleErrors).length;
+  const isNewEntry = !editing;
+  const entryNumber = rows.length + 1;
 
   return (
-    <ContentContainer>
-      <PageHeader
-        title="Farm KPI"
-        description="Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya."
-        actions={hasData ? <Button type="button" onClick={openNewEntry}><AapmIcon name="plus" />Catat minggu ini</Button> : null}
-      />
+    <Page>
+      <header className="ph">
+        <div className="ph-copy">
+          <h1 className="ph-title">Farm KPI</h1>
+          <p className="ph-desc">Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya.</p>
+        </div>
+        {hasData ? (
+          <div className="ph-actions">
+            <button type="button" className="btn btn-primary" aria-haspopup="dialog" aria-expanded={sheetOpen} onClick={openNewEntry}><Ic name="plus" />Catat minggu ini</button>
+          </div>
+        ) : null}
+      </header>
 
       {isLoading ? (
         <StateView kind="loading" title="Memuat data KPI…" description="Kami sedang menyiapkan ringkasan produksi Anda." />
       ) : isError ? (
-        <StateView kind="error" title="Data KPI belum dapat dimuat" description="Periksa koneksi lalu coba lagi." action={<Button variant="secondary" onClick={() => refetch()}>Coba lagi</Button>} />
+        <StateView kind="error" title="Data KPI belum dapat dimuat" description="Periksa koneksi lalu coba lagi." action={<button type="button" className="btn btn-secondary" onClick={() => refetch()}><Ic name="refresh" />Coba lagi</button>} />
       ) : !hasData ? (
-        <section className="aapm-kpi-empty">
-          <AppiMascot mood="data" size="xl" />
-          <h2 className="aapm-kpi-empty__title">Belum ada data mingguan</h2>
-          <p className="aapm-kpi-empty__text">Catat satu minggu data flock. APPI akan membaca tren HDP, FCR, dan biaya untuk Anda.</p>
-          <Button type="button" variant="learn" size="lg" onClick={openNewEntry}><AapmIcon name="plus" />Catat data pertama</Button>
+        <section className="card card-pad-lg stack items-center t-center gap-4 peek-host anim-rise" aria-labelledby="kpi-empty-title">
+          <div className="appi-stage"><AppiMascot mood="curious" size="xl" enter="peek" /></div>
+          <h2 className="t-title-c" id="kpi-empty-title">Belum ada data mingguan</h2>
+          <p className="t-body t-muted measure">Catat satu minggu data flock. APPI akan membaca tren HDP, FCR, dan biaya untuk Anda.</p>
+          <button type="button" className="btn btn-learn btn-lg" onClick={openNewEntry}><Ic name="plus" />Catat data pertama</button>
         </section>
       ) : (
         <>
-          <section className="aapm-kpi-reading" aria-labelledby="kpi-reading-title">
-            <AppiMascot mood={reading.mood} size={56} />
-            <div className="aapm-kpi-reading__head">
-              <div className="min-w-0">
-                <p className="aapm-kpi-reading__eyebrow">Bacaan APPI · Minggu {reading.week}</p>
-                <h2 id="kpi-reading-title" className="aapm-kpi-reading__title">{reading.title}</h2>
+          <section className="card card-pad-lg row-start wrap gap-6 anim-rise" aria-labelledby="appi-read-title">
+            <div className="appi-stage" style={{ paddingTop: "var(--s-1)" }}><AppiMascot mood={reading.mood} size="xl" enter="pop" /></div>
+            <div className="stack gap-4" style={{ flex: "1 1 320px", minWidth: 0 }}>
+              <div className="row-start between wrap gap-3">
+                <div className="stack gap-0-5">
+                  <span className="t-overline t-ai">Bacaan APPI · Minggu {reading.week}</span>
+                  <h2 className="t-title-c" id="appi-read-title">{reading.title}</h2>
+                </div>
+                <button type="button" className="btn btn-ai-soft btn-sm" onClick={() => askAppi(kpiPrompt(sorted, reading))}><Ic name="message" />Diskusikan dengan APPI</button>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => askAppi(kpiPrompt(sorted, reading))}>
-                <AapmIcon name="ai" />Diskusikan dengan APPI
-              </Button>
+              <ul className="stack gap-2" aria-label={`Temuan minggu ${reading.week}`}>
+                {reading.findings.map((item, index) => {
+                  const metric = KPI_METRICS.find((entry) => entry.id === item.metric);
+                  const priority = item.tone === "negative" && index === 0 && reading.concerns > 1;
+                  return (
+                    <li key={item.text} className={cn("alert", priority ? "alert-danger" : findingClass[item.tone] || "alert-info")} style={{ padding: "var(--s-2) var(--s-3)", alignItems: "center" }}>
+                      <Ic name={metric?.icon || "info"} />
+                      <span className="grow">{item.text}</span>
+                      {item.tone === "negative" ? <span className={cn("chip", priority ? "chip-danger" : "chip-warning")}>{priority ? "Prioritas" : "Pantau"}</span> : item.tone === "positive" ? <span className="chip chip-success">Baik</span> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="note">Nilai terakhir dan perubahan lengkap ada di setiap indikator di bawah.</p>
             </div>
-            <ul className="aapm-kpi-reading__list">
-              {reading.findings.map((item) => (
-                <li key={item.text} data-tone={item.tone}>
-                  <AapmIcon name={item.tone === "negative" ? "warning" : item.tone === "positive" ? "check" : "insight"} />
-                  <span>{item.text}</span>
-                </li>
-              ))}
-            </ul>
           </section>
 
-          <section className="aapm-kpi-board" aria-label="Indikator mingguan">
-            <div className="aapm-kpi-tiles" role="tablist" aria-label="Pilih indikator untuk grafik">
+          <section className="stack gap-3 anim-rise" style={{ "--i": 1 }} aria-label="Indikator mingguan">
+            <div className="grid-xs" role="tablist" aria-label="Pilih indikator untuk grafik">
               {tiles.map((tile) => {
                 const isActive = tile.metric.id === active.metric.id;
+                const sentimentText = tile.sentiment === "positive" ? "membaik" : tile.sentiment === "negative" ? "memburuk" : "stabil";
                 return (
                   <button
                     key={tile.metric.id}
@@ -290,10 +310,10 @@ export default function KpiDashboard() {
                     role="tab"
                     id={`kpi-tab-${tile.metric.id}`}
                     aria-selected={isActive}
-                    aria-controls="kpi-trend-panel"
+                    aria-controls="trend-panel"
                     tabIndex={isActive ? 0 : -1}
                     disabled={!tile.latest}
-                    className="aapm-kpi-tile"
+                    className={cn("kpi-tile", isActive && "is-on")}
                     data-hue={tile.metric.hue}
                     onClick={() => setSelected(tile.metric.id)}
                     onKeyDown={(event) => {
@@ -307,145 +327,184 @@ export default function KpiDashboard() {
                       nextTab?.click();
                     }}
                   >
-                    <span className="aapm-kpi-tile__head">
-                      <span className="aapm-kpi-tile__label">{tile.metric.label}</span>
-                      <AapmIcon name={tile.metric.icon} />
+                    <span className="row between gap-2"><span className={cn("t-overline", isActive ? "t-ink" : "t-muted")}>{tile.metric.label}</span><Ic name={tile.metric.icon} size="sm" className="t-ink" /></span>
+                    <span className="metric-value">{tile.latest ? <CountUp value={tile.latest.value} format={tile.metric.format} /> : "—"}</span>
+                    <span className="stack gap-1 items-start">
+                      {tile.change !== null ? (
+                        <span className={cn("delta", tile.sentiment === "positive" ? "delta-good" : tile.sentiment === "negative" ? "delta-bad" : "delta-flat")}>
+                          <Ic name={tile.change > 0 ? "arrow-up" : tile.change < 0 ? "arrow-down" : "minus"} />
+                          {tile.change === 0 ? "stabil" : tile.metric.delta(tile.change)}
+                          <span className="sr-only">, {tile.change > 0 ? "naik" : tile.change < 0 ? "turun" : "tetap"}, {sentimentText}</span>
+                        </span>
+                      ) : (
+                        <span className="delta delta-flat">{tile.latest ? "catatan pertama" : "belum dicatat"}</span>
+                      )}
+                      {tile.latest ? <span className="t-caption t-muted">Terakhir M{tile.latest.week}</span> : null}
                     </span>
-                    <span className="aapm-kpi-tile__value">
-                      {tile.latest ? <CountUp value={tile.latest.value} format={tile.metric.format} /> : "—"}
-                    </span>
-                    {tile.change !== null ? (
-                      <span className="aapm-kpi-tile__delta" data-sentiment={tile.sentiment}>
-                        <AapmIcon name={tile.change > 0 ? "arrowUp" : tile.change < 0 ? "arrowDown" : "glyphMinus"} />
-                        {tile.change === 0 ? "stabil" : tile.metric.delta(tile.change)}
-                      </span>
-                    ) : (
-                      <span className="aapm-kpi-tile__delta">{tile.latest ? "catatan pertama" : "belum dicatat"}</span>
-                    )}
-                    {tile.latest && tile.latest.week !== reading.week ? <span className="aapm-meta">Terakhir M{tile.latest.week}</span> : null}
-                    {tile.values.length > 1 ? <Sparkline values={tile.values} hue={tile.metric.hue} height={28} aria-hidden="true" /> : null}
+                    {tile.values.length > 1 ? <Sparkline values={tile.values} hue={tile.metric.hue} className="mt-auto" aria-hidden="true" /> : <span className="mt-auto" />}
                   </button>
                 );
               })}
             </div>
-            <p className="aapm-kpi-board__note">Nilai terakhir yang tercatat · perubahan dibanding catatan sebelumnya. Pilih indikator untuk melihat trennya.</p>
-
-            <section id="kpi-trend-panel" role="tabpanel" aria-labelledby={`kpi-tab-${active.metric.id}`} className="aapm-card aapm-kpi-chart aapm-kpi-chart--trend" data-hue={active.metric.hue}>
-              <header className="aapm-kpi-chart__head">
-                <div className="min-w-0">
-                  <h3 className="aapm-kpi-chart__title">Tren {active.metric.label}</h3>
-                  <p className="aapm-kpi-chart__text">{active.metric.long} per umur flock{active.metric.band ? ` · pita hijau: ${active.metric.band.label}` : ""}.</p>
-                </div>
-                {active.latest ? <span className="aapm-kpi-chart__now"><span>M{active.latest.week}</span>{active.metric.format(active.latest.value)}</span> : null}
-              </header>
-              {active.values.length > 1 ? (
-                <TrendChart
-                  key={active.metric.id}
-                  ariaLabel={`Grafik tren ${active.metric.label}`}
-                  label={active.metric.label}
-                  labels={labels}
-                  values={sorted.map((row) => active.metric.read(row))}
-                  hue={active.metric.hue}
-                  band={active.metric.band}
-                  valueFormatter={active.metric.format}
-                  height={184}
-                />
-              ) : (
-                <ChartEmpty message="Catat minimal dua minggu untuk melihat tren indikator ini." />
-              )}
-            </section>
-
-            {financeSeries.length ? (
-              <section className="aapm-card aapm-kpi-chart" aria-labelledby="kpi-finance-title">
-                <header className="aapm-kpi-chart__head">
-                  <div className="min-w-0">
-                    <h3 id="kpi-finance-title" className="aapm-kpi-chart__title">Pendapatan vs biaya</h3>
-                    <p className="aapm-kpi-chart__text">Dalam juta rupiah per minggu.</p>
-                  </div>
-                </header>
-                <LineChart ariaLabel="Grafik pendapatan dan biaya" labels={labels} series={financeSeries} height={220} valueFormatter={(value) => `${number(value, 1)} jt`} />
-              </section>
-            ) : null}
+            <p className="note">Nilai terakhir yang tercatat · perubahan dibanding minggu sebelumnya.</p>
           </section>
 
-          <section aria-labelledby="weekly-history-title">
-            <SectionHeader
-              id="weekly-history-title"
-              title="Riwayat mingguan"
-              description="Data yang tersimpan di akun Anda. Edit untuk mengoreksi angka."
-              actions={<Badge>{rows.length} catatan</Badge>}
-            />
+          <section className="card anim-rise" style={{ "--i": 2 }} role="tabpanel" id="trend-panel" aria-labelledby="trend-title" data-hue={active.metric.hue}>
+            <div className="card-pad card-head" style={{ paddingBottom: 0 }}>
+              <div className="stack gap-0-5">
+                <h2 className="card-title" id="trend-title">Tren {active.metric.label}</h2>
+                <p className="card-desc">{active.metric.long} per umur flock (minggu){active.metric.band ? ` · pita hijau: ${active.metric.band.label}` : ""}.</p>
+              </div>
+              {active.latest ? <span className="chip chip-lg chip-hue t-num">M{active.latest.week} {active.metric.format(active.latest.value)}</span> : null}
+            </div>
+            <div className="card-pad split">
+              {active.values.length > 1 ? (
+                <CanvasLineChart
+                  key={active.metric.id}
+                  labels={active.points.map((point) => `M${point.week}`)}
+                  series={[{ values: active.values, hue: active.metric.hue }]}
+                  band={active.metric.band}
+                  format={(value) => (active.metric.id === "profit" ? formatNumber(value / 1e6, 0) : formatNumber(value, active.metric.id === "fcr" || active.metric.id === "mortality" ? 2 : 0))}
+                  title={`Tren ${active.metric.label} minggu ${active.points[0].week} sampai ${active.points[active.points.length - 1].week}`}
+                  description={active.points.map((point) => `M${point.week} ${active.metric.format(point.value)}`).join(", ")}
+                />
+              ) : (
+                <div className="inset row justify-center items-center t-support t-muted" style={{ minHeight: 200, padding: "var(--s-6)" }}>Catat minimal dua minggu untuk melihat tren indikator ini.</div>
+              )}
+              <aside className="inset card-pad stack gap-4" aria-labelledby="ctx-title">
+                <div className="stack gap-0-5">
+                  <h3 className="t-heading" id="ctx-title">Konteks minggu ini</h3>
+                  <p className="t-caption t-muted">Kondisi kandang yang dicatat bersama M{weekRow?.week}.</p>
+                </div>
+                <dl className="dl">
+                  <dt className="row gap-2"><Ic name="thermo" size="sm" />Suhu</dt><dd>{Number.isFinite(toNumber(weekRow?.temperature)) ? `${formatNumber(toNumber(weekRow.temperature), 1)} °C` : "—"}</dd>
+                  <dt className="row gap-2"><Ic name="percent" size="sm" />Kelembapan</dt><dd>{Number.isFinite(toNumber(weekRow?.humidity)) ? `${formatNumber(toNumber(weekRow.humidity), 0)}%` : "—"}</dd>
+                  <dt className="row gap-2"><Ic name="drop" size="sm" />Air minum</dt><dd>{Number.isFinite(toNumber(weekRow?.waterIntake)) ? `${formatNumber(toNumber(weekRow.waterIntake), 0)} ml/ekor` : "—"}</dd>
+                </dl>
+                <div className="divider" />
+                <div className="stack gap-1">
+                  <span className="row gap-2 t-support t-muted"><Ic name="message" size="sm" />Catatan</span>
+                  <p className="t-support">{weekRow?.notes || "Belum ada catatan untuk minggu ini."}</p>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          {financeReady ? (
+            <section className="card anim-rise" style={{ "--i": 3 }} aria-labelledby="fin-title" data-hue="blue">
+              <div className="card-pad card-head wrap" style={{ paddingBottom: 0 }}>
+                <div className="stack gap-0-5">
+                  <h2 className="card-title" id="fin-title">Pendapatan vs biaya</h2>
+                  <p className="card-desc">Dalam juta rupiah per minggu.</p>
+                </div>
+                <div className="row gap-4" style={{ paddingTop: "var(--s-1)" }}>
+                  <span className="legend" data-hue="blue"><i />Pendapatan</span>
+                  <span className="legend" data-hue="orange"><i />Biaya</span>
+                </div>
+              </div>
+              <div className="card-pad split">
+                <CanvasLineChart
+                  labels={labels}
+                  series={[
+                    { values: sorted.map((row) => toNumber(row.revenue) / 1e6), hue: "blue" },
+                    { values: sorted.map((row) => toNumber(row.cost) / 1e6), hue: "orange", secondary: true },
+                  ]}
+                  format={(value) => formatNumber(value, 0)}
+                  title={`Pendapatan dan biaya mingguan, ${labels[0]} sampai ${labels[labels.length - 1]}`}
+                  description={`Pendapatan: ${sorted.map((row) => formatNumber(toNumber(row.revenue) / 1e6, 1)).join("; ")} juta. Biaya: ${sorted.map((row) => formatNumber(toNumber(row.cost) / 1e6, 1)).join("; ")} juta.`}
+                />
+                <aside className="inset card-pad stack gap-4" aria-labelledby="fin-week">
+                  <div className="stack gap-0-5">
+                    <h3 className="t-heading" id="fin-week">Minggu {latestRow?.week}</h3>
+                    <p className="t-caption t-muted">Selisih pendapatan dan biaya adalah laba.</p>
+                  </div>
+                  <dl className="dl">
+                    <dt className="row gap-2"><span className="legend" data-hue="blue"><i /></span>Pendapatan</dt><dd>{Number.isFinite(toNumber(latestRow?.revenue)) ? formatMillion(toNumber(latestRow.revenue)) : "—"}</dd>
+                    <dt className="row gap-2"><span className="legend" data-hue="orange"><i /></span>Biaya</dt><dd>{Number.isFinite(toNumber(latestRow?.cost)) ? formatMillion(toNumber(latestRow.cost)) : "—"}</dd>
+                  </dl>
+                  <div className="divider" />
+                  <div className="row between gap-3">
+                    <span className="t-support t-strong">Laba</span>
+                    <span className="row gap-2">
+                      {profitChange !== null && profitChange !== 0 ? <span className={cn("delta", profitChange > 0 ? "delta-good" : "delta-bad")}><Ic name={profitChange > 0 ? "arrow-up" : "arrow-down"} />{formatMillion(Math.abs(profitChange))}<span className="sr-only">, {profitChange > 0 ? "naik" : "turun"}</span></span> : null}
+                      <span className="t-heading t-num">{Number.isFinite(profitNow) ? formatMillion(profitNow) : "—"}</span>
+                    </span>
+                  </div>
+                </aside>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="stack gap-3 anim-rise" style={{ "--i": 4 }} aria-labelledby="hist-title">
+            <div className="sh">
+              <div className="row gap-3"><h2 className="sh-title" id="hist-title">Riwayat mingguan</h2><span className="chip">{rows.length} catatan</span></div>
+            </div>
             <DataTable
-              className="aapm-token-table"
-              caption="Riwayat input KPI mingguan"
-              columns={weeklyColumns}
-              rows={visibleWeeklyRows}
+              caption="Riwayat KPI mingguan, minggu terbaru di atas"
+              columns={columns}
+              rows={visibleRows}
               rowKey={(row) => String(row.id)}
-              density="compact"
               responsive="stacked"
               emptyMessage="Belum ada data mingguan."
               sort={tableSort}
-              onSort={changeTableSort}
+              onSort={(key) => setTableSort((current) => ({ key, direction: current.key === key && current.direction === "desc" ? "asc" : "desc" }))}
             />
           </section>
         </>
       )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="right" className="aapm-form-sheet">
-          <SheetHeader>
-            <SheetTitle>{editing ? `Edit data minggu ${editing.week}` : "Catat data mingguan"}</SheetTitle>
-            <SheetDescription>{editing ? "Perbarui angka lalu simpan perubahan." : "Isi yang Anda punya; field lain boleh kosong."}</SheetDescription>
-          </SheetHeader>
-          <div className="aapm-form-sheet__body">
-            <form id="farm-data-form" noValidate onSubmit={submit} className="grid gap-5">
-              <FormSection title="Produksi & efisiensi" description="Field inti untuk membaca performa flock." className="space-y-3">
-                <FormGrid columns={2}>
-                  {primaryFields.map((field) => (
-                    <MetricInput
-                      key={field.key}
-                      fieldKey={field.key}
-                      label={field.label}
-                      value={form[field.key]}
-                      required={field.required}
-                      error={fieldErrors[field.key]}
-                      onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
-                    />
-                  ))}
-                </FormGrid>
-              </FormSection>
-
-              <FormSection title="Konteks operasional" description="Suhu, input pakan, dan biaya membantu menjelaskan penyimpangan." className="space-y-3">
-                <FormGrid columns={2}>
-                  {contextFields.map((field) => (
-                    <MetricInput
-                      key={field.key}
-                      fieldKey={field.key}
-                      label={field.label}
-                      value={form[field.key]}
-                      required={field.required}
-                      error={fieldErrors[field.key]}
-                      onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
-                    />
-                  ))}
-                </FormGrid>
-              </FormSection>
-
-              <FormSection title="Catatan operasional" description="Simpan alasan perubahan, bukan sekadar angka." className="space-y-2">
-                <Label htmlFor="farm-notes" className="sr-only">Catatan operasional</Label>
-                <Textarea
-                  id="farm-notes"
-                  value={form.notes}
-                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                  placeholder="Contoh: perubahan pakan, cuaca, atau kondisi kandang."
-                />
-              </FormSection>
-            </form>
+        <SheetContent side="right" hideClose aria-describedby="entry-desc">
+          <div className="sheet-head">
+            <div className="stack gap-2">
+              <div className="stack gap-0-5">
+                <span className="t-overline t-muted">Farm KPI · Minggu {form.week || "baru"}</span>
+                <SheetTitle className="t-title-c">{editing ? `Edit data minggu ${editing.week}` : "Catat data mingguan"}</SheetTitle>
+                <SheetDescription id="entry-desc" className="card-desc">{editing ? "Perbarui angka lalu simpan perubahan." : "Isi yang Anda punya; field lain boleh kosong."}</SheetDescription>
+              </div>
+              {isNewEntry && entryNumber <= FARM_ENTRY_POINTS_LIMIT ? <span className="chip chip-gold" style={{ alignSelf: "flex-start" }}><Ic name="star" />+10 poin · catatan ke-{entryNumber} dari {FARM_ENTRY_POINTS_LIMIT}</span> : null}
+            </div>
+            <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Tutup" onClick={() => setSheetOpen(false)}><Ic name="x" /></button>
           </div>
-          <SheetFooter className="aapm-form-sheet__footer">
-            <Button type="button" variant="secondary" onClick={() => setSheetOpen(false)}>Batal</Button>
-            <Button type="submit" form="farm-data-form" loading={save.isPending}>{editing ? "Simpan perubahan" : "Simpan data"}</Button>
-          </SheetFooter>
+          <form className="sheet-body" id="kpi-entry" noValidate onSubmit={submit}>
+            {GROUPS.map((group, index) => (
+              <React.Fragment key={group.id}>
+                {index ? <div className="divider" /> : null}
+                <div className="stack gap-3" role="group" aria-labelledby={`grp-${group.id}`}>
+                  <h3 className="t-overline t-muted row gap-2" id={`grp-${group.id}`}><Ic name={group.ic} size="sm" />{group.title}</h3>
+                  <div className="cols-2">
+                    {group.fields.map((field) => (
+                      <SheetField
+                        key={field.key}
+                        field={field}
+                        value={form[field.key]}
+                        error={visibleErrors[field.key]}
+                        hint={field.key === "week" || field.money ? null : hint(field.key, field.key === "mortality" ? 2 : 1)}
+                        onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
+                      />
+                    ))}
+                    {group.id === "feed" ? (
+                      <div className="field" style={{ gridColumn: "1 / -1" }}>
+                        <label className="label" htmlFor="farm-fcr"><span>FCR</span><span className="chip"><Ic name="calc" />dihitung otomatis</span></label>
+                        <div className="input is-disabled"><input id="farm-fcr" type="text" value={fcr !== null ? formatNumber(fcr, 2) : editing?.fcr ? formatNumber(toNumber(editing.fcr), 2) : "—"} readOnly aria-describedby="farm-fcr-h" /></div>
+                        <span className="hint" id="farm-fcr-h">Asupan pakan ÷ (HDP × berat telur).{fcr === null ? " Menunggu HDP, berat telur, dan asupan pakan yang valid." : ""}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </React.Fragment>
+            ))}
+            <div className="divider" />
+            <div className="stack gap-3">
+              <h3 className="t-overline t-muted row gap-2" id="grp-note"><Ic name="message" size="sm" />Catatan operasional</h3>
+              <textarea className="textarea" id="farm-notes" rows={3} aria-labelledby="grp-note" placeholder="Contoh: perubahan pakan, cuaca, atau kondisi kandang." value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
+            </div>
+          </form>
+          <div className="sheet-foot">
+            {errorCount ? <span className="row gap-1 t-caption t-danger grow" role="status"><Ic name="alert" size="xs" />{errorCount} isian perlu diperbaiki</span> : <span className="grow" />}
+            <button type="button" className="btn btn-ghost" onClick={() => setSheetOpen(false)}>Batal</button>
+            <button type="submit" form="kpi-entry" className="btn btn-primary" disabled={save.isPending} aria-busy={save.isPending || undefined}>{editing ? "Simpan perubahan" : "Simpan data"}</button>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -462,43 +521,6 @@ export default function KpiDashboard() {
           if (row) remove(row.id);
         }}
       />
-    </ContentContainer>
+    </Page>
   );
-}
-
-function MetricInput({ fieldKey, label, value, required = false, error, onChange }) {
-  const id = fieldKey === "week" ? "farm-week" : `farm-${fieldKey}`;
-  return (
-    <Field id={id} label={label} required={required} error={error}>
-      <Input type="number" inputMode="decimal" value={value ?? ""} onChange={(event) => onChange(event.target.value)} />
-    </Field>
-  );
-}
-
-function sortRows(rows, sort) {
-  const factor = sort.direction === "desc" ? -1 : 1;
-  return [...rows].sort((a, b) => {
-    const left = toNumber(a[sort.key]);
-    const right = toNumber(b[sort.key]);
-    if (Number.isFinite(left) && Number.isFinite(right)) return (left - right) * factor;
-    return String(a[sort.key] ?? "").localeCompare(String(b[sort.key] ?? "")) * factor;
-  });
-}
-
-function ChartEmpty({ message }) {
-  return <div className="aapm-kpi-chart__empty">{message}</div>;
-}
-
-function toNumber(value) {
-  if (value === null || value === undefined || value === "") return NaN;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : NaN;
-}
-
-function numeric(value) {
-  return value === "" || value === null || value === undefined ? null : parseFloat(value);
-}
-
-function formatValue(value, suffix = "") {
-  return value === null || value === undefined || value === "" ? "—" : `${String(value).replace(".", ",")}${suffix}`;
 }

@@ -31,7 +31,7 @@
   }
 
 .aapm-scroll-fade--subtle {
-    --scroll-fade-color: hsl(var(--surface-subtle) / 0.78);
+    --scroll-fade-color: hsl(var(--tw-surface-subtle) / 0.78);
   }
 
 .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-top="true"] {
