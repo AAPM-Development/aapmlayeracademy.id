@@ -926,13 +926,19 @@ function ai_assistant_reply(string $message, array $farmContext, bool $allowWebS
  */
 function ai_admin_companion_reply(string $action, string $message, array $module = [], array $modules = []): array
 {
-    $allowedActions = ['module_draft', 'title', 'copy', 'structure', 'review', 'order', 'chat'];
+    $allowedActions = ['module_draft', 'title', 'copy', 'block', 'structure', 'review', 'order', 'chat'];
     if (!in_array($action, $allowedActions, true)) {
         error_response('Aksi companion APPI tidak dikenal.', 422, 'invalid_ai_companion_action');
     }
 
+    $focusBlock = is_array($module['focusBlock'] ?? null) ? $module['focusBlock'] : null;
     $module = ai_admin_companion_trim_value($module, 0);
     $modules = ai_admin_companion_trim_value($modules, 0);
+    if ($focusBlock !== null) {
+        // The generic 2,400-byte cap would cut a rich block mid-way and drop its
+        // protected media tokens; one focused block may be longer.
+        $module['focusBlock'] = ai_admin_companion_material_block($focusBlock);
+    }
     $moduleJson = json_encode($module, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     $modulesJson = json_encode($modules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
     if (!is_string($moduleJson)) $moduleJson = '{}';
@@ -955,8 +961,9 @@ PROMPT;
         'module_draft' => 'Buat draf terarah untuk judul, ringkasan, tujuan pembelajaran, poin penting, checklist, dan satu tugas praktik.',
         'title' => 'Usulkan sampai tiga judul dan ringkasan yang lebih jelas sesuai level dan isi modul.',
         'copy' => 'Rewrite copywriting materi menjadi lebih ringkas dan mudah dipindai. Pertahankan fakta, format, media, tautan, dan urutan blok.',
+        'block' => 'Tulis ulang HANYA blok di focusBlock sesuai instruksi editor. Kembalikan tepat satu saran kind "copy" dengan payload.materialBlocks berisi satu objek {id, type, content} (tambah title untuk callout) memakai id dan type focusBlock. Salin setiap token seperti ⟦APPI_MEDIA_1⟧ persis di posisinya. Jangan mengubah blok lain atau field modul.',
         'structure' => 'Audit struktur modul dan usulkan susunan outcome, materi, dan praktik yang lebih runtut.',
-        'review' => 'Audit kualitas editorial: kekosongan, duplikasi, urutan, keteramatan tujuan, dan risiko klaim yang tidak didukung.',
+        'review' => 'Audit kualitas editorial: kekosongan, duplikasi, urutan, keteramatan tujuan, dan risiko klaim yang tidak didukung. Kembalikan saran kind "review" dengan payload.issues berisi kalimat temuan yang masing-masing langsung bisa ditindaklanjuti.',
         'order' => 'Usulkan urutan modul yang logis dari daftar kurikulum dan jelaskan dependensi singkatnya.',
         'chat' => 'Jawab pertanyaan editor dan berikan saran yang bisa langsung ditinjau.',
     ][$action];
@@ -1022,6 +1029,19 @@ function ai_admin_companion_decode(string $raw): ?array
     return is_array($decoded) ? $decoded : null;
 }
 
+/** One editorial text block for the companion: id, type, optional title, content up to 12,000 bytes. */
+function ai_admin_companion_material_block(array $block): array
+{
+    $result = [
+        'id' => substr(trim((string) ($block['id'] ?? '')), 0, 120),
+        'type' => substr(trim((string) ($block['type'] ?? '')), 0, 40),
+        'content' => substr((string) ($block['content'] ?? ''), 0, 12000),
+    ];
+    if (array_key_exists('title', $block)) $result['title'] = substr((string) $block['title'], 0, 160);
+    if (array_key_exists('level', $block)) $result['level'] = (int) $block['level'];
+    return $result;
+}
+
 function ai_admin_companion_normalise_suggestions($suggestions): array
 {
     if (!is_array($suggestions)) return [];
@@ -1031,7 +1051,12 @@ function ai_admin_companion_normalise_suggestions($suggestions): array
         if (!is_array($suggestion)) continue;
         $kind = trim((string) ($suggestion['kind'] ?? 'review'));
         if (!in_array($kind, $allowedKinds, true)) continue;
-        $payload = is_array($suggestion['payload'] ?? null) ? ai_admin_companion_trim_value($suggestion['payload'], 1) : [];
+        $rawPayload = is_array($suggestion['payload'] ?? null) ? $suggestion['payload'] : [];
+        $payload = ai_admin_companion_trim_value($rawPayload, 1);
+        if (is_array($rawPayload['materialBlocks'] ?? null)) {
+            // Text blocks keep their full length so media tokens survive the round trip.
+            $payload['materialBlocks'] = array_values(array_map('ai_admin_companion_material_block', array_slice(array_filter($rawPayload['materialBlocks'], 'is_array'), 0, 24)));
+        }
         $result[] = [
             'id' => trim((string) ($suggestion['id'] ?? ('saran-' . ($index + 1)))),
             'kind' => $kind,
