@@ -543,14 +543,21 @@ test("PWA metadata uses the canonical app icon and leaves API responses uncached
 
 test("admin APPI rewrite remains preview-first and requires explicit confirmation", () => {
   const editor = readWorkspaceFile("../src/pages/admin/AdminModuleEditor.jsx");
-  assert.match(editor, /Rewrite isi/);
-  assert.match(editor, /Rewrite isi \+ materi/);
-  assert.match(editor, /materialBlocks/);
+  const companion = readWorkspaceFile("../src/components/admin/AdminModuleCompanion.jsx");
+  // One companion in the editor; the old stacked rewrite card is gone.
+  assert.match(editor, /<AdminModuleCompanion[^>]*selectedBlock=\{selectedBlock\}[^>]*onUndo=\{undoCompanionDraft\}/);
+  assert.doesNotMatch(editor, /function AiModuleDraft/);
   assert.match(editor, /fieldPresence/);
-  assert.match(editor, /Pratinjau rewrite copywriting/);
-  assert.match(editor, /Ganti isi modul dengan rewrite APPI/);
-  assert.match(editor, /onConfirm=\{applyRewrite\}/);
-  assert.match(editor, /Format dipertahankan/);
+  // Preview first: before/after per field, the editor picks fields, then applies.
+  assert.match(companion, /Sebelum/);
+  assert.match(companion, /Terapkan pilihan/);
+  assert.match(companion, /materialBlocks/);
+  assert.match(companion, /fieldPresence/);
+  // Rewriting several material blocks asks once more, and every apply can be undone.
+  assert.match(companion, /Ganti teks materi dengan versi APPI\?/);
+  assert.match(companion, /materialBlocks\.length > 1/);
+  assert.match(companion, /Batalkan/);
+  assert.match(companion, /action: "block"/);
   const client = readWorkspaceFile("../src/api/nativeClient.js");
   const api = readWorkspaceFile("../public/api/index.php");
   const provider = readWorkspaceFile("../public/api/openrouter.php");
@@ -559,6 +566,23 @@ test("admin APPI rewrite remains preview-first and requires explicit confirmatio
   assert.match(api, /require_admin\(\)/);
   assert.match(api, /ai_assistant_reply\(\$message, \[\], false, \[\], 6000, 24000\)/);
   assert.match(provider, /messageLimit = 3000/);
+});
+
+test("APPI rewrite accepts a link placed before an image (tokens in reading order)", () => {
+  const document = createEditorialDocument([
+    { id: "intro", type: "richText", content: "# [Mengapa penting?](https://example.com/why)\n\n![Logo](/uploads/logo.webp)\n\nTeks lama." },
+  ]);
+  const source = aiEditorialMaterialSource(document);
+  const intro = source[0];
+  // Images are numbered first, so the link carries the higher number but comes first.
+  assert.deepEqual(intro.content.match(/⟦APPI_MEDIA_\d+⟧/g), ["⟦APPI_MEDIA_2⟧", "⟦APPI_MEDIA_1⟧"]);
+  const rewritten = normaliseAiEditorialMaterial([{ id: "intro", type: "richText", content: `${intro.content}\n\nContoh lapangan baru.` }], source);
+  assert.match(rewritten[0].content, /Contoh lapangan baru\./);
+  assert.match(rewritten[0].content, /\[Mengapa penting\?\]\(https:\/\/example\.com\/why\)/);
+  assert.match(rewritten[0].content, /!\[Logo\]\(\/uploads\/logo\.webp\)/);
+  // Swapping the two tokens still fails closed.
+  const swapped = intro.content.replace("⟦APPI_MEDIA_2⟧", "§").replace("⟦APPI_MEDIA_1⟧", "⟦APPI_MEDIA_2⟧").replace("§", "⟦APPI_MEDIA_1⟧");
+  assert.equal(normaliseAiEditorialMaterial([{ id: "intro", type: "richText", content: swapped }], source)[0].content, intro.sourceContent);
 });
 
 test("APPI editorial rewrite preserves Markdown media and non-text blocks", () => {
