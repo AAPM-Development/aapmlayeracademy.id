@@ -12,6 +12,7 @@ import { buildCurriculum, moduleVisual } from "@/lib/academyVisuals";
 import { celebrate, originOf } from "@/lib/celebrate";
 import { correctRun } from "@/lib/learningPath";
 import { moduleQuizNavigation } from "@/lib/quizNavigation";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const CHOICE_LETTERS = "abcdef";
 
@@ -367,7 +368,7 @@ export default function Quiz() {
             {result.passed ? <QuizRewards module={module} alreadyCompleted={completedBefore} learning={profile?.learning} curriculum={curriculum} completedSet={completedSet} ownedTiers={ownedTiers} /> : null}
             <div className="row wrap justify-center gap-3">
               {result.passed ? (
-                <Link className="btn btn-learn btn-lg btn-block-sm" to={next ? `/modules/${next.moduleNumber}` : "/modules"}>{next ? `Lanjut ke Modul ${next.moduleNumber}` : "Kembali ke jalur belajar"}<Ic name="arrow-right" /></Link>
+                <Link className="btn btn-learn btn-lg btn-block-sm" to={next ? `/modules/${next.moduleNumber}` : "/modules"}>{next ? `Lanjut ke Modul ${moduleNo(next)}` : "Kembali ke jalur belajar"}<Ic name="arrow-right" /></Link>
               ) : (
                 <button type="button" className="btn btn-learn btn-lg btn-block-sm" onClick={restart}><Ic name="refresh" />Ulangi kuis</button>
               )}

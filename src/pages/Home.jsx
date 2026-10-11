@@ -4,16 +4,18 @@ import PwaInstallNotice from "@/components/PwaInstallNotice";
 import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
 import AapmIcon from "@/components/icons/AapmIcon";
 import FlowSteps, { moduleFlowSteps } from "@/components/learn/FlowSteps";
+import { ModuleCover } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { Page } from "@/design-system/patterns/AppShell";
 import { Bar, Egg, Ic } from "@/design-system/canvas";
 import { useAuth } from "@/lib/AuthContext";
 import { getCompletedModuleSet, getNextModule, getProgressSummary, getRankProgress, learningLevels, TOTAL_CERTIFICATION_TIERS } from "@/lib/academyData";
-import { buildCurriculum, levelVisual } from "@/lib/academyVisuals";
+import { buildCurriculum, levelVisual, moduleVisual } from "@/lib/academyVisuals";
 import { firstName, formatStudyTime, greeting, moduleMeta, nextOpenTier, tierForModule } from "@/lib/learnerCopy";
 import { sortByWeek, weeklyReading } from "@/lib/kpiReading";
 import { useCertificates, useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useLearningProfile } from "@/lib/useProfileData";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const achievementIcons = { "first-step": "flag", "module-finisher": "check-circle", "field-practice": "egg", "quiz-ready": "target", "farm-journal": "chart", certified: "cert" };
 const achievementHues = { "first-step": "green", "module-finisher": "green", "field-practice": "teal", "quiz-ready": "blue", "farm-journal": "orange", certified: "teal" };
@@ -23,15 +25,15 @@ function coachLine(summary, nextModule, completedSet) {
   if (!nextModule) return { mood: "cheer", text: <>Semua modul tuntas. Saatnya <strong>ujian akhir</strong>!</> };
   if (summary.completed === 0) return { mood: "wink", text: <>Mulai dari Modul 1. Satu langkah kecil hari ini!</> };
   const tier = tierForModule(nextModule.moduleNumber, completedSet);
-  if (tier?.remaining === 1) return { mood: "happy", text: <>{summary.completed} modul tuntas! Selesaikan Modul {nextModule.moduleNumber} untuk membuka sertifikat <strong>Tingkat {tier.number}</strong>.</> };
+  if (tier?.remaining === 1) return { mood: "happy", text: <>{summary.completed} modul tuntas! Selesaikan Modul {moduleNo(nextModule)} untuk membuka sertifikat <strong>Tingkat {tier.number}</strong>.</> };
   if (tier) return { mood: "happy", text: <>{summary.completed} modul tuntas! {tier.remaining} modul lagi menuju sertifikat <strong>Tingkat {tier.number}</strong>.</> };
-  return { mood: "happy", text: <>{summary.completed} modul tuntas! Lanjut ke Modul {nextModule.moduleNumber}?</> };
+  return { mood: "happy", text: <>{summary.completed} modul tuntas! Lanjut ke Modul {moduleNo(nextModule)}?</> };
 }
 
 function HomeHero({ user, nextModule, nextProgress, summary, completedSet }) {
   const started = summary.completed > 0;
   const coach = coachLine(summary, nextModule, completedSet);
-  const visual = levelVisual(nextModule?.level);
+  const visual = nextModule ? moduleVisual(nextModule) : levelVisual(1);
   const steps = nextModule ? moduleFlowSteps({ progress: nextProgress, hasPractice: Boolean(nextModule.practicalAssignment), hasQuiz: nextModule.assessmentMode !== "acknowledgement" }) : [];
   return (
     <section className="card card-fill feature cols-aside anim-rise" data-hue="green" aria-labelledby="hero-title" style={{ padding: "28px 32px", overflow: "hidden" }}>
@@ -42,13 +44,15 @@ function HomeHero({ user, nextModule, nextProgress, summary, completedSet }) {
         </div>
         {nextModule ? (
           <Link className="card card-tactile cover-row" to={`/modules/${nextModule.moduleNumber}`} data-hue={visual.hue}>
-            <div className="cover" style={{ borderRadius: 0, minHeight: 116 }}>
-              <span className="tile"><AapmIcon name={visual.icon} /></span>
-              <span className="cover-num" aria-hidden="true">{String(nextModule.moduleNumber).padStart(2, "0")}</span>
-            </div>
+            {visual.image || visual.customIcon ? <ModuleCover module={nextModule} style={{ minHeight: 116 }} /> : (
+              <div className="cover" style={{ borderRadius: 0, minHeight: 116 }}>
+                <span className="tile"><AapmIcon name={visual.icon} /></span>
+                <span className="cover-num" aria-hidden="true">{String(moduleNo(nextModule)).padStart(2, "0")}</span>
+              </div>
+            )}
             <div className="stack gap-3" style={{ padding: "16px 20px", minWidth: 0 }}>
               <div className="stack gap-1">
-                <span className="t-overline t-ink">Modul {nextModule.moduleNumber} · Level {nextModule.level} {nextModule.levelName}</span>
+                <span className="t-overline t-ink">Modul {moduleNo(nextModule)} · Level {nextModule.level} {nextModule.levelName}</span>
                 <span className="t-heading">{nextModule.title}</span>
                 <span className="t-support t-muted">{moduleMeta(nextModule)}</span>
               </div>
@@ -180,7 +184,7 @@ function NextModules({ modules, completedSet, curriculum }) {
       <div className="list">
         {modules.map((module, index) => (
           <Link key={module.moduleNumber} className="li" to={`/modules/${module.moduleNumber}`} style={{ minHeight: 72, ...(index === 0 ? { background: "var(--ai-soft)" } : null) }}>
-            <Egg size="xs" state={index === 0 ? "current" : undefined}>{module.moduleNumber}</Egg>
+            <Egg size="xs" state={index === 0 ? "current" : undefined}>{moduleNo(module)}</Egg>
             <div className="stack grow" style={{ minWidth: 0 }}>
               <span className="li-title t-clamp-1">{module.title}</span>
               <span className="li-meta">Level {module.level} · {moduleMeta(module, { short: true })} · {note(module, index)}</span>

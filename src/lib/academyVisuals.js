@@ -1,4 +1,6 @@
 import { hueFor } from "@/design-system/components/display";
+import { safeEditorialImage } from "@/lib/editorialUrls";
+import { normaliseModuleVisual } from "@/lib/moduleVisual";
 import { getCompletedModuleSet, getModuleState, learningLevels, sortModules } from "@/lib/academyData";
 
 // Visual identity per learning level: a hue (from the AAPM learning palette)
@@ -28,11 +30,21 @@ const levelCanvasIcons = {
 
 export function levelVisual(levelNumber) {
   const number = Number(levelNumber) || 1;
-  return { hue: hueFor(number), icon: levelIcons[number] || "modules", ic: levelCanvasIcons[number] || "book" };
+  // Same shape as moduleVisual(): a chapter has no custom icon or banner.
+  return { hue: hueFor(number), icon: levelIcons[number] || "modules", ic: levelCanvasIcons[number] || "book", customIcon: false, image: "", focus: "center" };
 }
 
 export function moduleVisual(module) {
-  return levelVisual(module?.level);
+  const base = levelVisual(module?.level ?? module?.levelNumber);
+  const own = normaliseModuleVisual(module?.visual);
+  return {
+    ...base,
+    hue: own.hue !== "auto" ? own.hue : base.hue,
+    ic: own.icon !== "auto" ? own.icon : base.ic,
+    customIcon: own.icon !== "auto",
+    image: safeEditorialImage(own.image) || "",
+    focus: own.focus,
+  };
 }
 
 export function levelMeta(levelNumber) {
@@ -47,9 +59,14 @@ export function buildCurriculum(modules = [], progress = []) {
 
   sorted.forEach((module) => {
     const level = Number(module.level) || 1;
-    if (!byLevel.has(level)) {
+    // Chapter numbers repeat across curricula, so a chapter is curriculum + number.
+    const key = `${module.curriculumId || ""}:${level}`;
+    if (!byLevel.has(key)) {
       const meta = levelMeta(level);
-      byLevel.set(level, {
+      byLevel.set(key, {
+        key,
+        curriculumId: module.curriculumId || "",
+        curriculumTitle: module.curriculumTitle || "",
         number: level,
         name: module.levelName || meta?.name || `Level ${level}`,
         description: meta?.description || "",
@@ -57,17 +74,25 @@ export function buildCurriculum(modules = [], progress = []) {
         modules: [],
       });
     }
-    byLevel.get(level).modules.push({
+    byLevel.get(key).modules.push({
       ...module,
       state: getModuleState(module, sorted, completedSet),
       progress: progress.find((item) => Number(item.moduleNumber) === Number(module.moduleNumber)) || null,
     });
   });
 
-  return [...byLevel.values()].map((level) => {
+  const groups = [...byLevel.values()];
+  const firstCurriculum = groups[0]?.curriculumId;
+  const multiple = groups.some((level) => level.curriculumId !== firstCurriculum);
+  return groups.map((level, index) => {
     const completed = level.modules.filter((module) => module.state === "completed").length;
+    const own = level.curriculumId === firstCurriculum;
     return {
       ...level,
+      // The first curriculum keeps the old #level-N anchors; others get their own.
+      anchor: own ? `level-${level.number}` : `level-${level.curriculumId}-${level.number}`,
+      // When the catalogue spans curricula, the first chapter of each opens its section.
+      curriculumStart: multiple && (index === 0 || groups[index - 1].curriculumId !== level.curriculumId),
       completed,
       total: level.modules.length,
       percent: level.modules.length ? Math.round((completed / level.modules.length) * 100) : 0,

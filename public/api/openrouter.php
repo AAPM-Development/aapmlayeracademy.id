@@ -926,7 +926,7 @@ function ai_assistant_reply(string $message, array $farmContext, bool $allowWebS
  */
 function ai_admin_companion_reply(string $action, string $message, array $module = [], array $modules = []): array
 {
-    $allowedActions = ['module_draft', 'title', 'copy', 'block', 'structure', 'review', 'order', 'chat'];
+    $allowedActions = ['module_draft', 'title', 'copy', 'block', 'chapter_modules', 'structure', 'review', 'order', 'chat'];
     if (!in_array($action, $allowedActions, true)) {
         error_response('Aksi companion APPI tidak dikenal.', 422, 'invalid_ai_companion_action');
     }
@@ -963,6 +963,7 @@ PROMPT;
         'copy' => 'Rewrite copywriting materi menjadi lebih ringkas dan mudah dipindai. Pertahankan fakta, format, media, tautan, dan urutan blok.',
         'block' => 'Tulis ulang HANYA blok di focusBlock sesuai instruksi editor. Kembalikan tepat satu saran kind "copy" dengan payload.materialBlocks berisi satu objek {id, type, content} (tambah title untuk callout) memakai id dan type focusBlock. Salin setiap token seperti ⟦APPI_MEDIA_1⟧ persis di posisinya. Jangan mengubah blok lain atau field modul.',
         'structure' => 'Audit struktur modul dan usulkan susunan outcome, materi, dan praktik yang lebih runtut.',
+        'chapter_modules' => 'Usulkan 3 sampai 5 modul BARU untuk chapter di focusChapter (data: nomor, nama, dan judul modul yang sudah ada). Jangan mengulang judul yang sudah ada di chapter mana pun. Kembalikan satu saran kind "structure" dengan payload.modules berisi objek {title, summary}: judul ringkas dan spesifik (maks 80 karakter), summary satu kalimat tentang apa yang dikuasai peserta. Jika focusChapter belum punya nama, tambahkan payload.levelName berisi nama chapter yang diusulkan.',
         'review' => 'Audit kualitas editorial: kekosongan, duplikasi, urutan, keteramatan tujuan, dan risiko klaim yang tidak didukung. Kembalikan saran kind "review" dengan payload.issues berisi kalimat temuan yang masing-masing langsung bisa ditindaklanjuti.',
         'order' => 'Usulkan urutan modul yang logis dari daftar kurikulum dan jelaskan dependensi singkatnya.',
         'chat' => 'Jawab pertanyaan editor dan berikan saran yang bisa langsung ditinjau.',

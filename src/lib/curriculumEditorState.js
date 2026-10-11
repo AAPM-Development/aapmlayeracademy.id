@@ -1,3 +1,4 @@
+import { normaliseModuleVisual } from "./moduleVisual.js";
 /** Normalize both the admin view and immutable revision payload for editor/preview use. */
 export function curriculumModule(view) {
   const module = view?.module || view || {};
@@ -13,6 +14,8 @@ export function curriculumModule(view) {
     try { editorialContent = JSON.parse(editorialContent); } catch { editorialContent = null; }
   }
   return { ...module, ...payload, level: payload.levelNumber, order: payload.sortOrder,
+    // The payload stores the cover as a JSON string; the presented module has it decoded.
+    visual: payload.visual === undefined ? module.visual : normaliseModuleVisual(payload.visual),
     editorialContent, learningObjectives: list(payload.learningObjectives),
     keyTakeaways: list(payload.keyTakeaways), checklist: list(payload.checklist) };
 }

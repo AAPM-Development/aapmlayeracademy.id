@@ -6,6 +6,7 @@ import { ModuleRow } from "@/components/academy/CourseElements";
 import AppiMascot, { AppiSays } from "@/components/appi/AppiMascot";
 import CountUp from "@/components/motion/CountUp";
 import { estimateMinutes } from "@/lib/academyVisuals";
+import { moduleNo } from "@/lib/moduleNumber";
 
 function firstName(user) {
   const name = String(user?.full_name || user?.email || "").trim();
@@ -25,7 +26,7 @@ function heroCoach(summary, nextModule) {
   if (!nextModule) return { mood: "cheer", line: "Semua modul tuntas. Saatnya ujian akhir!" };
   if (summary.completed === 0) return { mood: "wink", line: `Modul 1 kira-kira ${estimateMinutes(nextModule)} menit. Yuk mulai!` };
   if (remaining <= 3) return { mood: "proud", line: `Tinggal ${remaining} modul lagi. Hampir sampai!` };
-  return { mood: "happy", line: `${summary.completed} modul tuntas. Lanjut ke modul ${nextModule.moduleNumber}?` };
+  return { mood: "happy", line: `${summary.completed} modul tuntas. Lanjut ke modul ${moduleNo(nextModule)}?` };
 }
 
 /**
@@ -44,7 +45,7 @@ export function DashboardHero({ user, nextModule, summary }) {
         </h1>
         <p className="aapm-hero__text">
           {nextModule
-            ? `Berikutnya: Modul ${nextModule.moduleNumber} · ${nextModule.title}.`
+            ? `Berikutnya: Modul ${moduleNo(nextModule)} · ${nextModule.title}.`
             : "Semua modul selesai. Ambil ujian akhir untuk sertifikasi Expert."}
         </p>
         {/* Phones: the ring art steps aside, so APPI speaks here instead. */}

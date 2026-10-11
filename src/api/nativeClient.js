@@ -453,9 +453,12 @@ export const nativeApi = {
     overview: () => request("/admin/overview"),
     workspaceStatus: () => request("/admin/workspace-status"),
     courses: {
-      list: () => request("/admin/courses"),
+      list: ({ withCurriculum = false } = {}) => request(`/admin/courses${withCurriculum ? "?include=curriculum" : ""}`),
       detail: (courseId) =>
         request(`/admin/courses/${encodeURIComponent(courseId)}`),
+      create: (data) => request("/admin/courses", json(data)),
+      update: (courseId, data) => request(`/admin/courses/${encodeURIComponent(courseId)}`, { method: "PUT", body: JSON.stringify(data) }),
+      delete: (courseId) => request(`/admin/courses/${encodeURIComponent(courseId)}`, { method: "DELETE" }),
     },
     learners: {
       list: (search = "") =>

@@ -1,13 +1,15 @@
 // @ts-nocheck
 import React, { useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Alert, ConfirmDialog, Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle, Field, Input,
   OverflowMenu, StateView, Tabs, TabsContent,
   TabsList, TabsTrigger, useToast,
 } from "@/design-system";
-import { useAdminCourse, useArchiveAdminModule, useRestoreAdminModule } from "@/lib/useAdminData";
+import { useAdminCourse, useArchiveAdminModule, useDeleteAdminModule, useRestoreAdminModule } from "@/lib/useAdminData";
+import { ChapterAppiSuggest, InlineModuleAdd, NewChapterCard } from "@/components/admin/CurriculumInline";
+import { CurriculumTitle, DeleteEmptyCurriculum } from "@/components/admin/CurriculumManage";
 import { levelVisual } from "@/lib/academyVisuals";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
@@ -15,18 +17,31 @@ import { curriculumStructureRecovery, filterCurriculum, nextChapterNumber, runCu
 import { Ic } from "@/design-system/canvas";
 import { CourseLifecycleCounts, ModuleLifecycleStatus } from "@/components/admin/CurriculumStatus";
 
-const moduleEditorPath = (courseId, params = {}) => {
-  const query = new URLSearchParams(Object.entries(params)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
-    .map(([key, value]) => [key, String(value)])).toString();
-  return `/admin/courses/${courseId}/modules/new${query ? `?${query}` : ""}`;
-};
 
 export default function AdminCourseDetail() {
   const { courseId } = useParams();
   const { data: course, isLoading, error, refetch } = useAdminCourse(courseId);
   const archiveModule = useArchiveAdminModule();
   const restoreModule = useRestoreAdminModule();
+  const deleteModule = useDeleteAdminModule();
+  // Adding happens in place: a new chapter card at the end of the list, and an
+  // add row inside every chapter (refs let "Tambah modul" jump to the right one).
+  const [newChapterOpen, setNewChapterOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const addInputs = useRef({});
+  const [focusChapter, setFocusChapter] = useState(null);
+  // "?chapter=new" (from a freshly created curriculum) opens the new chapter card.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const startChapter = searchParams.get("chapter") === "new";
+  // Focus after render: the target chapter may only appear once all chapters show.
+  React.useEffect(() => {
+    if (focusChapter === null) return;
+    const input = addInputs.current[focusChapter];
+    if (!input) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus({ preventScroll: true });
+    setFocusChapter(null);
+  });
   const { toast } = useToast();
   const [view, setView] = useState("list");
   const [query, setQuery] = useState("");
@@ -56,7 +71,33 @@ export default function AdminCourseDetail() {
   const hiddenChapterCount = Math.max(0, filteredLevels.length - visibleLevels.length);
   const hiddenModuleCount = filteredLevels.slice(visibleLevels.length).reduce((count, level) => count + level.modules.length, 0);
   const nextLevelNumber = nextChapterNumber(levels);
-  const newModulePath = moduleEditorPath(courseId);
+  const filtering = Boolean(query.trim()) || statusFilter !== "all";
+  const openNewChapter = () => {
+    setQuery(""); setStatusFilter("all"); setShowAllChapters(true); setNewChapterOpen(true);
+    window.requestAnimationFrame(() => document.querySelector(".curriculum-new-chapter")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
+  // "Tambah modul" goes to the last chapter's add row; with no chapter yet it starts one.
+  const focusModuleAdd = () => {
+    const last = levels[levels.length - 1];
+    if (!last) { openNewChapter(); return; }
+    setQuery(""); setStatusFilter("all"); setShowAllChapters(true);
+    setFocusChapter(last.levelNumber);
+  };
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteModule.mutateAsync({ moduleId: pendingDelete.id });
+      toast({ title: "Draf modul dihapus", description: `${pendingDelete.title} belum pernah terbit, jadi tidak ada riwayat peserta yang terpengaruh.` });
+    } catch (mutationError) {
+      toast({ variant: "destructive", title: "Draf belum dihapus", description: mutationError.message });
+    } finally { setPendingDelete(null); }
+  };
+  React.useEffect(() => {
+    if (!startChapter || !course) return;
+    openNewChapter();
+    setSearchParams((params) => { params.delete("chapter"); return params; }, { replace: true });
+    // Runs once the course has loaded.
+  }, [startChapter, course]);
   const saving = archiveModule.isPending || restoreModule.isPending;
   const recovery = curriculumStructureRecovery(actionError || error, actionError?.modulePath);
   const closeAction = () => {
@@ -93,7 +134,7 @@ export default function AdminCourseDetail() {
   return (
     <AdminPageFrame back={{ to: "/admin/courses", label: "Semua course" }} title="Kurikulum"
       description="Kelola draf materi, penerbitan, serta status modul Academy."
-      actions={<><Link className="btn btn-secondary" to="/modules"><Ic name="eye" />Pratinjau peserta</Link><Link className="btn btn-primary" to={newModulePath}><Ic name="plus" />Tambah modul</Link></>}
+      actions={<>{course?.primary !== false ? <Link className="btn btn-secondary" to="/modules"><Ic name="eye" />Pratinjau peserta</Link> : null}<button type="button" className="btn btn-primary" onClick={focusModuleAdd}><Ic name="plus" />Tambah modul</button></>}
     >
       {isLoading ? <AdminLoading label="Memuat struktur kurikulum…" /> : error ? <>
         <AdminError error={error} onRetry={refetch} />
@@ -102,24 +143,35 @@ export default function AdminCourseDetail() {
         <section className="card card-pad row wrap gap-5 anim-rise" data-hue="blue" aria-labelledby="course-name">
           <div className="cover hide-sm" style={{ width: 72, height: 72, borderRadius: "var(--r-ctl)", flex: "none" }}><span className="tile tile-sm" style={{ margin: 20 }}><Ic name="egg" /></span></div>
           <div className="stack gap-2" style={{ flex: "1 1 320px", minWidth: 0 }}>
-            <h2 className="t-heading t-clamp-1" id="course-name">{course.title}</h2>
+            <CurriculumTitle course={course} />
+            {course.summary ? <p className="t-support t-muted t-clamp-2">{course.summary}</p> : null}
             <CourseLifecycleCounts counts={course.lifecycleCounts} />
           </div>
           <dl className="row gap-8">
             <div className="stack gap-0-5"><dt className="t-caption t-muted">Chapter</dt><dd className="t-section t-num">{levels.length}</dd></div>
             <div className="stack gap-0-5"><dt className="t-caption t-muted">Modul</dt><dd className="t-section t-num">{course.moduleCount}</dd></div>
-            <div className="stack gap-0-5"><dt className="t-caption t-muted">Peserta aktif</dt><dd className="t-section t-num">{course.activeLearnerCount ?? course.learnerCount}</dd></div>
+            {course.primary ? <div className="stack gap-0-5"><dt className="t-caption t-muted">Peserta aktif</dt><dd className="t-section t-num">{course.activeLearnerCount ?? course.learnerCount}</dd></div> : null}
           </dl>
         </section>
+        {!course.primary ? (
+          <div className="alert alert-info wrap anim-rise" style={{ alignItems: "center" }}>
+            <Ic name="layers" />
+            <p className="grow" style={{ minWidth: 220 }}>Kurikulum tambahan. Modulnya tampil ke peserta setelah terbit dan dimasukkan ke kebijakan kurikulum, sebagai modul wajib atau pilihan.</p>
+            <Link className="btn btn-secondary btn-sm" to="/admin/curriculum/policies"><Ic name="route" />Kebijakan kurikulum</Link>
+            <DeleteEmptyCurriculum course={course} />
+          </div>
+        ) : null}
         <Tabs defaultValue="curriculum" className="stack gap-5">
           <TabsList aria-label="Bagian course"><TabsTrigger value="curriculum"><Ic name="route" />Kurikulum</TabsTrigger><TabsTrigger value="overview"><Ic name="chart" />Ringkasan</TabsTrigger></TabsList>
           <TabsContent value="curriculum" className="stack gap-4">
             <h2 className="sr-only">Daftar chapter dan modul</h2>
-            <div className="alert alert-info wrap" style={{ alignItems: "center" }}>
-              <Ic name="info" />
-              <p style={{ flex: "1 1 240px", minWidth: 0 }}>Urutan dan persyaratan diubah lewat Kebijakan kurikulum.</p>
-              <Link className="btn btn-secondary btn-sm" to="/admin/curriculum/policies"><Ic name="route" />Kebijakan kurikulum</Link>
-            </div>
+            {course.primary ? (
+              <div className="alert alert-info wrap" style={{ alignItems: "center" }}>
+                <Ic name="info" />
+                <p style={{ flex: "1 1 240px", minWidth: 0 }}>Urutan dan persyaratan diubah lewat Kebijakan kurikulum.</p>
+                <Link className="btn btn-secondary btn-sm" to="/admin/curriculum/policies"><Ic name="route" />Kebijakan kurikulum</Link>
+              </div>
+            ) : null}
             <div className="toolbar">
               <label className="search" style={{ flex: "1 1 220px", maxWidth: 300 }}>
                 <Ic name="search" size="sm" /><span className="sr-only">Cari chapter atau modul</span>
@@ -144,15 +196,16 @@ export default function AdminCourseDetail() {
                 </div>
               </div>
               {nextLevelNumber
-                ? <Link className="btn btn-secondary btn-sm ml-auto" to={moduleEditorPath(courseId, { newChapter: 1, levelNumber: nextLevelNumber })}><Ic name="plus" />Tambah chapter</Link>
+                ? <button type="button" className="btn btn-secondary btn-sm ml-auto" onClick={openNewChapter} disabled={newChapterOpen}><Ic name="plus" />Tambah chapter</button>
                 : <button type="button" className="btn btn-secondary btn-sm ml-auto" disabled title="Maksimal 20 chapter.">Chapter penuh</button>}
             </div>
             {actionError && <Alert tone="danger" title="Perubahan status belum disimpan" description={actionError.message} action={recovery ? <Link className="btn btn-secondary btn-sm" to={recovery.to}>{recovery.label}</Link> : undefined} />}
             {query.trim() && <div className="row wrap between gap-2"><p className="t-caption t-muted" role="status">{visibleModuleCount} dari {modules.length} modul.</p><button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuery("")}>Hapus pencarian</button></div>}
-            {!levels.length ? <StateView kind="empty" icon="lesson" title="Kurikulum belum memiliki modul" description="Mulai dengan draf modul pertama." action={<Link className="btn btn-primary" to={newModulePath}>Tambah modul pertama</Link>} />
+            {!levels.length ? (newChapterOpen ? null : <StateView kind="empty" icon="lesson" title="Kurikulum belum memiliki modul" description="Mulai dengan chapter dan modul pertamanya." action={<button type="button" className="btn btn-primary" onClick={openNewChapter}><Ic name="plus" />Tambah chapter pertama</button>} />)
               : !visibleLevels.length ? <StateView kind="empty" icon="search" title="Tidak ada modul yang cocok" description="Coba ubah kata kunci atau filter status." action={<button type="button" className="btn btn-secondary" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Hapus filter</button>} />
                 : <>
-                  <CurriculumView levels={visibleLevels} courseId={courseId} board={view === "board"} onAction={selectAction} saving={saving} />
+                  <CurriculumView levels={visibleLevels} courseId={courseId} board={view === "board"} onAction={selectAction} onDelete={setPendingDelete} saving={saving}
+                    allModules={modules} inlineAdd={!filtering} addInputs={addInputs} />
                   {filteredLevels.length > 5 && !query.trim() && statusFilter === "all" ? (
                     <div className="card card-dashed row wrap gap-3" style={{ padding: "12px var(--card-pad)" }}>
                       <span className="tile tile-sm" data-hue="neutral"><Ic name="layers" /></span>
@@ -163,6 +216,16 @@ export default function AdminCourseDetail() {
                     </div>
                   ) : null}
                 </>}
+            {newChapterOpen && nextLevelNumber ? (
+              <NewChapterCard courseId={courseId} levelNumber={nextLevelNumber} allModules={modules}
+                onCancel={() => setNewChapterOpen(false)}
+                onCreated={(added) => { setNewChapterOpen(false); toast({ title: `Chapter ${nextLevelNumber} dibuat`, description: `Dengan modul pertama “${added.title}”. Tambah modul berikutnya langsung di chapter itu.` }); }} />
+            ) : !filtering && levels.length && nextLevelNumber ? (
+              <button type="button" className="card card-dashed row gap-3 curriculum-add-chapter" onClick={openNewChapter}>
+                <span className="tile tile-sm" data-hue="green"><Ic name="plus" /></span>
+                <span className="stack grow" style={{ minWidth: 0, textAlign: "left" }}><span className="t-support t-strong">Tambah chapter</span><span className="t-caption t-muted">Chapter {nextLevelNumber} · beri nama dan modul pertamanya</span></span>
+              </button>
+            ) : null}
             <p className="note">Jumlah perubahan belum terbit termasuk modul terbit atau arsip yang memiliki koreksi draf. Arsip tidak menghapus nilai, progres, sertifikat, atau revisi terbit; modul wajib tetap tersedia sesuai kebijakan peserta.</p>
           </TabsContent>
           <TabsContent value="overview" className="stack gap-4">
@@ -194,11 +257,14 @@ export default function AdminCourseDetail() {
         title={pendingAction?.action === "archive" ? "Arsipkan modul?" : "Pulihkan modul?"}
         description={pendingAction?.action === "archive" ? `${pendingAction?.module.title}. Alasan: ${reason.trim()}. Riwayat dan bukti akademik tidak dihapus.` : `${pendingAction?.module.title} kembali aktif dengan revisi terakhir yang sudah diterbitkan.`}
         confirmLabel={pendingAction?.action === "archive" ? "Ya, arsipkan" : "Ya, pulihkan"} onConfirm={submitAction} />
+      <ConfirmDialog open={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open && !deleteModule.isPending) setPendingDelete(null); }}
+        title="Hapus draf modul?" description={`${pendingDelete?.title || "Modul ini"} belum pernah terbit. Draf dan soalnya dihapus; nomor modul tidak dipakai ulang.`}
+        confirmLabel="Hapus draf" loading={deleteModule.isPending} onConfirm={confirmDelete} />
     </AdminPageFrame>
   );
 }
 
-function ModuleActions({ module, courseId, onAction, saving }) {
+function ModuleActions({ module, courseId, onAction, onDelete, saving }) {
   const navigate = useNavigate();
   const editor = `/admin/courses/${courseId}/modules/${module.id}`;
   const items = [
@@ -207,6 +273,7 @@ function ModuleActions({ module, courseId, onAction, saving }) {
     { id: "policy", label: "Kebijakan kurikulum", icon: "roadmap", onSelect: () => navigate("/admin/curriculum/policies") },
     module.lifecycleStatus === "active" && module.publishedRevisionId ? { id: "archive", label: "Arsipkan", icon: "folder", disabled: saving, onSelect: () => onAction(module, "archive") } : null,
     module.lifecycleStatus === "archived" ? { id: "restore", label: "Pulihkan modul", icon: "refresh", disabled: saving, onSelect: () => onAction(module, "restore") } : null,
+    module.lifecycleStatus === "draft" && !module.publishedRevisionId && onDelete ? { id: "delete", label: "Hapus draf", icon: "delete", tone: "danger", onSelect: () => onDelete(module) } : null,
   ].filter(Boolean);
   return (
     <div className="row gap-2 none">
@@ -216,26 +283,27 @@ function ModuleActions({ module, courseId, onAction, saving }) {
   );
 }
 
-function ModuleRow({ module, courseId, onAction, saving, compact }) {
+function ModuleRow({ module, courseId, onAction, onDelete, saving, compact }) {
   const meta = [module.category, module.updatedAt ? `Diperbarui ${formatAdminDate(module.updatedAt, { year: undefined })}` : null].filter(Boolean).join(" · ") || module.summary || "Tanpa kategori";
   return (
     <li className="li" style={{ minHeight: 56 }}>
-      <span className="egg egg-xs" aria-hidden="true">{module.moduleNumber}</span>
+      <span className="egg egg-xs" aria-hidden="true" title={`ID modul #${module.moduleNumber}`}>{module.displayNumber ?? module.moduleNumber}</span>
       <div className="row wrap grow" style={{ gap: "4px 16px", minWidth: 0 }}>
         <div className="stack" style={{ flex: compact ? "1 1 100%" : "1 1 280px", minWidth: 0 }}>
-          <Link className="li-title t-clamp-1" to={`/admin/courses/${courseId}/modules/${module.id}`}><span className="sr-only">Modul {module.moduleNumber}: </span>{module.title}</Link>
+          <Link className="li-title t-clamp-1" to={`/admin/courses/${courseId}/modules/${module.id}`}><span className="sr-only">Modul {module.displayNumber ?? module.moduleNumber}: </span>{module.title}</Link>
           <span className="li-meta t-clamp-1">{meta}</span>
           {module.publishedTitle && module.publishedTitle !== module.title ? <span className="li-meta t-clamp-1">Judul terbit: {module.publishedTitle}</span> : null}
           {module.lifecycleStatus === "archived" ? <span className="li-meta t-clamp-1">Alasan arsip: {module.archiveReason || "—"}</span> : null}
         </div>
         <div className="row" style={{ flex: compact ? "1 1 100%" : "0 0 200px" }}><ModuleLifecycleStatus module={module} /></div>
       </div>
-      <ModuleActions module={module} courseId={courseId} onAction={onAction} saving={saving} />
+      <ModuleActions module={module} courseId={courseId} onAction={onAction} onDelete={onDelete} saving={saving} />
     </li>
   );
 }
 
-function CurriculumView({ levels, courseId, board, onAction, saving }) {
+function CurriculumView({ levels, courseId, board, onAction, onDelete, saving, allModules, inlineAdd, addInputs }) {
+  const [appiChapter, setAppiChapter] = useState(null);
   return (
     <div className={board ? "grid-lg" : "stack gap-4"}>
       {levels.map((level, index) => {
@@ -249,11 +317,26 @@ function CurriculumView({ levels, courseId, board, onAction, saving }) {
                 <h3 className="t-heading t-clamp-1" id={`ch${level.levelNumber}-title`}>{level.levelName}</h3>
               </div>
               <span className="chip chip-hue hide-sm">{level.modules.length} modul</span>
-              <Link className="btn btn-ghost btn-sm" to={moduleEditorPath(courseId, { levelNumber: level.levelNumber, levelName: level.levelName })} aria-label={`Tambah draf modul di Chapter ${level.levelNumber}`}><Ic name="plus" /><span className="hide-sm">Tambah draf modul</span></Link>
+              {inlineAdd ? (
+                <button type="button" className="btn btn-ghost btn-sm curriculum-appi-toggle" aria-expanded={appiChapter === level.levelNumber}
+                  onClick={() => setAppiChapter((current) => (current === level.levelNumber ? null : level.levelNumber))} aria-label={`Usulan modul APPI untuk Chapter ${level.levelNumber}`}>
+                  <Ic name="sparkle" /><span className="hide-sm">Usulan APPI</span>
+                </button>
+              ) : null}
             </div>
+            {appiChapter === level.levelNumber ? (
+              <div className="card-sect" style={{ padding: "12px var(--card-pad)" }}>
+                <ChapterAppiSuggest courseId={courseId} level={level} allModules={allModules} onClose={() => setAppiChapter(null)} />
+              </div>
+            ) : null}
             <ol className="list card-sect" aria-label={`Modul Chapter ${level.levelNumber}`}>
-              {level.modules.map((module) => <ModuleRow key={module.id} module={module} courseId={courseId} onAction={onAction} saving={saving} compact={board} />)}
+              {level.modules.map((module) => <ModuleRow key={module.id} module={module} courseId={courseId} onAction={onAction} onDelete={onDelete} saving={saving} compact={board} />)}
             </ol>
+            {inlineAdd ? (
+              <div className="card-sect" style={{ padding: "8px var(--card-pad) 12px" }}>
+                <InlineModuleAdd courseId={courseId} level={level} inputRef={(element) => { if (addInputs) addInputs.current[level.levelNumber] = element; }} />
+              </div>
+            ) : null}
           </section>
         );
       })}

@@ -4,6 +4,7 @@ import { useModules } from "@/lib/useCourseData";
 import { getLevelForModule, sortModules } from "@/lib/academyData";
 import { CommandTrigger } from "@/design-system/patterns/AppShell";
 import SearchPalette, { useCommandShortcut } from "./SearchPalette";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const destinations = [
   { key: "calc", ic: "calc", hue: "teal", title: "Kalkulator farm", meta: "FCR, HDP, egg mass, uniformity", to: "/calculators" },
@@ -31,14 +32,14 @@ export default function LearnerQuickSearch() {
 
   const groups = useMemo(() => {
     const moduleItems = sortModules(modules)
-      .filter((module) => !term || searchable(`${module.moduleNumber} ${module.title} ${getLevelForModule(module)?.name || ""}`).includes(term))
+      .filter((module) => !term || searchable(`${moduleNo(module)} ${module.title} ${getLevelForModule(module)?.name || ""}`).includes(term))
       .slice(0, term ? 8 : 4)
       .map((module) => ({
         key: `m-${module.moduleNumber}`,
         ic: "book",
         hue: "blue",
         title: module.title,
-        meta: `Modul ${module.moduleNumber}${getLevelForModule(module) ? ` · Level ${getLevelForModule(module).number} ${getLevelForModule(module).name}` : ""}`,
+        meta: `Modul ${moduleNo(module)}${getLevelForModule(module) ? ` · Level ${getLevelForModule(module).number} ${getLevelForModule(module).name}` : ""}`,
         onSelect: () => go(`/modules/${module.moduleNumber}`),
       }));
     const pageItems = destinations

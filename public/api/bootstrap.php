@@ -489,6 +489,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 editorial_content TEXT NULL,
                 video_script TEXT NOT NULL DEFAULT \'\',
                 video_url TEXT NOT NULL DEFAULT \'\',
+                visual_json TEXT NOT NULL DEFAULT \'\',
                 learning_objectives TEXT NOT NULL DEFAULT \'[]\',
                 key_takeaways TEXT NOT NULL DEFAULT \'[]\',
                 checklist TEXT NOT NULL DEFAULT \'[]\',
@@ -660,6 +661,7 @@ function ensure_schema(PDO $pdo, string $driver): void
                 editorial_content MEDIUMTEXT NULL,
                 video_script TEXT NOT NULL,
                 video_url TEXT NULL,
+                visual_json TEXT NULL,
                 learning_objectives LONGTEXT NOT NULL,
                 key_takeaways LONGTEXT NOT NULL,
                 checklist LONGTEXT NOT NULL,
@@ -791,6 +793,8 @@ function ensure_schema(PDO $pdo, string $driver): void
 
     ensure_course_module_editorial_content($pdo, $driver);
     ensure_course_module_video_url($pdo, $driver);
+    ensure_course_module_visual($pdo, $driver);
+    ensure_curricula($pdo, $driver);
     ensure_user_profile_avatar($pdo, $driver);
     ensure_user_ai_supports_vision($pdo, $driver);
     ensure_ai_conversation_archive($pdo, $driver);
@@ -929,6 +933,73 @@ function ensure_course_module_video_url(PDO $pdo, string $driver): void
     if (!$column->fetchColumn()) {
         $pdo->exec('ALTER TABLE course_modules ADD COLUMN video_url TEXT NULL AFTER video_script');
     }
+}
+
+function ensure_course_module_visual(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        foreach ($pdo->query('PRAGMA table_info(course_modules)')->fetchAll() as $column) {
+            if (($column['name'] ?? '') === 'visual_json') {
+                return;
+            }
+        }
+        $pdo->exec("ALTER TABLE course_modules ADD COLUMN visual_json TEXT NOT NULL DEFAULT ''");
+        return;
+    }
+
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['course_modules', 'visual_json']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec('ALTER TABLE course_modules ADD COLUMN visual_json TEXT NULL AFTER video_url');
+    }
+}
+
+/**
+ * Curricula group modules for authoring. The original course stays the primary
+ * one (certification and the learner policy started there); every existing
+ * module belongs to it until an admin creates more.
+ */
+function ensure_curricula(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS curricula (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )");
+        $hasColumn = false;
+        foreach ($pdo->query('PRAGMA table_info(course_modules)')->fetchAll() as $column) {
+            if (($column['name'] ?? '') === 'curriculum_id') {
+                $hasColumn = true;
+            }
+        }
+        if (!$hasColumn) {
+            $pdo->exec("ALTER TABLE course_modules ADD COLUMN curriculum_id TEXT NOT NULL DEFAULT '" . AAPM_PRIMARY_CURRICULUM . "'");
+        }
+        $pdo->prepare('INSERT OR IGNORE INTO curricula (id, title, summary, sort_order) VALUES (?, ?, ?, 0)')
+            ->execute([AAPM_PRIMARY_CURRICULUM, 'Layer Poultry Farm Management', '']);
+        return;
+    }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS curricula (
+        id VARCHAR(80) NOT NULL,
+        title VARCHAR(160) NOT NULL,
+        summary VARCHAR(600) NOT NULL DEFAULT \'\',
+        sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $column = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+    $column->execute(['course_modules', 'curriculum_id']);
+    if (!$column->fetchColumn()) {
+        $pdo->exec("ALTER TABLE course_modules ADD COLUMN curriculum_id VARCHAR(80) NOT NULL DEFAULT '" . AAPM_PRIMARY_CURRICULUM . "' AFTER id, ADD KEY course_modules_curriculum_idx (curriculum_id, level_number)");
+    }
+    $pdo->prepare('INSERT IGNORE INTO curricula (id, title, summary, sort_order) VALUES (?, ?, ?, 0)')
+        ->execute([AAPM_PRIMARY_CURRICULUM, 'Layer Poultry Farm Management', '']);
 }
 
 function default_course_module_video_urls(): array
@@ -1551,6 +1622,9 @@ function present_module(array $row): array
         'editorialContent' => decode_editorial_content($row['editorial_content'] ?? null),
         'videoScript' => $row['video_script'],
         'videoUrl' => $row['video_url'] ?? '',
+        'visual' => decode_module_visual($row['visual_json'] ?? ''),
+        'curriculumId' => (string) ($row['curriculum_id'] ?? AAPM_PRIMARY_CURRICULUM),
+        'curriculumTitle' => aapm_curriculum_titles()[(string) ($row['curriculum_id'] ?? AAPM_PRIMARY_CURRICULUM)] ?? '',
         'learningObjectives' => decode_json_field($row['learning_objectives']),
         'keyTakeaways' => decode_json_field($row['key_takeaways']),
         'checklist' => decode_json_field($row['checklist']),
@@ -1590,9 +1664,106 @@ function present_progress(array $row): array
     ];
 }
 
+const AAPM_PRIMARY_CURRICULUM = 'layer-farm-management';
+
 function admin_course_id(): string
 {
-    return 'layer-farm-management';
+    return AAPM_PRIMARY_CURRICULUM;
+}
+
+function aapm_curricula_rows(): array
+{
+    return db()->query('SELECT id, title, summary, sort_order, created_at, updated_at FROM curricula ORDER BY sort_order ASC, created_at ASC, id ASC')->fetchAll();
+}
+
+/** id => title, read once per request (learner lists group modules by curriculum). */
+function aapm_curriculum_titles(): array
+{
+    static $titles = null;
+    if ($titles === null) {
+        $titles = [];
+        try {
+            foreach (aapm_curricula_rows() as $row) {
+                $titles[(string) $row['id']] = (string) $row['title'];
+            }
+        } catch (Throwable $error) {
+            $titles = [];
+        }
+    }
+    return $titles;
+}
+
+function aapm_curriculum_or_fail(string $id): array
+{
+    $statement = db()->prepare('SELECT id, title, summary, sort_order, created_at, updated_at FROM curricula WHERE id = ? LIMIT 1');
+    $statement->execute([$id]);
+    $row = $statement->fetch();
+    if (!$row) {
+        error_response('Kurikulum tidak ditemukan.', 404, 'not_found');
+    }
+    return $row;
+}
+
+function aapm_curriculum_input(array $input, ?array $existing = null): array
+{
+    $title = profile_text($input['title'] ?? $existing['title'] ?? '', 160);
+    $summary = profile_text($input['summary'] ?? $existing['summary'] ?? '', 600);
+    if (mb_strlen($title) < 3) {
+        error_response('Nama kurikulum minimal 3 karakter.', 422, 'validation_error');
+    }
+    return ['title' => $title, 'summary' => $summary];
+}
+
+/** A readable, unique id from the name: "Manajemen Broiler" -> "manajemen-broiler". */
+function aapm_curriculum_new_id(string $title): string
+{
+    $base = strtolower(trim((string) preg_replace('/[^a-z0-9]+/i', '-', iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $title) ?: $title), '-'));
+    $base = substr($base !== '' ? $base : 'kurikulum', 0, 60);
+    $candidate = $base;
+    $exists = db()->prepare('SELECT COUNT(*) FROM curricula WHERE id = ?');
+    for ($suffix = 2; $suffix < 500; $suffix++) {
+        $exists->execute([$candidate]);
+        if ((int) $exists->fetchColumn() === 0) {
+            return $candidate;
+        }
+        $candidate = $base . '-' . $suffix;
+    }
+    return $base . '-' . bin2hex(random_bytes(3));
+}
+
+function aapm_curriculum_create(array $input): array
+{
+    $data = aapm_curriculum_input($input);
+    $id = aapm_curriculum_new_id($data['title']);
+    $order = (int) db()->query('SELECT COALESCE(MAX(sort_order), 0) FROM curricula')->fetchColumn() + 1;
+    db()->prepare('INSERT INTO curricula (id, title, summary, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+        ->execute([$id, $data['title'], $data['summary'], $order, aapm_utc_now(), aapm_utc_now()]);
+    return admin_course_detail_data($id);
+}
+
+function aapm_curriculum_update(string $id, array $input): array
+{
+    $existing = aapm_curriculum_or_fail($id);
+    $data = aapm_curriculum_input($input, $existing);
+    db()->prepare('UPDATE curricula SET title = ?, summary = ?, updated_at = ? WHERE id = ?')
+        ->execute([$data['title'], $data['summary'], aapm_utc_now(), $id]);
+    return admin_course_detail_data($id);
+}
+
+/** Only an empty, non-primary curriculum can be removed; modules are never deleted with it. */
+function aapm_curriculum_delete(string $id): array
+{
+    aapm_curriculum_or_fail($id);
+    if ($id === AAPM_PRIMARY_CURRICULUM) {
+        error_response('Kurikulum utama tidak dapat dihapus.', 409, 'curriculum_primary');
+    }
+    $count = db()->prepare('SELECT COUNT(*) FROM course_modules WHERE curriculum_id = ?');
+    $count->execute([$id]);
+    if ((int) $count->fetchColumn() > 0) {
+        error_response('Kurikulum masih berisi modul. Hapus draf atau arsipkan modulnya terlebih dahulu.', 409, 'curriculum_not_empty');
+    }
+    db()->prepare('DELETE FROM curricula WHERE id = ?')->execute([$id]);
+    return ['deleted' => true, 'id' => $id];
 }
 
 function admin_module_rows(): array
@@ -1690,14 +1861,18 @@ function admin_issued_tiers(array $userIds): array
 }
 
 /** Read-only editorial projection; never initialise drafts while listing a course. */
-function admin_course_module_rows(): array
+function admin_course_module_rows(string $curriculumId = AAPM_PRIMARY_CURRICULUM): array
 {
     $pdo = db();
-    $rows = $pdo->query('SELECT cm.*, md.draft_version, md.content_payload_json, md.question_payload_json, md.updated_at AS draft_updated_at
+    $statement = $pdo->prepare('SELECT cm.*, md.draft_version, md.content_payload_json, md.question_payload_json, md.updated_at AS draft_updated_at
         FROM course_modules cm LEFT JOIN module_drafts md ON md.module_id = cm.id
-        ORDER BY cm.sort_order ASC, cm.module_number ASC')->fetchAll();
+        WHERE cm.curriculum_id = ?
+        ORDER BY cm.level_number ASC, cm.sort_order ASC, cm.module_number ASC');
+    $statement->execute([$curriculumId]);
+    $rows = $statement->fetchAll();
     foreach ($rows as &$row) {
         $payload = $row['content_payload_json'] === null ? null : json_decode((string) $row['content_payload_json'], true);
+        $payload = is_array($payload) ? aapm_cur_payload_complete($payload) : $payload;
         $questions = $row['question_payload_json'] === null ? null : json_decode((string) $row['question_payload_json'], true);
         $row['has_unpublished_changes'] = is_array($payload) && (
             aapm_cur_checksum($payload) !== aapm_cur_checksum(aapm_cur_payload_from_row($row))
@@ -1709,9 +1884,10 @@ function admin_course_module_rows(): array
     return $rows;
 }
 
-function admin_course_data(?array $moduleRows = null): array
+function admin_course_data(?array $moduleRows = null, ?array $curriculum = null): array
 {
-    $modules = $moduleRows ?? admin_course_module_rows();
+    $curriculum = $curriculum ?? aapm_curriculum_or_fail(AAPM_PRIMARY_CURRICULUM);
+    $modules = $moduleRows ?? admin_course_module_rows((string) $curriculum['id']);
     $learnerRows = admin_learner_metric_rows();
     $learnerCount = count($learnerRows);
     $activeLearnerCount = count(array_filter($learnerRows, static fn (array $row): bool => (int) ($row['progress_entries'] ?? 0) > 0));
@@ -1734,8 +1910,10 @@ function admin_course_data(?array $moduleRows = null): array
     }
 
     return [
-        'id' => admin_course_id(),
-        'title' => 'Layer Poultry Farm Management',
+        'id' => (string) $curriculum['id'],
+        'title' => (string) $curriculum['title'],
+        'summary' => (string) $curriculum['summary'],
+        'primary' => (string) $curriculum['id'] === AAPM_PRIMARY_CURRICULUM,
         'status' => $counts['published'] ? 'published' : ($counts['draft'] ? 'draft' : ($counts['archived'] ? 'archived' : 'unavailable')),
         'lifecycleCounts' => $counts,
         'moduleCount' => count($modules),
@@ -1750,7 +1928,7 @@ function admin_course_data(?array $moduleRows = null): array
             'reorder' => false,
             'renameChapter' => false,
         ],
-        'availabilityNote' => 'Perubahan materi dan bank soal disimpan sebagai draf sebelum validasi dan penerbitan. Urutan serta persyaratan akademik dikelola melalui draf kebijakan kurikulum. Nomor modul tetap; riwayat, nilai, progres, dan sertifikat peserta dipertahankan.',
+        'availabilityNote' => 'Perubahan materi dan bank soal disimpan sebagai draf sebelum validasi dan penerbitan. Urutan serta persyaratan akademik dikelola melalui draf kebijakan kurikulum. Nomor tampil mengikuti urutan; riwayat, nilai, progres, dan sertifikat peserta dipertahankan.',
     ];
 }
 
@@ -1818,12 +1996,17 @@ function admin_overview_data(): array
     ];
 }
 
-function admin_course_detail_data(): array
+function admin_course_detail_data(string $curriculumId = AAPM_PRIMARY_CURRICULUM): array
 {
-    $modules = admin_course_module_rows();
-    $course = admin_course_data($modules);
+    $curriculum = aapm_curriculum_or_fail($curriculumId);
+    $modules = admin_course_module_rows($curriculumId);
+    $course = admin_course_data($modules, $curriculum);
     $levels = [];
+    // Rows come in chapter, then module order: the shown number is the position,
+    // so it never has gaps and follows the order. module_number stays the id.
+    $position = 0;
     foreach ($modules as $module) {
+        $position++;
         $levelNumber = (int) $module['level_number'];
         if (!isset($levels[$levelNumber])) {
             $levels[$levelNumber] = [
@@ -1835,6 +2018,7 @@ function admin_course_detail_data(): array
         $levels[$levelNumber]['modules'][] = [
             'id' => (int) $module['id'],
             'moduleNumber' => (int) $module['module_number'],
+            'displayNumber' => $position,
             'title' => (string) $module['editorial_title'],
             'publishedTitle' => $module['published_revision_id'] === null ? null : (string) $module['title'],
             'category' => (string) $module['category'],
@@ -2893,7 +3077,7 @@ function normalise_editorial_content($value): string
     return $encoded;
 }
 
-function admin_module_input(array $input, ?array $existing = null): array
+function admin_module_input(array $input, ?array $existing = null, bool $requireMaterial = true): array
 {
     $levelNumber = (int) ($input['levelNumber'] ?? $input['level_number'] ?? $existing['level_number'] ?? 0);
     $moduleNumber = (int) ($input['moduleNumber'] ?? $input['module_number'] ?? $existing['module_number'] ?? 0);
@@ -2916,10 +3100,14 @@ function admin_module_input(array $input, ?array $existing = null): array
     $takeaways = admin_string_list($input['keyTakeaways'] ?? $input['key_takeaways'] ?? decode_json_field($existing['key_takeaways'] ?? '[]'));
     $checklist = admin_string_list($input['checklist'] ?? decode_json_field($existing['checklist'] ?? '[]'));
     $sortOrder = (int) ($input['order'] ?? $input['sortOrder'] ?? $input['sort_order'] ?? $existing['sort_order'] ?? 0);
+    $visual = normalise_module_visual(array_key_exists('visual', $input) ? $input['visual'] : ($existing['visual_json'] ?? ''));
     if ($levelNumber < 1 || $levelNumber > 20 || $moduleNumber < 1 || $moduleNumber > 999) {
         error_response('Level dan nomor modul tidak valid.', 422, 'validation_error');
     }
-    if ($levelName === '' || $title === '' || ($content === '' && $editorialContent === '')) {
+    if ($levelName === '' || $title === '') {
+        error_response('Chapter dan judul modul wajib diisi.', 422, 'validation_error');
+    }
+    if ($requireMaterial && $content === '' && $editorialContent === '') {
         error_response('Level, judul, dan materi modul wajib diisi.', 422, 'validation_error');
     }
     if (strlen($content) > 100000) {
@@ -2941,6 +3129,66 @@ function admin_module_input(array $input, ?array $existing = null): array
         'checklist' => json_encode($checklist, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         'practicalAssignment' => $practicalAssignment,
         'sortOrder' => max(0, $sortOrder),
+        'visual' => $visual,
+    ];
+}
+
+const MODULE_VISUAL_HUES = ['green', 'orange', 'blue', 'violet', 'teal', 'amber', 'rose'];
+const MODULE_VISUAL_ICONS = ['book', 'egg', 'feed', 'drop', 'thermo', 'wind', 'heart', 'shield', 'scale', 'chart', 'trend-up', 'wallet', 'calc', 'target', 'layers', 'bulb', 'sun', 'home', 'users', 'grad'];
+const MODULE_VISUAL_FOCUS = ['center', 'top', 'bottom'];
+
+/**
+ * A module's own cover: colour, icon, and banner image. Each part follows the
+ * chapter while it is "auto". Stored as canonical JSON, or '' when nothing is
+ * customised, so an untouched module keeps a byte-identical payload.
+ */
+function normalise_module_visual($value): string
+{
+    if (is_string($value)) {
+        $value = trim($value) === '' ? [] : json_decode($value, true);
+    }
+    if (!is_array($value)) {
+        error_response('Tampilan modul tidak valid.', 422, 'invalid_module_visual');
+    }
+    $hue = (string) ($value['hue'] ?? 'auto');
+    $icon = (string) ($value['icon'] ?? 'auto');
+    $focus = (string) ($value['focus'] ?? 'center');
+    $image = trim((string) ($value['image'] ?? ''));
+    if (($hue !== 'auto' && !in_array($hue, MODULE_VISUAL_HUES, true))
+        || ($icon !== 'auto' && !in_array($icon, MODULE_VISUAL_ICONS, true))
+        || !in_array($focus, MODULE_VISUAL_FOCUS, true)) {
+        error_response('Warna, ikon, atau fokus sampul modul tidak dikenal.', 422, 'invalid_module_visual');
+    }
+    if ($image !== '') {
+        // Covers are served from Academy itself: no hotlinked images that could track learners.
+        $path = strlen($image) > 512 ? null : normalise_editorial_internal_media_path($image);
+        if ($path === null || !preg_match('/\.(?:jpe?g|png|webp|avif)$/i', (string) parse_url($path, PHP_URL_PATH))) {
+            error_response('Sampul modul harus gambar JPG, PNG, WebP, atau AVIF yang diunggah ke Academy.', 422, 'invalid_module_cover');
+        }
+        $image = $path;
+    }
+    if ($image === '') {
+        $focus = 'center';
+    }
+    if ($hue === 'auto' && $icon === 'auto' && $image === '') {
+        return '';
+    }
+    return (string) json_encode(['hue' => $hue, 'icon' => $icon, 'image' => $image, 'focus' => $focus], JSON_UNESCAPED_SLASHES);
+}
+
+function decode_module_visual($value): array
+{
+    $decoded = is_string($value) && $value !== '' ? json_decode($value, true) : null;
+    $decoded = is_array($decoded) ? $decoded : [];
+    $pick = static function (string $key, array $allowed, string $fallback) use ($decoded): string {
+        $candidate = (string) ($decoded[$key] ?? '');
+        return in_array($candidate, $allowed, true) ? $candidate : $fallback;
+    };
+    return [
+        'hue' => $pick('hue', MODULE_VISUAL_HUES, 'auto'),
+        'icon' => $pick('icon', MODULE_VISUAL_ICONS, 'auto'),
+        'image' => is_string($decoded['image'] ?? null) ? $decoded['image'] : '',
+        'focus' => $pick('focus', MODULE_VISUAL_FOCUS, 'center'),
     ];
 }
 
@@ -2949,10 +3197,10 @@ function admin_module_input(array $input, ?array $existing = null): array
  * Keep a single name for a number so the admin curriculum cannot silently
  * split one chapter into multiple labels.
  */
-function admin_existing_chapter_name(int $levelNumber, ?int $excludeModuleId = null): ?string
+function admin_existing_chapter_name(int $levelNumber, ?int $excludeModuleId = null, string $curriculumId = AAPM_PRIMARY_CURRICULUM): ?string
 {
-    $sql = 'SELECT level_name FROM course_modules WHERE level_number = ?';
-    $params = [$levelNumber];
+    $sql = 'SELECT level_name FROM course_modules WHERE level_number = ? AND curriculum_id = ?';
+    $params = [$levelNumber, $curriculumId];
     if ($excludeModuleId !== null) {
         $sql .= ' AND id != ?';
         $params[] = $excludeModuleId;
@@ -2964,9 +3212,9 @@ function admin_existing_chapter_name(int $levelNumber, ?int $excludeModuleId = n
     return $name === false ? null : trim((string) $name);
 }
 
-function admin_validate_chapter_name(int $levelNumber, string $levelName, ?int $excludeModuleId = null): void
+function admin_validate_chapter_name(int $levelNumber, string $levelName, ?int $excludeModuleId = null, string $curriculumId = AAPM_PRIMARY_CURRICULUM): void
 {
-    $existingName = admin_existing_chapter_name($levelNumber, $excludeModuleId);
+    $existingName = admin_existing_chapter_name($levelNumber, $excludeModuleId, $curriculumId);
     if ($existingName !== null && $existingName !== $levelName) {
         error_response('Nama chapter harus sama dengan chapter yang sudah ada.', 422, 'chapter_name_mismatch');
     }
