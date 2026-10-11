@@ -390,63 +390,56 @@ function AiModuleDraft({ form, onApply, toast }) {
 
   return (
     <>
-    <div className="aapm-token-card border border-brand-orange/25 bg-tint-orange/35 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-background text-brand-orange">
-          <AapmIcon name="ai" className="h-3.5 w-3.5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold">Bantu isi dengan APPI</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">Buat draf tujuan, insight, tugas, checklist, atau rewrite teks materi tanpa menimpa isi sebelum Anda menyetujuinya.</p>
+    <section className="card card-pad stack gap-3" data-hue="ai" aria-labelledby="appi-draft-title">
+      <div className="row-start gap-3">
+        <span className="tile tile-sm" data-hue="ai"><AapmIcon name="ai" /></span>
+        <div className="stack gap-1 grow" style={{ minWidth: 0 }}>
+          <h3 className="card-title" id="appi-draft-title">Bantu isi dengan APPI</h3>
+          <p className="t-caption t-muted">Draf tujuan, insight, tugas, checklist, atau rewrite materi. Tidak ada yang ditimpa sebelum Anda setujui.</p>
         </div>
-        <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-          <Badge variant="soft" className={`max-w-full truncate text-[11px] ${providerStatus.className}`}>
-            <AapmIcon name={providerStatus.icon} className={`h-3 w-3 ${providerStatus.icon === "refresh" ? "animate-spin" : ""}`} />
-            {providerStatus.label}
-          </Badge>
-          {providerReady === false && <Link to="/admin/ai-settings" className="text-[11px] font-semibold text-brand-orange hover:underline">Buka Pengaturan AI</Link>}
-        </div>
-        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 px-2.5 text-[11px]" onClick={() => setOpen((current) => !current)}>
-          <AapmIcon name={open ? "chevronUp" : "ai"} className="h-3.5 w-3.5" />
-          {open ? "Tutup" : "Buat draf"}
-        </Button>
       </div>
+      <div className="row wrap gap-2">
+        <span className={`chip chip-dot ${providerReady ? "chip-success" : providerReady === false ? "chip-warning" : ""}`} style={{ maxWidth: "100%" }}><span className="t-clamp-1">{providerStatus.label}</span></span>
+        {providerReady === false && <Link to="/admin/ai-settings" className="btn btn-link btn-sm">Atur provider<Ic name="arrow-right" /></Link>}
+      </div>
+      <button type="button" className={`btn ${open ? "btn-secondary" : "btn-ai"} btn-block`} aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+        <AapmIcon name={open ? "chevronUp" : "ai"} />
+        {open ? "Tutup" : "Buat draf"}
+      </button>
       {open && (
-        <div className="mt-3 border-t border-brand-orange/20 pt-3">
+        <div className="stack gap-3">
           {providerReady === false && (
-            <div role="status" className="mb-3 flex flex-wrap items-start gap-2 rounded-[var(--radius-control)] border border-brand-orange/20 bg-background/70 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
-              <AapmIcon name="info" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
-              <span className="min-w-0 flex-1">Provider aktif belum memiliki credential atau sedang dimatikan. Fallback lokal tetap aman, tetapi tidak menghasilkan draf JSON terstruktur untuk editor.</span>
-              <Link to="/admin/ai-settings" className="shrink-0 font-semibold text-brand-orange hover:underline">Konfigurasi</Link>
-            </div>
+            <p role="status" className="note">Provider belum punya credential atau sedang dimatikan. Fallback lokal tetap aman, tetapi tidak menghasilkan draf terstruktur.</p>
           )}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
+          <div className="field">
+            <label className="label" htmlFor="appi-draft-instruction">Instruksi<span className="opt">Opsional</span></label>
+            <div className="input"><input
+              id="appi-draft-instruction"
               value={instruction}
               onChange={(event) => setInstruction(event.target.value)}
-              placeholder="Opsional: fokus, level learner, atau konteks tugas…"
-              className="h-9 min-w-0 flex-1 text-xs"
+              placeholder="Fokus, level learner, atau konteks tugas…"
               disabled={isGenerating || isRewriting}
+            /></div>
+          </div>
+          <label className="check t-caption t-muted">
+            <input
+              type="checkbox"
+              checked={includeMaterial}
+              onChange={(event) => setIncludeMaterial(event.target.checked)}
+              disabled={isGenerating || isRewriting || materialSource.length === 0}
+              aria-label="Sertakan teks materi dalam rewrite APPI"
             />
-            <label className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-background/70 px-2.5 text-[11px] leading-4 text-muted-foreground sm:max-w-[15rem]">
-              <input
-                type="checkbox"
-                checked={includeMaterial}
-                onChange={(event) => setIncludeMaterial(event.target.checked)}
-                disabled={isGenerating || isRewriting || materialSource.length === 0}
-                className="h-4 w-4 shrink-0 accent-[hsl(var(--brand-green))]"
-                aria-label="Sertakan teks materi dalam rewrite APPI"
-              />
-              <span>Termasuk teks materi <span className="text-muted-foreground/70">(format & media tetap)</span></span>
-            </label>
-            <Button type="button" size="sm" className="h-9 shrink-0" onClick={generate} disabled={isGenerating || isRewriting || !String(form?.title || form?.summary || "").trim()}>
-              <AapmIcon name={isGenerating ? "refresh" : "ai"} className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+            <span>Termasuk teks materi (format & media tetap)</span>
+          </label>
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))" }}>
+            <button type="button" className="btn btn-ai" onClick={generate} disabled={isGenerating || isRewriting || !String(form?.title || form?.summary || "").trim()} aria-busy={isGenerating || undefined}>
+              {isGenerating ? <span className="typing" aria-hidden="true"><i /><i /><i /></span> : <AapmIcon name="ai" />}
               {isGenerating ? "Menyusun…" : "Generate"}
-            </Button>
-            <Button type="button" size="sm" variant="outline" className="h-9 shrink-0" onClick={rewrite} disabled={isGenerating || isRewriting || !canRewrite}>
-              <AapmIcon name={isRewriting ? "refresh" : "edit"} className={`h-3.5 w-3.5 ${isRewriting ? "animate-spin" : ""}`} />
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={rewrite} disabled={isGenerating || isRewriting || !canRewrite} aria-busy={isRewriting || undefined}>
+              {isRewriting ? <span className="typing" aria-hidden="true"><i /><i /><i /></span> : <AapmIcon name="edit" />}
               {isRewriting ? "Rewrite…" : includeMaterial && materialSource.length ? "Rewrite isi + materi" : "Rewrite isi"}
-            </Button>
+            </button>
           </div>
           {draft && (
             <div className="mt-3 rounded-[var(--radius-control)] border border-border bg-background p-3">
@@ -454,7 +447,7 @@ function AiModuleDraft({ form, onApply, toast }) {
                 <p className="text-xs font-semibold">Pratinjau draf</p>
                 <Badge variant="soft" className="text-[11px]">Belum diterapkan</Badge>
               </div>
-              <div className="grid gap-2 text-[11px] sm:grid-cols-2">
+              <div className="grid gap-2 text-[11px]">
                 {[
                   ["Tujuan", draft.learningObjectives],
                   ["Poin penting", draft.keyTakeaways],
@@ -465,7 +458,7 @@ function AiModuleDraft({ form, onApply, toast }) {
                     <ul className="mt-1 space-y-0.5 text-muted-foreground">{items.map((item) => <li key={item}>• {item}</li>)}</ul>
                   </div>
                 ))}
-                <div className="rounded-lg bg-surface-subtle p-2 sm:col-span-2">
+                <div className="rounded-lg bg-surface-subtle p-2">
                   <p className="font-semibold text-foreground">Tugas praktik</p>
                   <p className="mt-1 text-muted-foreground">{draft.practicalAssignment || "—"}</p>
                 </div>
@@ -482,10 +475,10 @@ function AiModuleDraft({ form, onApply, toast }) {
                 <div><p className="text-xs font-semibold">Pratinjau rewrite copywriting</p><p className="mt-0.5 text-[11px] text-muted-foreground">Hasil ini hanya usulan sampai Anda mengonfirmasi penggantian isi.</p></div>
                 <Badge variant="soft" className="bg-tint-orange text-tint-orange-foreground text-[11px]">Konfirmasi diperlukan</Badge>
               </div>
-              <div className="grid gap-2 text-[11px] sm:grid-cols-2">
+              <div className="grid gap-2 text-[11px]">
                 {[['Judul', rewriteDraft.title], ['Ringkasan', rewriteDraft.summary]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><p className="mt-1 text-muted-foreground">{value}</p></div>)}
                 {[["Tujuan", rewriteDraft.learningObjectives], ["Poin penting", rewriteDraft.keyTakeaways], ["Checklist", rewriteDraft.checklist]].map(([label, items]) => <div key={label} className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">{label}</p><ul className="mt-1 space-y-0.5 text-muted-foreground">{items.map((item) => <li key={item}>• {item}</li>)}</ul></div>)}
-                <div className="rounded-lg bg-surface-subtle p-2 sm:col-span-2"><p className="font-semibold text-foreground">Tugas praktik</p><p className="mt-1 text-muted-foreground">{rewriteDraft.practicalAssignment || "—"}</p></div>
+                <div className="rounded-lg bg-surface-subtle p-2"><p className="font-semibold text-foreground">Tugas praktik</p><p className="mt-1 text-muted-foreground">{rewriteDraft.practicalAssignment || "—"}</p></div>
               </div>
               {rewriteDraft.materialBlocks?.length > 0 && (
                 <div className="mt-3 rounded-lg border border-border bg-surface-subtle/60 p-2.5">
@@ -520,7 +513,7 @@ function AiModuleDraft({ form, onApply, toast }) {
           )}
         </div>
       )}
-    </div>
+    </section>
     <ConfirmDialog
       open={pendingRewrite}
       onOpenChange={setPendingRewrite}

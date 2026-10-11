@@ -15,7 +15,7 @@ function RequirementEggs({ modules, completedSet, currentNumber, missing }) {
   const missingSet = new Set(missing);
   return (
     <>
-      <div className="scroll-x" style={{ paddingBottom: "var(--s-1)" }}>
+      <div className="scroll-x pulse-room">
         <ol className="exam-eggs" aria-label={`${modules.length} modul wajib`}>
           {modules.map((module) => {
             const done = completedSet.has(module.moduleNumber) && !missingSet.has(module.moduleNumber);

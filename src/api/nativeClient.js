@@ -90,7 +90,11 @@ async function request(path, options = /** @type {any} */ ({})) {
   return data;
 }
 
-async function stream(path, body, onEvent, { signal } = /** @type {{ signal?: AbortSignal }} */ ({})) {
+// The server sends a heartbeat every 10 s while the model thinks. Silence this
+// long means the connection is dead, not slow.
+const STREAM_IDLE_TIMEOUT_MS = 75_000;
+
+async function stream(path, body, onEvent, { signal, idleTimeoutMs = STREAM_IDLE_TIMEOUT_MS } = /** @type {{ signal?: AbortSignal, idleTimeoutMs?: number }} */ ({})) {
   if (!csrfToken) {
     await request("/auth/csrf");
   }
@@ -134,6 +138,15 @@ async function stream(path, body, onEvent, { signal } = /** @type {{ signal?: Ab
   const decoder = new TextDecoder();
   let buffer = "";
   let completed = false;
+  let stalled = false;
+  let idleTimer = null;
+  const armIdleTimer = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      stalled = true;
+      reader.cancel().catch(() => {});
+    }, idleTimeoutMs);
+  };
   const dispatch = (block) => {
     const lines = block.split(/\r?\n/);
     const event =
@@ -158,8 +171,10 @@ async function stream(path, body, onEvent, { signal } = /** @type {{ signal?: Ab
   };
 
   try {
+    armIdleTimer();
     while (!completed) {
       const { done, value } = await reader.read();
+      armIdleTimer();
       // Keep CRLF intact until a complete event arrives. CR and LF can be in separate chunks.
       buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
       let boundary = /\r?\n\r?\n/.exec(buffer);
@@ -173,8 +188,10 @@ async function stream(path, body, onEvent, { signal } = /** @type {{ signal?: Ab
         break;
       }
     }
+    if (stalled) throw new ApiError("APPI tidak merespons terlalu lama. Coba kirim ulang.", 0, "stream_stalled");
     if (!completed) throw new ApiError("Koneksi APPI terputus sebelum jawaban selesai. Coba kirim ulang.", 0, "stream_interrupted");
   } finally {
+    clearTimeout(idleTimer);
     await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
@@ -379,8 +396,8 @@ export const nativeApi = {
       request("/admin/ai/rewrite-editorial", json({ message })),
     moduleCompanion: ({ action = "chat", message = "", module = {}, modules = [] } = {}) =>
       request("/admin/ai/module-companion", json({ action, message, module, modules })),
-    stream: ({ message, farmContext, includeFarmContext = true, onEvent, signal }) =>
-      stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent, { signal }),
+    stream: ({ message, farmContext, includeFarmContext = true, onEvent, signal, idleTimeoutMs = undefined }) =>
+      stream("/ai-assistant/stream", { message, farmContext, includeFarmContext }, onEvent, { signal, idleTimeoutMs }),
     conversations: {
       list: async ({ cursor = "", limit = 40 } = {}) => {
         const safeLimit = Math.max(10, Math.min(80, Number(limit) || 40));

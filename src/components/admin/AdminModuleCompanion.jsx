@@ -2,12 +2,10 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
+import { appiAsset } from "@/components/appi/AppiMascot";
+import { Ic } from "@/design-system/canvas";
 import {
-  Badge,
-  Button,
   ConfirmDialog,
-  Input,
-  Surface,
   useToast,
 } from "@/components/primitives";
 import { nativeApi } from "@/api/nativeClient";
@@ -32,13 +30,13 @@ const COURSE_ACTION = { id: "order", label: "Susun urutan", icon: "reorder", des
 function ProviderBadge({ settings, error, loading }) {
   const ready = settings ? Boolean(settings.enabled && settings.apiKeyConfigured) : null;
   const status = error
-    ? { label: "Provider belum terbaca", icon: "info", className: "bg-surface-subtle text-muted-foreground" }
+    ? { label: "Provider belum terbaca", chip: "" }
     : loading
-      ? { label: "Memeriksa provider…", icon: "refresh", className: "bg-surface-subtle text-muted-foreground" }
+      ? { label: "Memeriksa provider…", chip: "" }
       : ready
-        ? { label: `${settings.providerLabel || "Provider AI"} siap`, icon: "checkRead", className: "bg-tint-green text-tint-green-foreground" }
-        : { label: "Mode lokal / perlu konfigurasi", icon: "info", className: "bg-tint-orange text-tint-orange-foreground" };
-  return <Badge variant="soft" className={`max-w-full truncate text-[11px] ${status.className}`}><AapmIcon name={status.icon} className={`h-3 w-3 ${status.icon === "refresh" ? "animate-spin" : ""}`} />{status.label}</Badge>;
+        ? { label: `${settings.providerLabel || "Provider AI"} siap`, chip: "chip-success" }
+        : { label: "Mode lokal / perlu konfigurasi", chip: "chip-warning" };
+  return <span className={`chip chip-dot ${status.chip}`} style={{ maxWidth: "100%" }}><span className="t-clamp-1">{status.label}</span></span>;
 }
 
 function SuggestionPreview({ suggestion, modules }) {
@@ -62,7 +60,6 @@ function SuggestionPreview({ suggestion, modules }) {
 export default function AdminModuleCompanion({ module = {}, modules = [], scope = "module", onApplyModule, onApplyOrder, className = "" }) {
   const { toast: ownToast } = useToast();
   const { data: aiSettings, error: aiSettingsError, isLoading: isLoadingAiSettings } = useAdminAiSettings();
-  const [open, setOpen] = useState(false);
   const [action, setAction] = useState(scope === "course" ? "order" : "module_draft");
   const [instruction, setInstruction] = useState("");
   const [response, setResponse] = useState(null);
@@ -134,22 +131,68 @@ export default function AdminModuleCompanion({ module = {}, modules = [], scope 
     }
   };
 
+  const providerReady = aiSettings ? Boolean(aiSettings.enabled && aiSettings.apiKeyConfigured) : null;
   return <>
-    <Surface variant="muted" className={`aapm-admin-companion overflow-hidden p-0 ${className}`}>
-      <div className="flex flex-wrap items-center gap-3 px-3 py-3 sm:px-4">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-tint-orange text-brand-orange"><AapmIcon name="ai" className="h-4 w-4" /></span>
-        <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-semibold">APPI companion</h3><ProviderBadge settings={aiSettings} error={aiSettingsError} loading={isLoadingAiSettings} /></div><p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">Bantu menyusun, meninjau, dan menulis ulang. Semua hasil tampil sebagai preview.</p></div>
-        {aiSettings && !(aiSettings.enabled && aiSettings.apiKeyConfigured) && <Link to="/admin/ai-settings" className="hidden text-[11px] font-semibold text-brand-orange hover:underline sm:inline">Atur provider</Link>}
-        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 text-[11px]" onClick={() => setOpen((value) => !value)}><AapmIcon name={open ? "chevronUp" : "ai"} className="h-3.5 w-3.5" />{open ? "Tutup" : "Buka companion"}</Button>
-      </div>
-      {open && <div className="border-t border-border px-3 py-3 sm:px-4">
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {availableActions.map((item) => <button key={item.id} type="button" className={`flex min-w-0 items-center gap-2 rounded-[var(--radius-control)] px-2.5 py-2 text-left transition-colors ${action === item.id ? "bg-tint-orange text-foreground" : "bg-background/70 text-muted-foreground hover:bg-background hover:text-foreground"}`} onClick={() => setAction(item.id)}><AapmIcon name={item.icon} className={`h-3.5 w-3.5 shrink-0 ${action === item.id ? "text-brand-orange" : ""}`} /><span className="min-w-0"><span className="block truncate text-[11px] font-semibold">{item.label}</span><span className="block truncate text-[11px]">{item.description}</span></span></button>)}
+    <section className={`card card-pad stack gap-3 aapm-admin-companion ${className}`} aria-labelledby="appi-companion-title" data-component="APPI companion">
+      <div className="row gap-3">
+        <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}><img src={appiAsset(1)} alt="" style={{ width: 30, height: 30 }} /></span>
+        <div className="stack gap-1" style={{ minWidth: 0 }}>
+          <h3 className="card-title" id="appi-companion-title">Bantu dengan APPI</h3>
+          <span className="row"><ProviderBadge settings={aiSettings} error={aiSettingsError} loading={isLoadingAiSettings} /></span>
         </div>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row"><Input value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={`Instruksi tambahan untuk ${activeAction?.label?.toLowerCase() || "APPI"}…`} className="h-9 min-w-0 flex-1 text-xs" disabled={isRunning} /><Button type="button" size="sm" className="h-9 shrink-0" onClick={run} disabled={isRunning}><AapmIcon name={isRunning ? "refresh" : "ai"} className={`h-3.5 w-3.5 ${isRunning ? "animate-spin" : ""}`} />{isRunning ? "Menganalisis…" : activeAction?.label || "Jalankan"}</Button></div>
-        {response && <div className="mt-3 space-y-2" role="status" aria-live="polite"><div className="rounded-[var(--radius-control)] bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">{response.reply}{response.notice && <div className="mt-1 text-[11px] text-brand-orange">{response.notice}</div>}</div>{response.suggestions?.length ? response.suggestions.map((suggestion) => <article key={suggestion.id} className="rounded-[var(--radius-control)] border border-border bg-background p-3"><div className="flex flex-wrap items-start gap-2"><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><AapmIcon name={suggestion.kind === "review" ? "checkRead" : suggestion.kind === "order" ? "reorder" : "edit"} className="h-3.5 w-3.5 text-brand-orange" /><h4 className="text-xs font-semibold">{suggestion.title || "Saran APPI"}</h4></div>{suggestion.reason && <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{suggestion.reason}</p>}</div>{suggestion.kind !== "review" && <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 px-2 text-[11px]" onClick={() => prepareApply(suggestion)}>{suggestion.kind === "order" ? "Gunakan urutan" : "Pratinjau penerapan"}</Button>}</div><SuggestionPreview suggestion={suggestion} modules={courseModules} /></article>) : <div className="rounded-[var(--radius-control)] bg-surface-subtle px-3 py-2 text-[11px] text-muted-foreground">Belum ada saran terstruktur. Coba instruksi yang lebih spesifik.</div>}</div>}
-      </div>}
-    </Surface>
+      </div>
+      {providerReady === false ? <Link to="/admin/ai-settings" className="btn btn-link btn-sm" style={{ alignSelf: "flex-start" }}>Atur provider<Ic name="arrow-right" /></Link> : null}
+      <div className="stack gap-2" role="radiogroup" aria-label="Tugas APPI">
+        {availableActions.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="radio"
+            aria-checked={action === item.id}
+            className={`card card-link row gap-3${action === item.id ? " card-selected" : ""}`}
+            data-hue={action === item.id ? "ai" : undefined}
+            style={{ padding: "10px 12px", textAlign: "left" }}
+            onClick={() => setAction(item.id)}
+          >
+            <span className="tile tile-sm" data-hue="ai"><AapmIcon name={item.icon} /></span>
+            <span className="stack grow" style={{ minWidth: 0 }}>
+              <span className="t-support t-strong">{item.label}</span>
+              <span className="t-caption t-muted">{item.description}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="field">
+        <label className="label" htmlFor="appi-companion-instruction">Instruksi tambahan<span className="opt">Opsional</span></label>
+        <textarea id="appi-companion-instruction" className="textarea" rows={2} value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={`Fokus untuk ${activeAction?.label?.toLowerCase() || "APPI"}…`} disabled={isRunning} />
+      </div>
+      <button type="button" className="btn btn-ai btn-block" onClick={run} disabled={isRunning} aria-busy={isRunning || undefined}>
+        {isRunning ? <span className="typing" aria-hidden="true"><i /><i /><i /></span> : <Ic name="sparkle" />}
+        {isRunning ? "Menganalisis…" : activeAction?.label || "Jalankan"}
+      </button>
+      {response && (
+        <div className="stack gap-2" role="status" aria-live="polite">
+          <div className="inset t-support" style={{ padding: "10px 12px" }}>
+            {response.reply}
+            {response.notice && <p className="t-caption t-ai" style={{ marginTop: 4 }}>{response.notice}</p>}
+          </div>
+          {response.suggestions?.length ? response.suggestions.map((suggestion) => (
+            <article key={suggestion.id} className="card card-pad-sm stack gap-2">
+              <div className="row-start gap-2">
+                <AapmIcon name={suggestion.kind === "review" ? "checkRead" : suggestion.kind === "order" ? "reorder" : "edit"} className="t-ai" />
+                <div className="stack gap-0-5 grow" style={{ minWidth: 0 }}>
+                  <h4 className="t-support t-strong">{suggestion.title || "Saran APPI"}</h4>
+                  {suggestion.reason && <p className="t-caption t-muted">{suggestion.reason}</p>}
+                </div>
+              </div>
+              <SuggestionPreview suggestion={suggestion} modules={courseModules} />
+              {suggestion.kind !== "review" && <button type="button" className="btn btn-secondary btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => prepareApply(suggestion)}>{suggestion.kind === "order" ? "Gunakan urutan" : "Pratinjau penerapan"}</button>}
+            </article>
+          )) : <p className="inset t-caption t-muted" style={{ padding: "8px 12px" }}>Belum ada saran terstruktur. Coba instruksi yang lebih spesifik.</p>}
+        </div>
+      )}
+      <p className="note">Semua saran tampil sebagai pratinjau dan baru diterapkan setelah Anda setujui.</p>
+    </section>
     <ConfirmDialog open={Boolean(pendingApply)} onOpenChange={(openValue) => !openValue && !isApplying && setPendingApply(null)} loading={isApplying} title={pendingApply?.type === "order" ? "Terapkan susunan kurikulum APPI?" : "Masukkan saran APPI ke editor?"} description={pendingApply?.type === "order" ? "Urutan ini akan dikirim ke penyimpanan kurikulum. Tidak ada modul yang dihapus; Anda masih dapat mengubahnya lagi dari board." : "Field yang dipilih akan menggantikan draft lokal di editor. Isi server belum berubah sampai Anda meninjau dan memilih Simpan modul."} confirmLabel={pendingApply?.type === "order" ? "Terapkan urutan" : "Masukkan ke editor"} cancelLabel="Kembali ke preview" icon="solar:stars-minimalistic-bold-duotone" onConfirm={confirmApply} />
   </>;
 }
