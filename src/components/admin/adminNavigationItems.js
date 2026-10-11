@@ -39,7 +39,8 @@ export const adminSecondaryNavigation = [
 // plus Menu keep every label whole on a 375px phone; the rest live in Menu.
 export const adminBottomNavigation = [
   { to: "/admin", label: "Ringkasan", ic: "home", icon: "dashboard", end: true },
-  adminNavigationGroups[1].items[0],
+  // Phone tabs are ~70px wide: the long sidebar label wraps out of its pill.
+  { ...adminNavigationGroups[1].items[0], label: "Kurikulum" },
   adminNavigationGroups[2].items[0],
   adminNavigationGroups[2].items[2],
 ];

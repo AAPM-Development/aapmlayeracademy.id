@@ -57,7 +57,10 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
 
 /* Mobile chrome. */
 .m-top .avatar, .m-top .xp { flex: none; }
-.m-nav > a, .m-nav > button { text-decoration: none; border: 0; background: none; font: inherit; }
+/* Only the button needs its browser font reset; resetting the links too
+   replaced the canvas tab type (12px Nunito 800) with 14px Inter. */
+.m-nav > a { text-decoration: none; }
+.m-nav > button { border: 0; background: none; font: inherit; }
 .m-nav > button { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 52px; padding-bottom: 7px; border-radius: 14px; color: var(--muted); font-family: var(--font-display); font-size: var(--fs-xs); line-height: 14px; font-weight: 800; }
 @media (max-width: 860px) {
   /* Admin has no APPI in its bottom bar, so its launcher stays, above the bar. */
@@ -620,9 +623,14 @@ input.input { display: block; }
 /* Auth: the brand and the page heading sit on the centre line of the form column. */
 .auth-logo { align-self: center; border-radius: var(--r-sm); }
 .auth-head { align-items: center; text-align: center; }
-/* Text links in auth forms keep their look but get a 32px tap area. */
-.auth .btn-link { padding-block: 6px; margin-block: -6px; }
+/* Text-style buttons and links keep their look but get a 32px tap area
+   (the padding is cancelled by the margin, so nothing moves). */
+.aapm .btn-link { padding-block: 6px; margin-block: -6px; }
 /* Peek: no free spot near the corner, so the launcher waits as a tab on the edge. */
 .launcher-fixed[data-peek="true"] { translate: calc(100% + var(--s-6) - 18px) 0; opacity: .92; }
 .launcher-fixed[data-peek="true"]:hover, .launcher-fixed[data-peek="true"]:focus-visible { translate: 0 0; opacity: 1; }
 .launcher-fixed[data-peek="true"] .launcher-label { display: none; }
+
+/* The cover number sits inside the cover instead of bleeding off its bottom
+   edge, which read as clipped. */
+.aapm .cover-num { bottom: 8px; right: 12px; }

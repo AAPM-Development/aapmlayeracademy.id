@@ -860,7 +860,8 @@ function BlockFrame({ block, index, total, selected, onSelect, onDone, onChange,
         <div className="aapm-block__editor">{editor}</div>
       ) : (
         <>
-          <div className="aapm-block__preview" aria-hidden="true"><BlockPreview block={block} /></div>
+          {/* inert: the preview is for the eye only; its links must not take focus. */}
+          <div className="aapm-block__preview" aria-hidden="true" {...{ inert: "" }}><BlockPreview block={block} /></div>
           {!selected ? <button type="button" className="aapm-block__hit" aria-label={`Edit blok ${index + 1}: ${outlineLabelForBlock(block, index)}`} onClick={onSelect} /> : null}
         </>
       )}

@@ -94,6 +94,70 @@ const tools = [
     },
   },
   {
+    id: "hdp",
+    name: "HDP",
+    title: "Hen Day & Hen Housed Production",
+    ic: "trend-up",
+    hue: "green",
+    description: "Produksi telur harian per ekor.",
+    lead: "Berapa persen ayam yang hidup hari ini bertelur. Hen housed membandingkan dengan populasi awal kandang.",
+    formula: ["HDP = Telur hari ini ÷ Ayam hidup hari ini × 100", "Hen housed = Telur hari ini ÷ Populasi awal × 100"],
+    fields: [
+      { key: "eggs", label: "Telur dipanen hari ini", unit: "butir", example: 4550 },
+      { key: "hens", label: "Ayam hidup hari ini", unit: "ekor", example: 4900 },
+      { key: "housed", label: "Populasi awal kandang", unit: "ekor", example: 5000, optional: true },
+    ],
+    compute: ({ eggs, hens, housed }) => {
+      if (!(eggs > 0 && hens > 0)) return null;
+      if (eggs > hens) return { invalid: "Telur hari ini tidak bisa lebih banyak dari ayam yang hidup. Cek kembali angkanya." };
+      const details = housed > 0 ? [["Hen housed", `${formatNumber((eggs / housed) * 100, 1)}%`]] : [];
+      return { value: (eggs / hens) * 100, details, short: housed > 0 ? `hen housed ${formatNumber((eggs / housed) * 100, 1)}%` : "" };
+    },
+    format: (value) => formatNumber(value, 1),
+    unit: "%",
+    unitLong: "persen ayam hidup bertelur",
+    module: /Manajemen Produksi/i,
+    kpi: { field: "henDayProduction", label: "HDP", digits: 1, suffix: "%" },
+    scale: {
+      min: 60,
+      max: 100,
+      zones: [
+        { upTo: 80, tone: "act", label: "Di bawah target", note: "Bandingkan dengan kurva strain sesuai umur; cek pakan, air, cahaya, dan kesehatan." },
+        { upTo: 90, tone: "watch", label: "Wajar", note: "Wajar di awal atau akhir produksi; pantau tren mingguannya." },
+        { upTo: Infinity, tone: "good", label: "Puncak", note: "Setara masa puncak produksi layer komersial." },
+      ],
+    },
+  },
+  {
+    id: "feedintake",
+    name: "Konsumsi Pakan",
+    title: "Konsumsi Pakan per Ekor per Hari",
+    ic: "feed",
+    hue: "teal",
+    description: "Gram pakan per ekor per hari.",
+    lead: "Rata-rata pakan yang dimakan tiap ayam per hari. Perubahan mendadak sering jadi sinyal pertama masalah.",
+    formula: ["Konsumsi = Pakan habis per hari (kg) × 1000 ÷ Jumlah ayam"],
+    fields: [
+      { key: "feed", label: "Pakan habis per hari", unit: "kg", example: 560, hint: "Pakan diberikan dikurangi sisa di tempat pakan." },
+      { key: "hens", label: "Jumlah ayam", unit: "ekor", example: 4900 },
+    ],
+    compute: ({ feed, hens }) => (feed > 0 && hens > 0 ? { value: (feed * 1000) / hens } : null),
+    format: (value) => formatNumber(value, 0),
+    unit: "g/ekor/hari",
+    unitLong: "gram pakan per ekor per hari",
+    module: /Nutrisi/i,
+    kpi: { field: "feedIntake", label: "Konsumsi pakan", digits: 0, suffix: " g" },
+    scale: {
+      min: 80,
+      max: 140,
+      zones: [
+        { upTo: 100, tone: "watch", label: "Rendah", note: "Cek akses pakan, palatabilitas, suhu kandang, dan kesehatan flock." },
+        { upTo: 125, tone: "good", label: "Normal", note: "Sesuai kebutuhan layer masa produksi." },
+        { upTo: Infinity, tone: "act", label: "Tinggi", note: "Cek pakan tercecer, tikus atau burung liar, dan energi ransum." },
+      ],
+    },
+  },
+  {
     id: "uniformity",
     name: "Uniformity",
     title: "Uniformity (%)",
@@ -119,6 +183,39 @@ const tools = [
         { upTo: 75, tone: "act", label: "Rendah", note: "Pertimbangkan grading, seleksi, atau culling." },
         { upTo: 85, tone: "watch", label: "Wajar", note: "Jaga akses pakan dan kepadatan merata." },
         { upTo: Infinity, tone: "good", label: "Excellent", note: "Bobot flock seragam." },
+      ],
+    },
+  },
+  {
+    id: "density",
+    name: "Kepadatan",
+    title: "Kepadatan Kandang Baterai",
+    ic: "grid",
+    hue: "violet",
+    description: "Ruang per ekor di dalam kandang.",
+    lead: "Luas lantai kandang yang didapat tiap ayam. Terlalu padat menurunkan produksi dan menaikkan stres.",
+    formula: ["Ruang per ekor (cm²) = Panjang × Lebar kandang (cm) ÷ Ayam per kandang", "Ekor per m² = 10.000 ÷ Ruang per ekor"],
+    fields: [
+      { key: "length", label: "Panjang kandang", unit: "cm", example: 40 },
+      { key: "width", label: "Lebar (kedalaman) kandang", unit: "cm", example: 45 },
+      { key: "birds", label: "Ayam per kandang", unit: "ekor", example: 4 },
+    ],
+    compute: ({ length, width, birds }) => {
+      if (!(length > 0 && width > 0 && birds > 0)) return null;
+      const perBird = (length * width) / birds;
+      return { value: perBird, details: [["Ekor per m²", formatNumber(10000 / perBird, 1)]], short: `${formatNumber(10000 / perBird, 1)} ekor/m²` };
+    },
+    format: (value) => formatNumber(value, 0),
+    unit: "cm²/ekor",
+    unitLong: "cm² lantai per ekor",
+    module: /Manajemen Produksi/i,
+    scale: {
+      min: 300,
+      max: 700,
+      zones: [
+        { upTo: 400, tone: "act", label: "Terlalu padat", note: "Kurangi isi kandang; kepadatan ini menekan produksi dan kualitas kerabang." },
+        { upTo: 450, tone: "watch", label: "Batas", note: "Masih dipakai di lapangan; jaga akses pakan dan air tiap ayam." },
+        { upTo: Infinity, tone: "good", label: "Lega", note: "Ruang cukup untuk makan, minum, dan istirahat." },
       ],
     },
   },
@@ -153,6 +250,43 @@ const tools = [
         { upTo: 1, tone: "good", label: "Baik", note: "Di bawah ambang normal." },
         { upTo: 5, tone: "watch", label: "Pantau", note: "Catat penyebab kematian per hari." },
         { upTo: Infinity, tone: "act", label: "Tinggi", note: "Investigasi penyebab dan konsultasikan dengan dokter hewan." },
+      ],
+    },
+  },
+  {
+    id: "eggquality",
+    name: "Kualitas Telur",
+    title: "Telur Retak & Kotor",
+    ic: "target",
+    hue: "orange",
+    description: "Persentase telur turun kelas.",
+    lead: "Bagian produksi yang tidak bisa dijual sebagai telur utuh dan bersih.",
+    formula: ["Turun kelas = (Telur retak + Telur kotor) ÷ Total telur × 100"],
+    fields: [
+      { key: "total", label: "Total telur dipanen", unit: "butir", example: 4550 },
+      { key: "cracked", label: "Telur retak/pecah", unit: "butir", example: 55, allowZero: true },
+      { key: "dirty", label: "Telur kotor", unit: "butir", example: 40, allowZero: true },
+    ],
+    compute: ({ total, cracked, dirty }) => {
+      if (!(total > 0) || !(cracked >= 0) || !(dirty >= 0)) return null;
+      if (cracked + dirty > total) return { invalid: "Telur retak dan kotor tidak bisa melebihi total telur yang dipanen." };
+      return {
+        value: ((cracked + dirty) / total) * 100,
+        details: [["Retak", `${formatNumber((cracked / total) * 100, 1)}%`], ["Kotor", `${formatNumber((dirty / total) * 100, 1)}%`]],
+        short: `retak ${formatNumber((cracked / total) * 100, 1)}%`,
+      };
+    },
+    format: (value) => formatNumber(value, 1),
+    unit: "%",
+    unitLong: "persen telur turun kelas",
+    module: /Egg Collection|Egg Quality/i,
+    scale: {
+      min: 0,
+      max: 8,
+      zones: [
+        { upTo: 2, tone: "good", label: "Baik", note: "Penanganan dan kualitas kerabang terjaga." },
+        { upTo: 4, tone: "watch", label: "Pantau", note: "Cek frekuensi koleksi, kemiringan lantai kandang, dan kalsium pakan." },
+        { upTo: Infinity, tone: "act", label: "Tinggi", note: "Telusuri titik retak (kandang, koleksi, packing) dan kualitas kerabang per umur." },
       ],
     },
   },
@@ -219,6 +353,47 @@ const tools = [
     module: /Ventilasi|Suhu|Closed House/i,
   },
   {
+    id: "hpp",
+    name: "HPP & Margin",
+    title: "HPP & Margin per kg Telur",
+    ic: "percent",
+    hue: "amber",
+    description: "Biaya produksi dan margin per kg.",
+    lead: "Perkiraan harga pokok per kg telur dari biaya pakan, dibanding harga jual hari ini.",
+    formula: ["Biaya pakan per kg telur = Harga pakan × FCR", "HPP = Biaya pakan ÷ Porsi biaya pakan (%) × 100", "Margin = (Harga jual − HPP) ÷ Harga jual × 100"],
+    fields: [
+      { key: "feedPrice", label: "Harga pakan", unit: "Rp/kg", example: 7500 },
+      { key: "fcr", label: "FCR", unit: "kg/kg", example: 2.2, hint: "Pakai kalkulator FCR bila belum tahu." },
+      { key: "feedShare", label: "Porsi biaya pakan dari total biaya", unit: "%", example: 70, hint: "Umumnya 65–75% dari biaya produksi." },
+      { key: "eggPrice", label: "Harga jual telur", unit: "Rp/kg", example: 26000 },
+    ],
+    compute: ({ feedPrice, fcr, feedShare, eggPrice }) => {
+      if (!(feedPrice > 0 && fcr > 0 && feedShare > 0 && eggPrice > 0)) return null;
+      if (feedShare > 100) return { invalid: "Porsi biaya pakan maksimal 100% dari total biaya." };
+      const feedCost = feedPrice * fcr;
+      const hpp = feedCost / (feedShare / 100);
+      const margin = eggPrice - hpp;
+      return {
+        value: (margin / eggPrice) * 100,
+        details: [["Biaya pakan per kg telur", rupiah(feedCost)], ["HPP per kg telur", rupiah(hpp)], ["Margin per kg", rupiah(margin)]],
+        short: `HPP ${rupiah(hpp)}/kg`,
+      };
+    },
+    format: (value) => formatNumber(value, 1),
+    unit: "% margin",
+    unitLong: "margin dari harga jual",
+    module: /Ekonomi Farm/i,
+    scale: {
+      min: -20,
+      max: 40,
+      zones: [
+        { upTo: 0, tone: "act", label: "Rugi", note: "HPP di atas harga jual; cek FCR, harga pakan, dan biaya lain." },
+        { upTo: 10, tone: "watch", label: "Tipis", note: "Margin rentan terhadap kenaikan harga pakan atau turunnya harga telur." },
+        { upTo: Infinity, tone: "good", label: "Sehat", note: "Ada ruang aman terhadap fluktuasi harga." },
+      ],
+    },
+  },
+  {
     id: "roi",
     name: "ROI & BEP",
     title: "ROI & Break Even Point",
@@ -274,6 +449,8 @@ function evaluate(tool, values) {
     })
     .map((field) => field.label);
   const outcome = missing.length ? null : tool.compute(numbers);
+  // A tool can explain why the numbers cannot be right (more eggs than hens).
+  if (outcome?.invalid) return { ready: false, missing: [], invalid: outcome.invalid };
   if (!outcome || !Number.isFinite(outcome.value)) return { ready: false, missing: missing.length ? missing : tool.fields.map((field) => field.label) };
   const zone = tool.scale?.zones.find((item) => outcome.value < item.upTo) || tool.scale?.zones[tool.scale.zones.length - 1];
   const tone = zone ? zone.tone : "info";
@@ -372,7 +549,7 @@ function CalcField({ field, value, onChange, flagged }) {
 function CalcResult({ tool, values, reading, panelRef }) {
   const tone = TONE[reading.ready ? reading.tone : "info"];
   const hue = reading.ready ? tone.hue : tool.hue;
-  const missingText = reading.missing?.length
+  const missingText = reading.invalid ? reading.invalid : reading.missing?.length
     ? `Isi ${reading.missing.slice(0, -1).join(", ")}${reading.missing.length > 1 ? " dan " : ""}${reading.missing[reading.missing.length - 1]} untuk melihat hasil.`
     : "";
   return (
