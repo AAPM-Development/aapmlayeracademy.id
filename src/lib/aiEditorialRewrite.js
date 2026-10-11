@@ -128,9 +128,12 @@ function stripAiMarkdownFence(value) {
     .trim();
 }
 
-function restoreRichTextMedia(content, protectedMedia) {
+function restoreRichTextMedia(content, protectedMedia, protectedSource = "") {
   const media = Array.isArray(protectedMedia) ? protectedMedia : [];
-  const expectedTokens = media.map((item) => item.token);
+  // Images are numbered before links, so numbering order is not reading order.
+  // Expect the tokens in the order they appear in the protected source.
+  const sourceTokens = String(protectedSource || "").match(/⟦APPI_MEDIA_\d+⟧/g);
+  const expectedTokens = sourceTokens && sourceTokens.length === media.length ? sourceTokens : media.map((item) => item.token);
   const tokenMatches = content.match(/⟦APPI_MEDIA_\d+⟧/g) || [];
   const hasDirectMedia = imageMarkdownPattern.test(content) || linkMarkdownPattern.test(content);
   imageMarkdownPattern.lastIndex = 0;
@@ -167,7 +170,7 @@ function normaliseMaterialEntry(entry, source) {
   if (source.type === "callout") {
     const rawContent = stripAiMarkdownFence(entry.content);
     if (!rawContent) return null;
-    const restored = restoreRichTextMedia(rawContent, source.protectedMedia);
+    const restored = restoreRichTextMedia(rawContent, source.protectedMedia, source.content);
     return {
       id: source.id,
       type: source.type,
@@ -180,7 +183,7 @@ function normaliseMaterialEntry(entry, source) {
 
   const rawContent = stripAiMarkdownFence(entry.content ?? entry.markdown);
   if (!rawContent) return null;
-  const restored = restoreRichTextMedia(rawContent, source.protectedMedia);
+  const restored = restoreRichTextMedia(rawContent, source.protectedMedia, source.content);
   return {
     id: source.id,
     type: source.type,
