@@ -1095,7 +1095,9 @@ try {
         $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
         $imageDataUrl = ai_normalize_image_data_url($input['imageDataUrl'] ?? null);
         $pageContext = trim((string) ($input['pageContext'] ?? ''));
-        $accountMemory = ai_account_memory_for_user((int) $user['id']);
+        // Read before Phase 1 so the new question is not part of its own history.
+        $history = ai_conversation_history((int) $conversation['id']);
+        $accountMemory = ai_account_memory_for_user((int) $user['id'], (int) $conversation['id']);
         $accountContext = ai_account_context_for_user((int) $user['id']);
         // Phase 1 is deliberately short and atomic. The user turn, activity
         // entry, and conversation metadata must either all exist or none of
@@ -1129,9 +1131,10 @@ try {
         // account history must remain durable.
         @ignore_user_abort(true);
         try {
-            $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext);
+            $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext, $history);
         } catch (Throwable $exception) {
             error_log('[aapm-ai-stream] ' . $exception->getMessage());
+            if (ai_sse_text_emitted()) ai_sse_emit('reset');
             $response = [
                 'reply' => native_ai_reply($message, $farmContext),
                 'provider' => 'local',
@@ -1142,7 +1145,13 @@ try {
             ai_sse_emit('notice', ['text' => $response['notice']]);
             ai_sse_emit('delta', ['text' => $response['reply']]);
         }
-        ai_sse_emit('status', ['label' => 'APPI menyimpan percakapan']);
+        $stopped = !empty($response['stopped']);
+        if ($stopped && trim((string) $response['reply']) === '') {
+            // Stopped before the first word: nothing to keep, the question stays.
+            rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
+            exit;
+        }
+        if (!$stopped) ai_sse_emit('status', ['label' => 'APPI menyimpan percakapan']);
         $savedConversation = null;
         try {
             $database = db();
@@ -1151,8 +1160,8 @@ try {
             ai_record_activity(
                 (int) $user['id'],
                 (int) $conversation['id'],
-                (bool) $response['fallback'] ? 'fallback' : 'response',
-                (bool) $response['fallback'] ? 'Respons lokal disimpan' : 'Jawaban APPI selesai',
+                (bool) $response['fallback'] ? 'fallback' : ($stopped ? 'stopped' : 'response'),
+                (bool) $response['fallback'] ? 'Respons lokal disimpan' : ($stopped ? 'Jawaban APPI dihentikan' : 'Jawaban APPI selesai'),
                 trim((string) ($response['provider'] ?? '')) . (trim((string) ($response['model'] ?? '')) !== '' ? ' · ' . trim((string) $response['model']) : '')
             );
             ai_touch_conversation((int) $conversation['id'], ai_conversation_title($message), (string) $response['reply'], false);
@@ -1395,12 +1404,37 @@ function ai_conversation_for_user(int $conversationId, int $userId): ?array
     return $conversation ?: null;
 }
 
-function ai_account_memory_for_user(int $userId): string
+/**
+ * The latest turns of one conversation, oldest first, for the provider's message
+ * list. Bounded by turn count and characters; local fallback replies are left out
+ * because they are not analysis the model should build on.
+ */
+function ai_conversation_history(int $conversationId, int $maxTurns = 12, int $charBudget = 16000): array
+{
+    $stmt = db()->prepare('SELECT role, content, used_fallback FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ' . max(2, min(40, $maxTurns)));
+    $stmt->execute([$conversationId]);
+    $turns = [];
+    $used = 0;
+    foreach ($stmt->fetchAll() as $row) {
+        if (($row['role'] ?? '') === 'assistant' && (int) ($row['used_fallback'] ?? 0) === 1) continue;
+        $content = trim((string) ($row['content'] ?? ''));
+        if ($content === '') continue;
+        $content = function_exists('mb_substr') ? mb_substr($content, 0, 4000) : substr($content, 0, 4000);
+        $used += strlen($content);
+        if ($used > $charBudget && $turns) break;
+        $turns[] = ['role' => (string) $row['role'], 'content' => $content];
+    }
+    return array_reverse($turns);
+}
+
+function ai_account_memory_for_user(int $userId, ?int $excludeConversationId = null): string
 {
     // Memory stays in the existing per-account chat store. We only construct a
     // compact, request-time view: recent continuity plus one user anchor per
     // month in a three-month window. Deleting a conversation removes it from memory.
-    $recentStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? ORDER BY m.created_at DESC, m.id DESC LIMIT 6');
+    // The active conversation travels as real turns, so it is excluded here.
+    $exclude = $excludeConversationId !== null ? ' AND c.id <> ' . (int) $excludeConversationId : '';
+    $recentStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ?' . $exclude . ' ORDER BY m.created_at DESC, m.id DESC LIMIT 6');
     $recentStmt->execute([$userId]);
     $rows = array_reverse($recentStmt->fetchAll());
     $seen = [];
@@ -1409,7 +1443,7 @@ function ai_account_memory_for_user(int $userId): string
     }
 
     $monthStart = new DateTimeImmutable('first day of this month 00:00:00');
-    $anchorStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? AND m.role = ? AND m.created_at >= ? AND m.created_at < ? ORDER BY m.created_at DESC, m.id DESC LIMIT 1');
+    $anchorStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ?' . $exclude . ' AND m.role = ? AND m.created_at >= ? AND m.created_at < ? ORDER BY m.created_at DESC, m.id DESC LIMIT 1');
     for ($offset = 3; $offset >= 0; $offset--) {
         $start = $monthStart->modify('-' . $offset . ' months');
         $end = $start->modify('+1 month');
@@ -1438,7 +1472,13 @@ function ai_account_memory_for_user(int $userId): string
 function ai_record_chat_message(int $conversationId, string $role, string $content, ?string $provider = null, ?string $model = null, bool $fallback = false, array $responseDetails = []): void
 {
     $insert = db()->prepare('INSERT INTO ai_chat_messages (conversation_id, role, content, provider, model, used_fallback, response_details) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $insert->execute([$conversationId, $role, $content, $provider, $model, $fallback ? 1 : 0, json_encode(['reasoningSummary' => substr((string) ($responseDetails['reasoningSummary'] ?? ''), 0, 12000), 'reasoningObserved' => (bool) ($responseDetails['reasoningObserved'] ?? false)], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
+    $insert->execute([$conversationId, $role, $content, $provider, $model, $fallback ? 1 : 0, json_encode([
+        'reasoningSummary' => substr((string) ($responseDetails['reasoningSummary'] ?? ''), 0, 12000),
+        'reasoningObserved' => (bool) ($responseDetails['reasoningObserved'] ?? false),
+        'thinkingMs' => max(0, min(600000, (int) ($responseDetails['thinkingMs'] ?? 0))),
+        'stopped' => (bool) ($responseDetails['stopped'] ?? false),
+        'interrupted' => (bool) ($responseDetails['interrupted'] ?? false),
+    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
 }
 
 function ai_record_activity(int $userId, ?int $conversationId, string $type, string $label, string $detail = ''): void

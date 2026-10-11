@@ -365,7 +365,7 @@ function ai_user_prompt(string $message, array $farmContext, string $pageContext
         . ($pageText !== '' ? "\n\nKonteks halaman aktif:\n" . $pageText : '')
         . "\n\n[KONTEKS AKUN TERVALIDASI OLEH SERVER]\n" . ai_account_context_text($accountContext)
         . "\n[AKHIR KONTEKS AKUN]\n"
-        . ($accountMemory !== '' ? "\n\nMemori percakapan akun (gunakan hanya untuk kesinambungan; jangan anggap sebagai fakta terbaru tanpa konfirmasi):\n" . $accountMemory : '')
+        . ($accountMemory !== '' ? "\n\nMemori dari percakapan lain di akun ini (gunakan hanya untuk kesinambungan; jangan anggap sebagai fakta terbaru tanpa konfirmasi):\n" . $accountMemory : '')
         . "\n\nKonteks KPI terverifikasi:\n" . ai_context_text($farmContext);
 }
 
@@ -385,7 +385,34 @@ function ai_normalize_image_data_url($value): ?string
     return 'data:image/' . $matches[1] . ';base64,' . base64_encode($bytes);
 }
 
-function ai_openai_messages(string $systemPrompt, string $userPrompt, ?string $imageDataUrl = null): array
+/**
+ * Earlier turns of the current conversation, made safe for every adapter: only
+ * user/assistant text, starting with a user turn, roles alternating (adjacent
+ * turns of one role are joined, e.g. after an answer that was never saved).
+ */
+function ai_normalize_history(array $history): array
+{
+    $turns = [];
+    foreach ($history as $turn) {
+        $role = ($turn['role'] ?? '') === 'assistant' ? 'assistant' : (($turn['role'] ?? '') === 'user' ? 'user' : '');
+        $content = trim((string) ($turn['content'] ?? ''));
+        if ($role === '' || $content === '') continue;
+        if (!$turns && $role !== 'user') continue;
+        $last = count($turns) - 1;
+        if ($last >= 0 && $turns[$last]['role'] === $role) {
+            $turns[$last]['content'] .= "\n\n" . $content;
+        } else {
+            $turns[] = ['role' => $role, 'content' => $content];
+        }
+    }
+    // The new question is always a user turn, so the history must end on APPI.
+    if ($turns && $turns[count($turns) - 1]['role'] === 'user') {
+        $turns[] = ['role' => 'assistant', 'content' => '(Jawaban sebelumnya tidak tersimpan.)'];
+    }
+    return $turns;
+}
+
+function ai_openai_messages(string $systemPrompt, string $userPrompt, ?string $imageDataUrl = null, array $history = []): array
 {
     $content = $imageDataUrl === null
         ? $userPrompt
@@ -393,10 +420,11 @@ function ai_openai_messages(string $systemPrompt, string $userPrompt, ?string $i
             ['type' => 'text', 'text' => $userPrompt],
             ['type' => 'image_url', 'image_url' => ['url' => $imageDataUrl]],
         ];
-    return [
-        ['role' => 'system', 'content' => $systemPrompt],
-        ['role' => 'user', 'content' => $content],
-    ];
+    return array_merge(
+        [['role' => 'system', 'content' => $systemPrompt]],
+        ai_normalize_history($history),
+        [['role' => 'user', 'content' => $content]]
+    );
 }
 
 function ai_http_json(string $url, array $headers, array $body, string $providerLabel): array
@@ -430,12 +458,12 @@ function ai_openai_content(array $decoded, string $providerLabel): string
     return $content;
 }
 
-function ai_openai_compatible_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
+function ai_openai_compatible_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null, array $history = []): string
 {
     $headers = ai_registry_auth_headers($settings, $apiKey);
     $body = [
         'model' => $settings['model'],
-        'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl),
+        'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl, $history),
         'temperature' => $settings['temperature'] ?? 0.3,
         'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS,
     ];
@@ -456,11 +484,13 @@ function ai_openai_compatible_completion(array $settings, string $apiKey, string
     return ai_openai_content($decoded, (string) $settings['providerLabel']);
 }
 
-function ai_gemini_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
+function ai_gemini_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, array $history = []): string
 {
+    $contents = array_map(static fn (array $turn): array => ['role' => $turn['role'] === 'assistant' ? 'model' : 'user', 'parts' => [['text' => $turn['content']]]], ai_normalize_history($history));
+    $contents[] = ['role' => 'user', 'parts' => [['text' => $userPrompt]]];
     $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/models/' . rawurlencode((string) $settings['model']) . ':generateContent', array_merge(['x-goog-api-key: ' . $apiKey], ai_registry_extra_header_lines($settings)), [
         'systemInstruction' => ['parts' => [['text' => $systemPrompt]],],
-        'contents' => [['role' => 'user', 'parts' => [['text' => $userPrompt]]]],
+        'contents' => $contents,
         'generationConfig' => ['temperature' => $settings['temperature'] ?? 0.3, 'maxOutputTokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS],
     ], (string) $settings['providerLabel']);
     $parts = $decoded['candidates'][0]['content']['parts'] ?? [];
@@ -469,11 +499,13 @@ function ai_gemini_completion(array $settings, string $apiKey, string $systemPro
     return $content;
 }
 
-function ai_anthropic_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt): string
+function ai_anthropic_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, array $history = []): string
 {
+    $messages = ai_normalize_history($history);
+    $messages[] = ['role' => 'user', 'content' => $userPrompt];
     $decoded = ai_http_json(rtrim((string) $settings['baseUrl'], '/') . '/messages', array_merge(['x-api-key: ' . $apiKey, 'anthropic-version: 2023-06-01'], ai_registry_extra_header_lines($settings)), [
         'model' => $settings['model'], 'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS, 'temperature' => $settings['temperature'] ?? 0.3, 'system' => $systemPrompt,
-        'messages' => [['role' => 'user', 'content' => $userPrompt]],
+        'messages' => $messages,
     ], (string) $settings['providerLabel']);
     $parts = is_array($decoded['content'] ?? null) ? $decoded['content'] : [];
     $content = implode("\n", array_filter(array_map(static fn ($part): string => is_array($part) && ($part['type'] ?? '') === 'text' ? trim((string) ($part['text'] ?? '')) : '', $parts)));
@@ -481,19 +513,19 @@ function ai_anthropic_completion(array $settings, string $apiKey, string $system
     return $content;
 }
 
-function ai_provider_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null): string
+function ai_provider_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null, array $history = []): string
 {
     // Keep the provider dispatch explicit. This file is loaded by the central
     // API router, so a parser incompatibility here would break every API route.
     if ($settings['adapter'] === 'gemini') {
-        return ai_gemini_completion($settings, $apiKey, $systemPrompt, $userPrompt);
+        return ai_gemini_completion($settings, $apiKey, $systemPrompt, $userPrompt, $history);
     }
 
     if ($settings['adapter'] === 'anthropic') {
-        return ai_anthropic_completion($settings, $apiKey, $systemPrompt, $userPrompt);
+        return ai_anthropic_completion($settings, $apiKey, $systemPrompt, $userPrompt, $history);
     }
 
-    return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt, $allowWebSearch, $imageDataUrl);
+    return ai_openai_compatible_completion($settings, $apiKey, $systemPrompt, $userPrompt, $allowWebSearch, $imageDataUrl, $history);
 }
 
 function ai_public_reasoning_summaries(array $delta): array
@@ -520,6 +552,10 @@ function ai_sse_start(): void
         @apache_setenv('no-gzip', '1');
     }
     @ini_set('zlib.output_compression', '0');
+    // A reasoning model can think for minutes; the provider timeout bounds the request.
+    @set_time_limit(300);
+    $GLOBALS['aapm_sse_last_write'] = microtime(true);
+    $GLOBALS['aapm_sse_text_emitted'] = false;
     header('Content-Type: text/event-stream; charset=utf-8');
     header('Cache-Control: no-cache, no-transform');
     header('Connection: keep-alive');
@@ -531,14 +567,35 @@ function ai_sse_emit(string $event, array $payload = []): void
     echo 'event: ' . preg_replace('/[^a-z_-]/i', '', $event) . "\n";
     echo 'data: ' . json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n\n";
     flush();
+    $GLOBALS['aapm_sse_last_write'] = microtime(true);
+    if ($event === 'delta' && ($payload['text'] ?? '') !== '') $GLOBALS['aapm_sse_text_emitted'] = true;
+    if ($event === 'reset') $GLOBALS['aapm_sse_text_emitted'] = false;
 }
 
-function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null, ?array &$responseDetails = null): string
+/**
+ * Keep the stream alive while the model thinks: a comment line every 10 s stops
+ * proxies from closing an idle connection and lets the browser tell a slow
+ * answer from a dead one. It also surfaces a closed browser connection.
+ */
+function ai_sse_heartbeat(): void
+{
+    if (microtime(true) - (float) ($GLOBALS['aapm_sse_last_write'] ?? 0) < 10) return;
+    echo ": ping\n\n";
+    flush();
+    $GLOBALS['aapm_sse_last_write'] = microtime(true);
+}
+
+function ai_sse_text_emitted(): bool
+{
+    return !empty($GLOBALS['aapm_sse_text_emitted']);
+}
+
+function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null, ?array &$responseDetails = null, array $history = []): string
 {
     $headers = ai_registry_auth_headers($settings, $apiKey);
     $requestBody = [
         'model' => $settings['model'],
-        'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl),
+        'messages' => ai_openai_messages($systemPrompt, $userPrompt, $imageDataUrl, $history),
         'temperature' => $settings['temperature'] ?? 0.3,
         'max_tokens' => $settings['maxTokens'] ?? AAPM_AI_MAX_TOKENS,
         'stream' => true,
@@ -560,11 +617,14 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     }
 
     $lineBuffer = '';
+    $rawHead = '';
     $receivedText = false;
     $responseText = '';
     $streamError = '';
     $reasoningObserved = false;
-    $responseDetails = ['reasoningSummary' => '', 'reasoningObserved' => false];
+    $aborted = false;
+    $startedAt = microtime(true);
+    $responseDetails = ['reasoningSummary' => '', 'reasoningObserved' => false, 'thinkingMs' => 0, 'stopped' => false, 'partialText' => ''];
     $handle = curl_init(rtrim((string) $settings['baseUrl'], '/') . ($settings['chatPath'] ?? '/chat/completions'));
     curl_setopt_array($handle, [
         CURLOPT_RETURNTRANSFER => false,
@@ -577,7 +637,24 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
         CURLOPT_HTTPHEADER => array_merge(['Accept: text/event-stream', 'Content-Type: application/json'], $headers),
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$receivedText, &$responseText, &$streamError, &$reasoningObserved, &$responseDetails): int {
+        CURLOPT_NOPROGRESS => false,
+        // A closed browser connection (Stop, reload, sign-out) ends the provider
+        // request; what was written so far is kept as the answer.
+        CURLOPT_XFERINFOFUNCTION => static function () use (&$aborted): int {
+            ai_sse_heartbeat();
+            if (connection_aborted()) {
+                $aborted = true;
+                return 1;
+            }
+            return 0;
+        },
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$lineBuffer, &$rawHead, &$receivedText, &$responseText, &$streamError, &$reasoningObserved, &$responseDetails, &$aborted, $startedAt): int {
+            if (connection_aborted()) {
+                $aborted = true;
+                return 0;
+            }
+            // An error reply is plain JSON, not SSE; keep its start to explain the failure.
+            if (strlen($rawHead) < 4096) $rawHead .= substr($chunk, 0, 4096 - strlen($rawHead));
             $lineBuffer .= str_replace("\r\n", "\n", $chunk);
             while (($lineEnd = strpos($lineBuffer, "\n")) !== false) {
                 $line = trim(substr($lineBuffer, 0, $lineEnd));
@@ -617,6 +694,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                 $content = (string) $content;
                 if ($content !== '') {
                     if (!$receivedText) {
+                        $responseDetails['thinkingMs'] = (int) round((microtime(true) - $startedAt) * 1000);
                         ai_sse_emit('status', ['label' => 'APPI menulis jawaban']);
                     }
                     $receivedText = true;
@@ -631,15 +709,25 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
     $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
     $curlError = curl_error($handle);
     curl_close($handle);
+    $responseDetails['partialText'] = $responseText;
+    if ($aborted) {
+        $responseDetails['stopped'] = true;
+        return $responseText;
+    }
     if ($ok === false || $status < 200 || $status >= 300 || $streamError !== '' || !$receivedText) {
-        $detail = $streamError !== '' ? $streamError : ($curlError !== '' ? $curlError : 'provider tidak mengirim jawaban streaming');
-        throw new RuntimeException((string) $settings['providerLabel'] . ': ' . substr($detail, 0, 220));
+        $detail = $streamError !== '' ? $streamError : ($curlError !== '' ? $curlError : '');
+        if ($detail === '' && ($status < 200 || $status >= 300)) {
+            $detail = ai_registry_provider_error_message(json_decode($rawHead, true), 'tidak merespons dengan sukses', $status);
+        }
+        if ($detail === '') $detail = 'provider tidak mengirim jawaban streaming';
+        // The HTTP status travels as the code so the caller can skip pointless retries.
+        throw new RuntimeException((string) $settings['providerLabel'] . ': ' . substr($detail, 0, 220), $status >= 200 && $status < 300 ? 0 : $status);
     }
 
     return $responseText;
 }
 
-function ai_assistant_stream(string $message, array $farmContext, bool $allowWebSearch = false, ?string $imageDataUrl = null, string $pageContext = '', string $accountMemory = '', array $accountContext = []): array
+function ai_assistant_stream(string $message, array $farmContext, bool $allowWebSearch = false, ?string $imageDataUrl = null, string $pageContext = '', string $accountMemory = '', array $accountContext = [], array $history = []): array
 {
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
@@ -650,7 +738,7 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
             throw new RuntimeException('Provider belum dikonfigurasi.');
         }
         ai_sse_emit('response_meta', ['provider' => $settings['provider'], 'model' => $settings['model']]);
-        if ($accountMemory !== '') {
+        if ($history || $accountMemory !== '') {
             ai_sse_emit('status', ['label' => 'APPI mengingat konteks percakapan']);
         }
         $webSearch = $allowWebSearch && $settings['provider'] === 'openrouter';
@@ -662,23 +750,47 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
         }
         if ($settings['adapter'] !== 'openai-compatible' || empty($settings['supportsStreaming'])) {
             ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
-            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext));
+            $startedAt = microtime(true);
+            $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), false, null, $history);
+            $responseDetails = ['thinkingMs' => (int) round((microtime(true) - $startedAt) * 1000)];
             ai_sse_emit('delta', ['text' => $reply]);
         } else {
             ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
+            $userPrompt = ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext);
             try {
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl, $responseDetails);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), $userPrompt, $webSearch, $imageDataUrl, $responseDetails, $history);
             } catch (RuntimeException $exception) {
-                // Free providers may occasionally reject a single request while
-                // remaining healthy. Retry once before showing a local fallback.
                 error_log('[aapm-ai-provider-retry] ' . $exception->getMessage());
+                $partial = trim((string) ($responseDetails['partialText'] ?? ''));
+                if ($partial !== '') {
+                    // The learner already reads this text. Keep it instead of
+                    // streaming a second answer after it.
+                    $notice = 'Jawaban provider terputus sebelum selesai. Kirim ulang untuk jawaban lengkap.';
+                    ai_sse_emit('notice', ['text' => $notice]);
+                    return ['reply' => $partial, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => $notice, 'responseDetails' => array_merge($responseDetails, ['interrupted' => true])];
+                }
+                // Free providers may occasionally reject a single request while
+                // remaining healthy. Retry once before showing a local fallback,
+                // but not when the reply says a retry cannot help (key, quota, request).
+                $code = (int) $exception->getCode();
+                $retryable = $code === 0 || $code === 408 || $code >= 500
+                    || ($code === 429 && !preg_match('/quota|credit|billing/i', $exception->getMessage()));
+                if (!$retryable) throw $exception;
                 ai_sse_emit('status', ['label' => 'APPI menghubungkan ulang provider']);
-                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), $webSearch, $imageDataUrl, $responseDetails);
+                $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), $userPrompt, $webSearch, $imageDataUrl, $responseDetails, $history);
             }
         }
-        return ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => null, 'responseDetails' => $responseDetails ?? []];
+        $stopped = !empty($responseDetails['stopped']);
+        return ['reply' => $reply, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => $stopped ? 'Dihentikan sebelum selesai.' : null, 'stopped' => $stopped, 'responseDetails' => $responseDetails ?? []];
     } catch (Throwable $exception) {
         error_log('[aapm-ai-provider] ' . $exception->getMessage());
+        $partial = trim((string) ($responseDetails['partialText'] ?? ''));
+        if ($partial !== '' && ai_sse_text_emitted()) {
+            $notice = 'Jawaban provider terputus sebelum selesai. Kirim ulang untuk jawaban lengkap.';
+            ai_sse_emit('notice', ['text' => $notice]);
+            return ['reply' => $partial, 'provider' => $settings['provider'], 'model' => $settings['model'], 'fallback' => false, 'notice' => $notice, 'responseDetails' => array_merge($responseDetails, ['interrupted' => true])];
+        }
+        if (ai_sse_text_emitted()) ai_sse_emit('reset');
         if ($imageDataUrl !== null) {
             $notice = 'Foto tidak dianalisis karena model aktif belum mendukung input gambar atau provider menolaknya.';
             $reply = 'APPI belum dapat membaca foto ini dengan model aktif. Pilih model OpenRouter yang mendukung input gambar di pengaturan admin, lalu coba lagi. Foto tidak disimpan di riwayat percakapan.';

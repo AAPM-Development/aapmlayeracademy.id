@@ -4,7 +4,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import { ResponseDetailsPanel, ResponseDetailsToggle } from "@/components/ai/AiResponseDetails";
-import AiStreamActivity from "@/components/ai/AiStreamActivity";
+import AiThinking from "@/components/ai/AiThinking";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
 import useModalFocus from "@/components/ai/useModalFocus";
@@ -197,12 +197,10 @@ function AssistantMessage({
   const finished = !message.streaming && !message.error && Boolean(message.content);
   return (
     <article className="aapm-ai-message stack gap-3" style={{ minWidth: 0 }} aria-label="Jawaban APPI">
-      {message.streaming ? (
-        <AiStreamActivity label={message.streamStatus} steps={message.streamSteps} showSteps={!message.content} />
-      ) : null}
+      <AiThinking message={message} label={message.streamStatus} steps={message.streamSteps} />
       {message.content ? (
         <div className={`aapm-ai-response msg-text ${message.streaming ? "aapm-ai-response--streaming" : ""} ${canCollapse && collapsed ? "msg-collapsed" : ""}`}>
-          <AiMarkdown content={message.content} />
+          <AiMarkdown content={message.content} streaming={message.streaming} />
         </div>
       ) : null}
       {finished ? (
@@ -701,6 +699,7 @@ export default function AiAssistant() {
     bulkArchiveConversations,
     bulkDeleteConversations,
     send,
+    stopStreaming,
     retryPersistAssistant,
     retryingMessageId,
   } = useAiChat();
@@ -900,6 +899,7 @@ export default function AiAssistant() {
         input={promptDraft}
         setInput={setPromptDraft}
         onSubmit={() => submit()}
+        onStop={stopStreaming}
         isStreaming={isStreaming}
         disabled={isLoadingConversation}
         imageInputRef={imageInputRef}
@@ -1040,9 +1040,9 @@ export default function AiAssistant() {
                         <div className="msg-body aapm-chat-turn__body">
                       <AssistantMessage
                         key={message.id}
-                        message={{ ...message, streamStatus, streamSteps }}
+                        message={message.streaming ? { ...message, streamStatus, streamSteps } : message}
                         retryPrompt={
-                          message.fallback || message.error ? messages[index - 1]?.content : ""
+                          message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""
                         }
                         onRetry={submit}
                         onQuickAction={submit}

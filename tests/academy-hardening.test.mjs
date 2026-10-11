@@ -841,11 +841,12 @@ test("APPI transport handles split UTF-8/CRLF and surfaces incomplete or failed 
       cancel() { cancelled = true; },
     }), { headers: { "Content-Type": "text/event-stream" } });
   });
-  const run = (nextBody, onEvent = () => {}, signal) => {
+  let holdOpen = false;
+  const run = (nextBody, onEvent = () => {}, signal, idleTimeoutMs) => {
     body = nextBody;
-    closeAtEnd = !nextBody.includes("event: done") && !nextBody.includes("event: error") && !nextBody.includes("invalid-json");
+    closeAtEnd = !holdOpen && !nextBody.includes("event: done") && !nextBody.includes("event: error") && !nextBody.includes("invalid-json");
     cancelled = false;
-    return nativeApi.ai.stream({ message: "QA", onEvent, signal });
+    return nativeApi.ai.stream({ message: "QA", onEvent, signal, idleTimeoutMs });
   };
   await t.test("split CRLF and multibyte text complete on done without waiting for EOF", async () => {
     const events = [];
@@ -855,6 +856,16 @@ test("APPI transport handles split UTF-8/CRLF and surfaces incomplete or failed 
     assert.equal(events.at(-1).event, "done");
     assert.equal(requestSignal, controller.signal);
     assert.equal(cancelled, true);
+  });
+  await t.test("heartbeat comments are skipped and silence past the idle limit is a stall", async () => {
+    const events = [];
+    await run(': ping\n\nevent: delta\ndata: {"text":"ok"}\n\n: ping\n\nevent: done\ndata: {}\n\n', event => events.push(event.event));
+    assert.deepEqual(events, ["delta", "done"]);
+    holdOpen = true;
+    try {
+      await assert.rejects(run('event: delta\ndata: {"text":"partial"}\n\n', () => {}, undefined, 40), { code: "stream_stalled" });
+      assert.equal(cancelled, true);
+    } finally { holdOpen = false; }
   });
   await t.test("EOF before done is a recoverable interruption", async () => {
     await assert.rejects(run('event: delta\ndata: {"text":"partial"}\n\n'), { code: "stream_interrupted" });

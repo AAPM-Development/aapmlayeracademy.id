@@ -97,7 +97,7 @@ function CertificationHero({ tiers, focus }) {
           <span className="t-overline t-ink">Sertifikasi Academy</span>
           <h2 className="t-display" id="hero-title">{issued} dari {total} tingkat diraih</h2>
         </div>
-        <div className="scroll-x" style={{ padding: "8px 8px 4px" }}>
+        <div className="scroll-x pulse-room">
           <ol className="row items-start" style={{ minWidth: 540 }} aria-label="Jalur enam tingkat sertifikasi">
             {tiers.map((tier, index) => {
               const last = index === tiers.length - 1;

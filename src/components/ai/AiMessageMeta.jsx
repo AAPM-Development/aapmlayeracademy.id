@@ -48,14 +48,14 @@ export default function AiMessageMeta({
   // unsaved answers remain visible so their retry path is never lost.
   if (!showMeta && message?.persisted) return null;
 
-  const canRetryProvider = Boolean(message?.fallback && retryPrompt && onRetry);
+  const canRetryProvider = Boolean((message?.fallback || message?.stopped || message?.interrupted) && retryPrompt && onRetry);
   const canRetryPersistence = Boolean(
     !message?.persisted &&
       hasContent &&
       onRetryPersistence,
   );
 
-  if (!message?.fallback && !message?.persisted && !canRetryPersistence && !message?.provider) {
+  if (!message?.fallback && !message?.persisted && !canRetryPersistence && !message?.provider && !message?.stopped) {
     return null;
   }
 
@@ -94,9 +94,13 @@ export default function AiMessageMeta({
     );
   }
 
-  const warning = Boolean(message?.fallback || !message?.persisted);
+  const cut = Boolean(message?.stopped || message?.interrupted);
+  const warning = Boolean(message?.fallback || !message?.persisted || message?.interrupted);
   const provider = message.model ? "" : providerLabel(message);
-  const label = message?.fallback
+  const cutLabel = message?.stopped ? "Dihentikan" : "Terputus";
+  const label = cut
+    ? `${cutLabel} · ${message.persisted ? "tersimpan" : "belum tersimpan"}`
+    : message?.fallback
     ? message.persisted
       ? "Respons lokal · tersimpan"
       : "Respons lokal · belum tersimpan"
@@ -106,7 +110,7 @@ export default function AiMessageMeta({
 
   return (
     <div
-      className={`row wrap gap-1 t-caption aapm-ai-status-line ${warning ? "t-warning" : "t-success"}`}
+      className={`row wrap gap-1 t-caption aapm-ai-status-line ${warning ? "t-warning" : message?.stopped ? "t-muted" : "t-success"}`}
       style={{ padding: "0 var(--s-2)", minHeight: "var(--h-sm)" }}
       title={message.notice || undefined}
       role="status"
@@ -124,7 +128,7 @@ export default function AiMessageMeta({
           onClick={() => onRetry(retryPrompt)}
           className="btn btn-link t-caption"
         >
-          Coba provider lagi
+          {message?.fallback ? "Coba provider lagi" : "Kirim ulang"}
         </button>
       )}
       {canRetryPersistence && (

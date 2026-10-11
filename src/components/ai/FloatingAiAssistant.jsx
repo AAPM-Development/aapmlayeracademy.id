@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiResponseDetails from "@/components/ai/AiResponseDetails";
-import AiStreamActivity from "@/components/ai/AiStreamActivity";
+import AiThinking from "@/components/ai/AiThinking";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AiActivityList from "@/components/ai/AiActivityList";
@@ -146,6 +146,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
     bulkArchiveConversations,
     bulkDeleteConversations,
     send,
+    stopStreaming,
     retryPersistAssistant,
     retryingMessageId,
   } = useAiChat();
@@ -473,10 +474,10 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                       <AppiMascot mood={message.streaming ? (message.content ? "talk" : "think") : "talk"} animated={Boolean(message.streaming)} size="xs" />
                       <div className="stack gap-2" style={{ minWidth: 0 }}>
                         {message.streaming && <span className="sr-only">APPI sedang menjawab</span>}
-                        {message.streaming ? <AiStreamActivity label={streamStatus} steps={streamSteps} compact showSteps={false} /> : null}
+                        <AiThinking message={message} label={message.streaming ? streamStatus : ""} steps={message.streaming ? streamSteps : []} compact />
                         {message.content ? (
                           <div className={`aapm-ai-response msg-text msg-text-sm ${message.streaming ? "aapm-ai-response--streaming" : ""}`}>
-                            <AiMarkdown content={message.content} compact />
+                            <AiMarkdown content={message.content} compact streaming={message.streaming} />
                           </div>
                         ) : null}
                         {message.content && !message.streaming && !message.error ? (
@@ -629,6 +630,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
               input={promptDraft}
               setInput={setPromptDraft}
               onSubmit={() => submit()}
+              onStop={stopStreaming}
               isStreaming={isStreaming}
               disabled={isLoadingConversation}
               imageInputRef={imageInputRef}
