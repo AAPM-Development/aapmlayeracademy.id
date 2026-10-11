@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/design-system";
+import { Ic } from "@/design-system/canvas";
 import { usePwaInstall } from "@/lib/usePwaInstall";
 
 const DISMISS_KEY = "aapm-pwa-notice-until";
@@ -38,16 +38,17 @@ export default function PwaInstallNotice() {
   }
 
   return (
-    <aside className="aapm-pwa-notice" aria-label="Instal Academy">
-      <div>
-        <strong>Academy, langsung dari layar utama</strong>
-        <p>Pasang aplikasi web untuk membuka materi dan alat farm dengan lebih mudah.</p>
-        {instructions && <p role="status">Di iPhone atau iPad, buka Academy di Safari, ketuk Bagikan, lalu Tambahkan ke Layar Utama dan Tambah.</p>}
-        {error && <p role="status">{error}</p>}
+    <aside className="card row wrap gap-4 anim-rise" style={{ "--i": 7, padding: "14px 20px" }} aria-label="Instal Academy">
+      <span className="tile tile-round" data-hue="neutral"><Ic name="phone" /></span>
+      <div className="stack grow" style={{ minWidth: 240 }}>
+        <span className="t-heading t-heading-sm">Academy, langsung dari layar utama</span>
+        <span className="t-caption t-muted">Pasang aplikasi web untuk membuka materi dan alat farm lebih cepat.</span>
+        {instructions && <span className="t-caption" role="status">Di iPhone atau iPad, buka Academy di Safari, ketuk Bagikan, lalu Tambahkan ke Layar Utama dan Tambah.</span>}
+        {error && <span className="t-caption t-danger" role="status">{error}</span>}
       </div>
-      <div className="aapm-pwa-notice__actions">
-        <Button leadingIcon="download" onClick={handleInstall} disabled={busy}>{busy ? "Membuka…" : canInstall ? "Instal Academy" : "Cara memasang"}</Button>
-        <Button variant="ghost" onClick={postpone}>Nanti</Button>
+      <div className="row gap-2">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={postpone}>Nanti</button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={handleInstall} disabled={busy}><Ic name="download" />{busy ? "Membuka…" : canInstall ? "Instal Academy" : "Cara memasang"}</button>
       </div>
     </aside>
   );

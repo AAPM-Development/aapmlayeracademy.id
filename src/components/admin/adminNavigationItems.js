@@ -1,49 +1,61 @@
 export const adminNavigationGroups = [
   {
-    label: "Administrasi",
+    label: "",
+    items: [{ to: "/admin", label: "Ringkasan", ic: "home", icon: "dashboard", end: true }],
+  },
+  {
+    label: "Konten",
     items: [
-      { to: "/admin", label: "Ringkasan", icon: "dashboard", end: true },
-      { to: "/admin/courses", label: "Course", icon: "course" },
-      { to: "/admin/learners", label: "Peserta", icon: "graduation" },
-      { to: "/admin/certificates", label: "Sertifikat", icon: "certificate" },
-      { to: "/admin/users", label: "Pengguna", icon: "users" },
+      { to: "/admin/courses", label: "Course & kurikulum", ic: "box", icon: "course" },
+      { to: "/admin/curriculum/policies", label: "Kebijakan kurikulum", ic: "route", icon: "roadmap" },
+      { to: "/admin/curriculum/final-bank", label: "Bank ujian akhir", ic: "exam", icon: "quiz" },
     ],
   },
   {
-    label: "Ruang kerja",
+    label: "Peserta & akses",
     items: [
-      { to: "/admin/curriculum/policies", label: "Kebijakan kurikulum", icon: "roadmap" },
-      { to: "/admin/curriculum/final-bank", label: "Bank ujian akhir", icon: "quiz" },
-      { to: "/admin/ai-settings", label: "Pengaturan APPI", icon: "ai", accent: "ai" },
-      { to: "/admin/workspace-status", label: "Status ruang kerja", icon: "workspace" },
+      { to: "/admin/learners", label: "Peserta", ic: "grad", icon: "graduation" },
+      { to: "/admin/certificates", label: "Sertifikat", ic: "cert", icon: "certificate" },
+      { to: "/admin/users", label: "Pengguna", ic: "users", icon: "users" },
+    ],
+  },
+  {
+    label: "Sistem",
+    items: [
+      { to: "/admin/ai-settings", label: "Pengaturan APPI", ic: "sparkle", icon: "ai", accent: "ai" },
+      { to: "/admin/workspace-status", label: "Status ruang kerja", ic: "server", icon: "workspace" },
     ],
   },
 ];
 
-export const adminPrimaryNavigation = adminNavigationGroups[0].items;
-export const adminSecondaryNavigation = adminNavigationGroups[1].items;
+export const adminPrimaryNavigation = adminNavigationGroups[1].items;
+export const adminSecondaryNavigation = [
+  ...adminNavigationGroups[2].items,
+  ...adminNavigationGroups[3].items,
+];
 
 // The bottom bar shows the most used admin destinations under the same names
 // as the sidebar, so a phone user meets one vocabulary, not two. Four items
 // plus Menu keep every label whole on a 375px phone; the rest live in Menu.
-const bottomDestinations = ["/admin", "/admin/courses", "/admin/learners", "/admin/users"];
-export const adminBottomNavigation = adminPrimaryNavigation.filter((item) => bottomDestinations.includes(item.to));
+export const adminBottomNavigation = [
+  { to: "/admin", label: "Ringkasan", ic: "home", icon: "dashboard", end: true },
+  adminNavigationGroups[1].items[0],
+  adminNavigationGroups[2].items[0],
+  adminNavigationGroups[2].items[2],
+];
 
 export const adminPlannedCapabilities = [
   {
-    label: "Sertifikat",
-    detail: "Data sertifikat sudah dapat dibaca per learner; penerbitan global memerlukan endpoint baru.",
-    icon: "certificate",
-  },
-  {
     label: "Pustaka media",
-    detail: "Gambar dan presentasi PPTX dapat diunggah langsung dari editor modul; pustaka lintas-modul masih bertahap.",
+    status: "Sebagian",
+    detail: "Unggah dari editor modul sudah bisa; pustaka lintas modul masih bertahap.",
     icon: "media",
   },
   {
-    label: "Analitik",
-    detail: "Ringkasan live tersedia di Overview; laporan terjadwal belum memiliki API native.",
-    icon: "analytics",
+    label: "Laporan terjadwal",
+    status: "Belum tersedia",
+    detail: "Ringkasan langsung tersedia di Ringkasan; laporan terjadwal belum memiliki API native.",
+    icon: "calendar",
   },
 ];
 
@@ -52,7 +64,7 @@ export function getAdminNavigationMeta(pathname = "/admin") {
     const item = group.items.find((entry) => (entry.end ? pathname === entry.to : pathname.startsWith(entry.to)));
     if (item) return { ...item, group: group.label };
   }
-  return { label: "Ringkasan", icon: "dashboard", to: "/admin", group: "Administrasi" };
+  return { label: "Ringkasan", icon: "dashboard", to: "/admin", group: "Ringkasan" };
 }
 
 // Mirrors the admin routes in App.jsx; anything else is the in-shell 404.
@@ -73,16 +85,32 @@ function isKnownAdminPath(pathname) {
  * the page, then the record. Mirrors the academy topbar (group › page).
  */
 export function getAdminBreadcrumbs(pathname = "/admin") {
-  if (!isKnownAdminPath(pathname)) return [{ label: "Administrasi" }, { label: "Halaman tidak ditemukan" }];
-  const meta = getAdminNavigationMeta(pathname);
-  const isOverview = meta.to === "/admin";
-  const trail = [{ label: meta.group }, isOverview ? { label: meta.label } : { label: meta.label, to: meta.to }];
+  if (!isKnownAdminPath(pathname)) return [{ label: "Admin", to: "/admin" }, { label: "Halaman tidak ditemukan" }];
+  if (pathname === "/admin/courses") return [{ label: "Admin", to: "/admin" }, { label: "Konten" }, { label: "Course" }];
 
   const course = pathname.match(/^\/admin\/courses\/([^/]+)(?:\/modules\/([^/]+))?/);
   if (course) {
-    trail.push({ label: "Kurikulum", to: `/admin/courses/${course[1]}` });
+    const trail = [
+      { label: "Admin", to: "/admin" },
+      { label: "Course", to: "/admin/courses" },
+      { label: "Kurikulum", to: `/admin/courses/${course[1]}` },
+    ];
     if (course[2]) trail.push({ label: course[2] === "new" ? "Modul baru" : "Editor modul" });
+    return trail;
   }
-  if (/^\/admin\/learners\/[^/]+/.test(pathname)) trail.push({ label: "Detail peserta" });
+
+  if (/^\/admin\/learners\/[^/]+/.test(pathname)) {
+    return [
+      { label: "Admin", to: "/admin" },
+      { label: "Peserta", to: "/admin/learners" },
+      { label: "Detail peserta" },
+    ];
+  }
+
+  const meta = getAdminNavigationMeta(pathname);
+  const isOverview = meta.to === "/admin";
+  const trail = isOverview
+    ? [{ label: "Admin", to: "/admin" }, { label: meta.label }]
+    : [{ label: "Admin", to: "/admin" }, { label: meta.group }, { label: meta.label, to: meta.to }];
   return trail;
 }

@@ -42,7 +42,7 @@
   }
 
 .aapm-rich-editor__toolbar-button:hover:not(:disabled) {
-    background: hsl(var(--surface-subtle) / 0.92);
+    background: hsl(var(--tw-surface-subtle) / 0.92);
     color: hsl(var(--foreground));
   }
 
@@ -139,12 +139,12 @@
 .aapm-editorial-element-preview [data-editorial-element-preview-toggle] {
     min-height: 2rem;
     border-radius: 0 !important;
-    background: hsl(var(--surface-subtle) / 0.3) !important;
+    background: hsl(var(--tw-surface-subtle) / 0.3) !important;
     padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
   }
 
 .aapm-editorial-element-preview [data-editorial-element-preview-toggle]:hover {
-    background: hsl(var(--surface-subtle) / 0.58) !important;
+    background: hsl(var(--tw-surface-subtle) / 0.58) !important;
   }
 
 .aapm-editorial-element-preview__body {
@@ -275,7 +275,7 @@
     border-bottom: 1px solid hsl(var(--surface-border) / 0.36) !important;
     border-left: 0 !important;
     border-radius: 0 !important;
-    background: hsl(var(--surface-subtle) / 0.2) !important;
+    background: hsl(var(--tw-surface-subtle) / 0.2) !important;
     box-shadow: none;
     padding: var(--t7-ref-space-3, 0.75rem) 0 !important;
   }

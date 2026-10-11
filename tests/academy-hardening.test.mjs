@@ -113,8 +113,8 @@ test("editorial composer preserves one ordered flow of text and media blocks", (
   assert.deepEqual(editorialLearnerNavigationItems(legacy).map((item) => item.label), ["Pemeriksaan harian", "Target", "Kandang ayam", "Presentasi", "Panduan", "Video utama"]);
 });
 
-test("PPTX authoring and learner limits stay on the 50 MB contract", () => {
-  assert.equal(EDITORIAL_PRESENTATION_MAX_BYTES, 50 * 1024 * 1024);
+test("PPTX authoring and learner limits stay on the 100 MB contract", () => {
+  assert.equal(EDITORIAL_PRESENTATION_MAX_BYTES, 100 * 1024 * 1024);
   assert.equal(EDITORIAL_PRESENTATION_MAX_SLIDES, 50);
 });
 
@@ -457,10 +457,11 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(quiz, /className="aapm-visually-hidden" role="status"/);
   assert.match(quiz, /footerTone=\{isChecked/);
   // Enter never double-fires on a focused button or link.
-  assert.match(quiz, /target\?\.closest\("button, a"\) && !target\.closest\("\.aapm-choice"\)/);
+  assert.match(quiz, /target\?\.closest\("button, a"\) && !target\.closest\("\.choice"\)/);
   assert.match(assessment, /aria-keyshortcuts/);
-  // One h1 per result screen: the assessment bar holds it.
-  assert.match(assessment, /<h2 className="aapm-result__title">/);
+  // One h1 per result screen: the bar carries no heading, the result owns it.
+  assert.match(assessment, /<h1 className="t-display aapm-result__title"/);
+  assert.doesNotMatch(assessment.slice(assessment.indexOf("export function AssessmentBar"), assessment.indexOf("export function QuizQuestion")), /<h1/);
   // Path nodes are links with a full name; the current one is the step.
   assert.match(course, /aria-label=\{`Modul \$\{module\.moduleNumber\}: \$\{module\.title\}/);
   assert.match(course, /aria-current=\{state === "current" \? "step" : undefined\}/);
@@ -468,11 +469,12 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(celebrate, /prefers-reduced-motion: reduce/);
   assert.match(theme, /aapm-theme-switching/);
   assert.match(styles, /\.aapm-theme-switching \*/);
-  // The learning track sits on the page grid: a level band over a rail of
-  // modules that fills behind finished ones; card height follows the modules.
-  assert.match(styles, /\.aapm-track__unit \{[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) minmax\(9rem, 13rem\)/);
-  assert.match(styles, /\.aapm-track__item\[data-state="completed"\] \+ \.aapm-track__item::before \{ background: var\(--aapm-semantic-primary\); \}/);
-  assert.match(styles, /--aapm-primitive-motion-ease-spring/);
+  // The learning path is the canvas egg path: a level banner over zig-zag
+  // eggs, finished eggs filled with the primary colour, spring motion.
+  assert.match(styles, /\.unit-banner \{/);
+  assert.match(styles, /\.path-step \{[^}]*translateX\(calc\(var\(--x, 0\) \* 1px\)\)/);
+  assert.match(styles, /\.egg\.is-done \{ background: var\(--primary\);/);
+  assert.match(styles, /--ease-spring: cubic-bezier/);
 });
 
 test("scrollable lesson reserves its footer for quiz or module navigation", () => {
@@ -482,12 +484,12 @@ test("scrollable lesson reserves its footer for quiz or module navigation", () =
 
   assert.doesNotMatch(lesson, /const primaryAction = sectionNavigation\.next/);
   assert.doesNotMatch(lesson, /ModuleFlow|sectionSheet|sectionNavigation|Bagian sebelumnya/);
-  const footer = lesson.slice(lesson.indexOf("footer={("), lesson.indexOf('<div className="aapm-lesson-layout">'));
+  const footer = lesson.slice(lesson.indexOf("footer={("), lesson.indexOf('<div className="lesson-stage">'));
   assert.doesNotMatch(footer, /markComplete|jumpToSection/);
   assert.match(footer, /flow\.completed \|\| flow\.hasQuiz/);
-  assert.match(lesson, /label="Keluar ke jalur belajar" variant="danger" icon="close"/);
+  assert.match(lesson, /aria-label="Keluar ke jalur belajar" onClick=\{\(\) => navigate\("\/modules"\)\}/);
   assert.match(lesson, /flow\.activeAttempt \? "Lanjutkan kuis"/);
-  assert.match(lesson, /Link to=\{`\/modules\/\$\{next\.moduleNumber\}`\}/);
+  assert.match(lesson, /to=\{`\/modules\/\$\{next\.moduleNumber\}`\}/);
   assert.match(quiz, /outlineLabel="Navigasi soal"/);
   assert.match(shell, /aria-label=\{outlineLabel\}/);
 });
@@ -655,7 +657,7 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   // Learner dashboard and shells use the AAPM design-system patterns.
   assert.match(dashboard, /aapm-hero/);
   assert.match(dashboard, /aapm-progress-tile/);
-  assert.match(shell, /aapm-bottom-nav/);
+  assert.match(shell, /<nav className="m-nav"/);
   assert.match(shell, /function NavigationSheet/);
   assert.match(shell, /export const FocusShell/);
   assert.match(styles, /\.aapm-bottom-nav__item\[aria-current="page"\]/);
@@ -667,8 +669,9 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.match(styles, /\.aapm-ai-card--interactive:hover[\s\S]*box-shadow: none/);
   assert.match(moduleEditor, /aapm-editor-point-row grid/);
   assert.match(moduleEditor, /aapm-editor-point-action/);
-  assert.match(lessonWorkspace, /aapm-lesson-insight-item grid/);
-  assert.match(lessonWorkspace, /aapm-lesson-insight-index/);
+  // Insights are the canvas numbered list; the CSS draws the index badges.
+  assert.match(lessonWorkspace, /<ol className="numlist"/);
+  assert.match(styles, /\.numlist > li::before/);
   assert.match(richEditor, /aapm-rich-editor__toolbar-group/);
   assert.match(richEditor, /label="Format karakter"/);
   assert.match(richEditor, /name="editorLink"/);

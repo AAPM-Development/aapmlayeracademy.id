@@ -296,7 +296,7 @@ test("timestamps normalize missing metadata, and phone video viewport respects Y
     return found;
   };
   assert.equal(declarations(".aapm-video-player__viewport--youtube")["min-height"], "200px");
-  assert.equal(declarations(".aapm-video-player__controls .aapm-button")["min-height"], "44px");
-  assert.equal(declarations(".aapm-video-player__controls .aapm-button")["min-width"], "44px");
+  assert.equal(declarations(".aapm-video-player__controls .btn")["min-height"], "44px");
+  assert.equal(declarations(".aapm-video-player__controls .btn")["min-width"], "44px");
   assert.equal(declarations('.aapm-video-player input[type="range"]')["min-height"], "44px");
 });

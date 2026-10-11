@@ -1,5 +1,5 @@
 import React from "react";
-import AapmIcon from "@/components/icons/AapmIcon";
+import { Ic } from "@/design-system/canvas";
 import { curriculumPrimaryAction } from "@/lib/curriculumEditorState";
 import {
   Button,
@@ -9,7 +9,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Kbd,
 } from "@/components/primitives";
 
 export function AddElementMenu({ groups = [], onAddElement }) {
@@ -17,10 +16,10 @@ export function AddElementMenu({ groups = [], onAddElement }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" size="sm" variant="soft" data-editor-add-menu aria-label="Tambah blok materi">
-          <AapmIcon name="plus" />
+        <Button type="button" size="sm" variant="secondary" data-editor-add-menu aria-label="Tambah blok materi">
+          <Ic name="plus" />
           <span>Tambah blok</span>
-          <AapmIcon name="chevronDown" />
+          <Ic name="chev-down" size="sm" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
@@ -110,10 +109,11 @@ export default function EditorActionBar({
     saved: savedAt ? `Tersimpan ${savedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : "Tersimpan",
   }[status];
 
+  const chip = { saving: "chip-ai", error: "chip-danger", dirty: "chip-warning", saved: "chip-success" }[status];
+
   return (
     <div ref={barRef} className="aapm-editor-actionbar" data-editor-actionbar>
-      <span className="aapm-editor-save-status" data-status={status} role="status" aria-live="polite">
-        <span className="aapm-chip__dot" aria-hidden="true" />
+      <span className={`chip chip-dot ${chip} aapm-editor-save-status`} data-status={status} role="status" aria-live="polite">
         <span className="aapm-editor-save-status__label">{label}</span>
         {status === "error" ? <span className="aapm-editor-save-status__detail">{saveError}</span> : null}
       </span>
@@ -122,13 +122,13 @@ export default function EditorActionBar({
       ) : null}
       <div className="aapm-editor-actionbar__actions">
         {/* Drawer triggers: Susun below 1200px; Blok and Modul below 640px, where the inspector is a sheet. */}
-        <Button type="button" size="sm" variant="ghost" data-drawer="outline" onClick={onOpenOutline}><AapmIcon name="lesson" />Susun</Button>
-        <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("block")}><AapmIcon name="widget" />Blok</Button>
-        <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("module")}><AapmIcon name="settings" />Modul</Button>
+        <Button type="button" size="sm" variant="ghost" data-drawer="outline" onClick={onOpenOutline}><Ic name="list" />Susun</Button>
+        <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("block")}><Ic name="layers" />Blok</Button>
+        <Button type="button" size="sm" variant="ghost" data-drawer="inspector" onClick={() => onOpenInspector("module")}><Ic name="sliders" />Modul</Button>
         <AddElementMenu groups={elementGroups} onAddElement={onAddElement} />
-        <Button type="button" size="sm" variant={primaryAction === "save" ? "primary" : "secondary"} data-editor-save loading={isSaving} disabled={disabled} onClick={onSave} title="Simpan draf (Ctrl/⌘ S)">
-          {!isSaving ? <AapmIcon name="check" /> : null}Simpan draf
-          <Kbd className="aapm-editor-kbd">⌘S</Kbd>
+        <span className="row gap-1-5 t-caption t-muted hide-sm aapm-editor-kbd-hint"><span className="kbd">Ctrl S</span>simpan cepat</span>
+        <Button type="button" variant={primaryAction === "save" ? "primary" : "secondary"} data-editor-save loading={isSaving} disabled={disabled} onClick={onSave} title="Simpan draf (Ctrl/⌘ S)">
+          Simpan draf
         </Button>
       </div>
     </div>

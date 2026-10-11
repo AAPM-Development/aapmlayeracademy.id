@@ -26,6 +26,9 @@
 @import "./styles/features/farm-tools.css";
 @import "./styles/features/certificate.css";
 @import "./styles/features/sweep.css";
+/* Redesign v2: the canvas stylesheet (1:1) and its app adaptations. */
+@import "./design-system/styles/academy.css";
+@import "./design-system/styles/academy-app.css";
 
 @tailwind base;
 @tailwind components;

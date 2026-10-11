@@ -167,32 +167,15 @@ export default function AiQuickActions({
   if (!content) return null;
   const actions = getAiQuickActions({ content, pathname });
 
+  const hues = ["blue", "green", "teal"];
   return (
-    <div
-      className={`mt-3 min-w-0 max-w-full ${compact ? "text-[11px]" : "text-[11px]"}`}
-      aria-label="Saran lanjutan APPI"
-    >
-      <div className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <AapmIcon
-          name="solar:stars-minimalistic-bold-duotone"
-          className="h-3 w-3 text-brand-orange"
-        />
-        Lanjutkan
-      </div>
-      <div className="flex min-w-0 max-w-full flex-wrap gap-1.5">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            type="button"
-            onClick={() => onSelect(action.prompt)}
-            className="aapm-ai-quick-action-chip group inline-flex min-h-10 min-w-0 max-w-full items-center gap-1.5 px-2.5 py-2 text-left sm:min-h-8 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange disabled:pointer-events-none disabled:opacity-50"
-            disabled={disabled}
-          >
-            <AapmIcon
-              name={action.icon}
-              className="h-3.5 w-3.5 shrink-0 text-brand-orange transition-transform group-hover:-translate-y-0.5"
-            />
-            <span className="truncate">{action.label}</span>
+    <div className={`stack gap-2 ai-suggest${compact ? " ai-suggest-compact" : ""}`} aria-label="Saran lanjutan APPI">
+      <span className="t-overline t-muted">Lanjutkan</span>
+      <div className="row wrap gap-2">
+        {actions.map((action, index) => (
+          <button key={action.label} type="button" className="suggest aapm-ai-quick-action-chip" onClick={() => onSelect(action.prompt)} disabled={disabled}>
+            <span className="tile tile-round" data-hue={hues[index % hues.length]}><AapmIcon name={action.icon} /></span>
+            <span className="t-clamp-1">{action.label}</span>
           </button>
         ))}
       </div>

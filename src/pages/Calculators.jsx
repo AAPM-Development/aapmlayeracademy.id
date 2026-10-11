@@ -1,56 +1,65 @@
-import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
-import React, { useEffect, useRef, useState } from "react";
-import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge, Button, IconTile, Input, PageHeader } from "@/design-system";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Page } from "@/design-system/patterns/AppShell";
+import { Ic } from "@/design-system/canvas";
 import AppiMascot from "@/components/appi/AppiMascot";
 import CountUp from "@/components/motion/CountUp";
 import { askAppi } from "@/lib/askAppi";
+import { useFarmData, useModules } from "@/lib/useCourseData";
+import { getLevelForModule, sortModules } from "@/lib/academyData";
+import { formatNumber, sortByWeek, toNumber } from "@/lib/kpiReading";
+import { cn } from "@/lib/utils";
 
 const rupiah = (value) => `Rp ${Math.round(value).toLocaleString("id-ID")}`;
+const decimal = (value) => String(value).replace(".", ",");
 
 // Readings use the same general references across tools: "good" (green),
-// "watch" (amber) and "act" (rose). They are starting points for a walk
-// through the house, never a replacement for the strain standard.
+// "watch" (amber, "Wajar") and "act" (rose). Each zone carries an icon, a
+// name and its range so the verdict never depends on colour alone. They are
+// starting points for a walk through the house, never the strain standard.
 const TONE = {
-  good: { hue: "green", icon: "check", mood: "happy" },
-  watch: { hue: "amber", icon: "warning", mood: "think" },
-  act: { hue: "rose", icon: "warning", mood: "concerned" },
-  info: { hue: "blue", icon: "insight", mood: "talk" },
+  good: { hue: "green", ic: "check-circle", mood: "happy", verdict: "verdict-good", text: "t-success" },
+  watch: { hue: "amber", ic: "eye", mood: "think", verdict: "verdict-watch", text: "t-warning" },
+  act: { hue: "rose", ic: "alert", mood: "concerned", verdict: "verdict-act", text: "t-danger" },
+  info: { hue: "blue", ic: "info", mood: "talk", verdict: "verdict-info", text: "t-ink" },
 };
 
 /**
  * Each tool declares its inputs and a `compute` that returns null until the
  * required numbers are usable. `scale` places the result on a reference bar
  * whose zones also give the verdict; tools without a scale give an `info`
- * reading.
+ * reading. `module` finds the matching lesson; `kpi` the Farm KPI reading.
  */
 const tools = [
   {
     id: "fcr",
     name: "FCR",
     title: "Feed Conversion Ratio (FCR)",
-    icon: "equalRatio",
+    ic: "chart",
     hue: "green",
     description: "Efisiensi pakan terhadap egg mass.",
-    formula: "FCR = Total pakan (kg) ÷ Egg mass (kg)\nEgg mass = Jumlah telur × Berat telur (g) ÷ 1000",
+    lead: "Berapa kg pakan yang dibutuhkan untuk menghasilkan 1 kg telur. Makin rendah, makin efisien.",
+    formula: ["FCR = Total pakan (kg) ÷ Egg mass (kg)", "Egg mass = Jumlah telur × Berat telur (g) ÷ 1000"],
     fields: [
-      { key: "feed", label: "Total konsumsi pakan", unit: "kg", example: 120 },
+      { key: "feed", label: "Total konsumsi pakan", unit: "kg", example: 120, hint: "Untuk periode yang sama dengan jumlah telur." },
       { key: "eggs", label: "Jumlah telur", unit: "butir", example: 850 },
-      { key: "eggWeight", label: "Berat rata-rata telur", unit: "gram", example: 60 },
+      { key: "eggWeight", label: "Berat rata-rata telur", unit: "gram", example: 60, hint: "Timbang sampel 30 butir" },
     ],
     compute: ({ feed, eggs, eggWeight }) => {
       const eggMass = (eggs * eggWeight) / 1000;
       if (!(feed > 0 && eggMass > 0)) return null;
-      return { value: feed / eggMass, details: [["Egg mass", `${eggMass.toFixed(1)} kg`]] };
+      return { value: feed / eggMass, details: [["Egg mass", `${formatNumber(eggMass, 1)} kg`]], short: `egg mass ${formatNumber(eggMass, 1)} kg` };
     },
-    format: (value) => value.toFixed(2),
+    format: (value) => formatNumber(value, 2),
+    unitLong: "kg pakan per kg telur",
+    module: /FCR|Egg Mass|Benchmark/i,
+    kpi: { field: "fcr", label: "FCR", digits: 2 },
     scale: {
       min: 1.6,
       max: 3.2,
       zones: [
         { upTo: 2.2, tone: "good", label: "Sangat baik", note: "Pakan terkonversi efisien menjadi telur." },
-        { upTo: 2.6, tone: "watch", label: "Baik", note: "Masih wajar; pantau pakan tercecer dan berat telur." },
+        { upTo: 2.6, tone: "watch", label: "Wajar", note: "Masih wajar; pantau pakan tercecer dan berat telur." },
         { upTo: Infinity, tone: "act", label: "Evaluasi", note: "Cek pakan tercecer, kualitas ransum, dan produksi." },
       ],
     },
@@ -59,23 +68,27 @@ const tools = [
     id: "eggmass",
     name: "Egg Mass",
     title: "Egg Mass per Ekor per Hari",
-    icon: "egg",
+    ic: "egg",
     hue: "orange",
     description: "Output telur per ekor per hari.",
-    formula: "Egg mass = HDP (%) × Berat telur (g) ÷ 100",
+    lead: "Gabungan produksi dan berat telur dalam gram per ekor per hari.",
+    formula: ["Egg mass = HDP (%) × Berat telur (g) ÷ 100"],
     fields: [
       { key: "hdp", label: "Hen Day Production", unit: "%", example: 90 },
       { key: "eggWeight", label: "Berat telur", unit: "gram", example: 60 },
     ],
     compute: ({ hdp, eggWeight }) => (hdp > 0 && eggWeight > 0 ? { value: (hdp * eggWeight) / 100 } : null),
-    format: (value) => value.toFixed(1),
+    format: (value) => formatNumber(value, 1),
     unit: "g/ekor/hari",
+    unitLong: "gram per ekor per hari",
+    module: /Egg Mass|FCR|Produksi/i,
+    kpi: { field: "henDayProduction", label: "HDP", digits: 1, suffix: "%" },
     scale: {
       min: 40,
       max: 66,
       zones: [
         { upTo: 50, tone: "act", label: "Di bawah target", note: "Evaluasi produksi dan berat telur bersama." },
-        { upTo: 57, tone: "watch", label: "Baik", note: "Mendekati standar layer komersial." },
+        { upTo: 57, tone: "watch", label: "Wajar", note: "Mendekati standar layer komersial." },
         { upTo: Infinity, tone: "good", label: "Excellent", note: "Di atas standar layer komersial." },
       ],
     },
@@ -84,24 +97,27 @@ const tools = [
     id: "uniformity",
     name: "Uniformity",
     title: "Uniformity (%)",
-    icon: "weight",
+    ic: "scale",
     hue: "blue",
     description: "Konsistensi bobot flock.",
-    formula: "Uniformity = Ayam dalam ±10% berat rata-rata ÷ Total ditimbang × 100",
+    lead: "Persentase ayam yang bobotnya dalam ±10% dari rata-rata flock.",
+    formula: ["Uniformity = Ayam dalam ±10% berat rata-rata ÷ Total ditimbang × 100"],
     fields: [
       { key: "average", label: "Berat rata-rata", unit: "gram", example: 1500, optional: true },
       { key: "within", label: "Ayam dalam ±10%", unit: "ekor", example: 82 },
-      { key: "total", label: "Total ayam ditimbang", unit: "ekor", example: 100 },
+      { key: "total", label: "Total ayam ditimbang", unit: "ekor", example: 100, hint: "Timbang acak minimal 100 ekor" },
     ],
     compute: ({ within, total }) => (total > 0 && within > 0 ? { value: Math.min(100, (within / total) * 100) } : null),
     format: (value) => `${Math.round(value)}`,
     unit: "%",
+    unitLong: "persen flock seragam",
+    module: /Uniform|Growing|Pre-Lay/i,
     scale: {
       min: 50,
       max: 100,
       zones: [
         { upTo: 75, tone: "act", label: "Rendah", note: "Pertimbangkan grading, seleksi, atau culling." },
-        { upTo: 85, tone: "watch", label: "Baik", note: "Jaga akses pakan dan kepadatan merata." },
+        { upTo: 85, tone: "watch", label: "Wajar", note: "Jaga akses pakan dan kepadatan merata." },
         { upTo: Infinity, tone: "good", label: "Excellent", note: "Bobot flock seragam." },
       ],
     },
@@ -110,10 +126,11 @@ const tools = [
     id: "mortality",
     name: "Mortality",
     title: "Mortality & Livability",
-    icon: "mortality",
+    ic: "heart",
     hue: "rose",
     description: "Kehilangan dan livability.",
-    formula: "Mortality = Jumlah mati ÷ Populasi awal × 100\nLivability = 100 − Mortality",
+    lead: "Persentase ayam yang mati dari populasi awal, dan sisanya yang bertahan.",
+    formula: ["Mortality = Jumlah mati ÷ Populasi awal × 100", "Livability = 100 − Mortality"],
     fields: [
       // Zero deaths is a real answer, so this field may be 0.
       { key: "dead", label: "Jumlah ayam mati", unit: "ekor", example: 15, allowZero: true },
@@ -122,10 +139,13 @@ const tools = [
     compute: ({ dead, start }) => {
       if (!(start > 0) || !(dead >= 0)) return null;
       const mortality = (dead / start) * 100;
-      return { value: mortality, details: [["Livability", `${(100 - mortality).toFixed(1)}%`]] };
+      return { value: mortality, details: [["Livability", `${formatNumber(100 - mortality, 1)}%`]], short: `livability ${formatNumber(100 - mortality, 1)}%` };
     },
-    format: (value) => value.toFixed(2),
+    format: (value) => formatNumber(value, 2),
     unit: "%",
+    unitLong: "persen dari populasi awal",
+    module: /Kesehatan|Health|Biosecurity|Mortal/i,
+    kpi: { field: "mortality", label: "Mortalitas", digits: 2, suffix: "%" },
     scale: {
       min: 0,
       max: 8,
@@ -140,16 +160,19 @@ const tools = [
     id: "waterfeed",
     name: "Water/Feed",
     title: "Water/Feed Ratio",
-    icon: "waterRate",
+    ic: "drop",
     hue: "teal",
     description: "Perubahan konsumsi air dan pakan.",
-    formula: "Rasio = Konsumsi air (ml) ÷ Konsumsi pakan (g) — normal 1,8–2,2",
+    lead: "Perbandingan air minum dan pakan per ekor; normal 1,8–2,2.",
+    formula: ["Rasio = Konsumsi air (ml) ÷ Konsumsi pakan (g)"],
     fields: [
       { key: "water", label: "Konsumsi air", unit: "ml/ekor", example: 220 },
       { key: "feed", label: "Konsumsi pakan", unit: "g/ekor", example: 115 },
     ],
     compute: ({ water, feed }) => (water > 0 && feed > 0 ? { value: water / feed } : null),
-    format: (value) => value.toFixed(2),
+    format: (value) => formatNumber(value, 2),
+    unitLong: "ml air per g pakan",
+    module: /Air Minum|Water/i,
     scale: {
       min: 1.2,
       max: 3,
@@ -164,10 +187,11 @@ const tools = [
     id: "ventilation",
     name: "Ventilasi",
     title: "Kebutuhan Ventilasi & Jumlah Fan",
-    icon: "hvac",
+    ic: "wind",
     hue: "violet",
     description: "Volume kandang menjadi airflow.",
-    formula: "Ventilasi minimum (m³/menit) = Berat total (kg) × 0,014\nTunnel = Berat total × 0,07 · Fan 36″ ≈ 340 m³/menit",
+    lead: "Perkiraan airflow minimum dan tunnel dari berat hidup flock.",
+    formula: ["Ventilasi minimum (m³/menit) = Berat total (kg) × 0,014", "Tunnel = Berat total × 0,07 · Fan 36″ ≈ 340 m³/menit"],
     fields: [
       { key: "birds", label: "Jumlah ayam", unit: "ekor", example: 5000 },
       { key: "weight", label: "Berat rata-rata", unit: "gram", example: 1800 },
@@ -182,23 +206,27 @@ const tools = [
         value: Math.ceil(tunnel / 340),
         note: "Perkiraan; sesuaikan dengan static pressure dan desain kandang.",
         details: [
-          ["Berat total", `${kg.toFixed(0)} kg`],
-          ["Ventilasi minimum", `${(kg * 0.014).toFixed(1)} m³/menit`],
-          [temp > 0 ? `Tunnel (${temp}°C)` : "Tunnel", `${tunnel.toFixed(1)} m³/menit`],
+          ["Berat total", `${formatNumber(kg, 0)} kg`],
+          ["Ventilasi minimum", `${formatNumber(kg * 0.014, 1)} m³/menit`],
+          [temp > 0 ? `Tunnel (${temp}°C)` : "Tunnel", `${formatNumber(tunnel, 1)} m³/menit`],
         ],
+        short: `tunnel ${formatNumber(tunnel, 0)} m³/menit`,
       };
     },
     format: (value) => `${Math.round(value)}`,
     unit: "fan 36″",
+    unitLong: "fan 36″ untuk mode tunnel",
+    module: /Ventilasi|Suhu|Closed House/i,
   },
   {
     id: "roi",
     name: "ROI & BEP",
     title: "ROI & Break Even Point",
-    icon: "marginalRoi",
+    ic: "wallet",
     hue: "amber",
     description: "Kelayakan keputusan investasi.",
-    formula: "Gross margin = Revenue − OPEX · BEP = CAPEX ÷ Margin · ROI = Margin ÷ CAPEX × 100",
+    lead: "Seberapa cepat investasi kembali dari margin kotor tahunan.",
+    formula: ["Gross margin = Revenue − OPEX", "BEP = CAPEX ÷ Margin · ROI = Margin ÷ CAPEX × 100"],
     fields: [
       { key: "capex", label: "CAPEX", unit: "Rp", example: 500000000 },
       { key: "opex", label: "OPEX per tahun", unit: "Rp", example: 800000000 },
@@ -207,16 +235,17 @@ const tools = [
     compute: ({ capex, opex, revenue }) => {
       if (!(capex > 0 && opex > 0 && revenue > 0)) return null;
       const margin = revenue - opex;
+      const breakEven = margin > 0 ? `${formatNumber(capex / margin, 1)} tahun` : "Tidak tercapai";
       return {
         value: (margin / capex) * 100,
-        details: [
-          ["Break even", margin > 0 ? `${(capex / margin).toFixed(1)} tahun` : "Tidak tercapai"],
-          ["Gross margin", rupiah(margin)],
-        ],
+        details: [["Break even", breakEven], ["Gross margin", rupiah(margin)]],
+        short: `BEP ${breakEven}`,
       };
     },
-    format: (value) => value.toFixed(0),
+    format: (value) => formatNumber(value, 0),
     unit: "% ROI",
+    unitLong: "ROI per tahun",
+    module: /Ekonomi|Economics|Biaya|Keuangan/i,
     scale: {
       min: -20,
       max: 60,
@@ -231,7 +260,7 @@ const tools = [
 
 function parse(value) {
   if (value === "" || value === null || value === undefined) return NaN;
-  const number = Number.parseFloat(String(value).replace(",", "."));
+  const number = Number.parseFloat(String(value).replace(/\s/g, "").replace(",", "."));
   return Number.isFinite(number) ? number : NaN;
 }
 
@@ -255,6 +284,7 @@ function evaluate(tool, values) {
     verdict: zone?.label || "Perkiraan",
     note: zone?.note || outcome.note,
     details: outcome.details || [],
+    short: outcome.short || "",
     tone,
   };
 }
@@ -267,202 +297,282 @@ function appiPrompt(tool, values, reading) {
   return `Saya menghitung ${tool.title} di kalkulator Academy. Input: ${inputs}. Hasil: ${reading.text}${tool.unit ? ` ${tool.unit}` : ""} (${reading.verdict}). Apa artinya untuk flock saya dan apa yang perlu saya cek lebih dulu di kandang?`;
 }
 
-/**
- * Calculator workspace: pick a tool, enter actual numbers, and read the result
- * on a reference bar while APPI explains it. Values stay per tool while the
- * learner switches between tools.
- */
-export default function Calculators() {
-  const [active, setActive] = useState("fcr");
-  const [values, setValues] = useState({});
-  const railRef = useScrollEdgeFade();
-  const tool = tools.find((item) => item.id === active) || tools[0];
-  const toolValues = values[tool.id] || {};
-  const reading = evaluate(tool, toolValues);
+/** Zones of a reference scale with their ranges ("< 2,2", "2,2–2,6", "≥ 2,6"). */
+function scaleZones(scale) {
+  const span = scale.max - scale.min;
+  let from = scale.min;
+  return scale.zones.map((zone, index) => {
+    const to = Math.min(zone.upTo, scale.max);
+    const flex = Math.max(1, Math.round(((to - from) / span) * 16));
+    const range = index === 0 ? `< ${decimal(zone.upTo)}` : zone.upTo === Infinity ? `≥ ${decimal(from)}` : `${decimal(from)}–${decimal(zone.upTo)}`;
+    from = to;
+    return { ...zone, flex, range };
+  });
+}
 
-  const setField = (key, value) => setValues((current) => ({ ...current, [tool.id]: { ...(current[tool.id] || {}), [key]: value } }));
-  const fillExample = () => setValues((current) => ({ ...current, [tool.id]: Object.fromEntries(tool.fields.map((field) => [field.key, String(field.example)])) }));
-  const reset = () => setValues((current) => ({ ...current, [tool.id]: {} }));
-  const hasInput = Object.values(toolValues).some((value) => value !== "");
-
+/** Where the result sits on the general reference (`.scale`), with icon, name and range per zone. */
+function ReferenceScale({ scale, value, text, verdict, activeTone }) {
+  const zones = scaleZones(scale);
+  const position = Math.max(0, Math.min(100, ((value - scale.min) / (scale.max - scale.min)) * 100));
+  const active = zones.find((zone) => zone.label === verdict);
   return (
-    <Page>
-      <PageHeader
-        title="Kalkulator farm"
-        description="Ubah catatan harian menjadi sinyal keputusan. Hasil adalah titik awal untuk observasi kandang, bukan penggantinya."
-        actions={<Badge size="lg" icon="calculator">{tools.length} kalkulator</Badge>}
-      />
-      <section className="aapm-calc-layout">
-        <nav ref={railRef} className="aapm-calc-tools aapm-scroll-fade aapm-scroll-fade--x" aria-label="Pilih kalkulator">
-          {tools.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="aapm-calc-tool"
-              data-hue={item.hue}
-              aria-pressed={active === item.id}
-              onClick={() => setActive(item.id)}
-            >
-              <IconTile icon={item.icon} hue={item.hue} size="sm" shape="circle" variant={active === item.id ? "badge" : undefined} />
-              <span className="min-w-0">
-                <span className="aapm-calc-tool__name">{item.name}</span>
-                <span className="aapm-calc-tool__description">{item.description}</span>
-              </span>
-            </button>
-          ))}
-        </nav>
-        <article className="aapm-card aapm-calc" key={tool.id}>
-          <header className="aapm-calc__header">
-            <IconTile icon={tool.icon} hue={tool.hue} size="lg" shape="circle" />
-            <div className="min-w-0 flex-1">
-              <h2 className="aapm-text-section m-0">{tool.title}</h2>
-              <p className="aapm-text-support m-0">{tool.description}</p>
-            </div>
-            <div className="aapm-calc__tools">
-              <Button variant="ghost" size="sm" leadingIcon="star" onClick={fillExample}>Isi contoh</Button>
-              {hasInput ? <Button variant="ghost" size="sm" leadingIcon="refresh" onClick={reset}>Reset</Button> : null}
-            </div>
-          </header>
-          <details className="aapm-calc__formula">
-            <summary><AapmIcon name="insight" />Lihat rumus</summary>
-            <code>{tool.formula}</code>
-          </details>
-          <div className="aapm-calc__body">
-            <div className="aapm-calc__inputs">
-              {tool.fields.map((field) => (
-                <CalcField
-                  key={field.key}
-                  field={field}
-                  value={toolValues[field.key] ?? ""}
-                  onChange={(value) => setField(field.key, value)}
-                  flagged={!reading.ready && hasInput && reading.missing.includes(field.label) && toolValues[field.key] !== undefined && toolValues[field.key] !== ""}
-                />
-              ))}
-            </div>
-            <CalcResult tool={tool} values={toolValues} reading={reading} />
-          </div>
-        </article>
-      </section>
-    </Page>
+    <div className="scale" role="img" aria-label={`Skala ${decimal(scale.min)} sampai ${decimal(scale.max)}. Nilai ${text} berada di zona ${verdict}${active ? `, ${active.range}` : ""}.`}>
+      <div className="scale-track">
+        {zones.map((zone) => <i key={zone.label} className={`zone-${zone.tone}`} style={{ flex: zone.flex }} />)}
+        <span className="scale-marker" style={{ "--x": position.toFixed(1) }} />
+      </div>
+      <div className="row-start gap-0-5 t-caption t-muted" aria-hidden="true">
+        {zones.map((zone) => {
+          const on = zone.tone === activeTone && zone.label === verdict;
+          return (
+            <span key={zone.label} className={cn("stack items-center", on && "t-strong")} style={{ flex: zone.flex, minWidth: 0 }}>
+              <span className={cn("row gap-1", on && TONE[zone.tone].text)}><Ic name={TONE[zone.tone].ic} size="xs" />{zone.label}</span>
+              <span className="t-num">{zone.range}</span>
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 function CalcField({ field, value, onChange, flagged }) {
   const id = React.useId();
   const hintId = `${id}-hint`;
+  const describedBy = flagged || field.hint ? hintId : undefined;
   return (
-    <div className="aapm-field">
-      <label className="aapm-label" htmlFor={id}>
-        {field.label}
-        {field.optional ? <span className="aapm-calc__optional">opsional</span> : null}
+    <div className="field">
+      <label className="label" htmlFor={id}>
+        <span>{field.label}</span>
+        {field.optional ? <span className="opt">opsional</span> : null}
       </label>
-      <div className="aapm-input-group">
-        <Input
+      <div className="input input-lg-sm" data-invalid={flagged ? "true" : undefined}>
+        <input
           id={id}
-          type="number"
+          type="text"
           inputMode="decimal"
-          min={0}
-          step="any"
+          autoComplete="off"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={`contoh ${field.example.toLocaleString("id-ID")}`}
-          className="pe-20"
           aria-invalid={flagged || undefined}
-          aria-describedby={flagged ? hintId : undefined}
+          aria-describedby={describedBy}
         />
-        <span className="aapm-input-group__suffix aapm-calc__unit">{field.unit}</span>
+        <span className="unit calc-unit">{field.unit}</span>
       </div>
-      {flagged ? <p id={hintId} className="aapm-calc__hint">{field.allowZero ? "Isi 0 atau lebih." : "Isi angka di atas 0."}</p> : null}
+      {flagged ? (
+        <span id={hintId} className="hint hint-error"><Ic name="alert" size="xs" />{field.allowZero ? "Isi 0 atau lebih." : "Isi angka di atas 0."}</span>
+      ) : field.hint ? (
+        <span id={hintId} className="hint">{field.hint}</span>
+      ) : null}
     </div>
   );
 }
 
-/** Where the result sits on the general reference, with the zone labels. */
-function ReferenceBar({ scale, value, text, verdict }) {
-  const span = scale.max - scale.min;
-  const position = Math.max(0, Math.min(100, ((value - scale.min) / span) * 100));
-  let from = scale.min;
-  const zones = scale.zones.map((zone) => {
-    const to = Math.min(zone.upTo, scale.max);
-    const width = ((to - from) / span) * 100;
-    from = to;
-    return { ...zone, width };
-  });
-  return (
-    <div className="aapm-calc-scale" role="img" aria-label={`Posisi ${text} pada acuan umum: ${verdict}`}>
-      <div className="aapm-calc-scale__track">
-        {zones.map((zone) => <span key={zone.label} className="aapm-calc-scale__zone" data-tone={zone.tone} style={{ width: `${zone.width}%` }} />)}
-        <span className="aapm-calc-scale__marker" style={/** @type {React.CSSProperties} */ ({ "--position": position })}><i /></span>
-      </div>
-      <div className="aapm-calc-scale__labels" aria-hidden="true">
-        {zones.map((zone) => <span key={zone.label} style={{ width: `${zone.width}%` }}>{zone.label}</span>)}
-      </div>
-    </div>
-  );
-}
-
-function CalcResult({ tool, values, reading }) {
-  const panelRef = useRef(null);
-  const [panelVisible, setPanelVisible] = useState(true);
+function CalcResult({ tool, values, reading, panelRef }) {
   const tone = TONE[reading.ready ? reading.tone : "info"];
   const hue = reading.ready ? tone.hue : tool.hue;
+  const missingText = reading.missing?.length
+    ? `Isi ${reading.missing.slice(0, -1).join(", ")}${reading.missing.length > 1 ? " dan " : ""}${reading.missing[reading.missing.length - 1]} untuk melihat hasil.`
+    : "";
+  return (
+    <section ref={panelRef} className="card card-tint card-pad stack gap-4" data-hue={hue} aria-labelledby="res-title">
+      <div className="stack gap-1">
+        <h3 className="t-overline t-ink" id="res-title">Hasil</h3>
+        <div className="row-end wrap gap-2">
+          <span className="t-metric-lg">{reading.ready ? <CountUp key={tool.id} value={reading.value} format={tool.format} duration={500} /> : "—"}</span>
+          {reading.ready ? <span className="t-support t-muted" style={{ paddingBottom: "var(--s-1)" }}>{tool.unitLong}</span> : null}
+        </div>
+      </div>
+      {reading.ready ? <span className={cn("verdict", tone.verdict)}><Ic name={tone.ic} />{reading.verdict}</span> : null}
+      {reading.ready && tool.scale ? <ReferenceScale scale={tool.scale} value={reading.value} text={reading.text} verdict={reading.verdict} activeTone={reading.tone} /> : null}
+      {reading.ready && reading.details.length ? (
+        <>
+          <div className="divider" />
+          <dl className="dl">
+            {reading.details.map(([label, detail]) => (
+              <React.Fragment key={label}><dt>{label}</dt><dd>{detail}</dd></React.Fragment>
+            ))}
+          </dl>
+        </>
+      ) : null}
+      <div className="appi-says">
+        <div className="appi-stage"><AppiMascot key={reading.ready ? reading.tone : "empty"} mood={reading.ready ? tone.mood : "curious"} size="lg" enter="pop" presence /></div>
+        <p className="bubble tail-left grow appi-say"><span className="sr-only">APPI: </span>{reading.ready ? reading.note : missingText}</p>
+      </div>
+      {reading.ready ? (
+        <button type="button" className="btn btn-ai-soft btn-block" onClick={() => askAppi(appiPrompt(tool, values, reading))}><Ic name="sparkle" />Tanya APPI soal hasil ini</button>
+      ) : null}
+      {tool.scale ? <p className="note">Acuan umum layer komersial; sesuaikan dengan standar strain dan umur flock.</p> : null}
+    </section>
+  );
+}
 
-  // Phones: when the result panel scrolls out of view, a slim bar keeps the
-  // reading in sight above the bottom navigation.
+/** "Terapkan di farm": the weekly reading in Farm KPI and the lesson behind the tool. */
+function ApplyLinks({ tool, farmRows, modules }) {
+  const sorted = sortByWeek(farmRows);
+  const latest = tool.kpi ? [...sorted].reverse().find((row) => Number.isFinite(toNumber(row[tool.kpi.field]))) : null;
+  const module = tool.module ? sortModules(modules).find((item) => tool.module.test(item.title)) : null;
+  const level = getLevelForModule(module);
+  return (
+    <section className="card card-pad stack gap-4 anim-rise" style={{ "--i": 2 }} aria-labelledby="apply-title">
+      <div className="stack gap-0-5">
+        <h2 className="card-title" id="apply-title">Terapkan di farm</h2>
+        <p className="card-desc">Satu angka belum cukup. Lihat polanya dari minggu ke minggu.</p>
+      </div>
+      <div className="grid-md">
+        <Link className="card card-tactile row gap-3" to="/kpi" data-hue="orange" style={{ padding: "var(--s-3) var(--s-4)" }}>
+          <span className="tile tile-round tile-solid"><Ic name="chart" /></span>
+          <span className="stack grow" style={{ minWidth: 0 }}>
+            <span className="li-title t-strong">{tool.kpi ? `Catat ${tool.kpi.label} mingguan di Farm KPI` : "Catat data mingguan di Farm KPI"}</span>
+            <span className="li-meta">{latest ? `${tool.kpi.label} terakhir M${latest.week}: ${formatNumber(toNumber(latest[tool.kpi.field]), tool.kpi.digits)}${tool.kpi.suffix || ""}` : "Belum ada catatan minggu ini"}</span>
+          </span>
+          <Ic name="chev-right" className="t-muted" />
+        </Link>
+        {module ? (
+          <Link className="card card-tactile row gap-3" to={`/modules/${module.moduleNumber}`} data-hue="blue" style={{ padding: "var(--s-3) var(--s-4)" }}>
+            <span className="tile tile-round tile-solid"><Ic name="book" /></span>
+            <span className="stack grow" style={{ minWidth: 0 }}>
+              <span className="li-title t-strong t-clamp-2">Modul {module.moduleNumber} · {module.title}</span>
+              <span className="li-meta">{level ? `Level ${level.number} · ${level.name}` : module.levelName}</span>
+            </span>
+            <Ic name="chev-right" className="t-muted" />
+          </Link>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Calculator workspace (canvas "Kalkulator farm"): pick a tool, enter actual
+ * numbers and read the result on a reference scale while APPI explains it.
+ * Values stay per tool while the learner switches between tools; on phones
+ * the result is pinned above the bottom navigation.
+ */
+export default function Calculators() {
+  const [active, setActive] = useState("fcr");
+  const [values, setValues] = useState({});
+  const [panelVisible, setPanelVisible] = useState(true);
+  const panelRef = useRef(null);
+  const { data: farmRows = [] } = useFarmData();
+  const { data: modules = [] } = useModules();
+  const tool = tools.find((item) => item.id === active) || tools[0];
+  const toolValues = useMemo(() => values[tool.id] || {}, [values, tool.id]);
+  const reading = evaluate(tool, toolValues);
+  const tone = TONE[reading.ready ? reading.tone : "info"];
+
+  const setField = (key, value) => setValues((current) => ({ ...current, [tool.id]: { ...(current[tool.id] || {}), [key]: value } }));
+  const fillExample = () => setValues((current) => ({ ...current, [tool.id]: Object.fromEntries(tool.fields.map((field) => [field.key, String(field.example)])) }));
+  const reset = () => setValues((current) => ({ ...current, [tool.id]: {} }));
+  const hasInput = Object.values(toolValues).some((value) => value !== "");
+
+  // Phones: when the result card scrolls out of view, the dock keeps it in sight.
   useEffect(() => {
     const node = panelRef.current;
     if (!node || typeof IntersectionObserver === "undefined") return undefined;
     const observer = new IntersectionObserver(([entry]) => setPanelVisible(entry.isIntersecting), { threshold: 0.2 });
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
-
-  const missingText = reading.missing?.length
-    ? `Isi ${reading.missing.slice(0, -1).join(", ")}${reading.missing.length > 1 ? " dan " : ""}${reading.missing[reading.missing.length - 1]} untuk melihat hasil.`
-    : "";
+  }, [tool.id]);
 
   return (
-    <>
-      <aside ref={panelRef} className="aapm-calc__result" data-hue={hue} data-empty={reading.ready ? undefined : "true"} aria-labelledby="calc-result-title">
-        <p id="calc-result-title" className="aapm-text-overline m-0">Hasil</p>
-        <p className="aapm-calc__value">
-          {reading.ready ? <CountUp key={tool.id} value={reading.value} format={tool.format} duration={500} /> : "—"}
-          {reading.ready && tool.unit ? <span className="aapm-calc__value-unit">{tool.unit}</span> : null}
-        </p>
-        {reading.ready ? (
-          <span className="aapm-calc__verdict" data-tone={reading.tone}><AapmIcon name={tone.icon} />{reading.verdict}</span>
-        ) : null}
-        {reading.ready && tool.scale ? <ReferenceBar scale={tool.scale} value={reading.value} text={reading.text} verdict={reading.verdict} /> : null}
-        {reading.ready && reading.details.length ? (
-          <dl className="aapm-description-list aapm-calc__details">
-            {reading.details.map(([label, detail]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>{detail}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-        <div className="aapm-calc__appi">
-          <AppiMascot mood={reading.ready ? tone.mood : "curious"} size={56} presence />
-          <p className="aapm-calc__appi-text">{reading.ready ? reading.note : missingText}</p>
+    <Page>
+      <header className="ph">
+        <div className="ph-copy">
+          <h1 className="ph-title">Kalkulator farm</h1>
+          <p className="ph-desc">Ubah catatan harian menjadi sinyal keputusan. Hasil adalah titik awal untuk observasi kandang, bukan penggantinya.</p>
         </div>
-        {reading.ready ? (
-          <Button variant="secondary" size="sm" className="w-full" onClick={() => askAppi(appiPrompt(tool, values, reading))}>
-            <AapmIcon name="ai" />Tanya APPI soal hasil ini
-          </Button>
-        ) : null}
-        {tool.scale ? <p className="aapm-calc__source">Acuan umum layer komersial; sesuaikan dengan standar strain dan umur flock.</p> : null}
-      </aside>
-      <p className="aapm-visually-hidden" aria-live="polite">{reading.ready ? `${tool.name}: ${reading.text}${tool.unit ? ` ${tool.unit}` : ""}, ${reading.verdict}.` : ""}</p>
+      </header>
+
+      <div className="scroll-x calc-pills" aria-label="Pilih kalkulator">
+        <div className="row gap-2" role="group" aria-label="Pilih kalkulator" style={{ width: "max-content" }}>
+          {tools.map((item) => (
+            <button key={item.id} type="button" className={cn("btn calc-pill", active === item.id ? "btn-soft" : "btn-secondary")} aria-pressed={active === item.id} data-hue={item.hue} onClick={() => setActive(item.id)}>
+              {active === item.id ? <Ic name="check" /> : <i className="tile tile-round tile-solid" style={{ width: 10, height: 10 }} aria-hidden="true" />}
+              {item.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="split-rail">
+        <section className="card anim-rise calc-rail" aria-labelledby="tools-title">
+          <div className="card-pad stack gap-0-5" style={{ paddingBottom: "var(--s-3)" }}>
+            <h2 className="card-title" id="tools-title">{tools.length} kalkulator</h2>
+            <p className="card-desc">Pilih sesuai keputusan yang ingin Anda ambil.</p>
+          </div>
+          <div className="grid-sm" role="group" aria-label="Pilih kalkulator" style={{ gap: "var(--s-2)", padding: "0 var(--s-2) var(--s-3)" }}>
+            {tools.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={cn("card card-tactile row gap-3", active === item.id && "card-tint card-selected")}
+                aria-pressed={active === item.id}
+                data-hue={item.hue}
+                style={{ padding: "var(--s-2-5) var(--s-3)", textAlign: "left" }}
+                onClick={() => setActive(item.id)}
+              >
+                <span className="tile tile-sm tile-round tile-solid"><Ic name={item.ic} /></span>
+                <span className="stack grow" style={{ minWidth: 0 }}><span className="li-title t-strong">{item.name}</span><span className="li-meta">{item.description}</span></span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="stack gap-grid">
+          <section className="card anim-rise" key={tool.id} data-hue={tool.hue} style={{ "--i": 1 }} aria-labelledby="calc-title">
+            <div className="card-pad card-head wrap">
+              <div className="row-start gap-4" style={{ flex: "1 1 360px", minWidth: 0 }}>
+                <span className="tile tile-lg"><Ic name={tool.ic} /></span>
+                <div className="stack gap-0-5 grow">
+                  <h2 className="t-title-c" id="calc-title">{tool.title}</h2>
+                  <p className="card-desc">{tool.lead}</p>
+                </div>
+              </div>
+              <div className="row gap-1">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={fillExample}><Ic name="wand" />Isi contoh</button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={!hasInput} onClick={reset}><Ic name="refresh" />Reset</button>
+              </div>
+            </div>
+
+            <div className="card-sect card-pad split stretch">
+              <form className="stack gap-4" aria-label={`Data ${tool.name}`} onSubmit={(event) => event.preventDefault()}>
+                {tool.fields.map((field) => (
+                  <CalcField
+                    key={field.key}
+                    field={field}
+                    value={toolValues[field.key] ?? ""}
+                    onChange={(value) => setField(field.key, value)}
+                    flagged={!reading.ready && hasInput && reading.missing.includes(field.label) && toolValues[field.key] !== undefined && toolValues[field.key] !== ""}
+                  />
+                ))}
+                <details className="inset card-pad-sm mt-auto calc-formula" open>
+                  <summary className="row gap-2 t-support t-medium"><Ic name="chev-down" size="sm" />Lihat rumus</summary>
+                  <div className="stack gap-1" style={{ padding: "var(--s-2) 0 var(--s-1) var(--s-6)" }}>
+                    {tool.formula.map((line) => <code key={line} className="t-mono">{line}</code>)}
+                  </div>
+                </details>
+              </form>
+              <CalcResult tool={tool} values={toolValues} reading={reading} panelRef={panelRef} />
+            </div>
+          </section>
+
+          <ApplyLinks tool={tool} farmRows={farmRows} modules={modules} />
+        </div>
+      </div>
+
+      <p className="sr-only" aria-live="polite">{reading.ready ? `${tool.name}: ${reading.text}${tool.unit ? ` ${tool.unit}` : ""}, ${reading.verdict}.` : ""}</p>
       {reading.ready && !panelVisible ? (
-        <button type="button" className="aapm-calc-dock" data-hue={hue} onClick={() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>
-          <span className="aapm-calc-dock__label">{tool.name}</span>
-          <strong className="aapm-calc-dock__value">{reading.text}{tool.unit ? ` ${tool.unit}` : ""}</strong>
-          <span className="aapm-calc__verdict" data-tone={reading.tone}><AapmIcon name={tone.icon} />{reading.verdict}</span>
-          <AapmIcon name="chevronDown" className="aapm-calc-dock__go" />
-        </button>
+        <section className="card card-tint card-raised row gap-3 calc-dock anim-rise" data-hue={tone.hue} aria-label={`Hasil ${tool.name}`}>
+          <div className="stack grow" style={{ minWidth: 0 }}>
+            <span className="t-caption t-strong t-ink t-clamp-1">{tool.name}{reading.short ? ` · ${reading.short}` : ""}</span>
+            <span className="t-metric">{reading.text}{tool.unit ? <small className="t-support t-muted"> {tool.unit}</small> : null}</span>
+          </div>
+          <span className={cn("verdict", tone.verdict)}><Ic name={tone.ic} />{reading.verdict}</span>
+          <button type="button" className="btn btn-ghost btn-icon" aria-label="Lihat detail hasil" style={{ width: "var(--h-lg)", height: "var(--h-lg)" }} onClick={() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}><Ic name="chev-up" size="lg" /></button>
+        </section>
       ) : null}
-    </>
+    </Page>
   );
 }

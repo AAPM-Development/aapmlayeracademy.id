@@ -1,0 +1,1 @@
+function n(t,e={}){if(!t)return"—";const r=new Date(t);return Number.isNaN(r.getTime())?String(t):new Intl.DateTimeFormat("id-ID",{day:"2-digit",month:"short",year:"numeric",...e}).format(r)}export{n as f};

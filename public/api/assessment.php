@@ -763,6 +763,10 @@ function aapm_final_eligibility_payload(PDO $pdo, int $userId): array
         'attemptLimit' => null,
         'attemptWindowHours' => null,
         'retriesUnlimited' => true,
+        // Shown before an attempt starts (lesson, quiz and exam intros); each
+        // attempt still records the passing grade it is graded with.
+        'modulePassPercent' => (int) $snapshot['policy']['modulePass'],
+        'finalPassPercent' => (int) $snapshot['policy']['finalPass'],
     ]);
 }
 

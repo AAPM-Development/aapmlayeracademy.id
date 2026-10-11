@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Alert, Button, CheckboxField, IconButton, Progress, Sheet, SheetContent, SheetTitle, useToast } from "@/design-system";
+import { Alert, Sheet, SheetContent, SheetTitle, useToast } from "@/design-system";
 import { FocusShell, Page } from "@/design-system/patterns/AppShell";
-import AapmIcon from "@/components/icons/AapmIcon";
+import { Ic } from "@/design-system/canvas";
+import { Tooltip } from "@/design-system/components/tooltip";
+import FlowSteps, { moduleFlowSteps } from "@/components/learn/FlowSteps";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { LessonHeader, LessonMedia, LessonSection, LessonToc, lessonSections } from "@/components/academy/LessonWorkspace";
 import { CourseOutline } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
-import { useAcknowledgeModule, useModules, usePracticeAttestation, useQuizQuestions, useStudyTimeIncrement, useUserProgress } from "@/lib/useCourseData";
+import { useAcknowledgeModule, useFinalEligibility, useModules, usePracticeAttestation, useQuizQuestions, useStudyTimeIncrement, useUserProgress } from "@/lib/useCourseData";
 import { getProgressSummary, sortModules } from "@/lib/academyData";
 import { buildCurriculum, estimateMinutes, moduleFlowState, moduleVisual } from "@/lib/academyVisuals";
 import { celebrate } from "@/lib/celebrate";
@@ -22,11 +24,25 @@ const hasText = (value) => typeof value === "string" && value.trim().length > 0;
 const hasListContent = (value) => Array.isArray(value)
   ? value.some((item) => hasText(String(item || "")))
   : hasText(value);
+const OUTLINE_KEY = "aapm-lesson-outline";
+
+function readOutlinePreference() {
+  try {
+    return window.localStorage.getItem(OUTLINE_KEY) !== "hidden";
+  } catch {
+    return true;
+  }
+}
 
 function StandaloneState({ children }) {
   return <Page width="narrow" className="min-h-[60vh] justify-center">{children}</Page>;
 }
 
+/**
+ * Lesson player in the focus shell (canvas "Lesson"): a focus bar with the
+ * module flow and reading line, the course outline, the 760 px reading column
+ * with its TOC rail, and one primary action in the bar below.
+ */
 export default function ModuleDetail() {
   const { moduleNumber } = useParams();
   const number = Number.parseInt(moduleNumber, 10);
@@ -35,16 +51,18 @@ export default function ModuleDetail() {
   const { data: modules = [], isLoading: modulesLoading, isError: modulesError, refetch: refetchModules } = useModules();
   const { data: progress = [], isLoading: progressLoading, isError: progressError, refetch: refetchProgress } = useUserProgress();
   const { data: questions = [] } = useQuizQuestions(Number.isFinite(number) ? number : null);
+  const { data: eligibility } = useFinalEligibility();
   const practice = usePracticeAttestation();
   const acknowledge = useAcknowledgeModule();
   const studyTime = useStudyTimeIncrement();
   const [activeSection, setActiveSection] = useState("content");
-  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(readOutlinePreference);
   const [outlineSheet, setOutlineSheet] = useState(false);
   // The practice check answers at once; the saved value takes over after refetch.
   const [practiceOverride, setPracticeOverride] = useState(null);
   const mainRef = useRef(null);
-  const progressRef = useRef(null);
+  const barRef = useRef(null);
+  const readingRef = useRef(null);
   const isLoading = modulesLoading || progressLoading;
 
   const sortedModules = useMemo(() => sortModules(modules), [modules]);
@@ -56,6 +74,8 @@ export default function ModuleDetail() {
   const previous = index > 0 ? sortedModules[index - 1] : null;
   const next = index >= 0 ? sortedModules[index + 1] || null : null;
   const visual = moduleVisual(module);
+  const minutes = module ? estimateMinutes(module) : null;
+  const passPercent = eligibility?.modulePassPercent ?? 70;
 
   const editorialVideoIsPresent = useMemo(() => hasEditorialVideo(module?.editorialContent), [module?.editorialContent]);
   const editorialNavigationItems = useMemo(() => editorialLearnerNavigationItems(module?.editorialContent), [module?.editorialContent]);
@@ -64,6 +84,7 @@ export default function ModuleDetail() {
   const practiceIsPresent = hasText(module?.practicalAssignment) || hasListContent(module?.checklist);
   const flowProgress = practiceOverride === null ? moduleProgress : { ...moduleProgress, practicalDone: practiceOverride };
   const flow = moduleFlowState({ module, progress: flowProgress, hasPractice: practiceIsPresent, quizCount: questions.length });
+  const steps = moduleFlowSteps({ progress: flowProgress, hasPractice: practiceIsPresent, hasQuiz: flow.hasQuiz });
 
   const learnerSections = useMemo(() => {
     const visible = lessonSections.filter((section) => {
@@ -73,20 +94,32 @@ export default function ModuleDetail() {
       return true;
     });
     const [contentSection, ...remaining] = visible;
-    return [contentSection, ...editorialNavigationItems, ...remaining].filter(Boolean);
+    return [contentSection, ...editorialNavigationItems, ...remaining, { id: "lanjut", label: "Langkah berikutnya" }].filter(Boolean);
   }, [editorialNavigationItems, editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
 
-  // Reading progress: a thin bar under the lesson bar fills as the learner
-  // scrolls the lesson (transform only, no re-render per scroll event).
+  // Reading progress: the line under the focus bar and the TOC card fill as
+  // the learner scrolls (CSS variable only, no re-render per scroll event).
   useEffect(() => {
     const main = mainRef.current;
-    const bar = progressRef.current;
-    if (!main || !bar) return undefined;
+    if (!main) return undefined;
     let frame = 0;
     const update = () => {
       frame = 0;
       const max = main.scrollHeight - main.clientHeight;
-      bar.style.transform = `scaleX(${max > 0 ? Math.min(1, main.scrollTop / max) : 1})`;
+      const percent = Math.round((max > 0 ? Math.min(1, main.scrollTop / max) : 1) * 100);
+      barRef.current?.style.setProperty("--p", String(percent));
+      const card = readingRef.current;
+      if (card) {
+        card.style.setProperty("--p", String(percent));
+        const value = card.querySelector("[data-reading-value]");
+        if (value) value.textContent = `${percent}%`;
+        const left = card.querySelector("[data-reading-left]");
+        const total = Number(card.dataset.minutes) || 0;
+        if (left && total) {
+          const remaining = Math.max(0, Math.ceil(total * (1 - percent / 100)));
+          left.textContent = remaining ? `Sekitar ${remaining} menit lagi` : "Selesai dibaca";
+        }
+      }
     };
     const onScroll = () => { if (!frame) frame = window.requestAnimationFrame(update); };
     update();
@@ -97,7 +130,6 @@ export default function ModuleDetail() {
   useEffect(() => {
     setActiveSection("content");
     setPracticeOverride(null);
-    setOutlineOpen(false);
     setOutlineSheet(false);
   }, [number]);
 
@@ -113,7 +145,14 @@ export default function ModuleDetail() {
     return () => observer.disconnect();
   }, [module?.moduleNumber, learnerSections]);
 
-  const toggleOutline = () => setOutlineOpen((current) => !current);
+  const toggleOutline = () => setOutlineOpen((current) => {
+    try {
+      window.localStorage.setItem(OUTLINE_KEY, current ? "hidden" : "shown");
+    } catch {
+      // Optional preference.
+    }
+    return !current;
+  });
 
   // Active reading time goes to "Waktu belajar" when the learner leaves the lesson.
   // The server accepts at most 15 minutes per increment, so a longer session is sent in parts.
@@ -145,7 +184,7 @@ export default function ModuleDetail() {
       celebrate();
       toast({ title: "Modul diselesaikan", description: next ? `Berikutnya: ${next.title}` : "Semua modul sudah Anda tuntaskan." });
     } catch {
-      toast({ title: "Progress belum tersimpan", description: "Coba lagi setelah koneksi kembali normal.", variant: "destructive" });
+      toast({ title: "Progres belum tersimpan", description: "Coba lagi setelah koneksi kembali normal.", variant: "destructive" });
     }
   };
 
@@ -155,7 +194,7 @@ export default function ModuleDetail() {
   };
 
   if (modulesError || progressError) {
-    return <StandaloneState><LearningErrorState title="Lesson belum dapat dimuat" description="Materi atau progress Anda belum berhasil diambil. Coba lagi untuk membuka lesson ini." onRetry={() => { refetchModules(); refetchProgress(); }} /></StandaloneState>;
+    return <StandaloneState><LearningErrorState title="Lesson belum dapat dimuat" description="Materi atau progres Anda belum berhasil diambil. Coba lagi untuk membuka lesson ini." onRetry={() => { refetchModules(); refetchProgress(); }} /></StandaloneState>;
   }
   if (isLoading) return <StandaloneState><LearningLoading label="Memuat lesson…" lines={2} /></StandaloneState>;
   if (!module) {
@@ -171,90 +210,85 @@ export default function ModuleDetail() {
       onNavigate={() => setOutlineSheet(false)}
     />
   );
+  const askAboutModule = () => askAppi(`Saya sedang belajar Modul ${module.moduleNumber}: ${module.title}. Bantu saya memahami poin pentingnya dan cara menerapkannya di kandang.`);
 
   // Primary next step follows the bounded flow: Materi → Praktik → Kuis → Selesai.
   // A quiz module is complete only when the quiz is passed, so no shortcut button here.
   let completionAction;
   if (flow.completed) {
     completionAction = next
-      ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span>Modul berikutnya</span><AapmIcon name="arrowRight" /></Link></Button>
-      : <Button asChild variant="learn"><Link to="/final-exam">Ujian akhir<AapmIcon name="arrowRight" /></Link></Button>;
+      ? <Link className="btn btn-learn btn-lg lesson-primary" to={`/modules/${next.moduleNumber}`} aria-label="Modul berikutnya"><span>Modul berikutnya</span><Ic name="arrow-right" /></Link>
+      : <Link className="btn btn-learn btn-lg lesson-primary" to="/final-exam">Ujian akhir<Ic name="arrow-right" /></Link>;
   } else if (flow.hasQuiz) {
     const quizLabel = flow.activeAttempt ? "Lanjutkan kuis" : flow.quizAttempted && !flow.quizPassed ? "Ulangi kuis" : "Mulai kuis";
-    completionAction = <Button asChild variant="learn"><Link to={`/quiz/${number}`}>{quizLabel}<AapmIcon name="arrowRight" /></Link></Button>;
+    completionAction = <Link className="btn btn-learn btn-lg lesson-primary" to={`/quiz/${number}`}>{quizLabel}<Ic name="arrow-right" /></Link>;
   } else {
-    completionAction = <Button variant="learn" loading={acknowledge.isPending} leadingIcon="check" onClick={markComplete}>Tandai selesai</Button>;
+    completionAction = (
+      <button type="button" className="btn btn-learn btn-lg lesson-primary" disabled={acknowledge.isPending} aria-busy={acknowledge.isPending || undefined} onClick={markComplete}>
+        <Ic name="check" />Tandai selesai
+      </button>
+    );
   }
 
   return (
     <FocusShell
       ref={mainRef}
       resetKey={number}
+      hue={visual.hue}
       label={`Lesson modul ${number}`}
       outline={outline}
-      outlineSide="left"
+      outlineLabel="Kurikulum course"
       outlineOpen={outlineOpen}
       bar={(
-        <header className="aapm-topbar aapm-focus__bar aapm-lesson-bar" data-hue={visual.hue}>
-          <span className="aapm-lesson-bar__read" aria-hidden="true"><span ref={progressRef} /></span>
-          <IconButton label="Keluar ke jalur belajar" variant="danger" icon="close" onClick={() => navigate("/modules")} />
-          <IconButton className="hidden lg:inline-flex" label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} aria-expanded={outlineOpen} icon="sidebar" onClick={toggleOutline} />
-          <IconButton className="lg:hidden" label="Buka kurikulum" aria-expanded={outlineSheet} icon="list" onClick={() => setOutlineSheet(true)} />
-          <div className="aapm-topbar__title">
-            <span className="aapm-topbar__context">Modul {module.moduleNumber} dari {summary.total} · {module.levelName || module.category}</span>
-            <p className="aapm-topbar__title-text">{module.title}</p>
+        <header className="focus-bar" ref={barRef} style={{ "--p": 0 }}>
+          <Tooltip content="Keluar ke jalur belajar">
+            <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Keluar ke jalur belajar" onClick={() => navigate("/modules")}><Ic name="x" /></button>
+          </Tooltip>
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet hide-md" aria-label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} aria-pressed={outlineOpen} onClick={toggleOutline}><Ic name="sidebar" /></button>
+          <span className="vr hide-sm" style={{ margin: "14px 4px" }} />
+          <div className="stack grow" style={{ minWidth: 0 }}>
+            <span className="t-caption t-muted t-clamp-1">Modul {module.moduleNumber} dari {summary.total} · Level {module.level} {module.levelName || module.category}</span>
+            <span className="t-heading t-clamp-1">{module.title}</span>
           </div>
-          <div className="aapm-topbar__actions">
-            {/* Lessons own the bottom of the screen, so APPI is asked from the bar. */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="aapm-focus__appi"
-              aria-label="Tanya APPI tentang modul ini"
-              onClick={() => askAppi(`Saya sedang belajar Modul ${module.moduleNumber}: ${module.title}. Bantu saya memahami poin pentingnya dan cara menerapkannya di kandang.`)}
-            >
-              <AapmIcon name="ai" /><span>Tanya APPI</span>
-            </Button>
-            <div className="aapm-focus__progress">
-              <Progress value={summary.percent} label="Progress course" />
-              <span>{summary.percent}%</span>
-            </div>
-          </div>
+          <FlowSteps steps={steps} className="hide-md" style={{ width: 380 }} />
+          <span className="vr hide-md" style={{ margin: "14px 4px" }} />
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet show-md" aria-label="Buka kurikulum" aria-expanded={outlineSheet} onClick={() => setOutlineSheet(true)}><Ic name="list" /></button>
+          <button type="button" className="btn btn-ai-soft btn-sm lesson-appi" aria-label="Tanya APPI tentang modul ini" onClick={askAboutModule}><Ic name="sparkle" /><span className="hide-sm">Tanya APPI</span></button>
+          <span className="reading" aria-hidden="true" />
         </header>
       )}
       footer={(
         <>
-          <div className="aapm-focus__footer-group">
-            {previous ? (
-              <Button asChild variant="secondary" data-hide-label-mobile="">
-                <Link to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}><AapmIcon name="arrowLeft" /><span>Modul sebelumnya</span></Link>
-              </Button>
-            ) : null}
-          </div>
-          <div className="aapm-focus__footer-group">
-            {flow.completed || flow.hasQuiz ? completionAction : (
-              next ? <Button asChild variant="learn"><Link to={`/modules/${next.moduleNumber}`}>Modul berikutnya<AapmIcon name="arrowRight" /></Link></Button>
-                : <Button asChild variant="secondary"><Link to="/modules">Jalur belajar<AapmIcon name="arrowRight" /></Link></Button>
-            )}
-          </div>
+          {previous ? (
+            <Link className="btn btn-secondary lesson-prev" to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}>
+              <Ic name="arrow-left" /><span className="hide-sm">Modul {previous.moduleNumber}</span>
+            </Link>
+          ) : <span className="hide-sm" />}
+          <span className="grow t-center t-caption t-muted hide-sm">
+            {flow.hasQuiz ? "Praktik dapat dicatat kapan saja · kuis menentukan penyelesaian modul" : "Praktik dapat dicatat kapan saja · konfirmasi setelah materi dipahami"}
+          </span>
+          {flow.completed || flow.hasQuiz ? completionAction : (
+            next ? <Link className="btn btn-learn btn-lg lesson-primary" to={`/modules/${next.moduleNumber}`}>Modul berikutnya<Ic name="arrow-right" /></Link>
+              : <Link className="btn btn-secondary btn-lg lesson-primary" to="/modules">Jalur belajar<Ic name="arrow-right" /></Link>
+          )}
         </>
       )}
     >
-      <div className="aapm-lesson-layout">
-        <article className="aapm-lesson" data-hue={visual.hue}>
-          <LessonHeader module={module} completed={flow.completed} hue={visual.hue} minutes={estimateMinutes(module)} />
+      <div className="lesson-stage">
+        <article className="reading-col" aria-labelledby="lesson-title" data-hue={visual.hue}>
+          <LessonHeader module={module} completed={flow.completed} hue={visual.hue} minutes={minutes} />
 
-          <LessonSection id="content" title="Materi" icon="lesson" hue={visual.hue}>
+          <LessonSection id="content" title="Materi" ic="book">
             <EditorialContent document={module.editorialContent} fallback={module.content} title={module.title} />
           </LessonSection>
 
           {!editorialVideoIsPresent && legacyVideoIsPresent && (
-            <LessonSection id="video" title="Video materi" icon="video" hue="violet">
+            <LessonSection id="video" title="Video materi" ic="video" hue="violet">
               <LessonMedia module={module} />
               {hasText(module.videoScript) && (
-                <details className="aapm-callout aapm-disclosure mt-4" data-hue="violet">
-                  <summary className="aapm-callout__title">Catatan instruktur<AapmIcon name="chevronDown" className="aapm-disclosure__chevron" /></summary>
-                  <p className="m-0 text-body text-muted-foreground">{module.videoScript}</p>
+                <details className="card card-pad-sm lesson-notes">
+                  <summary className="row gap-2 t-support t-medium"><Ic name="chev-right" size="sm" />Catatan instruktur</summary>
+                  <p className="t-body t-muted">{module.videoScript}</p>
                 </details>
               )}
             </LessonSection>
@@ -265,61 +299,56 @@ export default function ModuleDetail() {
               module={module}
               document={module.editorialContent}
               practiceAction={(
-                <CheckboxField
-                  className="aapm-practice-done"
-                  label="Saya sudah mengerjakan praktik ini"
-                  description={flow.practicalDone ? "Praktik tercatat. Hasil kuis menentukan penyelesaian modul berkuis." : "Catat setelah dikerjakan. Praktik bisa menyusul dan bukan syarat membuka kuis."}
-                  checked={flow.practicalDone}
-                  disabled={practice.isPending}
-                  onChange={(event) => togglePracticeDone(event.target.checked)}
-                />
+                <label className="card card-pad-sm check" style={{ padding: "14px 16px", alignItems: "flex-start" }}>
+                  <input type="checkbox" checked={flow.practicalDone} disabled={practice.isPending} onChange={(event) => togglePracticeDone(event.target.checked)} />
+                  <span className="stack gap-0-5">
+                    <span className="t-strong">Saya sudah mengerjakan praktik ini</span>
+                    <span className="t-caption t-muted">{flow.practicalDone ? "Praktik tercatat. Hasil kuis menentukan penyelesaian modul berkuis." : "Catat setelah dikerjakan. Praktik bisa menyusul dan bukan syarat membuka kuis. +35 poin"}</span>
+                  </span>
+                </label>
               )}
             />
           )}
 
-          <section className="aapm-lesson-section" aria-label="Langkah berikutnya">
-            {practice.isError || acknowledge.isError ? <Alert tone="danger" title="Progress belum tersimpan" description="Silakan coba lagi." className="mb-4" /> : null}
-            {moduleProgress?.verificationStatus === "legacy_unverified" ? (
-              <Alert
-                tone="warning"
-                title="Penyelesaian lama perlu diverifikasi"
-                description={flow.hasQuiz ? "Modul ini ditandai selesai sebelum sistem kuis baru. Ulangi kuis untuk mencatatnya secara resmi." : "Modul ini ditandai selesai sebelum sistem baru. Tandai selesai lagi untuk mencatatnya secara resmi."}
-                className="mb-4"
-              />
-            ) : null}
-            <div className="aapm-callout" data-hue={flow.completed ? "green" : "orange"}>
-              <div className="aapm-callout__head">
-                <AppiMascot mood={flow.completed ? "proud" : flow.hasQuiz ? "wink" : "talk"} size="lg" />
-                <div className="min-w-0 flex-1">
-                  <h3 className="aapm-callout__title">
-                    {flow.completed ? "Modul ini sudah selesai" : flow.hasQuiz ? "Siap uji pemahaman?" : "Selesai membaca?"}
-                  </h3>
-                  <p className="m-0 text-support text-muted-foreground">
-                    {flow.completed
-                      ? next ? `Lanjutkan ke modul ${next.moduleNumber}: ${next.title}.` : "Semua modul tuntas — saatnya ujian akhir."
-                      : flow.hasQuiz ? `${questions.length} soal · ketentuan kelulusan tersedia sebelum kuis dimulai. Praktik dapat dicatat setelah dikerjakan.` : "Konfirmasikan setelah materi dipahami. Praktik dapat dicatat setelah dikerjakan."}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {flow.completed && flow.hasQuiz ? (
-                  <Button asChild variant="secondary" leadingIcon="quiz"><Link to={`/quiz/${number}`}>Ulangi kuis</Link></Button>
-                ) : null}
-                <Button variant="secondary" leadingIcon="refresh" onClick={() => jumpToSection("content")}>Baca ulang materi</Button>
-                {completionAction}
-              </div>
+          {practice.isError || acknowledge.isError ? <Alert tone="danger" title="Progres belum tersimpan" description="Silakan coba lagi." /> : null}
+          {moduleProgress?.verificationStatus === "legacy_unverified" ? (
+            <Alert
+              tone="warning"
+              title="Penyelesaian lama perlu diverifikasi"
+              description={flow.hasQuiz ? "Modul ini ditandai selesai sebelum sistem kuis baru. Ulangi kuis untuk mencatatnya secara resmi." : "Modul ini ditandai selesai sebelum sistem baru. Tandai selesai lagi untuk mencatatnya secara resmi."}
+            />
+          ) : null}
+
+          <section className="callout peek-host lesson-next" id="lanjut" aria-labelledby="h-lanjut" data-hue={flow.completed ? "green" : "ai"}>
+            <AppiMascot mood={flow.completed ? "proud" : flow.hasQuiz ? "wink" : "talk"} size="lg" enter="peek" label={flow.completed ? "APPI bangga" : "APPI menyemangati"} />
+            <div className="stack gap-1" style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <h2 className="t-heading" id="h-lanjut">{flow.completed ? "Modul ini sudah tuntas" : flow.hasQuiz ? "Siap uji pemahaman?" : "Selesai membaca?"}</h2>
+              <p className="t-support t-muted">
+                {flow.completed
+                  ? next ? `Lanjutkan ke Modul ${next.moduleNumber}: ${next.title}.` : "Semua modul tuntas — saatnya ujian akhir."
+                  : flow.hasQuiz ? `${questions.length ? `${questions.length} soal · ` : ""}nilai lulus ${passPercent}% · umpan balik langsung.` : "Konfirmasikan setelah materi dipahami."}
+              </p>
             </div>
+            {flow.completed ? (
+              flow.hasQuiz ? <Link className="btn btn-secondary btn-sm" to={`/quiz/${number}`}><Ic name="refresh" />Ulangi kuis</Link> : null
+            ) : (
+              <span className="xp"><Ic name="star" />+100 poin</span>
+            )}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={askAboutModule}><Ic name="sparkle" />Tanya APPI dulu</button>
           </section>
         </article>
-        <aside className="aapm-lesson-layout__toc">
-          <LessonToc sections={learnerSections} activeSection={activeSection} onSectionChange={jumpToSection} />
+
+        <aside className="toc" aria-label="Di halaman ini">
+          <LessonToc sections={learnerSections} activeSection={activeSection} onSectionChange={jumpToSection} readingRef={readingRef} minutes={minutes} />
         </aside>
       </div>
 
       <Sheet open={outlineSheet} onOpenChange={setOutlineSheet}>
-        <SheetContent side="left" className="aapm-nav-sheet" aria-describedby={undefined}>
-          <SheetTitle className="aapm-visually-hidden">Kurikulum course</SheetTitle>
-          {outline}
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <div className="sheet-head">
+            <div className="stack gap-0-5"><SheetTitle>Kurikulum</SheetTitle><span className="t-caption t-muted">{summary.completed}/{summary.total} modul selesai · {summary.percent}%</span></div>
+          </div>
+          <div className="sheet-body" style={{ gap: "var(--s-2)" }}>{outline}</div>
         </SheetContent>
       </Sheet>
     </FocusShell>

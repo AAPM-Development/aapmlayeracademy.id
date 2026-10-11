@@ -79,22 +79,18 @@ test("deferred archive failure retains its retry reason and a successful retry c
   assert.deepEqual(calls, [reason, reason], "retry submits the preserved reason");
 });
 
-test("course phone grid and stacked alert actions compile to scoped responsive CSS", async () => {
-  const [{ default: postcss }, { default: tailwind }] = await Promise.all([import("postcss"), import("tailwindcss")]);
-  const result = await postcss([tailwind({
-    content: [{ raw: read("src/pages/admin/AdminCourseDetail.jsx"), extension: "jsx" }],
-  })]).process("@tailwind utilities;", { from: undefined });
-  const responsive = [];
-  result.root.walkRules((rule) => {
-    if (rule.parent.type === "atrule" && rule.parent.name === "media" && rule.parent.params.includes("640px")) responsive.push(rule);
-  });
-  const hasDeclaration = (rule, prop, value) => rule.nodes.some((node) => node.prop === prop && node.value === value);
-  const phoneGrid = responsive.find((rule) => rule.selector.includes("grid-cols") && hasDeclaration(rule, "grid-template-columns", "auto minmax(0,1fr)"));
-  assert.ok(phoneGrid, "phone two-column layout is generated at the sm breakpoint");
-  assert.ok(phoneGrid.nodes.find((node) => node.prop === "grid-template-columns").important, "phone grid overrides the existing course selector while desktop remains unchanged");
-  assert.ok(responsive.some((rule) => rule.selector.includes("last-child") && hasDeclaration(rule, "grid-column-start", "2")), "alert action moves beneath paragraph");
-  assert.ok(responsive.some((rule) => rule.selector.includes("last-child") && hasDeclaration(rule, "grid-row-start", "2")));
-  assert.ok(responsive.some((rule) => rule.selector.includes("row-start-2") && !rule.selector.includes("last-child") && hasDeclaration(rule, "grid-row-start", "2")), "list action controls move to their second row");
+test("course phone rows and the policy alert wrap instead of squeezing on phones", async () => {
+  const detail = read("src/pages/admin/AdminCourseDetail.jsx");
+  const styles = read("src/design-system/styles/academy.css");
+  // The policy alert wraps its action under the paragraph.
+  assert.match(detail, /<div className="alert alert-info wrap"/);
+  assert.match(detail, /<p style=\{\{ flex: "1 1 240px", minWidth: 0 \}\}>Urutan dan persyaratan/);
+  // Module rows wrap the status under the title; the phone keeps the overflow menu only.
+  assert.match(detail, /<div className="row wrap grow" style=\{\{ gap: "4px 16px", minWidth: 0 \}\}>/);
+  assert.match(detail, /className="btn btn-secondary btn-sm hide-sm" to=\{editor\}>/);
+  assert.match(detail, /<OverflowMenu label=\{`Aksi untuk \$\{module\.title\}`\}/);
+  assert.match(styles, /\.wrap\s+\{ flex-wrap: wrap; \}/);
+  assert.match(styles, /@media \(max-width: 760px\)\s+\{[^\n]*\.hide-sm \{ display: none !important; \}/);
 });
 
 test("draft and question writes carry the shared expected version; publication is explicit", async () => {

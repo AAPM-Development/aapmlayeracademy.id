@@ -1,14 +1,26 @@
 import React from 'react';
-import { Alert, Button, ConfirmDialog, OverflowMenu } from '@/design-system';
+import { Button, ConfirmDialog, OverflowMenu } from '@/design-system';
 import { draftFailure } from '@/lib/policyEditorState';
+import { Ic } from '@/design-system/canvas';
 
 export function CurriculumDraftFeedback({ error, validation, onReload, busy }) {
-  return <div className="grid gap-3" aria-live="polite">
-    {error && <div role="alert"><Alert tone="warning" title={error.code === 'revision_conflict' ? 'Konflik versi draf' : 'Perubahan belum selesai'} description={draftFailure(error)} />
-      <Button className="mt-2" variant="secondary" disabled={busy} onClick={onReload}>Muat ulang draf terbaru</Button></div>}
+  return <div className="stack gap-3" aria-live="polite">
+    {error && <div className="alert alert-warning" role="alert">
+      <Ic name="alert" />
+      <div className="stack gap-2 grow">
+        <p><span className="alert-title">{error.code === 'revision_conflict' ? 'Konflik versi draf.' : 'Perubahan belum selesai.'}</span> {draftFailure(error)}</p>
+        <div className="row"><button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={onReload}><Ic name="refresh" />Muat ulang draf terbaru</button></div>
+      </div>
+    </div>}
     {validation && (validation.valid
-      ? <Alert tone="success" title="Validasi berhasil" description={`Draf versi ${validation.draftVersion} memenuhi persyaratan saat pemeriksaan.`} />
-      : <div role="alert"><Alert tone="warning" title="Periksa persyaratan berikut" /><ul className="list-disc pl-6">{validation.errors.map((item, index) => <li key={index}>{item.message}</li>)}</ul></div>)}
+      ? <div className="alert alert-success" role="status"><Ic name="check-circle" /><p><span className="alert-title">Validasi berhasil.</span> Draf versi {validation.draftVersion} memenuhi persyaratan saat pemeriksaan.</p></div>
+      : <div className="alert alert-danger" role="alert">
+        <Ic name="alert" />
+        <div className="stack gap-1">
+          <p className="alert-title">Periksa persyaratan berikut</p>
+          <ul className="stack gap-1">{validation.errors.map((item, index) => <li key={index} className="row-start gap-2"><Ic name="x-circle" size="xs" className="t-danger" style={{ marginTop: 3 }} /><span>{item.message}</span></li>)}</ul>
+        </div>
+      </div>)}
   </div>;
 }
 
@@ -18,9 +30,15 @@ export function ReloadDraftDialog({ open, onOpenChange, onConfirm, busy }) {
     confirmLabel="Muat ulang" loading={busy} onConfirm={onConfirm} />;
 }
 
-// The shell keeps its phone navigation. Show one current action above it;
-// secondary actions remain keyboard-accessible through the existing menu.
-export function CurriculumActionBar({ actions, primaryKey, status }) {
+const ACTION_ICON = { save: 'check', validate: 'check-circle', reload: 'refresh', preview: 'eye' };
+
+/**
+ * Canvas lifecycle bar (`.lifecycle`): save state, the three-step flow and
+ * the draft actions. Desktop keeps it sticky under the page header; the
+ * shell keeps its phone navigation, so phones show one current action above
+ * it and the rest in a menu.
+ */
+export function CurriculumActionBar({ actions, primaryKey, status, steps = null, tone = null, summary = null }) {
   const barRef = React.useRef(null);
   React.useEffect(() => {
     const bar = barRef.current;
@@ -30,7 +48,7 @@ export function CurriculumActionBar({ actions, primaryKey, status }) {
     const update = () => {
       const rect = bar.getBoundingClientRect();
       content?.style.setProperty('--aapm-curriculum-footer-height', `${rect.height}px`);
-      const offset = rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0;
+      const offset = window.matchMedia('(max-width: 859px)').matches && rect.bottom > 0 && rect.top < window.innerHeight ? Math.max(0, window.innerHeight - rect.top) : 0;
       const changed = root.style.getPropertyValue('--aapm-shell-footer-offset') !== `${offset}px`;
       root.style.setProperty('--aapm-shell-footer-offset', `${offset}px`);
       root.dataset.shellFooter = 'true';
@@ -61,12 +79,29 @@ export function CurriculumActionBar({ actions, primaryKey, status }) {
     };
   }, []);
   const primary = actions.find((action) => action.id === primaryKey);
-  return <div ref={barRef} className="aapm-card aapm-curriculum-actionbar" aria-label="Aksi draf kurikulum">
-    <div className="aapm-curriculum-actionbar__desktop">{actions.map((action) => <Button key={action.id} type={action.type} variant={action.id === primaryKey ? 'primary' : 'secondary'} disabled={action.disabled} onClick={action.type === 'submit' ? undefined : action.onSelect}>{action.label}</Button>)}</div>
+  const chip = tone || (/belum disimpan/i.test(status) ? 'chip-warning' : /memproses/i.test(status) ? 'chip-ai' : 'chip-success');
+  return <div ref={barRef} className="lifecycle aapm-curriculum-actionbar" role="region" aria-label="Aksi draf kurikulum">
+    {summary || <span role="status" className={`chip chip-lg chip-dot ${chip} aapm-curriculum-actionbar__status`}>{status}</span>}
+    {summary ? <span role="status" className="sr-only aapm-curriculum-actionbar__status">{status}</span> : null}
+    {steps ? <div className="row grow justify-center hide-sm">
+      <div className="flow" role="group" aria-label="Alur penerbitan" style={{ width: 400, maxWidth: '100%' }}>
+        {steps.map((step, index) => <React.Fragment key={step.label}>
+          {index ? <span className={`flow-line${steps[index - 1].state === 'done' ? ' is-done' : ''}`} /> : null}
+          <span className={`flow-step${step.state === 'done' ? ' is-done' : step.state === 'current' ? ' is-current' : ''}`} aria-current={step.state === 'current' ? 'step' : undefined}>
+            <span className="flow-dot">{step.state === 'done' ? <Ic name="check" /> : index + 1}</span><span className="flow-label">{step.label}</span>
+          </span>
+        </React.Fragment>)}
+      </div>
+    </div> : <span className="grow" />}
+    <div className="row wrap gap-2 aapm-curriculum-actionbar__desktop">{actions.map((action) => {
+      const quiet = action.id === 'reload' || action.id === 'preview';
+      return <Button key={action.id} type={action.type} size={quiet ? 'sm' : undefined} variant={action.id === primaryKey ? 'primary' : quiet ? 'ghost' : 'secondary'} disabled={action.disabled} onClick={action.type === 'submit' ? undefined : action.onSelect}>
+        {action.locked ? <Ic name="lock" /> : ACTION_ICON[action.id] ? <Ic name={ACTION_ICON[action.id]} /> : null}{action.label}
+      </Button>;
+    })}</div>
     <div className="aapm-curriculum-actionbar__mobile">
-      {primary ? <Button className="aapm-curriculum-actionbar__primary" type={primary.type} disabled={primary.disabled} onClick={primary.type === 'submit' ? undefined : primary.onSelect}>{primary.label}</Button> : <span className="aapm-text-caption flex-1">Siap ditinjau operator</span>}
+      {primary ? <Button className="aapm-curriculum-actionbar__primary" type={primary.type} disabled={primary.disabled} onClick={primary.type === 'submit' ? undefined : primary.onSelect}>{primary.label}</Button> : <span className="t-caption t-muted grow">Siap ditinjau operator</span>}
       <OverflowMenu label="Aksi draf lainnya" size="md" items={actions.filter((action) => action.id !== primaryKey)} />
     </div>
-    <span role="status" className="aapm-text-caption aapm-curriculum-actionbar__status">{status}</span>
   </div>;
 }

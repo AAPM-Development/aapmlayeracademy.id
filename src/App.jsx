@@ -12,10 +12,9 @@ import { loadRouteModule, preloadRoute } from '@/lib/routePreloaders';
 import { ToastProvider } from '@/design-system/components/toast';
 import { TooltipProvider } from '@/design-system/components/tooltip';
 import { ThemeModeProvider } from '@/lib/useThemeMode';
-import AppBrand from '@/components/AppBrand';
-import AapmIcon from '@/components/icons/AapmIcon';
-import { Button, StateView } from '@/design-system';
-import { StatusPage } from '@/design-system/patterns/AppShell';
+import AppiMascot from '@/components/appi/AppiMascot';
+import { Ic } from '@/design-system/canvas';
+import { StatusPage, StatusTile } from '@/design-system/patterns/AppShell';
 import { PwaInstallContext, usePwaInstallState } from '@/lib/usePwaInstall';
 
 const Layout = lazy(() => loadRouteModule('layout'));
@@ -56,13 +55,7 @@ const AdminWorkspaceStatus = lazy(() => loadRouteModule('adminWorkspaceStatus'))
  * an in-canvas fallback once their chrome is up.
  */
 function BootScreen({ label }) {
-  return (
-    <div className="aapm-boot-screen" role="status" aria-live="polite">
-      <AppBrand variant="icon" className="aapm-boot-screen__mark" alt="" />
-      <span className="aapm-spinner" aria-hidden="true" />
-      <span className="aapm-boot-screen__label">{label}</span>
-    </div>
-  );
+  return <StatusPage busy title={label} visual={<div className="appi-stage"><AppiMascot mood="loading" size="xl" /></div>} />;
 }
 
 const AuthenticatedApp = () => {
@@ -89,15 +82,13 @@ const AuthenticatedApp = () => {
   // and offer the retry, instead of leaving a bare line of red text.
   if (authError) {
     return (
-      <StatusPage>
-        <StateView
-          kind="error"
-          titleAs="h1"
-          title="Academy belum bisa dimuat"
-          description={authError.message}
-          action={<Button onClick={() => void checkAppState()}><AapmIcon name="refresh" />Coba lagi</Button>}
-        />
-      </StatusPage>
+      <StatusPage
+        alert
+        visual={<StatusTile ic="plug" tone="danger" />}
+        title="Academy belum bisa dimuat"
+        text={authError.message || "Koneksi ke server terputus."}
+        actions={<button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => void checkAppState()}><Ic name="refresh" />Coba lagi</button>}
+      />
     );
   }
 
@@ -122,6 +113,7 @@ const AuthenticatedApp = () => {
             <Route path="/ai-assistant" element={<AiAssistant />} />
             <Route path="/certification" element={<Certification />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/settings" element={<Profile />} />
           </Route>
           <Route element={<AdminRoute />}>
             <Route element={<AdminShell />}>

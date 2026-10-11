@@ -1,41 +1,55 @@
 // @ts-nocheck
 import React from "react";
 import { Link } from "react-router-dom";
-import { Button, DataTable, IconTile, KPICluster, StateView, Surface } from "@/components/primitives";
-import AapmIcon from "@/components/icons/AapmIcon";
-import { useAdminOverview } from "@/lib/useAdminData";
+import { DataTable, StateView } from "@/components/primitives";
+import { useAdminCertificates, useAdminCourses, useAdminOverview } from "@/lib/useAdminData";
 import { AdminError, AdminLoading, AdminPageFrame } from "@/components/admin/AdminPage";
 import { formatAdminDate } from "@/components/admin/adminUtils";
+import { initialsOf } from "@/components/ProfileAvatar";
+import PwaInstallNotice from "@/components/PwaInstallNotice";
+import { Bar, Ic } from "@/design-system/canvas";
 
-// Admin areas stay neutral: every metric sits on the same surface, and the
-// single accent (the default green icon) carries the eye to the numbers.
-const metricIcon = {
-  learners: "users",
-  active: "analytics",
-  courses: "book",
-  completion: "approve",
-  analytics: "analytics",
-};
+const AVATAR_HUES = ["green", "blue", "violet", "teal", "amber", "rose"];
+const hueFor = (seed) => AVATAR_HUES[Math.abs(Number(seed) || String(seed).length) % AVATAR_HUES.length];
 
-function PanelHead({ icon, hue, title, description }) {
+const lifecycleStatuses = [
+  { key: "published", label: "Terbit" },
+  { key: "unpublished", label: "Belum terbit", warn: true },
+  { key: "draft", label: "Draf" },
+  { key: "archived", label: "Arsip" },
+];
+
+function Metric({ hue, ic, label, value, unit, note, bar }) {
   return (
-    <div className="aapm-panel-head">
-      <div className="min-w-0">
-        <h2 className="aapm-panel-head__title">{title}</h2>
-        <p className="aapm-panel-head__desc">{description}</p>
-      </div>
-      <IconTile icon={icon} hue={hue} size="sm" />
+    <div className="card metric" data-hue={hue}>
+      <span className="metric-label"><span className="tile tile-xs"><Ic name={ic} /></span>{label}</span>
+      <span className="metric-value">{value}{unit ? <> <small>{unit}</small></> : null}</span>
+      {bar !== undefined ? <Bar value={bar} size="sm" /> : <span className="metric-note">{note}</span>}
     </div>
   );
 }
 
 export default function AdminOverview() {
   const { data, isLoading, error, refetch } = useAdminOverview();
+  const coursesQuery = useAdminCourses();
+  const certificatesQuery = useAdminCertificates({ source: "verified", status: "issued" });
+  const course = coursesQuery.data?.courses?.[0];
+  const metric = (key) => data?.metrics?.find((item) => item.key === key)?.value;
+  const learners = Number(metric("learners")) || 0;
+  const active = Number(metric("active")) || 0;
+  const completion = Number(metric("completion")) || 0;
+  const activeShare = learners ? Math.round((active / learners) * 100) : 0;
 
   return (
     <AdminPageFrame
       title="Ringkasan"
       description="Pantau pembelajaran dari data native. Halaman ini hanya membaca dan tidak mengubah data produksi."
+      actions={(
+        <>
+          <Link className="btn btn-secondary" to="/admin/learners"><Ic name="grad" />Lihat peserta</Link>
+          <Link className="btn btn-primary" to="/admin/courses"><Ic name="edit" />Kelola kurikulum</Link>
+        </>
+      )}
     >
       <PwaInstallNotice />
       {isLoading ? (
@@ -43,110 +57,92 @@ export default function AdminOverview() {
       ) : error ? (
         <AdminError error={error} onRetry={refetch} />
       ) : (
-        <div className="aapm-admin-stack">
-          <KPICluster
-            className="aapm-admin-kpi"
-            label="Ringkasan administrasi"
-            columns={4}
-            variant="cards"
-            items={(data?.metrics || []).map((metric) => {
-              return {
-                icon: metricIcon[metric.key] || "analytics",
-                label: metric.label,
-                note: metric.detail || "Data langsung",
-                value: `${metric.value ?? "—"}${metric.suffix || ""}`,
-              };
-            })}
-          />
+        <>
+          <section className="grid-sm" aria-label="Ringkasan administrasi">
+            <Metric hue="green" ic="grad" label="Peserta terdaftar" value={metric("learners") ?? "—"} note="Akun non-admin" />
+            <Metric hue="blue" ic="route" label="Aktif belajar" value={metric("active") ?? "—"} unit="peserta" note={`${activeShare}% memiliki progres tersimpan`} />
+            <Metric hue="violet" ic="percent" label="Rata-rata penyelesaian" value={`${completion}%`} bar={completion} />
+            <Metric hue="teal" ic="cert" label="Sertifikat terbit" value={certificatesQuery.isLoading ? "…" : certificatesQuery.data?.total ?? "—"} note="Terverifikasi server" />
+          </section>
 
-          <Surface className="aapm-admin-note">
-            <IconTile icon="analytics" hue="green" size="sm" />
-            <p>{data?.dataNote}</p>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/learners">
-                Lihat peserta
-                <AapmIcon name="arrowRight" />
-              </Link>
-            </Button>
-          </Surface>
-
-          <div className="aapm-admin-split">
-            <Surface className="aapm-admin-panel">
-              <PanelHead icon="users" hue="green" title="Registrasi terbaru" description="Akun learner terakhir yang terdaftar." />
-              {data?.recentRegistrations?.length ? (
-                <DataTable
-                  caption="Registrasi learner terbaru"
-                  responsive="stacked"
-                  rows={data.recentRegistrations}
-                  rowKey={(user) => String(user.id)}
-                  columns={[
-                    {
-                      key: "learner",
-                      header: "Learner",
-                      required: true,
-                      overflow: "wrap",
-                      render: (user) => (
-                        <div className="min-w-0">
-                          <Link to={`/admin/learners/${user.id}`} className="aapm-link font-medium">{user.full_name || user.email}</Link>
-                          <div className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</div>
-                        </div>
-                      ),
-                    },
-                    {
-                      key: "createdAt",
-                      header: "Terdaftar",
-                      align: "right",
-                      overflow: "nowrap",
-                      render: (user) => <span className="text-xs text-muted-foreground">{formatAdminDate(user.created_at)}</span>,
-                    },
-                  ]}
-                />
-              ) : (
-                <StateView kind="empty" icon="users" title="Belum ada registrasi" description="Registrasi learner baru akan muncul di sini." framed={false} compact />
-              )}
-            </Surface>
-
-            <Surface className="aapm-admin-panel">
-              <PanelHead icon="modules" hue="green" title="Penyelesaian terbaru" description="Modul yang ditandai selesai oleh learner." />
+          <div className="split">
+            <section className="card" aria-labelledby="done-title">
+              <div className="card-pad card-head">
+                <div className="stack gap-0-5"><h2 className="card-title" id="done-title">Penyelesaian terbaru</h2><p className="card-desc">Modul yang ditandai selesai oleh peserta.</p></div>
+                <Link className="btn btn-ghost btn-sm" to="/admin/learners">Semua peserta<Ic name="chev-right" /></Link>
+              </div>
               {data?.recentCompletions?.length ? (
                 <DataTable
-                  caption="Penyelesaian modul terbaru"
+                  framed={false}
+                  caption="Penyelesaian modul terbaru oleh peserta"
                   responsive="stacked"
                   rows={data.recentCompletions}
                   rowKey={(item) => `${item.userId}-${item.moduleNumber}-${item.completedAt}`}
                   columns={[
                     {
                       key: "learner",
-                      header: "Learner",
+                      header: "Peserta",
                       required: true,
-                      overflow: "wrap",
                       render: (item) => (
-                        <Link to={`/admin/learners/${item.userId}`} className="aapm-link font-medium">{item.fullName || item.email}</Link>
+                        <Link to={`/admin/learners/${item.userId}`} className="row gap-3">
+                          <span className="avatar avatar-sm" data-hue={hueFor(item.userId)}>{initialsOf(item.fullName || item.email)}</span>
+                          <span className="t-medium">{item.fullName || item.email}</span>
+                        </Link>
                       ),
                     },
-                    {
-                      key: "module",
-                      header: "Modul",
-                      overflow: "wrap",
-                      render: (item) => <div className="text-xs leading-5 text-muted-foreground">{item.moduleTitle || `Modul ${item.moduleNumber}`}</div>,
-                    },
-                    {
-                      key: "completedAt",
-                      header: "Selesai",
-                      align: "right",
-                      overflow: "nowrap",
-                      render: (item) => <span className="text-xs text-muted-foreground">{formatAdminDate(item.completedAt)}</span>,
-                    },
+                    { key: "module", header: "Modul", render: (item) => <span className="t-clamp-1">Modul {item.moduleNumber}{item.moduleTitle ? ` · ${item.moduleTitle}` : ""}</span> },
+                    { key: "completedAt", header: "Selesai", align: "right", render: (item) => <span className="t-muted">{formatAdminDate(item.completedAt)}</span> },
                   ]}
                 />
               ) : (
                 <StateView kind="empty" icon="modules" title="Belum ada penyelesaian" description="Penyelesaian modul yang tersimpan akan muncul di sini." framed={false} compact />
               )}
-            </Surface>
+            </section>
+
+            <aside className="stack gap-grid" aria-label="Status dan registrasi">
+              <section className="card card-pad stack gap-4" aria-labelledby="content-title">
+                <div className="card-head"><h2 className="card-title" id="content-title">Status konten</h2><Link className="btn btn-link t-support" to="/admin/courses">Kurikulum</Link></div>
+                {coursesQuery.isLoading ? (
+                  <div className="cgrid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>{lifecycleStatuses.map((item) => <span key={item.key} className="skel" style={{ height: 56 }} />)}</div>
+                ) : coursesQuery.error ? (
+                  <p className="t-support t-danger">Status kurikulum belum dapat dimuat. {coursesQuery.error.message}</p>
+                ) : course ? (
+                  <div className="cgrid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }} aria-label="Jumlah modul menurut status">
+                    {lifecycleStatuses.map(({ key, label, warn }) => {
+                      const count = course.lifecycleCounts?.[key] ?? 0;
+                      return (
+                        <div key={key} className="inset stack gap-0-5" style={{ padding: "10px 12px" }}>
+                          <span className={`t-caption ${warn && count ? "t-warning" : "t-muted"}`}>{label}</span>
+                          <span className="t-heading t-num">{course.lifecycleCounts?.[key] ?? "—"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="t-support t-muted">Status modul akan tampil setelah katalog tersedia.</p>
+                )}
+              </section>
+
+              <section className="card" aria-labelledby="reg-title">
+                <div className="card-pad card-head" style={{ paddingBottom: 8 }}><div className="stack gap-0-5"><h2 className="card-title" id="reg-title">Registrasi terbaru</h2><p className="card-desc">Akun peserta terakhir yang terdaftar.</p></div></div>
+                {data?.recentRegistrations?.length ? (
+                  <div className="list">
+                    {data.recentRegistrations.slice(0, 5).map((user) => (
+                      <Link key={user.id} className="li" to={`/admin/learners/${user.id}`}>
+                        <span className="avatar avatar-sm" data-hue={hueFor(user.id)}>{initialsOf(user.full_name || user.email)}</span>
+                        <div className="stack grow" style={{ minWidth: 0 }}><span className="li-title t-clamp-1">{user.full_name || user.email}</span><span className="li-meta t-clamp-1">{user.email}</span></div>
+                        <span className="t-caption t-muted t-nowrap">{formatAdminDate(user.created_at, { year: undefined })}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="card-pad t-support t-muted" style={{ paddingTop: 0 }}>Registrasi peserta baru akan muncul di sini.</p>
+                )}
+              </section>
+            </aside>
           </div>
-        </div>
+        </>
       )}
     </AdminPageFrame>
   );
 }
-import PwaInstallNotice from "@/components/PwaInstallNotice";

@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, Surface, Switch } from "@/components/primitives";
-
-const ComposerSurface = /** @type {any} */ (Surface);
+import { Ic } from "@/design-system/canvas";
+import { cn } from "@/lib/utils";
 
 /**
- * The single composer used by the full APPI workspace and the quick panel.
- * Keeping the input surface in one place prevents the mobile and desktop
- * versions from drifting apart as the assistant evolves.
+ * The single composer used by the full APPI workspace and the quick panel
+ * (canvas `.composer`): the question, then photo, KPI context and web search
+ * toggles, and the round send button. Keeping the input surface in one place
+ * prevents the mobile and desktop versions from drifting apart.
  */
 export default function AiComposer({
   input = "",
@@ -22,9 +21,9 @@ export default function AiComposer({
   onRemoveImage = () => {},
   attachmentError = "",
   includeFarm = true,
-  onIncludeFarmChange = () => {},
+  onIncludeFarmChange = (_value) => {},
   allowWebSearch = false,
-  onAllowWebSearchChange = () => {},
+  onAllowWebSearchChange = (_value) => {},
   contextLabel = "",
   farmAvailable = true,
   placeholder = "Tanya APPI tentang farm Anda…",
@@ -75,8 +74,10 @@ export default function AiComposer({
     };
   }, [resizeInput]);
 
+  const farmOn = farmAvailable && includeFarm;
+
   return (
-    <div className={`aapm-ai-composer min-w-0 w-full ${compact ? "aapm-ai-composer--compact text-xs" : "text-sm"}`}>
+    <div className={cn("aapm-ai-composer stack gap-2 w-full", compact && "composer-compact")} style={{ minWidth: 0 }}>
       <input
         ref={imageInputRef}
         id={idPrefix}
@@ -88,38 +89,20 @@ export default function AiComposer({
         className="sr-only"
       />
 
-      <ComposerSurface
-        as="div"
-        className="aapm-ai-composer-frame min-w-0 overflow-hidden transition-[border-color,box-shadow]"
-      >
-        {imageAttachment && (
-          <div className="flex min-w-0 items-center gap-2 border-b border-border/70 bg-surface-subtle/75 px-3 py-2">
-            <img
-              src={imageAttachment.dataUrl}
-              alt="Pratinjau foto lampiran"
-              className="h-9 w-9 shrink-0 rounded-[var(--radius-control)] object-cover ring-1 ring-border"
-            />
-            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-              {imageAttachment.name}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onRemoveImage}
-              className="h-7 w-7 shrink-0"
-              aria-label="Hapus foto lampiran"
-            >
-              <AapmIcon name="solar:close-circle-bold" className="h-3.5 w-3.5" />
-            </Button>
+      <div className="composer">
+        {imageAttachment ? (
+          <div className="row gap-2 composer-attachment">
+            <img src={imageAttachment.dataUrl} alt="Pratinjau foto lampiran" />
+            <span className="t-caption t-medium t-clamp-1 grow">{imageAttachment.name}</span>
+            <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" onClick={onRemoveImage} aria-label="Hapus foto lampiran"><Ic name="x-circle" size="sm" /></button>
           </div>
-        )}
-        {imageLoading && !imageAttachment && (
-          <div className="flex items-center gap-2 border-b border-border/70 bg-tint-orange/45 px-3 py-2 text-[11px] text-tint-orange-foreground" role="status" aria-live="polite">
-            <AapmIcon name="loading" className="h-3.5 w-3.5 animate-spin" />
+        ) : null}
+        {imageLoading && !imageAttachment ? (
+          <div className="row gap-2 t-caption t-ai composer-attachment" role="status" aria-live="polite">
+            <span className="typing" aria-hidden="true"><i /><i /><i /></span>
             <span>Menyiapkan foto…</span>
           </div>
-        )}
+        ) : null}
 
         <textarea
           ref={textareaRef}
@@ -131,93 +114,79 @@ export default function AiComposer({
               if (hasContent && !cannotSend) onSubmit();
             }
           }}
-          rows={1}
+          rows={compact ? 1 : 2}
           maxLength={3000}
           readOnly={disabled}
           placeholder={disabled ? "Memuat percakapan…" : placeholder}
-          aria-label="Pertanyaan untuk APPI"
-          className={`block max-h-[10.5rem] min-h-[2.75rem] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 leading-5 outline-none placeholder:text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}
+          aria-label="Pesan untuk APPI"
         />
 
-        <div className="aapm-ai-composer-frame__footer flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2 py-1.5">
-          <div className="aapm-ai-composer-tools flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => imageInputRef?.current?.click()}
-              disabled={cannotSend}
-              className="aapm-ai-attachment-control h-10 shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-tint-orange hover:text-brand-orange sm:h-8"
-              aria-label="Lampirkan foto farm"
-              aria-busy={imageLoading}
-              title="Lampirkan foto farm"
-            >
-              <AapmIcon name="solar:gallery-add-bold-duotone" className="h-4 w-4" />
-              <span className="text-xs font-semibold">Foto</span>
-            </Button>
-            {contextLabel && (
-              <span className="aapm-ai-composer-context hidden max-w-[11rem] min-w-0 truncate text-[11px] text-muted-foreground sm:inline-flex">
-                <AapmIcon name="solar:map-point-bold-duotone" className="mr-1 h-3.5 w-3.5 shrink-0 text-brand-orange" />
-                <span className="truncate">{contextLabel}</span>
-              </span>
-            )}
-            {showFarmToggle && (
-              <label
-                className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground data-[unavailable=true]:cursor-default"
-                data-unavailable={farmAvailable ? undefined : "true"}
-                title={farmAvailable ? undefined : "Belum ada catatan KPI. Isi di Farm KPI agar APPI bisa membaca data farm."}
-              >
-                <Switch
-                  checked={farmAvailable && includeFarm}
-                  onCheckedChange={onIncludeFarmChange}
-                  aria-label="Sertakan data KPI sebagai konteks"
-                  disabled={cannotSend || !farmAvailable}
-                  className="aapm-ai-composer-switch"
-                />
-                {farmAvailable ? "Pakai KPI" : "KPI kosong"}
-              </label>
-            )}
-            <label className="aapm-ai-composer-toggle inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              <Switch
-                checked={allowWebSearch}
-                onCheckedChange={onAllowWebSearchChange}
-                aria-label="Izinkan APPI mencari referensi web"
-                disabled={cannotSend}
-                className="aapm-ai-composer-switch"
-              />
-              <AapmIcon name="solar:global-bold-duotone" className="h-3.5 w-3.5 text-brand-orange" />
-              Cari web
-            </label>
-          </div>
-
-          <Button
+        <div className="composer-foot">
+          <button
             type="button"
+            className="btn btn-ghost btn-sm btn-quiet aapm-ai-attachment-control"
+            onClick={() => imageInputRef?.current?.click()}
+            disabled={cannotSend}
+            aria-label="Lampirkan foto farm"
+            aria-busy={imageLoading || undefined}
+          >
+            <Ic name="camera" />Foto
+          </button>
+          {contextLabel ? <span className="chip chip-ai hide-sm composer-context" title={contextLabel}><Ic name="pin" />{contextLabel}</span> : null}
+          <span className="vr" style={{ margin: "6px 4px" }} aria-hidden="true" />
+          {showFarmToggle ? (
+            <label className="switch switch-ai" style={{ padding: "0 var(--s-2)" }} title={farmAvailable ? undefined : "Belum ada catatan KPI. Isi di Farm KPI agar APPI bisa membaca data farm."}>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={farmOn}
+                aria-checked={farmOn}
+                aria-label="Sertakan data KPI sebagai konteks"
+                disabled={cannotSend || !farmAvailable}
+                onChange={(event) => onIncludeFarmChange(event.target.checked)}
+              />
+              {farmAvailable ? "Pakai KPI" : "KPI kosong"}
+            </label>
+          ) : null}
+          <label className="switch" style={{ padding: "0 var(--s-2)" }}>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={allowWebSearch}
+              aria-checked={allowWebSearch}
+              aria-label="Izinkan APPI mencari referensi web"
+              disabled={cannotSend}
+              onChange={(event) => onAllowWebSearchChange(event.target.checked)}
+            />
+            Cari web
+          </label>
+          <span className="grow" />
+          <button
+            type="button"
+            className="send aapm-ai-send-control"
             onClick={handleSendClick}
             disabled={!hasContent || cannotSend}
-            className="aapm-ai-send-control h-9 min-w-[4.75rem] shrink-0 gap-1.5 bg-brand-orange px-3 text-white hover:bg-brand-orange/90 disabled:bg-muted disabled:text-muted-foreground"
-            aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim pertanyaan"}
-            title="Kirim pertanyaan"
+            aria-busy={isStreaming || undefined}
+            aria-label={isStreaming ? "APPI sedang menyiapkan jawaban" : "Kirim"}
+            title="Kirim"
           >
-            <AapmIcon name={isStreaming ? "loading" : "solar:plain-2-bold"} className={`h-[17px] w-[17px] ${isStreaming ? "animate-spin" : ""}`} />
-            <span className="text-xs font-semibold">{isStreaming ? "Menjawab…" : "Kirim"}</span>
-          </Button>
+            {isStreaming ? <span className="typing typing-light" aria-hidden="true"><i /><i /><i /></span> : <Ic name="send" />}
+          </button>
         </div>
-      </ComposerSurface>
+      </div>
 
-      {attachmentError && (
-        <p className="mt-1.5 text-[11px] font-medium text-danger">{attachmentError}</p>
-      )}
-      {showPrivacy && (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] leading-4 text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <AapmIcon name="solar:medical-kit-bold" className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
+      {attachmentError ? <p className="t-caption t-danger t-medium">{attachmentError}</p> : null}
+      {showPrivacy ? (
+        <div className="row between wrap gap-2" style={{ padding: "0 var(--s-2)" }}>
+          <span className="row gap-1-5 t-caption t-muted">
+            <Ic name="info" size="xs" />
             {/* Phones keep the safety line to one row so the transcript keeps its height. */}
-            <span className="hidden sm:inline">Untuk diagnosis penyakit atau dosis obat, konsultasikan dengan dokter hewan.</span>
-            <span className="sm:hidden">Penyakit atau dosis obat? Tanyakan dokter hewan.</span>
+            <span className="hide-sm">Untuk diagnosis penyakit atau dosis obat, konsultasikan dengan dokter hewan.</span>
+            <span className="show-sm">Penyakit atau dosis obat? Tanyakan dokter hewan.</span>
           </span>
-          <span className="hidden sm:inline">Enter kirim · Shift+Enter baris baru</span>
+          <span className="row gap-1 t-caption t-muted hide-sm"><span className="kbd">Enter</span>kirim ·<span className="kbd">Shift</span>+<span className="kbd">Enter</span>baris baru</span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

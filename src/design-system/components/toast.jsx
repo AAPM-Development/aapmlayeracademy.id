@@ -1,6 +1,6 @@
 import * as React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { Button, IconButton } from "./actions";
+import { Button } from "./actions";
 
 const ToastContext = React.createContext(null);
 
@@ -16,7 +16,7 @@ const toneByLegacyVariant = {
   neutral: "neutral",
 };
 
-const iconByTone = { success: "check", danger: "danger", warning: "warning", info: "info", neutral: "info" };
+const iconByTone = { success: "success", danger: "danger", warning: "warning", info: "info", neutral: "info" };
 const DEFAULT_DURATION = 5200;
 const MAX_VISIBLE = 4;
 
@@ -83,18 +83,18 @@ function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="aapm-toast-region" aria-live="polite" aria-relevant="additions">
+      <div className="toast-region" aria-live="polite" aria-relevant="additions">
         {toasts.map((item) => (
-          <div key={item.id} className="aapm-toast" data-tone={item.tone} data-leaving={item.leaving ? "true" : undefined} role={item.tone === "danger" ? "alert" : "status"}>
+          <div key={item.id} className="toast toast-live" data-tone={item.tone} data-leaving={item.leaving ? "true" : undefined} role={item.tone === "danger" ? "alert" : "status"}>
             <AapmIcon name={iconByTone[item.tone] || "info"} />
-            <div className="min-w-0">
-              <p className="aapm-toast__title">{item.title}</p>
-              {item.description ? <p className="aapm-toast__description">{item.description}</p> : null}
+            <div className="stack gap-0-5 grow">
+              <p className="t-strong">{item.title}</p>
+              {item.description ? <p className="toast-desc">{item.description}</p> : null}
               {item.action ? (
                 <Button
                   size="sm"
                   variant="link"
-                  className="aapm-toast__action"
+                  className="toast-action"
                   onClick={() => {
                     item.action.onAction();
                     dismiss(item.id);
@@ -104,7 +104,9 @@ function ToastProvider({ children }) {
                 </Button>
               ) : null}
             </div>
-            <IconButton label="Tutup notifikasi" tooltip={null} icon="close" size="sm" onClick={() => dismiss(item.id)} />
+            <button type="button" className="toast-close" aria-label="Tutup notifikasi" onClick={() => dismiss(item.id)}>
+              <AapmIcon name="close" />
+            </button>
           </div>
         ))}
       </div>

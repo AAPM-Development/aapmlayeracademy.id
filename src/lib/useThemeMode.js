@@ -12,7 +12,8 @@ function readStoredTheme() {
     // Storage can be unavailable in privacy-restricted browsers.
   }
 
-  return "light";
+  // No explicit choice yet: follow the system appearance.
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function applyTheme(mode) {
@@ -35,15 +36,19 @@ function useThemeModeState() {
 
   useEffect(() => {
     applyTheme(mode);
-    try {
-      window.localStorage.setItem("aapm-theme", mode);
-    } catch {
-      // Theme still works when persistence is unavailable.
-    }
   }, [mode]);
 
+  // Only an explicit toggle is remembered; until then the theme follows the system.
   const toggleTheme = useCallback(() => {
-    setMode((current) => (current === "dark" ? "light" : "dark"));
+    setMode((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      try {
+        window.localStorage.setItem("aapm-theme", next);
+      } catch {
+        // Theme still works when persistence is unavailable.
+      }
+      return next;
+    });
   }, []);
 
   return { mode, toggleTheme };

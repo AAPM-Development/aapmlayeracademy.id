@@ -1,31 +1,41 @@
-import React from "react";
-import AapmIcon from "@/components/icons/AapmIcon";
-import { Badge, IconButton, Segments } from "@/design-system";
-import { StatTile } from "@/components/academy/CourseElements";
-import { formatDuration } from "@/lib/learningPath";
+import React, { useState } from "react";
+import { appiAsset } from "@/components/appi/AppiMascot";
 import AppiMascot from "@/components/appi/AppiMascot";
 import CountUp from "@/components/motion/CountUp";
+import { Ic } from "@/design-system/canvas";
+import { formatDuration } from "@/lib/learningPath";
+import { cn } from "@/lib/utils";
+
+// Assessment patterns of the Redesign v2 canvas (quiz intro/question/result,
+// final exam): focus bar with segments, tactile choice cards, the feedback
+// bar, the question navigator and the celebration.
 
 const KEYS = ["A", "B", "C", "D", "E", "F"];
+const difficultyLabel = { easy: "Mudah", medium: "Sedang", hard: "Sulit" };
 
-/** Slim assessment bar: exit, segmented progress, counter. */
-export function AssessmentBar({ onExit, total = 0, current = 0, states = [], label = "Progress kuis", title = undefined, context = undefined, children = null }) {
+/** Focus bar for an assessment: exit, context and title, segmented progress, counter. */
+export function AssessmentBar({ onExit, total = 0, current = 0, states = [], checked = undefined, label = "Progres kuis", title = undefined, context = undefined, hue = undefined, children = null }) {
+  const done = checked ?? states.filter(Boolean).length;
+  const segClass = { done: "on", correct: "on", wrong: "bad", current: "cur" };
   return (
-    <header className="aapm-topbar aapm-focus__bar">
-      <IconButton label="Keluar" icon="close" onClick={onExit} />
+    <header className="focus-bar" data-hue={hue}>
+      <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Keluar" onClick={onExit}><Ic name="x" /></button>
+      <span className="vr hide-sm" style={{ margin: "14px 4px" }} />
       {title || context ? (
-        <div className="aapm-topbar__title">
-          {context ? <span className="aapm-topbar__context">{context}</span> : null}
-          {title ? <h1 className="aapm-topbar__title-text">{title}</h1> : null}
+        <div className="stack grow" style={{ minWidth: 0 }}>
+          {context ? <span className="t-caption t-muted t-clamp-1">{context}</span> : null}
+          {title ? <span className="t-heading t-clamp-1">{title}</span> : null}
+        </div>
+      ) : <span className="grow" />}
+      {total ? (
+        <div className="row gap-3 assessment-progress" role="group" aria-label={`${label}: ${done} dari ${total} soal diperiksa`}>
+          <div className="segs grow" aria-hidden="true">
+            {Array.from({ length: total }, (_, index) => <i key={index} className={segClass[states[index]]} />)}
+          </div>
+          <span className="t-caption t-strong t-num">{done}/{total}</span>
         </div>
       ) : null}
-      <div className="aapm-topbar__actions">
-        <div className="aapm-focus__segments">
-          <Segments total={total} current={current} states={states} label={label} />
-        </div>
-        <span className="aapm-text-caption aapm-numeric whitespace-nowrap">{Math.min(current + 1, total)}/{total}</span>
-        {children}
-      </div>
+      {children}
     </header>
   );
 }
@@ -36,38 +46,39 @@ export function AssessmentBar({ onExit, total = 0, current = 0, states = [], lab
  * server's answer for that check, never a value the page holds. The quiz page
  * maps the A–F and 1–6 keys to the choices (announced through aria-keyshortcuts).
  */
-export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, correctIndex = null, meta, children = null }) {
+export function QuizQuestion({ question, number, total, answer, onAnswer, revealed = false, correctIndex = null, meta = undefined, children = null }) {
   if (!question) return null;
   const titleId = `question-${number}`;
   return (
-    <div className="aapm-quiz" key={number}>
-      <div className="aapm-quiz__meta">
-        <span className="aapm-text-overline">Soal {number}{total ? ` dari ${total}` : ""}</span>
-        <div className="flex flex-wrap gap-1.5">
-          {question.difficulty ? <Badge>{question.difficulty}</Badge> : null}
+    <div className="stack gap-6 w-full quiz-stage" key={number}>
+      <header className="stack gap-3">
+        <div className="row wrap gap-2">
+          <span className="t-overline t-ink">Soal {number}{total ? ` dari ${total}` : ""}</span>
+          {question.difficulty ? <span className="chip">{difficultyLabel[question.difficulty] || question.difficulty}</span> : null}
           {meta}
         </div>
-      </div>
-      <h2 id={titleId} className="aapm-quiz__question aapm-motion-rise">{question.question}</h2>
-      <div className="aapm-choices aapm-motion-stack" role="radiogroup" aria-labelledby={titleId}>
+        <h1 className="t-title-c anim-rise" id={titleId}>{question.question}</h1>
+      </header>
+      <div className="stack gap-3" role="radiogroup" aria-labelledby={titleId}>
         {question.options.map((option, index) => {
           const selected = answer === index;
-          const result = revealed ? (index === correctIndex ? "correct" : selected ? "wrong" : undefined) : undefined;
+          const result = revealed ? (index === correctIndex ? "correct" : selected ? "wrong" : "dim") : undefined;
           return (
             <button
               key={`${option}-${index}`}
               type="button"
               role="radio"
               aria-checked={selected}
-              className="aapm-choice"
-              data-result={result}
+              className={cn("choice anim-rise", !revealed && selected && "is-selected", result === "correct" && "is-correct", result === "wrong" && "is-wrong", result === "dim" && "is-dim")}
+              style={{ "--i": index + 1 }}
               disabled={revealed}
               aria-keyshortcuts={KEYS[index] ? `${KEYS[index]} ${index + 1}` : undefined}
               onClick={() => onAnswer(index)}
             >
-              <span className="aapm-choice__key" aria-hidden="true">{KEYS[index] || index + 1}</span>
+              <span className="choice-key" aria-hidden="true">{KEYS[index] || index + 1}</span>
               <span>{option}</span>
-              {result === "correct" ? <AapmIcon name="check" className="aapm-choice__mark" /> : result === "wrong" ? <AapmIcon name="closeCircle" className="aapm-choice__mark" /> : <span />}
+              {result === "correct" ? <Ic name="check-circle" size="lg" className="t-success" /> : result === "wrong" ? <Ic name="x-circle" size="lg" className="t-danger" /> : null}
+              {result === "correct" && selected ? <span className="sr-only">Jawaban Anda, tepat</span> : result === "wrong" ? <span className="sr-only">Jawaban Anda, belum tepat</span> : null}
             </button>
           );
         })}
@@ -85,136 +96,207 @@ export function checkAnnouncement(question, feedback, run = 0) {
 }
 
 /**
- * Answer feedback inside the action bar after "Periksa" (Duolingo-style):
- * verdict, the correct answer when wrong, the explanation, and a run of
- * correct answers from three on. The bar itself carries the tone; the
- * announcement goes through the page's persistent live region.
+ * Answer feedback inside the action bar after "Periksa": APPI pops in (cheer
+ * when right, wink when not), the verdict, a streak chip from three in a row,
+ * the correct answer when wrong and a two-line explanation that can expand.
+ * The bar itself carries the tone; the announcement goes through the page's
+ * persistent live region.
  */
 export function CheckFeedback({ question, feedback, run = 0 }) {
+  const [expanded, setExpanded] = useState(false);
   if (!question || !feedback) return null;
   const correct = feedback.isCorrect;
-  // A run of three or more is an APPI moment: the mascot cheers in place of
-  // the check mark, which stays as a small badge so the verdict never
-  // depends on the character alone.
-  const streak = correct && run >= 3;
+  const long = String(feedback.explanation || "").length > 140;
   return (
-    <div className="aapm-check-feedback" data-tone={correct ? "success" : "danger"} data-streak={streak ? "true" : undefined}>
-      <span className="aapm-check-feedback__icon" aria-hidden="true">
-        {streak ? <AppiMascot mood="cheer" size={52} decor={false} /> : null}
-        <AapmIcon name={correct ? "glyphCheck" : "close"} />
-      </span>
-      <div className="aapm-check-feedback__body">
-        <p className="aapm-check-feedback__title">
-          {correct ? "Tepat sekali!" : "Belum tepat"}
-          {correct && run >= 3 ? <span className="aapm-check-feedback__run"><AapmIcon name="streak" />{run} benar beruntun</span> : null}
-        </p>
-        {!correct ? <p className="aapm-check-feedback__answer">Jawaban benar: <strong>{question.options[feedback.correctIndex]}</strong></p> : null}
-        {feedback.explanation ? <p className="aapm-check-feedback__text">{feedback.explanation}</p> : null}
+    <>
+      <div className="appi-stage hide-sm"><AppiMascot mood={correct ? "cheer" : "wink"} size="md" enter="pop" /></div>
+      <div className="stack gap-1 check-feedback">
+        <div className="row wrap gap-3">
+          <span className={cn("t-heading", correct ? "t-success" : "t-danger")}>{correct ? "Tepat sekali!" : "Belum tepat"}</span>
+          {correct && run >= 3 ? <span className="streak anim-pop"><Ic name="flame" className="anim-flicker" />{run} benar beruntun</span> : null}
+        </div>
+        {!correct ? <p className="t-support">Jawaban benar: <strong>{question.options[feedback.correctIndex]}</strong></p> : null}
+        {feedback.explanation ? (
+          <>
+            <p className={cn("t-support", !expanded && "t-clamp-2")}>{feedback.explanation}</p>
+            {long ? <button type="button" className="btn btn-link t-support check-more" onClick={() => setExpanded((value) => !value)}>{expanded ? "Ringkas penjelasan" : "Baca penjelasan"}</button> : null}
+          </>
+        ) : null}
       </div>
-    </div>
+    </>
   );
 }
 
-/** Numbered grid to move between questions; flagged items carry a dot. */
-export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagged = {}, results = [], answeredLabel = "terjawab", onSelect = (_index) => {} }) {
+/** Question navigator (`.qnav`) for the outline or the phone sheet, with a legend and the pass rule. */
+export function QuestionNavigator({ total = 0, current = 0, answers = {}, flagged = {}, results = [], answeredLabel = "terjawab", passingGrade = null, onSelect = (_index) => {} }) {
   const answered = Object.keys(answers).length;
   const marked = Object.values(flagged).filter(Boolean).length;
   const hasResults = results.some((result) => result === "correct" || result === "wrong");
+  const needed = passingGrade && total ? Math.ceil((passingGrade / 100) * total) : null;
   return (
-    <div className="grid gap-4 p-4">
-      <div>
-        <p className="aapm-text-label m-0">Daftar soal</p>
-        <p className="aapm-text-caption m-0">{answered}/{total} {answeredLabel}{marked ? ` · ${marked} ditandai` : ""}</p>
+    <>
+      <div className="row between gap-2" style={{ padding: "4px 8px 0" }}>
+        <span className="t-heading">Daftar soal</span>
+        <span className="t-caption t-muted t-num">{answered}/{total} {answeredLabel}{marked ? ` · ${marked} ditandai` : ""}</span>
       </div>
-      <div className="aapm-question-nav" role="group" aria-label="Pilih nomor soal">
+      <div className="qnav" style={{ padding: "0 8px" }} role="group" aria-label="Pilih nomor soal">
         {Array.from({ length: total }, (_, index) => (
           <button
             key={index}
             type="button"
             onClick={() => onSelect(index)}
+            className={cn(answers[index] !== undefined && "is-answered", results[index] === "correct" && "is-correct", results[index] === "wrong" && "is-wrong", index === current && "is-current", flagged[index] && "is-flagged")}
             aria-current={index === current ? "step" : undefined}
-            data-answered={answers[index] !== undefined ? "true" : undefined}
-            data-flagged={flagged[index] ? "true" : undefined}
-            data-result={results[index] || undefined}
-            aria-label={`Soal ${index + 1}${answers[index] !== undefined ? `, ${answeredLabel}` : ", belum dijawab"}${results[index] === "correct" ? ", jawaban tepat" : results[index] === "wrong" ? ", perlu ditinjau" : ""}${flagged[index] ? ", ditandai" : ""}`}
+            aria-label={`Soal ${index + 1}${answers[index] !== undefined ? `, ${answeredLabel}` : ", belum dijawab"}${results[index] === "correct" ? ", tepat" : results[index] === "wrong" ? ", perlu ditinjau" : ""}${flagged[index] ? ", ditandai" : ""}${index === current ? ", sedang dibuka" : ""}`}
           >
             {index + 1}
+            {results[index] === "correct" ? <span className="medal-badge"><Ic name="check" /></span> : null}
           </button>
         ))}
       </div>
-      <div className="grid gap-1.5 text-caption text-muted-foreground">
+      <ul className="stack gap-2" style={{ padding: "4px 8px 12px", borderBottom: "1px solid var(--border)" }} aria-label="Keterangan">
         {hasResults ? (
           <>
-            <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" data-result="correct" />Tepat</span>
-            <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" data-result="wrong" />Perlu ditinjau</span>
-            <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" data-result="pending" />Belum dijawab</span>
+            <li className="row gap-2 t-caption t-muted"><Ic name="check-circle" size="sm" className="t-success" />Tepat</li>
+            <li className="row gap-2 t-caption t-muted"><Ic name="x-circle" size="sm" className="t-danger" />Perlu ditinjau</li>
+            <li className="row gap-2 t-caption t-muted"><Ic name="minus" size="sm" />Belum dijawab</li>
           </>
-        ) : <span className="inline-flex items-center gap-2"><i className="aapm-question-nav__key" />{answeredLabel.charAt(0).toUpperCase() + answeredLabel.slice(1)}</span>}
-        <span className="inline-flex items-center gap-2"><i className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--aapm-semantic-attention)]" />Ditandai untuk ditinjau</span>
-      </div>
-    </div>
+        ) : (
+          <>
+            <li className="row gap-2 t-caption t-muted"><span className="qnav-key is-answered" aria-hidden="true" />{answeredLabel.charAt(0).toUpperCase() + answeredLabel.slice(1)}</li>
+            <li className="row gap-2 t-caption t-muted"><Ic name="minus" size="sm" />Belum dijawab</li>
+          </>
+        )}
+        {marked || Object.keys(flagged).length ? <li className="row gap-2 t-caption t-muted"><span className="qnav-key is-flagged" aria-hidden="true" />Ditandai untuk ditinjau</li> : null}
+      </ul>
+      {passingGrade ? (
+        <div className="inset row gap-3" style={{ margin: "0 8px", padding: "var(--s-3)" }}>
+          <span className="tile tile-sm tile-round"><Ic name="target" /></span>
+          <div className="stack" style={{ minWidth: 0 }}>
+            <span className="t-support t-strong">Nilai lulus {passingGrade}%</span>
+            {needed ? <span className="t-caption t-muted">Minimal {needed} dari {total} tepat</span> : null}
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
+const confettiPieces = [
+  { x: "6%", y: 28, r: "-24deg", c: "var(--gold)", d: 0 },
+  { x: "14%", y: 96, c: "var(--blue)", d: 80, dot: true },
+  { x: "21%", y: 10, r: "38deg", c: "var(--rose)", d: 160 },
+  { x: "11%", y: 168, r: "62deg", c: "var(--green)", d: 240 },
+  { x: "25%", y: 140, c: "var(--violet)", d: 320, dot: true },
+  { x: "77%", y: 18, r: "18deg", c: "var(--green)", d: 40 },
+  { x: "85%", y: 86, c: "var(--gold)", d: 120, dot: true },
+  { x: "92%", y: 34, r: "-48deg", c: "var(--violet)", d: 200 },
+  { x: "74%", y: 150, r: "-16deg", c: "var(--blue)", d: 280 },
+  { x: "90%", y: 172, c: "var(--rose)", d: 360, dot: true },
+  { x: "81%", y: 122, r: "74deg", c: "var(--teal)", d: 440 },
+];
+
 /**
- * Result screen (lesson-complete style): APPI reacts to the outcome over a
- * sunburst, the headline, then stat tiles whose numbers count up; actions are
- * passed as children. With `duration` (ms) the third tile shows the time
- * taken instead of the passing grade.
+ * Result screen (canvas "Kuis — hasil"): APPI drops in over rays and a glow
+ * with confetti when passed (or pops in with a wink when not), the verdict,
+ * the headline, and three stat tiles that pop in; rewards and actions come
+ * in as children.
  */
-export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title = undefined, description = undefined, children = null }) {
+export function AssessmentResult({ passed = false, score = 0, total = 0, passingGrade = 70, duration = undefined, title = undefined, description = undefined, streak = 0, hue = undefined, badge = null, children = null }) {
   const percent = total ? Math.round((score / total) * 100) : 0;
   const perfect = passed && total > 0 && score === total;
   const outcome = perfect ? "perfect" : passed ? "passed" : "retry";
   const mood = { perfect: "proud", passed: "cheer", retry: "wink" }[outcome];
   const headline = { perfect: "Sempurna!", passed: "Luar biasa!", retry: "Hampir sampai" }[outcome];
   return (
-    <div className="aapm-quiz">
-      <div className="aapm-result" data-hue={passed ? "green" : "orange"} data-outcome={outcome}>
-        <div className="aapm-result__badge aapm-result__badge--appi">
-          {passed ? <span className="aapm-result__rays" aria-hidden="true" /> : null}
-          <span className="aapm-result__glow" aria-hidden="true" />
-          <AppiMascot mood={mood} size="hero" />
+    <div className="stack gap-6 w-full result-stage">
+      <section className="rel stack items-center gap-4 t-center" aria-labelledby="result-title">
+        <div className="halo" data-hue={hue || (passed ? "green" : "orange")} style={{ width: 280, height: 210 }}>
+          {passed ? <span className="rays anim-spin" style={{ "--size": "320px" }} aria-hidden="true" /> : null}
+          <span className="glow" style={{ "--size": "176px" }} aria-hidden="true" />
+          <div className="appi-stage">
+            <AppiMascot mood={mood} size="hero" enter={passed ? "drop" : "pop"} label={passed ? "APPI bersorak" : "APPI menyemangati"} />
+          </div>
+          {badge}
+          {passed ? (
+            <>
+              <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: 34, top: 18, width: 30 }} />
+              <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ left: 40, top: 70, width: 20, "--i": 2 }} />
+              <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: 52, bottom: 30, width: 16, "--i": 4 }} />
+            </>
+          ) : null}
         </div>
-        {/* The assessment bar already holds the screen's h1 (quiz or exam title). */}
-        <h2 className="aapm-result__title">{title || headline}</h2>
-        <p className="aapm-result__text">{description || (perfect ? "Semua jawaban benar. Anda siap untuk modul berikutnya." : passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi — APPI yakin Anda bisa.`)}</p>
-      </div>
-      <div className="aapm-stat-grid aapm-stat-grid--result">
-        <StatTile icon="target" hue={passed ? "green" : "orange"} label="Skor" value={<CountUp value={percent} format={(value) => `${Math.round(value)}%`} duration={900} />} />
-        <StatTile icon="check" hue="blue" label="Jawaban benar" value={<><CountUp value={score} duration={900} />/{total}</>} />
-        {duration !== undefined
-          ? <StatTile icon="timer" hue="violet" label="Waktu" value={formatDuration(duration)} />
-          : <StatTile icon="flag" hue="violet" label="Nilai lulus" value={`${passingGrade}%`} />}
-      </div>
+        {passed ? (
+          <div className="confetti" aria-hidden="true">
+            {confettiPieces.map((piece, index) => (
+              <i key={index} className={piece.dot ? "dot" : undefined} style={{ "--x": piece.x, "--y": `${piece.y}px`, "--r": piece.r, "--c": piece.c, "--d": `${piece.d}ms` }} />
+            ))}
+          </div>
+        ) : null}
+        <div className="row wrap justify-center gap-2">
+          <span className={cn("verdict", passed ? "verdict-good" : "verdict-watch")}><Ic name={passed ? "check-circle" : "eye"} />{passed ? "Lulus" : "Belum lulus"} · nilai lulus {passingGrade}%</span>
+          {streak >= 3 ? <span className="streak"><Ic name="flame" className="anim-flicker" />{streak} benar beruntun</span> : null}
+        </div>
+        <div className="stack items-center gap-2">
+          <h1 className="t-display aapm-result__title" id="result-title">{title || headline}</h1>
+          <p className="t-reading t-muted">{description || (perfect ? "Semua jawaban benar. Anda siap untuk modul berikutnya." : passed ? "Pemahaman Anda siap untuk modul berikutnya." : `Nilai lulus ${passingGrade}%. Tinjau materi lalu coba lagi — APPI yakin Anda bisa.`)}</p>
+        </div>
+      </section>
+
+      <section className="cols-3" aria-label="Ringkasan hasil">
+        <div className="card metric items-center t-center anim-pop" data-hue={passed ? "green" : "orange"} style={{ "--i": 1 }}>
+          <span className="metric-label"><span className="tile tile-xs tile-round tile-solid"><Ic name="target" /></span>Skor</span>
+          <span className="metric-value"><CountUp value={percent} format={(value) => `${Math.round(value)}%`} duration={900} /></span>
+        </div>
+        <div className="card metric items-center t-center anim-pop" data-hue="blue" style={{ "--i": 2 }}>
+          <span className="metric-label"><span className="tile tile-xs tile-round tile-solid"><Ic name="check" /></span>Jawaban benar</span>
+          <span className="metric-value"><CountUp value={score} duration={900} /><small>/{total}</small></span>
+        </div>
+        <div className="card metric items-center t-center anim-pop" data-hue="violet" style={{ "--i": 3 }}>
+          {duration !== undefined ? (
+            <>
+              <span className="metric-label"><span className="tile tile-xs tile-round tile-solid"><Ic name="clock" /></span>Waktu</span>
+              <span className="metric-value">{formatDuration(duration)}</span>
+            </>
+          ) : (
+            <>
+              <span className="metric-label"><span className="tile tile-xs tile-round tile-solid"><Ic name="flag" /></span>Nilai lulus</span>
+              <span className="metric-value">{passingGrade}%</span>
+            </>
+          )}
+        </div>
+      </section>
       {children}
     </div>
   );
 }
 
 /**
- * Answer review after submission. Each item is a checked attempt question
- * with the server's `feedback`; the final exam never renders this.
+ * Answer review after submission, collapsed (`details.card`). Each item is a
+ * checked attempt question with the server's `feedback`; the final exam never
+ * renders this.
  */
 export function AnswerReview({ questions = [] }) {
+  const correctCount = questions.filter((item) => item.feedback?.isCorrect).length;
   return (
-    <details className="aapm-card aapm-disclosure mt-6">
-      <summary className="aapm-card__header">
-        <span className="grid min-w-0 gap-0.5">
-          <span className="aapm-card__title">Tinjau jawaban</span>
-          <span className="aapm-card__description">Lihat jawaban yang benar untuk setiap soal.</span>
+    <details className="card card-link answer-review">
+      <summary className="row gap-3 card-pad">
+        <span className="tile tile-sm" data-hue="neutral"><Ic name="list" /></span>
+        <span className="stack grow" style={{ minWidth: 0 }}>
+          <span className="card-title">Tinjau jawaban</span>
+          <span className="card-desc">{correctCount} dari {questions.length} benar · lihat jawaban yang benar untuk setiap soal.</span>
         </span>
-        <AapmIcon name="chevronDown" className="aapm-disclosure__chevron" />
+        <Ic name="chev-down" className="t-muted review-chevron" />
       </summary>
-      <ol className="aapm-card__content m-0 grid list-none gap-2 p-5 pt-0">
+      <ol className="list">
         {questions.map((item, index) => {
           const correct = Boolean(item.feedback?.isCorrect);
           return (
-            <li key={item.id || index} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-[var(--aapm-primitive-radius-panel)] bg-[var(--aapm-semantic-surface-subtle)] p-3">
-              <span className="aapm-icon-tile" data-size="xs" data-shape="circle" data-hue={correct ? "green" : "rose"}><AapmIcon name={correct ? "check" : "closeCircle"} /></span>
-              <div className="min-w-0">
-                <p className="m-0 text-body font-medium">{index + 1}. {item.question}</p>
-                <p className="m-0 text-caption text-muted-foreground">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.feedback?.correctIndex]}`}</p>
+            <li key={item.id || index} className="li" data-hue={correct ? "green" : "rose"}>
+              <span className="tile tile-xs tile-round tile-solid"><Ic name={correct ? "check" : "x"} /></span>
+              <div className="stack grow" style={{ minWidth: 0 }}>
+                <span className="li-title">{index + 1}. {item.question}</span>
+                <span className="li-meta">{correct ? "Jawaban Anda benar." : `Jawaban benar: ${item.options[item.feedback?.correctIndex]}`}</span>
               </div>
             </li>
           );
