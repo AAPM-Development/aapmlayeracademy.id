@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import { useAuth } from "@/lib/AuthContext";
-import { Button, Alert } from "@/components/primitives";
+import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
+import { Ic } from "@/design-system/canvas";
 import AuthLayout from "@/components/AuthLayout";
 
 // The token travels in the URL fragment, which browsers never send to the server.
@@ -35,7 +36,7 @@ export default function VerifyEmail() {
           return;
         }
         setStatus("failed");
-        setMessage("Verifikasi belum berhasil karena gangguan jaringan atau server. Coba lagi.");
+        setMessage("Gangguan jaringan atau server. Coba lagi.");
       });
   };
 
@@ -58,27 +59,46 @@ export default function VerifyEmail() {
     return <Navigate to="/" replace />;
   }
 
+  if (status === "success") {
+    return (
+      <AuthLayout
+        title="Email terverifikasi"
+        subtitle="Anda akan diarahkan ke beranda."
+        visual={(
+          <div className="appi-stage">
+            <AppiMascot mood="cheer" size="lg" enter="pop" />
+            <span className="medal-badge" aria-hidden="true"><Ic name="check" /></span>
+            <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: -18, top: -4, width: 20 }} />
+          </div>
+        )}
+      >
+        <Link className="btn btn-primary btn-lg btn-block" to="/">Ke beranda</Link>
+        <span className="row gap-2 t-support t-muted" role="status"><Ic name="clock" size="sm" />Mengarahkan otomatis…</span>
+      </AuthLayout>
+    );
+  }
+
+  if (status === "verifying") {
+    return (
+      <AuthLayout title="Memverifikasi email" subtitle="Konfirmasi alamat email untuk mengaktifkan akun Academy Anda." visual={<AppiMascot mood="think" size="lg" enter="pop" />}>
+        <span className="row gap-2 t-support t-muted" role="status"><span className="typing" aria-hidden="true"><i /><i /><i /></span>Memverifikasi email Anda…</span>
+      </AuthLayout>
+    );
+  }
+
+  const failed = status === "failed";
   return (
     <AuthLayout
-      title="Verifikasi email"
-      subtitle="Konfirmasi alamat email untuk mengaktifkan akun Academy Anda."
-      footer={
-        <Link to="/login" className="aapm-link">
-          Kembali ke masuk
-        </Link>
-      }
+      icon={failed ? "alert" : "link"}
+      tone={failed ? "warning" : "danger"}
+      title={failed ? "Verifikasi belum berhasil" : "Tautan verifikasi tidak valid"}
+      subtitle={message}
+      back={{ to: "/login", label: "Kembali ke masuk" }}
     >
-      {status === "verifying" && <p className="aapm-text-caption">Memverifikasi email Anda…</p>}
-      {status === "success" && (
-        <Alert tone="success" description="Email Anda sudah terverifikasi. Anda akan diarahkan ke beranda." className="aapm-auth__alert" />
-      )}
-      {(status === "invalid" || status === "failed") && (
-        <Alert tone="danger" description={message} className="aapm-auth__alert" />
-      )}
-      {status === "failed" && (
-        <Button type="button" variant="secondary" size="lg" block onClick={submit}>
-          Coba lagi
-        </Button>
+      {failed ? (
+        <button type="button" className="btn btn-primary btn-lg btn-block" onClick={submit}><Ic name="refresh" />Coba lagi</button>
+      ) : (
+        <Link className="btn btn-primary btn-lg btn-block" to="/login">Minta instruksi baru</Link>
       )}
     </AuthLayout>
   );

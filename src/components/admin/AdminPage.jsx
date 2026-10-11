@@ -7,10 +7,10 @@ import { Page } from "@/design-system/patterns/AppShell";
  * The topbar breadcrumb names the nav group, so the eyebrow is opt-in and only
  * used where a view adds context the breadcrumb cannot show (for example a chapter).
  */
-export function AdminPageFrame({ eyebrow, title, description, actions, back, children, wide = false, editor = false }) {
+export function AdminPageFrame({ eyebrow = undefined, title, description = undefined, actions = undefined, back = undefined, children = undefined, wide = false, editor = false }) {
   return (
     <Page width={editor || wide ? "wide" : undefined}>
-      <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} back={back} size="compact" />
+      <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} back={back} />
       {children}
     </Page>
   );

@@ -8,7 +8,7 @@ import JSZip from "jszip";
  *
  * Keep this compatibility pass deliberately narrow: ordinary PNG/JPG/GIF
  * relationships are left byte-for-byte alone, and no media is decoded or
- * rewritten. This keeps 1–20 MB images and the 50 MB deck contract intact.
+ * rewritten. This keeps 1–20 MB images and the 100 MB deck contract intact.
  */
 const SVG_BLIP_PATTERN = /<a:blip\b([^>]*)>\s*<a:extLst\b[\s\S]*?<(?:(?:[A-Za-z_][\w.-]*):)?svgBlip\b[^>]*?\br:embed\s*=\s*(["'])([^"']+)\2[^>]*\/?\s*>[\s\S]*?<\/a:extLst>\s*<\/a:blip\s*>/gi;
 

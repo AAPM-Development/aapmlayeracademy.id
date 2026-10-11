@@ -401,6 +401,7 @@ function aapm_certification_eligibility(array $user): array
             'requiresFinal' => $tier['requiresFinal'],
             'finalPassed' => $tier['finalPassed'],
             'emailVerificationRequired' => !$verified,
+            'requiredModules' => $tier['requiredModules'],
             'existingCertificate' => $tier['issuance'] ? aapm_cert_present($tier['issuance'], $tier['totalRequiredModules']) : null,
             'legacyRecords' => $tier['legacyRecords'],
         ];

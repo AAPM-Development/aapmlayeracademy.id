@@ -936,7 +936,7 @@ a.aapm-lesson-row__title:hover { color: var(--aapm-semantic-primary); }
 .aapm-lesson-row__index { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--hue-tint); color: var(--hue-ink); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; }
 .dark .aapm-lesson-row__index { background: var(--hue-soft); }
 .aapm-course-summary { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-4); padding: var(--aapm-primitive-space-4); }
-.aapm-course-summary .aapm-cover { width: 120px; min-height: 88px; }
+.aapm-course-summary .aapm-cover { width: 72px; min-height: 72px; }
 .aapm-text-caption .aapm-icon { width: 12px; height: 12px; vertical-align: -2px; }
 
 /* ----------------------------------------------------------- Calculators */

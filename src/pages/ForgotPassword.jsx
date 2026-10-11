@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { nativeApi } from "@/api/nativeClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Button, Field, InputGroup } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
-import AapmIcon from "@/components/icons/AapmIcon";
+import { Ic } from "@/design-system/canvas";
 import { emailError } from "@/lib/authValidation";
 
 export default function ForgotPassword() {
@@ -39,41 +39,41 @@ export default function ForgotPassword() {
   const { isAuthenticated, isLoadingAuth } = useAuth();
   if (!isLoadingAuth && isAuthenticated) return <Navigate to={"/"} replace />;
 
-  const backToLogin = (
-    <Link to="/login" className="aapm-link">
-      <AapmIcon name="arrowLeft" />Kembali ke halaman masuk
-    </Link>
-  );
-
   // Once sent, the header itself carries the new state; the only next step
   // in the app is back to sign-in.
   if (sent) {
     return (
       <AuthLayout
-        iconName="success"
+        icon="check-circle"
+        tone="success"
         title="Periksa email Anda"
         subtitle="Jika akun dengan email tersebut tersedia, tautan reset sudah kami kirim."
+        back={{ to: "/login" }}
       >
-        <div className="aapm-auth__stack">
-          <Button asChild variant="secondary" size="lg" block>
-            <Link to="/login"><AapmIcon name="arrowLeft" />Kembali ke halaman masuk</Link>
-          </Button>
-          {devResetLink && (
-            <a className="aapm-link" href={devResetLink}>
-              Buka tautan reset
-            </a>
-          )}
+        <div className="inset row gap-3" style={{ padding: "var(--s-2) var(--s-2) var(--s-2) var(--s-4)" }}>
+          <Ic name="mail" className="t-muted" />
+          <span className="grow t-clamp-1 t-medium">{email.trim()}</span>
+          <button type="button" className="btn btn-ghost btn-sm" aria-label="Ubah alamat email" onClick={() => setSent(false)}>Ubah</button>
         </div>
+        <div className="alert alert-info" role="note"><Ic name="clock" /><div>Tautan berlaku 60 menit dan hanya dapat dipakai sekali.</div></div>
+        <Button type="button" variant="secondary" size="lg" block loading={loading} onClick={handleSubmit}>
+          <Ic name="refresh" />Kirim ulang
+        </Button>
+        {devResetLink && (
+          <a className="btn btn-link" href={devResetLink} style={{ alignSelf: "flex-start" }}>
+            Buka tautan reset
+          </a>
+        )}
       </AuthLayout>
     );
   }
 
   return (
     <AuthLayout
-      iconName="mail"
+      icon="mail"
       title="Atur ulang kata sandi"
       subtitle="Kami akan mengirim tautan untuk membuat kata sandi baru."
-      footer={backToLogin}
+      back={{ to: "/login" }}
     >
       <form onSubmit={handleSubmit} noValidate>
         <Field id="email" label="Alamat email" error={fieldError}>
@@ -88,6 +88,10 @@ export default function ForgotPassword() {
             required
           />
         </Field>
+        <div className="alert" role="note">
+          <Ic name="info" className="t-muted" />
+          <div>Mendaftar dengan Google? Masuk lewat tombol Google, tanpa kata sandi.</div>
+        </div>
         <Button type="submit" size="lg" block loading={loading}>
           {loading ? "Mengirim tautan…" : "Kirim tautan reset"}
         </Button>

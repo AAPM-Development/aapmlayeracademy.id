@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
-import AiResponseDetails from "@/components/ai/AiResponseDetails";
+import { ResponseDetailsPanel, ResponseDetailsToggle } from "@/components/ai/AiResponseDetails";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
 import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
@@ -21,11 +20,28 @@ import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
 import AiMarkdown from "@/components/ai/AiMarkdown";
 import AiCopyButton from "@/components/ai/AiCopyButton";
-import AiAvatar from "@/components/ai/AiAvatar";
+import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
+import { Ic } from "@/design-system/canvas";
+import { firstName } from "@/lib/learnerCopy";
 import { useAuth } from "@/lib/AuthContext";
 import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
+
+// Starter cards (canvas "APPI — sambutan"): one hue and icon per prompt.
+const STARTER_LOOK = {
+  "latest-signal": { hue: "orange", ic: "chart" },
+  baseline: { hue: "orange", ic: "chart" },
+  "context-gap": { hue: "teal", ic: "table" },
+  "daily-log": { hue: "teal", ic: "table" },
+  "feed-output": { hue: "green", ic: "feed" },
+  "calculator-check": { hue: "green", ic: "calc" },
+  "kpi-decision": { hue: "violet", ic: "target" },
+  "next-learning": { hue: "blue", ic: "book" },
+  "next-action": { hue: "blue", ic: "route" },
+  readiness: { hue: "gold", ic: "cert" },
+  default: [{ hue: "orange", ic: "chart" }, { hue: "teal", ic: "table" }, { hue: "green", ic: "feed" }, { hue: "blue", ic: "book" }],
+};
 
 const welcomeMessage =
   "Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.";
@@ -172,74 +188,41 @@ function AssistantMessage({
   onQuickAction,
   pathname,
   disabled,
-  showAssistantLabel = false,
   showQuickActions = true,
   showMeta = true,
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
+  const finished = !message.streaming && !message.error && Boolean(message.content);
   return (
-    <article
-      className="aapm-ai-message w-full min-w-0 overflow-hidden"
-      aria-label="Jawaban APPI"
-    >
-      {showAssistantLabel && (
-        <div className="mb-2 flex items-center gap-2">
-          <AapmIcon
-            name="ai"
-            className="h-4 w-4 text-brand-orange"
-          />
-          <span className="text-sm font-semibold tracking-[-0.015em]">APPI</span>
+    <article className="aapm-ai-message stack gap-3" style={{ minWidth: 0 }} aria-label="Jawaban APPI">
+      {message.streaming ? (
+        <AiStreamActivity label={message.streamStatus} steps={message.streamSteps} showSteps={!message.content} />
+      ) : null}
+      {message.content ? (
+        <div className={`aapm-ai-response msg-text ${message.streaming ? "aapm-ai-response--streaming" : ""} ${canCollapse && collapsed ? "msg-collapsed" : ""}`}>
+          <AiMarkdown content={message.content} />
         </div>
+      ) : null}
+      {finished ? (
+        <div className="row wrap gap-1 answer-actions">
+          <AiCopyButton text={message.content} label="Salin jawaban" />
+          {canCollapse ? (
+            <button type="button" className="btn btn-ghost btn-sm btn-quiet" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
+              <Ic name={collapsed ? "chev-down" : "chev-up"} />{collapsed ? "Tampilkan lengkap" : "Ringkas"}
+            </button>
+          ) : null}
+          <ResponseDetailsToggle message={message} open={detailsOpen} onToggle={() => setDetailsOpen((value) => !value)} />
+          <AiMessageMeta message={message} retryPrompt={retryPrompt} onRetry={onRetry} onRetryPersistence={onRetryPersistence} persistenceRetrying={persistenceRetrying} disabled={disabled} showMeta={showMeta} />
+        </div>
+      ) : (
+        <AiMessageMeta message={message} retryPrompt={retryPrompt} onRetry={onRetry} onRetryPersistence={onRetryPersistence} persistenceRetrying={persistenceRetrying} disabled={disabled} showMeta={showMeta} />
       )}
-      <AiResponseDetails message={message} />
-      {message.streaming && (
-        <AiStreamActivity
-          label={message.streamStatus}
-          steps={message.streamSteps}
-          showSteps={!message.content}
-        />
-      )}
-      {message.content && (
-        <>
-          <div
-            className={`aapm-ai-response aapm-ai-answer-card ${message.streaming ? "aapm-ai-response--streaming" : ""} relative mt-2.5 text-foreground ${canCollapse && collapsed ? "max-h-56 overflow-hidden" : ""}`}
-          >
-            <AiMarkdown content={message.content} />
-            {canCollapse && collapsed && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
-            )}
-          </div>
-          {!message.streaming && !message.error && (
-            <div className="aapm-ai-answer-actions">
-              <AiCopyButton text={message.content} label="Salin jawaban" />
-              {canCollapse && (
-                <button type="button" className="aapm-ai-copy" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
-                  <AapmIcon name={collapsed ? "chevronDown" : "chevronUp"} />
-                  <span>{collapsed ? "Tampilkan lengkap" : "Ringkas"}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </>
-      )}
-      <AiMessageMeta
-        message={message}
-        retryPrompt={retryPrompt}
-        onRetry={onRetry}
-        onRetryPersistence={onRetryPersistence}
-        persistenceRetrying={persistenceRetrying}
-        disabled={disabled}
-        showMeta={showMeta}
-      />
-      {showQuickActions && !message.streaming && !message.error && !message.fallback && (
-        <AiQuickActions
-          content={message.content}
-          pathname={pathname}
-          onSelect={onQuickAction}
-          disabled={disabled}
-        />
-      )}
+      {finished && detailsOpen ? <ResponseDetailsPanel message={message} /> : null}
+      {showQuickActions && finished && !message.fallback ? (
+        <AiQuickActions content={message.content} pathname={pathname} onSelect={onQuickAction} disabled={disabled} />
+      ) : null}
     </article>
   );
 }
@@ -295,23 +278,13 @@ function ConversationList({
   } = management;
 
   return (
-    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border lg:flex lg:flex-col">
-      <div className="aapm-history-heading"><strong>Riwayat chat</strong><span>{conversationTotal} percakapan</span></div>
-      <div className="px-3 pb-2 pt-3">
-        <Button
-          type="button"
-          variant="secondary"
-          size="md"
-          onClick={onNew}
-          disabled={disabled}
-          className="w-full justify-start gap-2 px-3"
-        >
-          <AapmIcon
-            name="solar:pen-new-square-bold"
-            className="h-4 w-4 text-brand-orange"
-          />
-          Percakapan baru
-        </Button>
+    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar appi-history hidden min-w-0 shrink-0 overflow-hidden lg:flex lg:flex-col">
+      <div className="row gap-3 appi-history-head">
+        <div className="stack grow" style={{ minWidth: 0 }}>
+          <span className="t-heading">Riwayat</span>
+          <span className="t-caption t-muted">{conversationTotal} percakapan</span>
+        </div>
+        <button type="button" className="btn btn-ai-soft btn-icon" aria-label="Percakapan baru" onClick={onNew} disabled={disabled}><Ic name="edit" /></button>
       </div>
       <div className="px-3 pb-2">
         <AiHistoryToolbar
@@ -753,8 +726,11 @@ export default function AiAssistant() {
   const headerTitle = activeConversation?.title?.trim() || firstPromptTitle || "Percakapan baru";
   // The line under the title says what the page is doing right now, so the
   // header is no longer a fixed label that repeats on every screen.
+  const greetingName = user?.full_name ? firstName(user) : "";
   const headerStatus = isLoadingConversation
     ? "Memuat riwayat…"
+    : !messages.length && !isStreaming
+      ? "tersimpan di akun setelah pesan pertama"
     : isStreaming
       ? "sedang menjawab"
       : historySyncState === "saving"
@@ -970,50 +946,19 @@ export default function AiAssistant() {
         onLoadMore={loadMoreConversations}
       />
       <section aria-label="Ruang chat APPI" className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-        <header className="aapm-ai-workspace__header flex min-h-[3.75rem] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-surface-default px-4 py-2.5 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2.5">
-            {/* The empty chat greets with a large APPI; the header mark joins once the chat starts. */}
-            {messages.length ? (
-              <AiProfileAvatar
-                size="sm"
-                state={isStreaming ? streamPhase : "idle"}
-              />
-            ) : null}
-            <div className="min-w-0">
-              <h1 className="aapm-chat-header__title" title={headerTitle}>{headerTitle}</h1>
-              <p className="aapm-chat-header__meta">APPI · {headerStatus}</p>
-            </div>
+        <header className="focus-bar aapm-ai-workspace__header appi-chat-head">
+          <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}>
+            <AppiMascot mood={isStreaming ? (streamPhase === "alert" ? "concerned" : "think") : "idle"} size="sm" />
+          </span>
+          <div className="stack grow" style={{ minWidth: 0 }}>
+            <h1 className="t-heading t-clamp-1" title={headerTitle}>{headerTitle}</h1>
+            <span className="row gap-1 t-caption t-muted">
+              <Ic name={messages.length ? "check-circle" : "history"} size="xs" className={messages.length ? "t-success" : undefined} />
+              <span className="t-clamp-1">APPI · {headerStatus}</span>
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setHistoryOpen(true)}
-              disabled={isStreaming}
-              className="h-8 gap-1.5 px-2.5 text-xs lg:hidden"
-            >
-              <AapmIcon
-                name="solar:history-2-bold-duotone"
-                className="h-3.5 w-3.5"
-              />
-              Riwayat
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={startNewConversation}
-              disabled={isStreaming}
-              className="h-8 gap-1.5 px-2.5 text-xs lg:hidden"
-            >
-              <AapmIcon
-                name="solar:pen-new-square-bold"
-                className="h-3.5 w-3.5"
-              />
-              Baru
-            </Button>
-          </div>
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet lg:hidden" aria-label="Riwayat" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Percakapan baru" onClick={startNewConversation} disabled={isStreaming}><Ic name="edit" /></button>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
           <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} />
@@ -1025,7 +970,7 @@ export default function AiAssistant() {
             aria-label="Transkrip percakapan APPI"
             className="aapm-ai-transcript aapm-chat-scroll aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto"
           >
-            <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col overflow-x-hidden px-4 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-9">
+            <div className="appi-transcript-col">
               {historyError && !conversationsError && (
                 <div className="aapm-ai-alert mb-5 flex min-w-0 items-center justify-between gap-3 border border-tint-orange-border bg-tint-orange px-3 py-2.5 text-xs text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron. Chat Anda tidak dihapus.</span>
@@ -1039,57 +984,60 @@ export default function AiAssistant() {
                   Memuat riwayat...
                 </p>
               ) : messages.length === 0 ? (
-                <div className="aapm-chat-welcome aapm-room__welcome">
-                  <span className="aapm-chat-welcome__mark aapm-chat-welcome__mark--mascot"><AiAvatar size="lg" state="idle" decorative /></span>
-                  <h2 className="aapm-chat-welcome__title">Halo! Apa yang terjadi di farm hari ini?</h2>
-                  <p className="aapm-chat-welcome__text">{welcomeMessage}</p>
-                  <div className="aapm-room__composer">{composer}</div>
-                  <div className="aapm-chat-suggestions aapm-room__chips">
-                    {suggestions.map((suggestion, index) => (
-                      <button
-                        key={suggestion.id}
-                        type="button"
-                        onClick={() => submit(suggestion.prompt)}
-                        className="aapm-chat-suggestion"
-                        data-hue={["green","blue","orange","violet"][index % 4]}
-                      >
-                        <span className="aapm-icon-tile" data-size="sm" data-shape="circle" data-variant="badge" data-hue={["green","blue","orange","violet"][index % 4]}><AapmIcon name="ai" /></span>
-                        <span className="min-w-0">
-                          <span className="aapm-chat-suggestion__title">{suggestion.label}</span>
-                          <span className="aapm-chat-suggestion__detail">{suggestion.detail}</span>
-                        </span>
-                      </button>
-                    ))}
+                <div className="stack items-center gap-6 appi-welcome">
+                  <div className="stack items-center gap-4 t-center">
+                    <div className="halo" data-hue="ai" style={{ width: 172, height: 160 }}>
+                      <span className="glow" style={{ "--size": "150px" }} aria-hidden="true" />
+                      <div className="appi-stage"><AppiMascot mood="idle" size="hero" enter="pop" /></div>
+                      <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: 2, top: 8, width: 30 }} />
+                      <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ left: 4, top: 58, width: 18, "--i": 2 }} />
+                    </div>
+                    <div className="stack items-center gap-2">
+                      <h2 className="t-title">Halo{greetingName ? `, ${greetingName}` : ""}! Apa yang terjadi di farm hari ini?</h2>
+                      <p className="t-body t-muted t-pretty" style={{ maxWidth: "46ch" }}>{welcomeMessage}</p>
+                    </div>
                   </div>
+                  <div className="w-full">{composer}</div>
+                  <section className="stack gap-3 w-full" aria-labelledby="starter-title">
+                    <h3 className="t-overline t-muted" id="starter-title">Mulai dari data Anda</h3>
+                    <div className="cols-2">
+                      {suggestions.map((suggestion, index) => {
+                        const look = STARTER_LOOK[suggestion.id] || STARTER_LOOK.default[index % STARTER_LOOK.default.length];
+                        return (
+                          <button
+                            key={suggestion.id}
+                            type="button"
+                            onClick={() => submit(suggestion.prompt)}
+                            className="card card-tactile row gap-3 anim-rise appi-starter"
+                            data-hue={look.hue}
+                            style={{ padding: "var(--s-4)", "--i": index + 1 }}
+                          >
+                            <span className="tile tile-round tile-solid"><Ic name={look.ic} /></span>
+                            <span className="stack gap-0-5 grow" style={{ minWidth: 0 }}>
+                              <span className="t-heading">{suggestion.label}</span>
+                              <span className="t-support t-muted">{suggestion.detail}</span>
+                            </span>
+                            <Ic name="arrow-right" className="t-muted" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
                 </div>
               ) : (
-                <div className="flex min-w-0 max-w-full flex-col gap-6 sm:gap-8">
+                <div className="stack gap-6" style={{ minWidth: 0 }}>
                   {messages.map((message, index) =>
                     message.role === "user" ? (
-                      <div key={message.id} className="aapm-chat-turn aapm-chat-turn--user min-w-0 max-w-full">
-                        <div className="aapm-ai-user-bubble aapm-chat-bubble min-w-0 max-w-[84%] break-words px-3.5 py-2.5 text-sm leading-6 [overflow-wrap:anywhere] sm:max-w-[88%]">
-                          {message.image?.dataUrl && (
-                            <img
-                              src={message.image.dataUrl}
-                              alt="Foto yang dikirim untuk dianalisis"
-                              className="mb-2.5 max-h-56 w-full rounded-[var(--radius-control)] object-cover"
-                            />
-                          )}
-                          {message.content}
-                        </div>
+                      <div key={message.id} className="stack gap-2 aapm-chat-turn--user" style={{ minWidth: 0 }}>
+                        {message.image?.dataUrl ? (
+                          <img src={message.image.dataUrl} alt="Foto yang dikirim untuk dianalisis" className="card msg-photo" />
+                        ) : null}
+                        {message.content ? <p className="msg-user">{message.content}</p> : null}
                       </div>
                     ) : (
-                      <div key={message.id} className="aapm-chat-turn">
-                        <span className="aapm-chat-turn__avatar" aria-hidden="true">
-                          <AiProfileAvatar
-                            size="xs"
-                            label=""
-                            state={message.streaming ? (message.content ? "responding" : "thinking") : "idle"}
-                          />
-                          {/* Phones put the name beside the mark and give the answer the full width. */}
-                          <span className="aapm-chat-turn__name">APPI</span>
-                        </span>
-                        <div className="aapm-chat-turn__body">
+                      <div key={message.id} className="msg-appi aapm-chat-turn">
+                        <AppiMascot mood={message.streaming ? (message.content ? "talk" : "think") : "talk"} animated={Boolean(message.streaming)} size="sm" />
+                        <div className="msg-body aapm-chat-turn__body">
                       <AssistantMessage
                         key={message.id}
                         message={{ ...message, streamStatus, streamSteps }}
@@ -1102,7 +1050,6 @@ export default function AiAssistant() {
                         persistenceRetrying={retryingMessageId === message.id}
                         pathname={location.state?.pageContext || location.pathname}
                         disabled={isStreaming}
-                        showAssistantLabel={false}
                         showQuickActions={index === lastAssistantMessageIndex}
                         showMeta={index === lastAssistantMessageIndex || !message.persisted}
                       />
@@ -1129,8 +1076,8 @@ export default function AiAssistant() {
         {/* Once the chat has started the composer floats at the bottom of the
             centred column; an empty chat keeps it in the middle (below). */}
         {messages.length || isLoadingConversation ? (
-          <div className="aapm-ai-composer-dock aapm-room__dock min-w-0 max-w-full shrink-0">
-            <div className="mx-auto min-w-0 max-w-3xl">{composer}</div>
+          <div className="aapm-ai-composer-dock appi-dock">
+            <div className="appi-dock-col">{composer}</div>
           </div>
         ) : null}
       </section>

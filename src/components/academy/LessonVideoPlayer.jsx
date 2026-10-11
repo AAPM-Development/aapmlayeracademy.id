@@ -44,7 +44,7 @@ export default function LessonVideoPlayer({ src, videoId = null, title = "Video 
   const status = error || notice || (state.loading && !state.ready ? "Memuat video…" : state.loading ? "Menunggu video…" : state.ended ? "Video selesai" : "");
 
   return (
-    <div className="aapm-video-player" ref={rootRef} role="group" aria-label={title}>
+    <div className="aapm-video-player card" ref={rootRef} role="group" aria-label={title}>
       <div className={`aapm-lesson-media aapm-video-player__viewport${videoId ? " aapm-video-player__viewport--youtube" : ""}`}>
         {videoId ? <div className="aapm-video-player__embed" ref={mediaRef} /> : (
           <video key={`${src}-${attempt}`} ref={mediaRef} src={src} playsInline preload="metadata" aria-label={title} />
@@ -60,10 +60,10 @@ export default function LessonVideoPlayer({ src, videoId = null, title = "Video 
       </div>
       <div className="aapm-video-player__feedback" role="status" aria-live="polite">
         {status ? <span>{status}</span> : null}
-        {error ? <Button size="sm" variant="outline" leadingIcon="refresh" onClick={() => setAttempt((value) => value + 1)}>Coba lagi</Button> : null}
+        {error ? <Button size="sm" variant="secondary" leadingIcon="refresh" onClick={() => setAttempt((value) => value + 1)}>Coba lagi</Button> : null}
       </div>
-      <p className="aapm-lesson-media__fallback">
-        <a href={fallbackUrl || src} target="_blank" rel="noopener noreferrer">{videoId ? "Buka di YouTube" : "Buka file video"}<AapmIcon name="externalLink" /><span className="aapm-visually-hidden"> (tab baru)</span></a>
+      <p className="aapm-lesson-media__fallback t-caption">
+        <a className="btn-link" href={fallbackUrl || src} target="_blank" rel="noopener noreferrer">{videoId ? "Buka di YouTube" : "Buka file video"}<AapmIcon name="externalLink" /><span className="aapm-visually-hidden"> (tab baru)</span></a>
       </p>
     </div>
   );

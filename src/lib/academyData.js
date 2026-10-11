@@ -103,3 +103,29 @@ export function getCertificationState(tier, completedSet = new Set(), finalPasse
     status: owned ? "completed" : eligible ? "eligible" : completed > 0 ? "in-progress" : "locked",
   };
 }
+
+// Learner ranks, mirroring profile_learning_summary() in the API: points come
+// from completed modules (100), practice (35), certificates (150), quiz
+// average, farm entries and study time.
+export const learnerRanks = [
+  { name: "Foundation", from: 0 },
+  { name: "Field Builder", from: 160 },
+  { name: "Farm Analyst", from: 450 },
+  { name: "Layer Leader", from: 900 },
+];
+
+/** Rank, its point window and the distance to the next rank. */
+export function getRankProgress(points = 0) {
+  const value = Math.max(0, Number(points) || 0);
+  const index = learnerRanks.reduce((found, rank, position) => (value >= rank.from ? position : found), 0);
+  const rank = learnerRanks[index];
+  const next = learnerRanks[index + 1] || null;
+  const percent = next ? Math.round(((value - rank.from) / (next.from - rank.from)) * 100) : 100;
+  return { name: rank.name, points: value, from: rank.from, to: next?.from ?? null, nextName: next?.name ?? null, toNext: next ? next.from - value : 0, percent: Math.max(0, Math.min(100, percent)) };
+}
+
+/** The learning level (number, name) a module belongs to. */
+export function getLevelForModule(module) {
+  if (!module) return null;
+  return learningLevels.find((level) => level.number === Number(module.level)) || null;
+}

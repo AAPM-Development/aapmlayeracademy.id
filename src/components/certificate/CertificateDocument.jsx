@@ -6,13 +6,14 @@ import { certificateModel } from "@/lib/certificatePdf";
 export const CERTIFICATE_WIDTH = 1123;
 export const CERTIFICATE_HEIGHT = 794;
 
+// Same hues as the canvas tier medals: green, teal, blue, violet, rose, gold.
 const TIER_ACCENTS = {
-  1: { accent: "#318139", ink: "#1f5a26", tint: "#d3ecd6" },
-  2: { accent: "#D4451A", ink: "#9a3010", tint: "#ffd9c7" },
-  3: { accent: "#2f6fb0", ink: "#1d4f82", tint: "#d2e4f7" },
-  4: { accent: "#6f52c4", ink: "#4b3394", tint: "#e0d8fa" },
-  5: { accent: "#13867a", ink: "#0b5c54", tint: "#c9ece7" },
-  6: { accent: "#b7791f", ink: "#7a4f0d", tint: "#f8e4b4" },
+  1: { accent: "#318139", ink: "#1f5a26", tint: "#d3ecd6", soft: "#eaf4eb", on: "#ffffff" },
+  2: { accent: "#13867a", ink: "#0b5c54", tint: "#c9ece7", soft: "#e5f4f2", on: "#ffffff" },
+  3: { accent: "#2f6fb0", ink: "#1d4f82", tint: "#d2e4f7", soft: "#e9f1fa", on: "#ffffff" },
+  4: { accent: "#6f52c4", ink: "#4b3394", tint: "#e0d8fa", soft: "#f1edfb", on: "#ffffff" },
+  5: { accent: "#c2416b", ink: "#8c2547", tint: "#fad3e0", soft: "#fbecf1", on: "#ffffff" },
+  6: { accent: "#f5b400", ink: "#7a4f0d", tint: "#ffe9a3", soft: "#fff6d9", on: "#3b2a00" },
 };
 
 export function tierAccent(tierNumber) {
@@ -54,57 +55,76 @@ export function CertificateDocument({ certificate, qrDataUrl = "" }) {
     <div
       className="aapm-cert"
       data-expert={isExpert ? "true" : undefined}
-      style={/** @type {React.CSSProperties} */ ({ "--cert-accent": colors.accent, "--cert-ink": colors.ink, "--cert-tint": colors.tint })}
+      style={/** @type {React.CSSProperties} */ ({ "--cert-accent": colors.accent, "--cert-ink": colors.ink, "--cert-tint": colors.tint, "--cert-soft": colors.soft, "--cert-on": colors.on })}
       role="img"
       aria-label={`${model.title} untuk ${model.holder}, ${model.tierName}`}
     >
       <div className="aapm-cert__frame">
         <aside className="aapm-cert__ribbon" aria-hidden="true">
-          <div className="aapm-cert__medal">
-            <span className="aapm-cert__medal-ring" />
-            <span className="aapm-cert__medal-label">Tingkat</span>
-            <span className="aapm-cert__medal-number">{tierNumber}</span>
+          <div className="aapm-cert__ribbon-top">
+            <span className="aapm-cert__medal">
+              <span className="aapm-cert__medal-label">Tingkat</span>
+              <span className="aapm-cert__medal-number">{tierNumber}</span>
+            </span>
+            <span className="aapm-cert__stars">{[0, 1, 2].map((star) => <StarGlyph key={star} />)}</span>
           </div>
-          <span className="aapm-cert__ribbon-tail" />
-          <p className="aapm-cert__ribbon-text">AAPM Layer Academy</p>
+          <span className="aapm-cert__ribbon-text">AAPM Layer Academy</span>
         </aside>
 
         <div className="aapm-cert__body">
           <header className="aapm-cert__brand">
-            <img src="/assets/Logo_AAPM_Main.svg" alt="" className="aapm-cert__logo" />
+            <img src="/brand/aapm/logo_main.svg" alt="" className="aapm-cert__logo" />
             <span className="aapm-cert__brand-sub">Layer Academy · Pelatihan Profesional Manajemen Peternakan Ayam Petelur</span>
           </header>
 
-          <p className="aapm-cert__title">{model.title}</p>
-          <p className="aapm-cert__lead">diberikan kepada</p>
-          <h2 className="aapm-cert__holder">{model.holder}</h2>
-          <p className="aapm-cert__lead">atas penyelesaian tingkat</p>
-          <p className="aapm-cert__tier">{model.tierName}</p>
-          <p className="aapm-cert__achievement">{model.achievement}</p>
+          {/* Centred between brand and footer; a two-line name only uses this free space. */}
+          <div className="aapm-cert__middle">
+            <div className="aapm-cert__title-row">
+              <span className="aapm-cert__rule" />
+              <p className="aapm-cert__title">{model.title}</p>
+              <span className="aapm-cert__rule" />
+            </div>
+            <div className="aapm-cert__award">
+              <p className="aapm-cert__lead">diberikan kepada</p>
+              <h2 className="aapm-cert__holder">{model.holder}</h2>
+              <p className="aapm-cert__lead">atas penyelesaian tingkat</p>
+              <p className="aapm-cert__tier">{model.tierName}</p>
+              <span className="aapm-cert__achievement"><CheckGlyph />{model.achievement}</span>
+            </div>
+          </div>
 
           <footer className="aapm-cert__footer">
-            <div className="aapm-cert__meta">
-              <span className="aapm-cert__meta-label">Diterbitkan</span>
-              <span className="aapm-cert__meta-value">{formatIssued(certificate?.issuedAt)}</span>
-              <span className="aapm-cert__meta-label">ID sertifikat</span>
-              <span className="aapm-cert__meta-id">{model.publicId}</span>
+            <span className="aapm-cert__rule aapm-cert__rule--full" />
+            <div className="aapm-cert__footer-grid">
+              <dl className="aapm-cert__meta">
+                <div><dt>Diterbitkan</dt><dd className="aapm-cert__meta-value">{formatIssued(certificate?.issuedAt)}</dd></div>
+                <div><dt>ID sertifikat</dt><dd className="aapm-cert__meta-id">{model.publicId}</dd></div>
+              </dl>
+              <div className="aapm-cert__seal">
+                <span className="aapm-cert__rule aapm-cert__rule--full" />
+                <span className="aapm-cert__seal-name">AAPM Layer Academy</span>
+                <span className="aapm-cert__seal-role">Penerbit sertifikat</span>
+              </div>
+              <div className="aapm-cert__verify">
+                {model.showQr && qrDataUrl ? <img src={qrDataUrl} alt="" className="aapm-cert__qr" /> : <span className="aapm-cert__qr aapm-cert__qr--empty">Kode QR</span>}
+                <span className="aapm-cert__verify-text">{model.instruction}</span>
+              </div>
             </div>
-            <div className="aapm-cert__seal">
-              <span className="aapm-cert__seal-line" />
-              <span className="aapm-cert__seal-name">AAPM Layer Academy</span>
-              <span className="aapm-cert__seal-role">Penerbit sertifikat</span>
-            </div>
-            <div className="aapm-cert__verify">
-              {model.showQr && qrDataUrl ? <img src={qrDataUrl} alt="" className="aapm-cert__qr" /> : <span className="aapm-cert__qr aapm-cert__qr--empty" />}
-              <span className="aapm-cert__verify-text">{model.instruction}</span>
-            </div>
+            <p className="aapm-cert__disclaimer">{model.disclaimer}</p>
           </footer>
-          <p className="aapm-cert__disclaimer">{model.disclaimer}</p>
         </div>
-        <img src="/assets/Icon_AAPM.svg" alt="" className="aapm-cert__watermark" aria-hidden="true" />
       </div>
     </div>
   );
+}
+
+// Inline glyphs: the exporter rasterises SVG but not CSS mask icons.
+function StarGlyph() {
+  return <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor" /></svg>;
+}
+
+function CheckGlyph() {
+  return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.7 2.7L16 9.8" /></svg>;
 }
 
 /** The document scaled to its container's width, for previews and thumbnails. */

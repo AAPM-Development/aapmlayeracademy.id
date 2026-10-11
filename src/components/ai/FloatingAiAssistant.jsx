@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
-import AiProfileAvatar from "@/components/ai/AiProfileAvatar";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiResponseDetails from "@/components/ai/AiResponseDetails";
 import AiStreamActivity from "@/components/ai/AiStreamActivity";
@@ -19,14 +18,15 @@ import AiComposer from "@/components/ai/AiComposer";
 import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
 import useModalFocus from "@/components/ai/useModalFocus";
 import AiQuickActions from "@/components/ai/AiQuickActions";
-import { Button, ConfirmDialog, IconButton, useToast } from "@/components/primitives";
+import { Button, ConfirmDialog, useToast } from "@/components/primitives";
 import AiMarkdown from "@/components/ai/AiMarkdown";
 import AiCopyButton from "@/components/ai/AiCopyButton";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
 import { useAiChat } from "@/components/ai/AiChatProvider";
-import AppiMascot from "@/components/appi/AppiMascot";
+import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
+import { Ic } from "@/design-system/canvas";
 import { ASK_APPI_EVENT } from "@/lib/askAppi";
 
 const quickActions = [
@@ -87,7 +87,8 @@ function pageContextLabel(pathname) {
   return labels[pageContextForPath(pathname)] || "Academy";
 }
 
-export default function FloatingAiAssistant() {
+/** @param {{ showLauncher?: boolean }} props */
+export default function FloatingAiAssistant({ showLauncher = true }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -277,20 +278,6 @@ export default function FloatingAiAssistant() {
     setClosing(false);
     setOpen(true);
   };
-  const trapFocus = (event) => {
-    if (event.key !== "Tab" || !panelRef.current) return;
-    const items = [...panelRef.current.querySelectorAll("button:not([disabled]), textarea:not([disabled]), input:not([disabled]), a[href]")];
-    if (!items.length) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
   const closePanel = () => {
     setHistoryOpen(false);
     setClosing(true);
@@ -414,79 +401,26 @@ export default function FloatingAiAssistant() {
   return (
     <>
       {open && (
-        <button
-          type="button"
-          aria-label="Tutup APPI"
-          onClick={closePanel}
-          className={`aapm-ai-floating-backdrop aapm-token-scrim fixed inset-0 z-[79] backdrop-blur-[1px] ${closing ? "aapm-ai-floating-backdrop--exit" : ""}`}
-        />
-      )}
-      {open && (
         <section
           role="dialog"
-          aria-modal="true"
+          aria-modal="false"
           aria-label="APPI cepat"
           ref={panelRef}
           tabIndex={-1}
-          onKeyDown={trapFocus}
-          className={`aapm-ai-panel aapm-ai-floating-panel aapm-token-popover fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-[80] flex h-[min(72dvh,44rem)] min-h-0 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden sm:inset-x-4 sm:max-w-[calc(100vw-2rem)] lg:bottom-5 lg:left-auto lg:right-5 lg:h-[min(39rem,calc(100dvh-6.5rem))] lg:w-[25rem] ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
+          className={`card card-raised stack appi-panel aapm-ai-panel aapm-ai-floating-panel ${closing ? "aapm-ai-panel--exit" : "aapm-ai-panel--enter"}`}
         >
-          <header className="aapm-ai-floating-panel__header flex min-w-0 shrink-0 items-center justify-between gap-3 px-3.5 py-2.5">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <AiProfileAvatar
-                size="xs"
-                state={isStreaming ? streamPhase : "idle"}
-              />
-              <div className="min-w-0">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <h2 className="truncate text-sm font-semibold tracking-[-0.01em]">APPI</h2>
-                  <span
-                    className="aapm-ai-floating-panel__status-dot"
-                    data-state={historySyncState}
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="aapm-ai-floating-panel__status-line truncate text-xs text-muted-foreground">
-                  {historySyncLabel}
-                </p>
-              </div>
+          <header className="row gap-2 appi-panel-head">
+            <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}><AppiMascot mood={isStreaming ? (streamPhase === "alert" ? "concerned" : "think") : "idle"} size="sm" /></span>
+            <div className="stack grow" style={{ minWidth: 0, paddingLeft: "var(--s-1)" }}>
+              <h2 className="t-heading">APPI</h2>
+              <span className="row gap-1-5 t-caption t-muted">
+                <i className="appi-status-dot" data-state={historySyncState} aria-hidden="true" />
+                <span className="t-clamp-1">{messages.length ? historySyncLabel : "Siap membantu dari halaman ini"}</span>
+              </span>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <IconButton
-                type="button"
-                size="sm"
-                onClick={() => setHistoryOpen(true)}
-                disabled={isStreaming}
-                label="Buka riwayat percakapan"
-                tooltip="Buka riwayat percakapan"
-                className="aapm-ai-floating-panel__icon-button"
-              >
-                <AapmIcon name="communication" />
-              </IconButton>
-              <IconButton
-                type="button"
-                size="sm"
-                onClick={() => {
-                  setHistoryOpen(false);
-                  startNewConversation();
-                }}
-                disabled={isStreaming}
-                label="Percakapan baru"
-                tooltip="Percakapan baru"
-                className="aapm-ai-floating-panel__icon-button"
-              >
-                <AapmIcon name="edit" />
-              </IconButton>
-              <IconButton
-                type="button"
-                onClick={closePanel}
-                label="Tutup APPI"
-                tooltip="Tutup APPI"
-                className="aapm-ai-floating-panel__icon-button"
-              >
-                <AapmIcon name="close" />
-              </IconButton>
-            </div>
+            <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" aria-label="Buka riwayat percakapan" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
+            <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" aria-label="Percakapan baru" onClick={() => { setHistoryOpen(false); startNewConversation(); }} disabled={isStreaming}><Ic name="edit" /></button>
+            <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" aria-label="Tutup APPI" onClick={closePanel}><Ic name="x" /></button>
           </header>
           <div className="aapm-ai-floating-panel__body relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
             <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} />
@@ -496,9 +430,9 @@ export default function FloatingAiAssistant() {
               aria-live="off"
               aria-busy={isStreaming}
               aria-label="Transkrip percakapan APPI cepat"
-              className="aapm-ai-floating-transcript aapm-scroll-fade min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-24 pt-4"
+              className="aapm-ai-floating-transcript aapm-scroll-fade appi-panel-scroll"
             >
-              <div className="flex min-h-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden">
+              <div className="stack gap-4" style={{ minWidth: 0 }}>
               {historyError && !conversationsError && (
                 <div className="aapm-ai-alert flex min-w-0 items-center justify-between gap-2 border border-tint-orange-border bg-tint-orange px-2.5 py-2 text-[11px] leading-4 text-tint-orange-foreground">
                   <span className="min-w-0">Riwayat belum tersinkron.</span>
@@ -506,104 +440,58 @@ export default function FloatingAiAssistant() {
                 </div>
               )}
               {messages.length === 0 ? (
-                <div className="my-auto pb-2">
-                  <p className="text-sm font-semibold tracking-[-0.015em]">
-                    Tanya APPI tentang {pageContextLabel(location.pathname)}.
-                  </p>
-                  <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">
-                    KPI aktif dapat ikut dibaca. Percakapan ini tersimpan di akun Anda.
-                  </p>
-                  <div className="aapm-ai-card aapm-ai-quick-actions-card mt-5 divide-y divide-border/60">
-                    <p className="px-3 py-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground">
-                      AKSI CEPAT
-                    </p>
-                    {bubbleActions.map((action) => (
-                      <button
-                        key={action.label}
-                        type="button"
-                        onClick={() => handleAction(action)}
-                        className="aapm-ai-quick-action group flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-tint-orange/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-tint-orange text-brand-orange">
-                          <AapmIcon name={action.icon} className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-xs font-semibold text-foreground">
-                            {action.label}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {action.detail}
-                          </span>
-                        </span>
-                        <AapmIcon
-                          name="solar:arrow-right-up-bold"
-                          className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                        />
-                      </button>
-                    ))}
+                <div className="stack gap-4">
+                  <div className="appi-says">
+                    <div className="appi-stage"><AppiMascot mood="wink" size="md" enter="slide" /></div>
+                    <div className="bubble bubble-ai tail-left stack gap-1 grow appi-say">
+                      <p>Tanya APPI tentang <strong>{pageContextLabel(location.pathname)}</strong>.</p>
+                      <p className="t-caption t-muted">KPI aktif ikut dibaca. Percakapan tersimpan di akun Anda.</p>
+                    </div>
                   </div>
+                  <section className="card" aria-labelledby="appi-qa-title">
+                    <h3 className="t-overline t-muted" id="appi-qa-title" style={{ padding: "var(--s-3) var(--s-4) var(--s-1)" }}>Aksi cepat</h3>
+                    <div className="list">
+                      {bubbleActions.map((action, actionIndex) => (
+                        <button key={action.label} type="button" className="li appi-quick" data-hue={["green", "orange", "teal", "blue"][actionIndex % 4]} onClick={() => handleAction(action)}>
+                          <span className="tile tile-sm tile-round tile-solid"><AapmIcon name={action.icon} /></span>
+                          <span className="stack grow" style={{ minWidth: 0 }}><span className="li-title">{action.label}</span><span className="li-meta t-clamp-1">{action.detail}</span></span>
+                          <Ic name="chev-right" className="t-muted" />
+                        </button>
+                      ))}
+                    </div>
+                  </section>
                 </div>
               ) : (
                 messages.map((message, index) =>
                   message.role === "user" ? (
-                    <div
-                  key={message.id}
-                  className="aapm-ai-user-bubble ml-auto min-w-0 max-w-[86%] break-words px-3 py-2 text-xs [overflow-wrap:anywhere]"
-                >
-                      {message.image?.dataUrl && (
-                        <img
-                          src={message.image.dataUrl}
-                          alt="Foto yang dikirim untuk dianalisis"
-                          className="mb-2 max-h-40 w-full rounded-[var(--radius-control)] object-cover"
-                        />
-                      )}
-                      {message.content}
+                    <div key={message.id} className="stack gap-2" style={{ minWidth: 0 }}>
+                      {message.image?.dataUrl ? <img src={message.image.dataUrl} alt="Foto yang dikirim untuk dianalisis" className="card msg-photo" /> : null}
+                      {message.content ? <p className="msg-user msg-user-sm">{message.content}</p> : null}
                     </div>
                   ) : (
-                    <article
-                      key={message.id}
-                      className="min-w-0 max-w-full break-words text-xs leading-5"
-                      aria-label="Jawaban APPI"
-                    >
-                      {message.streaming && <span className="sr-only">APPI sedang menjawab</span>}
-                      <AiResponseDetails message={message} compact />
-                      {message.streaming && (
-                        <AiStreamActivity
-                          label={streamStatus}
-                          steps={streamSteps}
-                          compact
-                          showSteps={false}
-                        />
-                      )}
-                      {message.content && (
-                        <div
-                          className={`aapm-ai-response aapm-ai-answer-card aapm-ai-answer-card--compact ${message.streaming ? "aapm-ai-response--streaming" : ""} mt-2.5`}
-                        >
-                          <AiMarkdown content={message.content} compact />
-                        </div>
-                      )}
-                      {message.content && !message.streaming && !message.error && (
-                        <div className="aapm-ai-answer-actions" data-density="compact">
-                          <AiCopyButton text={message.content} label="Salin" />
-                        </div>
-                      )}
-                      <AiMessageMeta
-                        message={message}
-                        onRetryPersistence={retryPersistAssistant}
-                        persistenceRetrying={retryingMessageId === message.id}
-                        disabled={isStreaming}
-                        compact
-                        showMeta={index === lastAssistantMessageIndex || !message.persisted}
-                      />
-                      {index === lastAssistantMessageIndex && !message.streaming && !message.error && !message.fallback && (
-                        <AiQuickActions
-                          content={message.content}
-                          pathname={location.pathname}
-                          onSelect={submit}
-                          disabled={isStreaming}
-                          compact
-                        />
-                      )}
+                    <article key={message.id} className="msg-appi msg-appi-sm" aria-label="Jawaban APPI">
+                      <AppiMascot mood={message.streaming ? (message.content ? "talk" : "think") : "talk"} animated={Boolean(message.streaming)} size="xs" />
+                      <div className="stack gap-2" style={{ minWidth: 0 }}>
+                        {message.streaming && <span className="sr-only">APPI sedang menjawab</span>}
+                        {message.streaming ? <AiStreamActivity label={streamStatus} steps={streamSteps} compact showSteps={false} /> : null}
+                        {message.content ? (
+                          <div className={`aapm-ai-response msg-text msg-text-sm ${message.streaming ? "aapm-ai-response--streaming" : ""}`}>
+                            <AiMarkdown content={message.content} compact />
+                          </div>
+                        ) : null}
+                        {message.content && !message.streaming && !message.error ? (
+                          <div className="row wrap gap-1 answer-actions">
+                            <AiCopyButton text={message.content} label="Salin" />
+                            <AiMessageMeta message={message} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
+                          </div>
+                        ) : (
+                          <AiMessageMeta message={message} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
+                        )}
+                        {!message.streaming ? <AiResponseDetails message={message} compact /> : null}
+                        {index === lastAssistantMessageIndex && !message.streaming && !message.error && !message.fallback && (
+                          <AiQuickActions content={message.content} pathname={location.pathname} onSelect={submit} disabled={isStreaming} compact />
+                        )}
+                      </div>
                     </article>
                   ),
                 )
@@ -736,7 +624,7 @@ export default function FloatingAiAssistant() {
               </aside>
             )}
           </div>
-          <footer className="aapm-ai-floating-composer shrink-0 p-2.5 sm:p-3">
+          <footer className="stack gap-2 appi-panel-foot aapm-ai-floating-composer">
             <AiComposer
               input={promptDraft}
               setInput={setPromptDraft}
@@ -757,7 +645,7 @@ export default function FloatingAiAssistant() {
               showFarmToggle={false}
               idPrefix="appi-quick-photo"
             />
-            <div className="aapm-ai-floating-composer__link-row mt-1.5 flex items-center justify-end gap-2 px-0.5">
+            <div className="row wrap between gap-1" style={{ padding: "0 var(--s-1)" }}>
               <Link
                 to="/ai-assistant"
                 state={{
@@ -766,14 +654,11 @@ export default function FloatingAiAssistant() {
                   pageContext: pageContextForPath(location.pathname),
                 }}
                 onClick={closePanel}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-brand-orange"
+                className="btn btn-link btn-sm"
               >
-                Workspace APPI
-                <AapmIcon
-                  name="solar:arrow-right-up-bold"
-                  className="h-3 w-3"
-                />
+                Buka workspace APPI<Ic name="external" />
               </Link>
+              <span className="t-caption t-muted">Penyakit atau dosis obat? Tanyakan dokter hewan.</span>
             </div>
           </footer>
         </section>
@@ -829,17 +714,18 @@ export default function FloatingAiAssistant() {
           }
         }}
       />
-      {!open && (
+      {!open && showLauncher && (
         <button
           type="button"
           ref={launcherRef}
           onClick={openPanel}
-          className="aapm-ai-launcher aapm-appi-launcher"
+          className="launcher launcher-fixed"
+          data-appi-launcher=""
           aria-label="Buka APPI"
           aria-haspopup="dialog"
         >
-          <AppiMascot mood="idle" size={44} decor={false} presence={false} />
-          <span className="aapm-appi-launcher__label">Tanya APPI</span>
+          <img src={appiAsset(1)} alt="" />
+          <span className="launcher-label" aria-hidden="true">Tanya APPI</span>
         </button>
       )}
     </>

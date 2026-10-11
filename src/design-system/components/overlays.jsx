@@ -5,7 +5,22 @@ import * as DropdownPrimitive from "@radix-ui/react-dropdown-menu";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
-import { Button, IconButton } from "./actions";
+import { Ic } from "../canvas";
+import { Button } from "./actions";
+
+// Canvas overlays (academy.css §12): scrim → dialog → menu on one z ladder.
+// The canvas draws them inside a board; academy-app.css fixes them to the
+// viewport and adds the open/close motion.
+
+function CloseButton({ label, className }) {
+  return (
+    <DialogPrimitive.Close asChild>
+      <button type="button" className={cn("btn btn-ghost btn-quiet btn-sm btn-icon", className)} aria-label={label}>
+        <Ic name="x" />
+      </button>
+    </DialogPrimitive.Close>
+  );
+}
 
 /* ---------------------------------------------------------------- Dialog */
 const Dialog = DialogPrimitive.Root;
@@ -14,53 +29,46 @@ const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef(function DialogOverlay({ className, ...props }, ref) {
-  return <DialogPrimitive.Overlay ref={ref} className={cn("aapm-overlay", className)} {...props} />;
+  return <DialogPrimitive.Overlay ref={ref} className={cn("scrim scrim-live", className)} {...props} />;
 });
 
 /**
- * Modal dialog. `size` sm | md | lg | xl. On phones dialogs become bottom
- * sheets unless `mobile="center"`. Long forms should use DialogBody so the
- * header and footer stay visible while the body scrolls.
+ * Modal dialog (`.dialog`). `size` sm | md | lg | xl. On phones dialogs
+ * become bottom sheets unless `mobile="center"`. Long forms use DialogBody
+ * so the header and footer stay visible while the body scrolls.
  */
 const DialogContent = React.forwardRef(function DialogContent(
   { className, children, size = "md", hideClose = false, closeLabel = "Tutup", mobile, layout, ...props },
   ref,
 ) {
-  const childArray = React.Children.toArray(children);
-  const usesSlots = layout === "slots" || childArray.some((child) => React.isValidElement(child) && child.type === DialogBody);
-
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
-        className={cn("aapm-dialog", className)}
+        className={cn("dialog dialog-live", className)}
         data-size={size}
         data-mobile={mobile}
-        data-layout={usesSlots ? "slots" : "plain"}
+        data-layout={layout}
         {...props}
       >
         {children}
-        {!hideClose && (
-          <DialogPrimitive.Close asChild>
-            <IconButton className="aapm-dialog__close" label={closeLabel} tooltip={null} icon="close" size="sm" />
-          </DialogPrimitive.Close>
-        )}
+        {!hideClose && <CloseButton label={closeLabel} className="dialog-close" />}
       </DialogPrimitive.Content>
     </DialogPortal>
   );
 });
 
-const DialogHeader = ({ className, ...props }) => <div className={cn("aapm-dialog__header", className)} {...props} />;
-const DialogBody = ({ className, ...props }) => <div className={cn("aapm-dialog__body", className)} {...props} />;
-const DialogFooter = ({ className, ...props }) => <div className={cn("aapm-dialog__footer", className)} {...props} />;
+const DialogHeader = ({ className, ...props }) => <div className={cn("stack gap-1 dialog-head", className)} {...props} />;
+const DialogBody = ({ className, ...props }) => <div className={cn("dialog-body", className)} {...props} />;
+const DialogFooter = ({ className, ...props }) => <div className={cn("dialog-foot", className)} {...props} />;
 
 const DialogTitle = React.forwardRef(function DialogTitle({ className, ...props }, ref) {
-  return <DialogPrimitive.Title ref={ref} className={cn("aapm-dialog__title", className)} {...props} />;
+  return <DialogPrimitive.Title ref={ref} className={cn("t-section", className)} {...props} />;
 });
 
 const DialogDescription = React.forwardRef(function DialogDescription({ className, ...props }, ref) {
-  return <DialogPrimitive.Description ref={ref} className={cn("aapm-dialog__description", className)} {...props} />;
+  return <DialogPrimitive.Description ref={ref} className={cn("t-body t-muted", className)} {...props} />;
 });
 
 /* ----------------------------------------------------------------- Sheet */
@@ -70,6 +78,7 @@ const SheetClose = DialogPrimitive.Close;
 const SheetPortal = DialogPrimitive.Portal;
 const SheetOverlay = DialogOverlay;
 
+/** Side panel (`.sheet`, max 480) on desktop, full-width bottom sheet on phones. */
 const SheetContent = React.forwardRef(function SheetContent(
   { side = "right", className, children, hideClose = false, closeLabel = "Tutup", ...props },
   ref,
@@ -77,20 +86,17 @@ const SheetContent = React.forwardRef(function SheetContent(
   return (
     <SheetPortal>
       <SheetOverlay />
-      <DialogPrimitive.Content ref={ref} className={cn("aapm-sheet", className)} data-side={side} {...props}>
+      <DialogPrimitive.Content ref={ref} className={cn("sheet sheet-live", className)} data-side={side} {...props}>
         {children}
-        {!hideClose && (
-          <DialogPrimitive.Close asChild>
-            <IconButton className="aapm-sheet__close" label={closeLabel} tooltip={null} icon="close" size="sm" />
-          </DialogPrimitive.Close>
-        )}
+        {!hideClose && <CloseButton label={closeLabel} className="sheet-close" />}
       </DialogPrimitive.Content>
     </SheetPortal>
   );
 });
 
-const SheetHeader = ({ className, ...props }) => <div className={cn("aapm-dialog__header aapm-sheet__header", className)} {...props} />;
-const SheetFooter = ({ className, ...props }) => <div className={cn("aapm-form-actions mt-auto", className)} {...props} />;
+const SheetHeader = ({ className, ...props }) => <div className={cn("sheet-head", className)} {...props} />;
+const SheetBody = ({ className, ...props }) => <div className={cn("sheet-body", className)} {...props} />;
+const SheetFooter = ({ className, ...props }) => <div className={cn("sheet-foot", className)} {...props} />;
 const SheetTitle = DialogTitle;
 const SheetDescription = DialogDescription;
 
@@ -100,7 +106,7 @@ const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 
 const AlertDialogOverlay = React.forwardRef(function AlertDialogOverlay({ className, ...props }, ref) {
-  return <AlertDialogPrimitive.Overlay ref={ref} className={cn("aapm-overlay", className)} {...props} />;
+  return <AlertDialogPrimitive.Overlay ref={ref} className={cn("scrim scrim-live", className)} {...props} />;
 });
 
 const AlertDialogContent = React.forwardRef(function AlertDialogContent({ className, size = "sm", ...props }, ref) {
@@ -109,9 +115,8 @@ const AlertDialogContent = React.forwardRef(function AlertDialogContent({ classN
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         ref={ref}
-        className={cn("aapm-dialog", className)}
+        className={cn("dialog dialog-live", className)}
         data-size={size}
-        data-layout="plain"
         data-mobile="center"
         {...props}
       />
@@ -122,10 +127,10 @@ const AlertDialogContent = React.forwardRef(function AlertDialogContent({ classN
 const AlertDialogHeader = DialogHeader;
 const AlertDialogFooter = DialogFooter;
 const AlertDialogTitle = React.forwardRef(function AlertDialogTitle({ className, ...props }, ref) {
-  return <AlertDialogPrimitive.Title ref={ref} className={cn("aapm-dialog__title", className)} {...props} />;
+  return <AlertDialogPrimitive.Title ref={ref} className={cn("t-section", className)} {...props} />;
 });
 const AlertDialogDescription = React.forwardRef(function AlertDialogDescription({ className, ...props }, ref) {
-  return <AlertDialogPrimitive.Description ref={ref} className={cn("aapm-dialog__description", className)} {...props} />;
+  return <AlertDialogPrimitive.Description ref={ref} className={cn("t-body t-muted", className)} {...props} />;
 });
 const AlertDialogAction = React.forwardRef(function AlertDialogAction({ variant = "primary", className, children, ...props }, ref) {
   return (
@@ -143,8 +148,8 @@ const AlertDialogCancel = React.forwardRef(function AlertDialogCancel({ variant 
 });
 
 /**
- * Confirmation for consequential actions. Destructive confirmations use the
- * danger action and a danger icon; the cancel action always stays first.
+ * Confirmation for consequential actions (canvas dialog anatomy): a round
+ * tile, title and consequence, then Batal first and the action on the right.
  */
 function ConfirmDialog({
   open,
@@ -159,24 +164,25 @@ function ConfirmDialog({
   onConfirm,
   children = null,
 }) {
-  const resolvedIcon = icon || (destructive ? "danger" : "info");
+  const resolvedIcon = icon || (destructive ? "delete" : "info");
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
-        <div className="flex items-start gap-3">
-          <span className="aapm-icon-tile" data-hue={destructive ? "rose" : "orange"} aria-hidden="true">
+        <div className="row-start gap-3">
+          <span className="tile tile-round" data-hue={destructive ? "rose" : "ai"} aria-hidden="true">
             <AapmIcon name={resolvedIcon} />
           </span>
-          <div className="min-w-0 pt-0.5">
-            <AlertDialogTitle data-size="sm">{title}</AlertDialogTitle>
-            {description ? <AlertDialogDescription className="mt-1">{description}</AlertDialogDescription> : null}
+          <div className="stack gap-1" style={{ minWidth: 0 }}>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
           </div>
         </div>
         {children}
         <AlertDialogFooter>
           <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction variant={destructive ? "danger" : "primary"} loading={loading} onClick={onConfirm}>
+            {destructive ? <AapmIcon name={resolvedIcon} /> : null}
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -196,14 +202,14 @@ const DropdownMenuRadioGroup = DropdownPrimitive.RadioGroup;
 const DropdownMenuContent = React.forwardRef(function DropdownMenuContent({ className, sideOffset = 6, align = "end", ...props }, ref) {
   return (
     <DropdownPrimitive.Portal>
-      <DropdownPrimitive.Content ref={ref} sideOffset={sideOffset} align={align} className={cn("aapm-menu", className)} {...props} />
+      <DropdownPrimitive.Content ref={ref} sideOffset={sideOffset} align={align} className={cn("menu menu-pop", className)} {...props} />
     </DropdownPrimitive.Portal>
   );
 });
 
 const DropdownMenuItem = React.forwardRef(function DropdownMenuItem({ className, inset, tone, icon, asChild, children, ...props }, ref) {
   return (
-    <DropdownPrimitive.Item ref={ref} asChild={asChild} className={cn("aapm-menu-item", className)} data-inset={inset ? "true" : undefined} data-tone={tone} {...props}>
+    <DropdownPrimitive.Item ref={ref} asChild={asChild} className={cn("menu-item", tone === "danger" && "is-danger", inset && "menu-inset", className)} {...props}>
       {asChild ? children : <>{icon ? <AapmIcon name={icon} /> : null}{children}</>}
     </DropdownPrimitive.Item>
   );
@@ -211,9 +217,9 @@ const DropdownMenuItem = React.forwardRef(function DropdownMenuItem({ className,
 
 const DropdownMenuCheckboxItem = React.forwardRef(function DropdownMenuCheckboxItem({ className, children, ...props }, ref) {
   return (
-    <DropdownPrimitive.CheckboxItem ref={ref} className={cn("aapm-menu-item", className)} data-select="true" {...props}>
-      <span className="aapm-menu-item__indicator">
-        <DropdownPrimitive.ItemIndicator><AapmIcon name="glyphCheck" /></DropdownPrimitive.ItemIndicator>
+    <DropdownPrimitive.CheckboxItem ref={ref} className={cn("menu-item", className)} {...props}>
+      <span className="menu-check">
+        <DropdownPrimitive.ItemIndicator><Ic name="check" size="sm" /></DropdownPrimitive.ItemIndicator>
       </span>
       {children}
     </DropdownPrimitive.CheckboxItem>
@@ -222,9 +228,9 @@ const DropdownMenuCheckboxItem = React.forwardRef(function DropdownMenuCheckboxI
 
 const DropdownMenuRadioItem = React.forwardRef(function DropdownMenuRadioItem({ className, children, ...props }, ref) {
   return (
-    <DropdownPrimitive.RadioItem ref={ref} className={cn("aapm-menu-item", className)} data-select="true" {...props}>
-      <span className="aapm-menu-item__indicator">
-        <DropdownPrimitive.ItemIndicator><span className="aapm-radio__dot" /></DropdownPrimitive.ItemIndicator>
+    <DropdownPrimitive.RadioItem ref={ref} className={cn("menu-item", className)} {...props}>
+      <span className="menu-check">
+        <DropdownPrimitive.ItemIndicator><span className="radio-dot" /></DropdownPrimitive.ItemIndicator>
       </span>
       {children}
     </DropdownPrimitive.RadioItem>
@@ -232,20 +238,20 @@ const DropdownMenuRadioItem = React.forwardRef(function DropdownMenuRadioItem({ 
 });
 
 const DropdownMenuLabel = React.forwardRef(function DropdownMenuLabel({ className, inset, ...props }, ref) {
-  return <DropdownPrimitive.Label ref={ref} className={cn("aapm-menu-label", inset && "ps-8", className)} {...props} />;
+  return <DropdownPrimitive.Label ref={ref} className={cn("menu-label", inset && "menu-inset", className)} {...props} />;
 });
 
 const DropdownMenuSeparator = React.forwardRef(function DropdownMenuSeparator({ className, ...props }, ref) {
-  return <DropdownPrimitive.Separator ref={ref} className={cn("aapm-menu-separator", className)} {...props} />;
+  return <DropdownPrimitive.Separator ref={ref} className={cn("menu-sep", className)} {...props} />;
 });
 
-const DropdownMenuShortcut = ({ className, ...props }) => <span className={cn("aapm-menu-shortcut", className)} {...props} />;
+const DropdownMenuShortcut = ({ className, ...props }) => <span className={cn("kbd ml-auto", className)} {...props} />;
 
 const DropdownMenuSubTrigger = React.forwardRef(function DropdownMenuSubTrigger({ className, children, ...props }, ref) {
   return (
-    <DropdownPrimitive.SubTrigger ref={ref} className={cn("aapm-menu-item", className)} {...props}>
+    <DropdownPrimitive.SubTrigger ref={ref} className={cn("menu-item", className)} {...props}>
       {children}
-      <AapmIcon name="chevronRight" className="ms-auto" />
+      <Ic name="chev-right" size="sm" className="ml-auto" />
     </DropdownPrimitive.SubTrigger>
   );
 });
@@ -253,7 +259,7 @@ const DropdownMenuSubTrigger = React.forwardRef(function DropdownMenuSubTrigger(
 const DropdownMenuSubContent = React.forwardRef(function DropdownMenuSubContent({ className, ...props }, ref) {
   return (
     <DropdownPrimitive.Portal>
-      <DropdownPrimitive.SubContent ref={ref} className={cn("aapm-menu", className)} {...props} />
+      <DropdownPrimitive.SubContent ref={ref} className={cn("menu menu-pop", className)} {...props} />
     </DropdownPrimitive.Portal>
   );
 });
@@ -261,7 +267,7 @@ const DropdownMenuSubContent = React.forwardRef(function DropdownMenuSubContent(
 /**
  * Overflow (kebab) menu for contextual, low-frequency actions. Items:
  * { id, label, icon?, tone?: "danger", disabled?, onSelect }. Destructive
- * items are separated from the rest automatically.
+ * items come last, after a separator.
  */
 function OverflowMenu({ label = "Aksi lainnya", items = [], align = "end", triggerVariant = "ghost", size = "sm", className }) {
   const safe = items.filter(Boolean);
@@ -270,9 +276,11 @@ function OverflowMenu({ label = "Aksi lainnya", items = [], align = "end", trigg
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <IconButton label={label} tooltip={null} icon="more" variant={triggerVariant} size={size} className={className} />
+        <button type="button" className={cn("btn btn-icon", triggerVariant === "secondary" ? "btn-secondary" : "btn-ghost", size === "sm" && "btn-sm", className)} aria-label={label}>
+          <Ic name="more" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className="min-w-[12rem]">
+      <DropdownMenuContent align={align}>
         {regular.map((item) => (
           <DropdownMenuItem key={item.id || item.label} icon={item.icon} disabled={item.disabled} onSelect={item.onSelect}>{item.label}</DropdownMenuItem>
         ))}
@@ -294,7 +302,7 @@ const PopoverClose = PopoverPrimitive.Close;
 const PopoverContent = React.forwardRef(function PopoverContent({ className, align = "center", sideOffset = 6, ...props }, ref) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content ref={ref} align={align} sideOffset={sideOffset} className={cn("aapm-popover", className)} {...props} />
+      <PopoverPrimitive.Content ref={ref} align={align} sideOffset={sideOffset} className={cn("card card-raised popover menu-pop", className)} {...props} />
     </PopoverPrimitive.Portal>
   );
 });
@@ -318,6 +326,7 @@ export {
   SheetOverlay,
   SheetContent,
   SheetHeader,
+  SheetBody,
   SheetFooter,
   SheetTitle,
   SheetDescription,

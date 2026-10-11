@@ -2,16 +2,16 @@ import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
 
-const TooltipProvider = ({ delayDuration = 300, skipDelayDuration = 200, ...props }) => (
-  <TooltipPrimitive.Provider delayDuration={delayDuration} skipDelayDuration={skipDelayDuration} {...props} />
+const TooltipProvider = ({ delayDuration = 300, skipDelayDuration = 200, children = undefined, ...props }) => (
+  <TooltipPrimitive.Provider delayDuration={delayDuration} skipDelayDuration={skipDelayDuration} {...props}>{children}</TooltipPrimitive.Provider>
 );
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
-const TooltipContent = React.forwardRef(function TooltipContent({ className, sideOffset = 6, ...props }, ref) {
+const TooltipContent = React.forwardRef(/** @param {any} props @param {any} ref */ function TooltipContent({ className = undefined, sideOffset = 6, ...props }, ref) {
   return (
     <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Content ref={ref} sideOffset={sideOffset} className={cn("aapm-tooltip", className)} {...props} />
+      <TooltipPrimitive.Content ref={ref} sideOffset={sideOffset} className={cn("tip tip-live", className)} {...props} />
     </TooltipPrimitive.Portal>
   );
 });

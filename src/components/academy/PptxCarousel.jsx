@@ -34,7 +34,7 @@ function getSameOriginPptxUrl(value) {
 function getFriendlyError(error) {
   const message = String(error?.message || error || "").toLowerCase();
   if (message.includes("too large") || message.includes("terlalu besar")) {
-    return "Ukuran file presentasi melebihi batas 50 MB.";
+    return "Ukuran file presentasi melebihi batas 100 MB.";
   }
   if (message.includes("network") || message.includes("fetch") || message.includes("http")) {
     return "Presentasi belum dapat dimuat. Coba muat ulang halaman.";

@@ -4,22 +4,42 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "./tooltip";
 
-// Legacy shadcn variant names map onto the AAPM action vocabulary.
-const variantAlias = {
-  default: "primary",
-  destructive: "danger",
-  quiet: "ghost",
+// Legacy shadcn/AAPM variant names map onto the canvas button vocabulary
+// (academy.css §7): tactile primary/learn/secondary/ai/gold/danger faces on a
+// darker ledge, plus ghost, soft and link.
+const variantClass = {
+  primary: "btn-primary",
+  default: "btn-primary",
+  learn: "btn-learn",
+  secondary: "btn-secondary",
+  outline: "btn-secondary",
+  ghost: "btn-ghost",
+  quiet: "btn-ghost btn-quiet",
+  soft: "btn-soft",
+  attention: "btn-ai",
+  ai: "btn-ai",
+  "ai-soft": "btn-ai-soft",
+  gold: "btn-gold",
+  danger: "btn-danger",
+  destructive: "btn-danger",
+  "danger-soft": "btn-danger-soft",
+  link: "btn-link",
 };
 
-const sizeAlias = {
-  default: "md",
-  icon: "icon",
+const sizeClass = {
+  sm: "btn-sm",
+  md: "",
+  default: "",
+  lg: "btn-lg",
+  icon: "btn-icon",
+  "icon-sm": "btn-sm btn-icon",
+  "icon-lg": "btn-lg btn-icon",
 };
 
 /**
- * AAPM action. Hierarchy: primary (one per view) → secondary/outline →
- * ghost; `learn` is the tactile course CTA (continue / check answer),
- * `attention` is reserved for APPI and time-sensitive learning prompts.
+ * Canvas action (`.btn`). Hierarchy: primary (one per view) → secondary →
+ * ghost; `learn` is the uppercase course CTA (continue, check answer), `ai`
+ * belongs to APPI, `gold` to rewards.
  */
 const Button = React.forwardRef(function Button(
   {
@@ -39,8 +59,6 @@ const Button = React.forwardRef(function Button(
   },
   ref,
 ) {
-  const resolvedVariant = variantAlias[variant] || variant;
-  const resolvedSize = sizeAlias[size] || size;
   const Component = asChild ? Slot : "button";
   const content = asChild ? children : (
     <>
@@ -54,11 +72,15 @@ const Button = React.forwardRef(function Button(
     <Component
       ref={ref}
       type={asChild ? undefined : type || "button"}
-      className={cn("aapm-button", className)}
-      data-variant={resolvedVariant}
-      data-size={resolvedSize}
-      data-block={block ? "true" : undefined}
-      data-shape={shape}
+      className={cn(
+        "btn",
+        variantClass[variant] ?? "btn-primary",
+        sizeClass[size] ?? "",
+        block && "btn-block",
+        shape === "pill" && "btn-pill",
+        asChild && disabled && "is-disabled",
+        className,
+      )}
       data-loading={loading ? "true" : undefined}
       aria-busy={loading || undefined}
       disabled={asChild ? undefined : disabled || loading}
@@ -71,23 +93,24 @@ const Button = React.forwardRef(function Button(
 });
 
 /** Compatibility helper for Radix slot consumers that only accept classes. */
-function buttonVariants() {
-  return "aapm-button";
+function buttonVariants({ variant = "primary", size = "md" } = {}) {
+  return cn("btn", variantClass[variant] ?? "btn-primary", sizeClass[size] ?? "");
 }
 
 const iconSizeAlias = { sm: "icon-sm", md: "icon", icon: "icon", lg: "icon-lg" };
 
 /** Icon-only action. The label is always announced and shown as a tooltip. */
 const IconButton = React.forwardRef(function IconButton(
-  { label, tooltip = label, icon, children, variant = "ghost", size = "icon", side = "top", ...props },
+  { label, tooltip = label, icon, children, variant = "quiet", size = "icon", side = "top", className, ...props },
   ref,
 ) {
   const control = (
     <Button
       ref={ref}
-      variant={variant}
+      variant={variant === "ghost" ? "quiet" : variant}
       size={iconSizeAlias[size] || "icon"}
       aria-label={label || tooltip || undefined}
+      className={className}
       {...props}
     >
       {icon ? <AapmIcon name={icon} /> : children}

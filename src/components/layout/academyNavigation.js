@@ -1,34 +1,40 @@
+const isLearningPath = (pathname) => pathname === "/modules" || pathname.startsWith("/modules/") || pathname.startsWith("/quiz/");
+
 export const academyNavigation = [
   {
     label: "Belajar",
     items: [
-      { to: "/", label: "Beranda", icon: "dashboard", end: true },
-      { to: "/modules", label: "Jalur belajar", icon: "course", match: (pathname) => pathname === "/modules" || pathname.startsWith("/modules/") || pathname.startsWith("/quiz/") },
+      { to: "/", label: "Beranda", ic: "home", icon: "dashboard", end: true },
+      { to: "/modules", label: "Jalur belajar", ic: "route", icon: "roadmap", match: isLearningPath },
+      { to: "/final-exam", label: "Ujian akhir", ic: "exam", icon: "exam" },
     ],
   },
   {
     label: "Alat farm",
     items: [
-      { to: "/calculators", label: "Kalkulator farm", icon: "calculator" },
-      { to: "/kpi", label: "Farm KPI", icon: "kpi" },
-      { to: "/ai-assistant", label: "APPI", icon: "ai", accent: "ai" },
+      { to: "/calculators", label: "Kalkulator farm", ic: "calc", icon: "calculator" },
+      { to: "/kpi", label: "Farm KPI", ic: "chart", icon: "kpi" },
+      { to: "/ai-assistant", label: "Tanya APPI", ic: "sparkle", icon: "ai", accent: "ai" },
     ],
   },
   {
     label: "Prestasi",
     items: [
-      { to: "/profile", label: "Profil & prestasi", icon: "user" },
-      { to: "/certification", label: "Sertifikasi", icon: "certificate" },
-      { to: "/final-exam", label: "Ujian akhir", icon: "exam" },
+      { to: "/profile", label: "Prestasi & profil", ic: "medal", icon: "award" },
+      { to: "/certification", label: "Sertifikasi", ic: "cert", icon: "certificate" },
     ],
   },
 ];
 
+// Phone: Beranda · Belajar · APPI raised in the middle · Alat · Prestasi.
+// One vocabulary with the sidebar; APPI lives here instead of a second,
+// floating launcher.
 export const academyBottomNavigation = [
-  { to: "/", label: "Beranda", icon: "dashboard", end: true },
-  { to: "/modules", label: "Belajar", icon: "course", match: (pathname) => pathname.startsWith("/modules") || pathname.startsWith("/quiz/") },
-  { to: "/ai-assistant", label: "APPI", icon: "ai", accent: "ai" },
-  { to: "/kpi", label: "KPI", icon: "kpi" },
+  { to: "/", label: "Beranda", ic: "home", end: true },
+  { to: "/modules", label: "Belajar", ic: "route", match: (pathname) => isLearningPath(pathname) || pathname === "/final-exam" },
+  { to: "/ai-assistant", label: "APPI", appi: true },
+  { to: "/calculators", label: "Alat", ic: "calc", match: (pathname) => pathname === "/calculators" || pathname === "/kpi" },
+  { to: "/profile", label: "Prestasi", ic: "medal", match: (pathname) => pathname.startsWith("/profile") || pathname === "/certification" },
 ];
 
 /** Routes that open in the focused learning shell instead of the app shell. */

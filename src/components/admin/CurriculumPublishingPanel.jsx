@@ -1,17 +1,28 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { nativeApi } from "@/api/nativeClient";
-import { Button, ConfirmDialog, Label, Surface, Textarea } from "@/components/primitives";
+import {
+  Button, ConfirmDialog, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, Label, Textarea, Tooltip,
+} from "@/components/primitives";
 import { EditorialContent } from "@/components/academy/EditorialContent";
 import { LessonStructuredContent } from "@/components/academy/LessonStructuredContent";
 import { canPublishCurriculumDraft, curriculumModule, curriculumPrimaryAction } from "@/lib/curriculumEditorState";
+import { Ic } from "@/design-system/canvas";
 
 const sectionLabels = { title: "Judul", summary: "Ringkasan", content: "Materi", editorialContent: "Blok materi",
   levelNumber: "Chapter", levelName: "Nama chapter", category: "Kategori", videoUrl: "Video", videoScript: "Naskah video",
   learningObjectives: "Tujuan belajar", keyTakeaways: "Poin penting", checklist: "Checklist", practicalAssignment: "Praktik",
   questions: "Bank soal", sortOrder: "Urutan", moduleNumber: "Nomor modul" };
 
+/**
+ * Draft lifecycle for one module. The actions (draft step · Validasi ·
+ * Terbitkan · more) render into the editor's focus bar through
+ * `actionsContainer`; the results (validation, publish review, archive
+ * reason, revision history) render here, under the bar, only when there is
+ * something to read.
+ */
 export default function CurriculumPublishingPanel({ moduleId, view, draftVersion, dirty, changeKey, conflict,
-  busy, onMutation, onError, onRecoverValidation }) {
+  busy, onMutation, onError, onRecoverValidation, actionsContainer = null, menuItems = [] }) {
   const [validation, setValidation] = useState(null);
   const [review, setReview] = useState(null);
   const [reading, setReading] = useState(false);
@@ -19,6 +30,7 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
   const [confirmation, setConfirmation] = useState(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState(null);
   const [revision, setRevision] = useState(null);
   const statusRef = useRef(null);
@@ -53,6 +65,7 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
     requestAnimationFrame(() => statusRef.current?.focus());
   });
   const loadHistory = () => read(async () => { const result = await nativeApi.admin.modules.revisions(moduleId); setHistory(result.revisions); });
+  const openHistory = () => { setHistoryOpen(true); if (history === null) loadHistory(); };
   const inspect = (id) => read(async () => { setRevision(await nativeApi.admin.modules.revision(moduleId, id)); });
   const confirm = async () => {
     const action = confirmation;
@@ -66,70 +79,138 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
     } else if (action === "restore") await onMutation("restore");
   };
   const snapshot = revision ? curriculumModule(revision) : null;
+  const stateLabel = archived ? "Diarsipkan" : view?.publishedRevisionId ? "Diterbitkan" : "Draf belum diterbitkan";
+
+  const publishButton = (
+    <Button type="button" size="sm" variant={primaryAction === "publish" ? "primary" : "secondary"} disabled={unavailable || !publishAllowed} onClick={() => setConfirmation("publish")}>
+      {!publishAllowed ? <Ic name="lock" /> : null}<span>Terbitkan</span>
+    </Button>
+  );
+  const actions = (
+    <div className="flow" aria-label="Alur terbit modul">
+      <span className="flow-step is-done hide-md" title={`${stateLabel}${view?.draft?.hasUnpublishedChanges ? " · ada perubahan belum diterbitkan" : ""}`}>
+        <span className="flow-dot"><Ic name="check" /></span><span className="flow-label">Draf v{draftVersion ?? "—"}</span>
+      </span>
+      <span className="flow-line is-done hide-md" style={{ flex: "0 0 16px" }} />
+      <Button type="button" size="sm" className="hide-sm" variant={primaryAction === "validate" ? "primary" : "secondary"} disabled={unavailable || dirty || archived} loading={reading} onClick={validate}>Validasi</Button>
+      <span className="flow-line hide-sm" style={{ flex: "0 0 16px" }} />
+      {archived ? (
+        <Button type="button" size="sm" variant={primaryAction === "restore" ? "primary" : "secondary"} disabled={unavailable} onClick={() => setConfirmation("restore")}>Pulihkan modul</Button>
+      ) : publishAllowed ? publishButton : (
+        <Tooltip content={dirty ? "Simpan draf lalu validasi untuk menerbitkan" : "Terbitkan aktif setelah validasi lolos"}><span tabIndex={-1}>{publishButton}</span></Tooltip>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="btn btn-ghost btn-sm btn-icon" aria-label="Opsi lainnya"><Ic name="more" /></button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem className="show-sm" disabled={unavailable || dirty || archived} onSelect={validate}><Ic name="check-circle" />Validasi draf</DropdownMenuItem>
+          {menuItems.map((item) => <DropdownMenuItem key={item.label} disabled={item.disabled} onSelect={item.onSelect}><Ic name={item.ic} />{item.label}</DropdownMenuItem>)}
+          <DropdownMenuItem onSelect={openHistory}><Ic name="history" />Riwayat revisi</DropdownMenuItem>
+          {view?.lifecycleStatus === "active" ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem tone="danger" disabled={unavailable} onSelect={() => setArchiveOpen(true)}><Ic name="archive" />Arsipkan</DropdownMenuItem>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
+  const hasNotices = archived || readError || validation || review || archiveOpen || historyOpen;
   return (
-    <Surface className="mb-5 space-y-4 p-4" aria-label="Draf dan penerbitan">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p role="status" className="text-sm">
-          <strong>{archived ? "Diarsipkan" : view?.publishedRevisionId ? "Diterbitkan" : "Draf belum diterbitkan"}</strong>
-          {` · Draf v${draftVersion ?? "—"}`}
-          {view?.draft?.hasUnpublishedChanges ? " · Ada perubahan belum diterbitkan" : ""}
-          {dirty ? " · Ada perubahan lokal belum disimpan" : ""}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant={primaryAction === "validate" ? "primary" : "secondary"} disabled={unavailable || dirty || archived} loading={reading} onClick={validate}>Validasi</Button>
-          <Button type="button" variant={primaryAction === "publish" ? "primary" : "secondary"} disabled={unavailable || !publishAllowed} onClick={() => setConfirmation("publish")}>Terbitkan</Button>
-          {archived ? <Button type="button" variant={primaryAction === "restore" ? "primary" : "secondary"} disabled={unavailable} onClick={() => setConfirmation("restore")}>Pulihkan modul</Button>
-            : view?.lifecycleStatus === "active" ? <Button type="button" variant="secondary" disabled={unavailable} onClick={() => setArchiveOpen(!archiveOpen)}>Arsipkan</Button> : null}
-        </div>
-      </div>
-      <p className="text-sm text-muted-foreground">Simpan draf sebelum pratinjau dan validasi. Terbitkan mengaktifkan revisi baru untuk peserta; simpan draf tidak mengubah materi yang sudah diterbitkan.</p>
-      {archived && <p className="text-sm">Alasan arsip: {view.archiveReason} · Materi dan bukti akademik tetap tersimpan.</p>}
-      {readError && <p role="alert">{readError} <Button type="button" variant="ghost" onClick={() => retryRef.current && read(retryRef.current)} disabled={unavailable}>Coba lagi</Button></p>}
-      {validation && <div ref={statusRef} tabIndex={-1} role={validation.valid ? "status" : "alert"} className="space-y-2">
-        <p><strong>{validation.valid ? `Draf v${validation.draftVersion} lolos validasi.` : "Draf belum dapat diterbitkan."}</strong></p>
-        <ul>{validation.errors?.map((problem, index) => <li key={`${problem.field}-${index}`}>
-          <Button type="button" variant="ghost" onClick={() => onRecoverValidation(problem)}>{problem.message}</Button>
-        </li>)}</ul>
-      </div>}
-      {review && <section aria-label="Review penerbitan" className="space-y-2 border-t border-border pt-3">
-        <h2 className="font-semibold">Review penerbitan: {view.module?.title}</h2>
-        <p>Revisi saat ini: {review.currentRevision ?? "Belum ada"} → Revisi usulan: {review.nextRevision} · {review.questionCount} soal</p>
-        <p>Bagian berubah: {review.changedSections?.map((key) => sectionLabels[key] || key).join(", ") || "Tidak ada perubahan konten"}.</p>
-        <p>{review.learnerImpact}</p>
-        <p>Percobaan kuis yang sedang berjalan tetap menggunakan soal awalnya. Nilai, progres, sertifikat, persyaratan akademik dan ambang kelulusan peserta tetap dipertahankan.</p>
-        {review.errors?.length > 0 && <ul role="alert">{review.errors.map((problem, index) => <li key={index}><Button type="button" variant="ghost" onClick={() => onRecoverValidation(problem)}>{problem.message}</Button></li>)}</ul>}
-      </section>}
-      {archiveOpen && <div className="space-y-2">
-        <Label htmlFor="archive-reason">Alasan pengarsipan (5–500 karakter)</Label>
-        <Textarea id="archive-reason" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
-        <p className="text-sm text-muted-foreground">Arsip menyembunyikan modul bagi peserta yang kebijakannya tidak mewajibkan modul ini. Modul wajib tetap dapat diakses sesuai kebijakan peserta. Riwayat dan bukti akademik tetap tersedia.</p>
-        <Button type="button" variant={primaryAction === "archive" ? "primary" : "secondary"} disabled={unavailable || reason.trim().length < 5} onClick={() => setConfirmation("archive")}>Konfirmasi arsip</Button>
-        <Button type="button" variant="ghost" onClick={() => setArchiveOpen(false)}>Batal</Button>
-      </div>}
-      <details onToggle={(event) => { if (event.currentTarget.open && history === null) loadHistory(); }}>
-        <summary className="cursor-pointer font-semibold">Riwayat revisi</summary>
-        <div className="mt-3 space-y-3">
-          <Button type="button" variant="secondary" disabled={unavailable} onClick={loadHistory}>Muat ulang riwayat</Button>
-          {history?.length === 0 && <p>Belum ada revisi yang diterbitkan.</p>}
-          <ul className="space-y-2">{history?.map((item) => <li key={item.id}><Button type="button" variant="secondary" disabled={unavailable} onClick={() => inspect(item.id)}>Lihat revisi {item.revisionNumber}</Button> <span className="text-sm">{item.publishedAt}</span></li>)}</ul>
-          {revision && <section aria-label={`Snapshot revisi ${revision.revisionNumber}`} className="space-y-4 border-t border-border pt-3">
-            <h3 className="font-semibold">Revisi {revision.revisionNumber} · Snapshot tetap</h3>
-            <p>{snapshot.title} · {revision.questions.length} soal · {revision.publishedAt}</p>
-            <p>Modul {snapshot.moduleNumber} · Chapter {snapshot.levelNumber}: {snapshot.levelName} · Kategori {snapshot.category || "—"} · Urutan {snapshot.sortOrder}</p>
-            <p>{snapshot.summary}</p>
-            <EditorialContent document={snapshot.editorialContent} fallback={snapshot.content} title={snapshot.title} />
-            <LessonStructuredContent module={snapshot} document={snapshot.editorialContent} withSectionIds={false} />
-            {snapshot.videoUrl && <p>Video: {snapshot.videoUrl}</p>}
-            {snapshot.videoScript && <p>{snapshot.videoScript}</p>}
-            <ol className="space-y-3">{revision.questions.map((question, index) => <li key={index}>
-              <strong>{index + 1}. {question.question}</strong><ul>{question.options.map((option, optionIndex) => <li key={optionIndex}>{option}{optionIndex === question.correctIndex ? " (Jawaban benar)" : ""}</li>)}</ul>
-              <p>{question.explanation}</p><p>{question.learningObjective}</p>
-            </li>)}</ol>
-            <Button type="button" variant="secondary" disabled={unavailable || dirty} onClick={() => setConfirmation("copy")}>Salin revisi ke draf</Button>
-            {dirty && <p>Simpan perubahan lokal sebelum menyalin revisi.</p>}
-          </section>}
-        </div>
-      </details>
+    <>
+      {actionsContainer ? createPortal(actions, actionsContainer) : actions}
+      {hasNotices ? (
+        <section className="stack gap-3 editor-notices" aria-label="Draf dan penerbitan">
+          {archived ? (
+            <div className="alert alert-warning" role="status"><Ic name="archive" /><div><span className="alert-title">Modul diarsipkan.</span> Alasan: {view.archiveReason || "—"} · Materi dan bukti akademik tetap tersimpan.</div></div>
+          ) : null}
+          {readError ? (
+            <div className="alert alert-danger" role="alert">
+              <Ic name="alert" />
+              <div className="row wrap between gap-3 grow"><p>{readError}</p><button type="button" className="btn btn-secondary btn-sm" onClick={() => retryRef.current && read(retryRef.current)} disabled={unavailable}><Ic name="refresh" />Coba lagi</button></div>
+            </div>
+          ) : null}
+          {validation ? (
+            <div ref={statusRef} tabIndex={-1} role={validation.valid ? "status" : "alert"} className={`alert ${validation.valid ? "alert-success" : "alert-warning"}`}>
+              <Ic name={validation.valid ? "check-circle" : "alert"} />
+              <div className="stack gap-1 grow">
+                <span className="alert-title">{validation.valid ? `Draf v${validation.draftVersion} lolos validasi.` : "Draf belum dapat diterbitkan."}</span>
+                {validation.errors?.length ? (
+                  <ul className="stack gap-0-5">{validation.errors.map((problem, index) => (
+                    <li key={`${problem.field}-${index}`}><button type="button" className="btn btn-link t-support" onClick={() => onRecoverValidation(problem)}>{problem.message}<Ic name="arrow-right" /></button></li>
+                  ))}</ul>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {review ? (
+            <section aria-label="Review penerbitan" className="card card-pad stack gap-2">
+              <h2 className="card-title">Review penerbitan: {view.module?.title}</h2>
+              <p className="t-support">Revisi saat ini: <strong>{review.currentRevision ?? "Belum ada"}</strong> → Revisi usulan: <strong>{review.nextRevision}</strong> · {review.questionCount} soal</p>
+              <p className="t-support">Bagian berubah: {review.changedSections?.map((key) => sectionLabels[key] || key).join(", ") || "Tidak ada perubahan konten"}.</p>
+              <p className="t-support">{review.learnerImpact}</p>
+              <p className="note">Percobaan kuis yang sedang berjalan tetap menggunakan soal awalnya. Nilai, progres, sertifikat, persyaratan akademik dan ambang kelulusan peserta tetap dipertahankan.</p>
+              {review.errors?.length > 0 && <ul role="alert" className="stack gap-0-5">{review.errors.map((problem, index) => <li key={index}><button type="button" className="btn btn-link t-support" onClick={() => onRecoverValidation(problem)}>{problem.message}</button></li>)}</ul>}
+            </section>
+          ) : null}
+          {archiveOpen ? (
+            <section className="card card-pad stack gap-3" aria-labelledby="archive-title">
+              <h2 className="card-title" id="archive-title">Arsipkan modul</h2>
+              <div className="field">
+                <Label htmlFor="archive-reason">Alasan pengarsipan (5–500 karakter)</Label>
+                <Textarea id="archive-reason" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
+                <p className="hint">Arsip menyembunyikan modul bagi peserta yang kebijakannya tidak mewajibkan modul ini. Modul wajib tetap dapat diakses sesuai kebijakan peserta. Riwayat dan bukti akademik tetap tersedia.</p>
+              </div>
+              <div className="row wrap gap-2">
+                <Button type="button" variant={primaryAction === "archive" ? "primary" : "secondary"} disabled={unavailable || reason.trim().length < 5} onClick={() => setConfirmation("archive")}>Konfirmasi arsip</Button>
+                <Button type="button" variant="ghost" onClick={() => setArchiveOpen(false)}>Batal</Button>
+              </div>
+            </section>
+          ) : null}
+          {historyOpen ? (
+            <section className="card card-pad stack gap-3" aria-labelledby="history-title">
+              <div className="card-head">
+                <h2 className="card-title" id="history-title">Riwayat revisi</h2>
+                <div className="row gap-1">
+                  <button type="button" className="btn btn-ghost btn-sm" disabled={unavailable} onClick={loadHistory}><Ic name="refresh" />Muat ulang</button>
+                  <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" aria-label="Tutup riwayat revisi" onClick={() => setHistoryOpen(false)}><Ic name="x" /></button>
+                </div>
+              </div>
+              {history?.length === 0 && <p className="t-support t-muted">Belum ada revisi yang diterbitkan.</p>}
+              {history?.length ? (
+                <ul className="list">{history.map((item) => (
+                  <li key={item.id} className="li">
+                    <span className="tile tile-sm" data-hue="neutral"><Ic name="history" /></span>
+                    <span className="stack grow"><span className="li-title">Revisi {item.revisionNumber}</span><span className="li-meta">{item.publishedAt}</span></span>
+                    <button type="button" className="btn btn-secondary btn-sm" disabled={unavailable} onClick={() => inspect(item.id)}>Lihat revisi {item.revisionNumber}</button>
+                  </li>
+                ))}</ul>
+              ) : null}
+              {revision && <section aria-label={`Snapshot revisi ${revision.revisionNumber}`} className="stack gap-3 card-sect" style={{ paddingTop: "var(--s-3)" }}>
+                <h3 className="t-heading">Revisi {revision.revisionNumber} · Snapshot tetap</h3>
+                <p className="t-support">{snapshot.title} · {revision.questions.length} soal · {revision.publishedAt}</p>
+                <p className="t-support t-muted">Modul {snapshot.moduleNumber} · Chapter {snapshot.levelNumber}: {snapshot.levelName} · Kategori {snapshot.category || "—"} · Urutan {snapshot.sortOrder}</p>
+                <p className="t-support">{snapshot.summary}</p>
+                <EditorialContent document={snapshot.editorialContent} fallback={snapshot.content} title={snapshot.title} />
+                <LessonStructuredContent module={snapshot} document={snapshot.editorialContent} withSectionIds={false} />
+                {snapshot.videoUrl && <p className="t-support">Video: {snapshot.videoUrl}</p>}
+                {snapshot.videoScript && <p className="t-support">{snapshot.videoScript}</p>}
+                <ol className="stack gap-3">{revision.questions.map((question, index) => <li key={index} className="inset stack gap-1" style={{ padding: "var(--s-3)" }}>
+                  <strong>{index + 1}. {question.question}</strong><ul className="stack gap-0-5">{question.options.map((option, optionIndex) => <li key={optionIndex} className={optionIndex === question.correctIndex ? "t-success t-strong" : undefined}>{option}{optionIndex === question.correctIndex ? " (Jawaban benar)" : ""}</li>)}</ul>
+                  <p className="t-caption t-muted">{question.explanation}</p><p className="t-caption t-muted">{question.learningObjective}</p>
+                </li>)}</ol>
+                <div className="row wrap gap-2">
+                  <Button type="button" variant="secondary" disabled={unavailable || dirty} onClick={() => setConfirmation("copy")}>Salin revisi ke draf</Button>
+                  {dirty && <p className="t-caption t-muted">Simpan perubahan lokal sebelum menyalin revisi.</p>}
+                </div>
+              </section>}
+            </section>
+          ) : null}
+        </section>
+      ) : null}
       <ConfirmDialog open={Boolean(confirmation)} onOpenChange={(open) => !open && setConfirmation(null)}
         title={confirmation === "publish" ? "Terbitkan revisi baru?" : confirmation === "copy" ? "Salin revisi ke draf?" : confirmation === "archive" ? "Arsipkan modul?" : "Pulihkan modul?"}
         description={confirmation === "publish" ? `${view.module?.title}: revisi ${review?.nextRevision}, ${review?.questionCount} soal. Percobaan aktif tetap memakai soal awal. Materi yang diterbitkan akan terlihat oleh peserta.`
@@ -137,6 +218,6 @@ export default function CurriculumPublishingPanel({ moduleId, view, draftVersion
             : confirmation === "archive" ? `Alasan: ${reason.trim()}. Riwayat dan bukti akademik tidak dihapus.` : "Modul kembali aktif dengan revisi terakhir yang sudah diterbitkan."}
         confirmLabel={confirmation === "publish" ? "Ya, terbitkan" : confirmation === "copy" ? "Ya, salin ke draf" : confirmation === "archive" ? "Ya, arsipkan" : "Ya, pulihkan"}
         onConfirm={confirm} />
-    </Surface>
+    </>
   );
 }
