@@ -125,7 +125,7 @@ function LevelTrack({ curriculum, activeLevel }) {
         </div>
         <Link className="btn btn-ghost btn-sm" to="/modules">Semua level<Ic name="chev-right" /></Link>
       </div>
-      <div className="scroll-x" style={{ paddingBottom: 6 }}>
+      <div className="scroll-x pulse-room">
         <ol style={{ display: "grid", gridTemplateColumns: `repeat(${learningLevels.length}, minmax(38px, 1fr))`, alignItems: "end", minWidth: 560, paddingTop: 8 }} aria-label="Level kurikulum">
           {learningLevels.map((meta, index) => {
             const level = byNumber.get(meta.number);

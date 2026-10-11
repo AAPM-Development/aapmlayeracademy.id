@@ -484,3 +484,116 @@ input.input { display: block; }
   .aapm-curriculum-actionbar.lifecycle { position: sticky; top: var(--s-3); bottom: auto; inset-inline: auto; z-index: var(--z-sticky); margin: 0; padding: 12px 16px; border-radius: var(--r-panel); border: var(--bw) solid var(--border); }
   .aapm-curriculum-editor { padding-bottom: 0; }
 }
+
+/* Pulse ring (current egg, ready egg, next medal). The canvas halo grows to 1.3x
+   and fades, so scroll rows clip it and it reads pale. This is a solid ring in the
+   node's own colour that breathes within ~8px of the node; .pulse-room gives a
+   scroll row exactly that much space without shifting its layout. */
+.aapm .anim-pulse::before { inset: -5px; border: 3px solid var(--pulse, var(--ai)); animation: ring-breathe 1.6s ease-in-out infinite; }
+.aapm .egg.is-current { --pulse: var(--ai); }
+.aapm .egg.is-gold { --pulse: var(--gold); }
+.aapm .egg.is-done { --pulse: var(--primary); }
+.aapm .medal { --pulse: var(--h); }
+.aapm .medal.medal-gold { --pulse: var(--gold); }
+@keyframes ring-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .6; } }
+.aapm .pulse-room { padding: 10px; margin: -10px; }
+
+/* ------------------------------------------------------------ Vivid colour pass
+   The canvas palette reads pale on real screens. Duolingo-style surfaces use
+   saturated fills, a hue border and a solid ledge in the same hue. Solid hues
+   (and white text on them) are unchanged; only the soft/tint layers get more
+   colour. Text on fills switches --muted to the hue ink (>= 5:1 in both themes). */
+.aapm {
+  --green-soft: #e0f3e2;  --green-tint: #c2e6c7;
+  --orange-soft: #ffe7dc; --orange-tint: #ffcbb3;
+  --blue-soft: #e0edfb;   --blue-tint: #c1daf5;
+  --violet-soft: #ece6fd; --violet-tint: #d8ccfa;
+  --teal-soft: #dbf3ef;   --teal-tint: #b6e6de;
+  --amber-soft: #fcf0d4;  --amber-tint: #f6dc9e;
+  --rose-soft: #fde5ed;   --rose-tint: #f8c8d8;
+  --primary-soft: var(--green-soft); --primary-tint: var(--green-tint);
+  --ai-soft: var(--orange-soft); --ai-tint: var(--orange-tint);
+  --fill-mix: 26%; --tint-mix: 13%; --edge-mix: 52%; --tint-edge-mix: 38%;
+}
+:is(.dark .aapm, .aapm[data-theme="dark"]) {
+  --green-soft: #17301b;  --green-tint: #21472a;
+  --orange-soft: #33190f; --orange-tint: #4c2618;
+  --blue-soft: #14263b;   --blue-tint: #1d3a5c;
+  --violet-soft: #221b3d; --violet-tint: #322857;
+  --teal-soft: #102b26;   --teal-tint: #18423a;
+  --amber-soft: #2e2410;  --amber-tint: #46361a;
+  --rose-soft: #321823;   --rose-tint: #4a2334;
+  --primary-soft: var(--green-soft); --primary-tint: var(--green-tint);
+  --ai-soft: var(--orange-soft); --ai-tint: var(--orange-tint);
+  --fill-mix: 20%; --tint-mix: 11%; --edge-mix: 48%; --tint-edge-mix: 34%;
+}
+
+/* Cards sit on a ledge; tinted and filled cards carry their hue in border and ledge.
+   :where() keeps these at the canvas specificity so the tactile, link and muted
+   states (declared earlier, or with a pseudo-class) keep working. */
+:where(.aapm) .card { box-shadow: 0 var(--ledge) 0 var(--border); }
+:where(.aapm) .card-raised { box-shadow: 0 var(--ledge) 0 var(--border), var(--shadow-card); }
+:where(.aapm) :is(.card-muted, .card-dashed) { box-shadow: none; }
+:where(.aapm) .card-link:hover { box-shadow: 0 var(--ledge) 0 var(--border-strong), var(--shadow-card); }
+:where(.aapm) .card-tint {
+  background: color-mix(in srgb, var(--h) var(--tint-mix), var(--surface));
+  border-color: color-mix(in srgb, var(--h) var(--tint-edge-mix), var(--surface));
+  box-shadow: 0 var(--ledge) 0 color-mix(in srgb, var(--h) var(--tint-edge-mix), var(--surface));
+}
+:where(.aapm) .card-fill {
+  background: color-mix(in srgb, var(--h) var(--fill-mix), var(--surface));
+  border-color: color-mix(in srgb, var(--h) var(--edge-mix), var(--surface));
+  box-shadow: 0 var(--ledge) 0 color-mix(in srgb, var(--h) var(--edge-mix), var(--surface));
+}
+:where(.aapm) :is(.card-fill, .card-tint) { --muted: var(--h-ink); }
+:where(.aapm) .card-tactile.card-tint { box-shadow: 0 var(--ledge) 0 color-mix(in srgb, var(--h) var(--edge-mix), var(--surface)); }
+:where(.aapm) .card-selected { border-color: var(--h); box-shadow: 0 var(--ledge) 0 var(--h); }
+
+/* Module covers: a real colour field with visible rings and number. */
+.aapm .cover { background: color-mix(in srgb, var(--h) 42%, var(--surface)); }
+.aapm .cover::before { border-color: color-mix(in srgb, var(--h) 34%, transparent); }
+.aapm .cover::after { background: color-mix(in srgb, var(--h) 26%, transparent); }
+.aapm .cover-num { color: color-mix(in srgb, var(--h) 70%, transparent); }
+
+/* Navigation and the journey card carry the brand colour with a ledge. */
+.aapm .nav-item.is-active {
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--surface));
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--primary) 55%, var(--surface));
+}
+.aapm .nav-item.is-ai.is-active {
+  background: color-mix(in srgb, var(--ai) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--ai) 55%, var(--surface));
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--ai) 55%, var(--surface));
+}
+.aapm .journey {
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--surface));
+  box-shadow: 0 var(--ledge) 0 color-mix(in srgb, var(--primary) 48%, var(--surface));
+}
+.aapm .journey .progress-ring { --ring-bg: color-mix(in srgb, var(--primary) 16%, var(--surface)); }
+
+/* ------------------------------------------------------------ APPI stop + thinking */
+.aapm .send-stop { background: var(--fg); color: var(--surface); }
+.aapm .send-stop:hover { background: color-mix(in srgb, var(--fg) 85%, var(--ai)); }
+.send-stop-glyph { display: block; width: 12px; height: 12px; border-radius: 3px; background: currentColor; }
+/* Live reasoning: a short window that follows the newest line. */
+.appi-thinking-live { max-height: 168px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  padding: var(--s-2) var(--s-3); border-left: 3px solid color-mix(in srgb, var(--ai) 45%, var(--surface)); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--surface-subtle); color: var(--muted); }
+.appi-thinking-live .aapm-ai-markdown { color: inherit; }
+.appi-thinking-toggle { align-self: flex-start; color: var(--muted); }
+.appi-thinking-toggle[aria-expanded="true"] { color: var(--fg); }
+.appi-thinking-body { border-left: 3px solid var(--border-strong); padding: var(--s-1) 0 var(--s-1) var(--s-3); }
+
+/* Module cards with a cover carry their hue in the frame and ledge too, so the
+   colour does not stop at a grey border (next-module card, course grid). */
+:where(.aapm) .card.cover-row[data-hue] {
+  border-color: color-mix(in srgb, var(--h) var(--edge-mix), var(--surface));
+  box-shadow: 0 var(--ledge) 0 color-mix(in srgb, var(--h) var(--edge-mix), var(--surface));
+}
+:where(.aapm) .card-tactile.cover-row[data-hue]:hover {
+  border-color: color-mix(in srgb, var(--h) 70%, var(--surface));
+  box-shadow: 0 calc(var(--ledge) + 2px) 0 color-mix(in srgb, var(--h) 70%, var(--surface));
+}
+:where(.aapm) .card-tactile.cover-row[data-hue]:active { box-shadow: 0 1px 0 color-mix(in srgb, var(--h) var(--edge-mix), var(--surface)); }
