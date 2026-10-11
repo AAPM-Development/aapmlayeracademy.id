@@ -66,6 +66,10 @@ test('APPI sends the conversation turns, keeps a broken partial answer once and 
 
     const second = events((await ask('Lalu FCR-nya?')).text);
     assert.equal(second.at(-1).data.persisted, true);
+    // Each status names a step and what exactly APPI read for it.
+    const memory = second.find((e) => e.event === 'status' && e.data.step === 'Mengingat obrolan');
+    assert.equal(memory.data.label, 'APPI lagi ingat obrolan sebelumnya…');
+    assert.equal(memory.data.detail, '2 pesan sebelumnya di obrolan ini.');
     // The follow-up carries the first turn as real messages before the new question.
     const sent = provider.requests[1].messages;
     assert.deepEqual(sent.map((m) => m.role), ['system', 'user', 'assistant', 'user']);
@@ -86,6 +90,11 @@ test('APPI sends the conversation turns, keeps a broken partial answer once and 
     assert.equal(assistants.length, 3);
     assert.equal(assistants[0].reasoningSummary, 'Membaca umur flock.');
     assert.equal(typeof assistants[0].thinkingMs, 'number');
+    // The trail is saved with the answer so it can be opened again from history.
+    const trail = assistants[1].processSteps;
+    assert.ok(trail.some((step) => step.label === 'Membaca data farm' && /Tidak ada data KPI/.test(step.detail)));
+    assert.ok(trail.some((step) => step.label === 'Mengingat obrolan'));
+    assert.ok(trail.some((step) => step.label === 'Mulai menulis'));
     assert.equal(assistants[2].content, 'Sebagian jawaban');
     assert.equal(assistants[2].interrupted, true);
     assert.equal(rows(site, 'SELECT COUNT(*) AS n FROM ai_chat_messages')[0].n, 6);
