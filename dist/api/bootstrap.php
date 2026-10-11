@@ -3063,6 +3063,9 @@ function present_ai_chat_message(array $row): array
         'createdAt' => $row['created_at'] ?? null,
         'reasoningSummary' => (string) ($details['reasoningSummary'] ?? ''),
         'reasoningObserved' => (bool) ($details['reasoningObserved'] ?? false),
+        'thinkingMs' => max(0, (int) ($details['thinkingMs'] ?? 0)),
+        'stopped' => (bool) ($details['stopped'] ?? false),
+        'interrupted' => (bool) ($details['interrupted'] ?? false),
     ];
 }
 
