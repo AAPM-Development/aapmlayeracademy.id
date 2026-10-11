@@ -43,6 +43,7 @@ import {
 import { normaliseSvgBlipMarkup } from "../src/lib/pptxCompatibility.js";
 import { nativeApi } from "../src/api/nativeClient.js";
 import { reconcileSavedModule } from "../src/lib/editorSaveState.js";
+import { answerPlainText } from "../src/lib/answerClipboard.js";
 import { filterCurriculum, nextChapterNumber } from "../src/lib/curriculumState.js";
 import {
   EDITORIAL_PRESENTATION_ACCEPT,
@@ -878,3 +879,41 @@ test("APPI transport handles split UTF-8/CRLF and surfaces incomplete or failed 
     await assert.rejects(run('event: done\ndata: {}\n\n', () => { throw new Error("render failed"); }), { message: "render failed" });
   });
 });
+
+test("APPI answers copy as chat-friendly plain text", () => {
+  const markdown = [
+    "## Target minggu 30",
+    "",
+    "HDP **92–94%** dan *stabil*. Lihat [panduan](https://example.test/p).",
+    "",
+    "| Indikator | Target |",
+    "|---|---|",
+    "| HDP | 92–94% |",
+    "| FCR | 2,0 |",
+    "",
+    "- Cek pakan",
+    "- Cek air",
+    "",
+    "```mermaid",
+    "flowchart TD",
+    "  A --> B",
+    "```",
+  ].join("\n");
+  assert.equal(answerPlainText(markdown), [
+    "*Target minggu 30*",
+    "",
+    "HDP *92–94%* dan _stabil_. Lihat panduan (https://example.test/p).",
+    "",
+    "• *HDP* · Target: 92–94%",
+    "• *FCR* · Target: 2,0",
+    "",
+    "• Cek pakan",
+    "• Cek air",
+    "",
+    "```mermaid",
+    "flowchart TD",
+    "  A --> B",
+    "```",
+  ].join("\n"));
+});
+

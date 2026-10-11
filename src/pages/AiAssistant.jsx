@@ -205,7 +205,7 @@ function AssistantMessage({
       ) : null}
       {finished ? (
         <div className="row wrap gap-1 answer-actions">
-          <AiCopyButton text={message.content} label="Salin jawaban" />
+          <AiCopyButton text={message.content} label="Salin jawaban" rich />
           {canCollapse ? (
             <button type="button" className="btn btn-ghost btn-sm btn-quiet" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
               <Ic name={collapsed ? "chev-down" : "chev-up"} />{collapsed ? "Tampilkan lengkap" : "Ringkas"}
