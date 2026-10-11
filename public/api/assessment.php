@@ -348,10 +348,15 @@ function aapm_assessment_user_lock(PDO $pdo, int $userId): void
 
 function aapm_module_catalog(PDO $pdo, int $userId): array
 {
+    return aapm_module_catalog_for_version($pdo, aapm_learner_policy_version($pdo, $userId));
+}
+
+function aapm_module_catalog_for_version(PDO $pdo, string $version): array
+{
     $catalog = [];
     // Match the learner catalogue: archived material stays available only when
     // the account's assigned academic policy still requires that module.
-    foreach (aapm_cur_learner_modules($pdo, $userId) as $row) {
+    foreach (aapm_cur_policy_learner_modules($pdo, $version) as $row) {
         $catalog[(int) $row['module_number']] = [
             'levelNumber' => (int) $row['level_number'],
             'title' => (string) $row['title'],
@@ -532,29 +537,44 @@ function aapm_grade(array $items, int $passingGrade): array
  */
 function aapm_academic_snapshot(PDO $pdo, int $userId): array
 {
-    $policy = aapm_assessment_policy($pdo, aapm_learner_policy_version($pdo, $userId));
-    $catalog = aapm_module_catalog($pdo, $userId);
-    $quizCounts = aapm_quiz_counts($pdo);
-    $modeRows = $pdo->prepare('SELECT module_number, assessment_mode FROM curriculum_policy_modules WHERE policy_version = ?');
-    $modeRows->execute([$policy['version']]);
-    $modes = [];
-    foreach ($modeRows->fetchAll() as $mode) $modes[(int) $mode['module_number']] = $mode['assessment_mode'];
+    // Inside aapm_with_snapshot_prefetch() the per-learner rows were read for the
+    // whole list at once and policy lookups are shared; otherwise read them now.
+    $prefetched = $GLOBALS['aapm_snapshot_prefetch']['users'][$userId] ?? null;
+    $policyVersion = $prefetched !== null ? $prefetched['policyVersion'] : aapm_learner_policy_version($pdo, $userId);
+    $policy = aapm_snapshot_shared("policy:{$policyVersion}", static fn () => aapm_assessment_policy($pdo, $policyVersion));
+    $catalog = aapm_snapshot_shared("catalog:{$policyVersion}", static fn () => aapm_module_catalog_for_version($pdo, $policyVersion));
+    $quizCounts = aapm_snapshot_shared('quiz-counts', static fn () => aapm_quiz_counts($pdo));
+    $modes = aapm_snapshot_shared("modes:{$policy['version']}", static function () use ($pdo, $policy): array {
+        $modeRows = $pdo->prepare('SELECT module_number, assessment_mode FROM curriculum_policy_modules WHERE policy_version = ?');
+        $modeRows->execute([$policy['version']]);
+        $modes = [];
+        foreach ($modeRows->fetchAll() as $mode) $modes[(int) $mode['module_number']] = $mode['assessment_mode'];
+        return $modes;
+    });
     $now = aapm_utc_now();
 
-    $attemptStatement = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? ORDER BY id ASC');
-    $attemptStatement->execute([$userId]);
-    $attempts = $attemptStatement->fetchAll();
-    $generation = aapm_current_generation($pdo, $userId);
+    if ($prefetched !== null) {
+        $attempts = $prefetched['attempts'];
+        $generation = $prefetched['generation'];
+        $events = array_values(array_filter($prefetched['events'], static fn (array $event): bool => (int) $event['academic_generation'] === $generation));
+        $legacySource = $prefetched['legacy'];
+    } else {
+        $attemptStatement = $pdo->prepare('SELECT * FROM assessment_attempts WHERE user_id = ? ORDER BY id ASC');
+        $attemptStatement->execute([$userId]);
+        $attempts = $attemptStatement->fetchAll();
+        $generation = aapm_current_generation($pdo, $userId);
 
-    $eventStatement = $pdo->prepare('SELECT module_number, event_type, amount, created_at FROM module_learning_events WHERE user_id = ? AND academic_generation = ? ORDER BY id ASC');
-    $eventStatement->execute([$userId, $generation]);
-    $events = $eventStatement->fetchAll();
+        $eventStatement = $pdo->prepare('SELECT module_number, event_type, amount, created_at FROM module_learning_events WHERE user_id = ? AND academic_generation = ? ORDER BY id ASC');
+        $eventStatement->execute([$userId, $generation]);
+        $events = $eventStatement->fetchAll();
 
-    $legacyStatement = $pdo->prepare('SELECT module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes, updated_at FROM user_progress WHERE user_id = ?');
-    $legacyStatement->execute([$userId]);
+        $legacyStatement = $pdo->prepare('SELECT module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes, updated_at FROM user_progress WHERE user_id = ?');
+        $legacyStatement->execute([$userId]);
+        $legacySource = $legacyStatement->fetchAll();
+    }
     $legacyRows = [];
     // Historical rows belong to generation 1; a later generation starts without them.
-    foreach ($generation === 1 ? $legacyStatement->fetchAll() : [] as $row) {
+    foreach ($generation === 1 ? $legacySource : [] as $row) {
         $legacyRows[(int) $row['module_number']] = $row;
     }
 
@@ -1263,12 +1283,83 @@ function aapm_progress_rows(array $user): array
  */
 function aapm_learner_progress_aggregates(PDO $pdo, array $userIds): array
 {
-    $totals = [];
-    foreach (array_values(array_unique(array_map('intval', $userIds))) as $userId) {
-        $totals[$userId] = aapm_learner_progress_totals(aapm_academic_snapshot($pdo, $userId));
+    $ids = array_values(array_unique(array_map('intval', $userIds)));
+    $fold = static function () use ($pdo, $ids): array {
+        $totals = [];
+        foreach ($ids as $userId) {
+            $totals[$userId] = aapm_learner_progress_totals(aapm_academic_snapshot($pdo, $userId));
+        }
+        return $totals;
+    };
+
+    // One learner gains nothing from a prefetch; a list reads each table once.
+    return count($ids) > 1 ? aapm_with_snapshot_prefetch($pdo, $ids, $fold) : $fold();
+}
+
+/**
+ * Read-only bulk scope for admin lists. The rows aapm_academic_snapshot() needs
+ * per learner (policy assignment, generation, attempts, learning events, legacy
+ * progress) are read for every listed learner with one query per table, and the
+ * policy, catalogue, mode and quiz-count lookups are shared. The scope ends when
+ * $work returns, so single-learner reads and every write path stay unchanged.
+ */
+function aapm_with_snapshot_prefetch(PDO $pdo, array $userIds, callable $work)
+{
+    $previous = $GLOBALS['aapm_snapshot_prefetch'] ?? null;
+    $GLOBALS['aapm_snapshot_prefetch'] = ['users' => aapm_snapshot_prefetch_rows($pdo, $userIds), 'shared' => []];
+    try {
+        return $work();
+    } finally {
+        $GLOBALS['aapm_snapshot_prefetch'] = $previous;
+    }
+}
+
+/** Memoises a learner-independent lookup inside the prefetch scope only. */
+function aapm_snapshot_shared(string $key, callable $load)
+{
+    if (!isset($GLOBALS['aapm_snapshot_prefetch'])) {
+        return $load();
+    }
+    if (!array_key_exists($key, $GLOBALS['aapm_snapshot_prefetch']['shared'])) {
+        $GLOBALS['aapm_snapshot_prefetch']['shared'][$key] = $load();
     }
 
-    return $totals;
+    return $GLOBALS['aapm_snapshot_prefetch']['shared'][$key];
+}
+
+function aapm_snapshot_prefetch_rows(PDO $pdo, array $userIds): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn (int $id): bool => $id > 0)));
+    $users = [];
+    foreach ($ids as $id) {
+        $users[$id] = ['policyVersion' => AAPM_CUR_POLICY_V1, 'generation' => 1, 'attempts' => [], 'events' => [], 'legacy' => []];
+    }
+    foreach (array_chunk($ids, 500) as $chunk) {
+        $in = implode(',', array_fill(0, count($chunk), '?'));
+        $read = static function (string $sql) use ($pdo, $chunk): array {
+            $statement = $pdo->prepare($sql);
+            $statement->execute($chunk);
+            return $statement->fetchAll();
+        };
+        // Same rows, same order as the single-learner queries in aapm_academic_snapshot().
+        foreach ($read("SELECT user_id, policy_version FROM learner_curriculum_assignments WHERE user_id IN ({$in})") as $row) {
+            $users[(int) $row['user_id']]['policyVersion'] = (string) $row['policy_version'];
+        }
+        foreach ($read("SELECT user_id, current_generation FROM learner_academic_state WHERE user_id IN ({$in})") as $row) {
+            $users[(int) $row['user_id']]['generation'] = max(1, (int) $row['current_generation']);
+        }
+        foreach ($read("SELECT * FROM assessment_attempts WHERE user_id IN ({$in}) ORDER BY id ASC") as $row) {
+            $users[(int) $row['user_id']]['attempts'][] = $row;
+        }
+        foreach ($read("SELECT user_id, module_number, event_type, amount, created_at, academic_generation FROM module_learning_events WHERE user_id IN ({$in}) ORDER BY id ASC") as $row) {
+            $users[(int) $row['user_id']]['events'][] = $row;
+        }
+        foreach ($read("SELECT user_id, module_number, completed, quiz_score, quiz_total, practical_done, time_spent_minutes, updated_at FROM user_progress WHERE user_id IN ({$in})") as $row) {
+            $users[(int) $row['user_id']]['legacy'][] = $row;
+        }
+    }
+
+    return $users;
 }
 
 /** Folds one learner snapshot into the admin columns. Module 0 is the final exam, not a curriculum module. */

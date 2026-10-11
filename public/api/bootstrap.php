@@ -1619,7 +1619,11 @@ function bounded_progress_percent(int $completed, int $total): int
 function admin_progress_summary(int $userId, ?int $totalModules = null): array
 {
     $moduleTotal = $totalModules === null ? count(admin_module_rows()) : max(0, $totalModules);
-    $totals = aapm_learner_progress_aggregates(db(), [$userId])[$userId];
+    return admin_progress_summary_from_totals(aapm_learner_progress_aggregates(db(), [$userId])[$userId], $moduleTotal);
+}
+
+function admin_progress_summary_from_totals(array $totals, int $moduleTotal): array
+{
     $completed = (int) $totals['completed_modules'];
 
     return [
@@ -2000,14 +2004,60 @@ function profile_row(int $userId): array
     return $row ?: ['bio' => '', 'hall_of_fame_opt_in' => 0, 'avatar_data' => '', 'updated_at' => null];
 }
 
-function profile_learning_summary(int $userId): array
+/**
+ * Inputs for profile_learning_summary() for many learners at once: one progress
+ * prefetch and two grouped counts instead of a full set of queries per learner.
+ */
+function profile_learning_contexts(array $userIds): array
 {
+    $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn (int $id): bool => $id > 0)));
+    if ($ids === []) {
+        return [];
+    }
     $moduleTotal = count(admin_module_rows());
-    $progress = admin_progress_summary($userId, $moduleTotal);
-    $certificateStatement = db()->prepare('SELECT COUNT(*) FROM certificates WHERE user_id = ?');
-    $certificateStatement->execute([$userId]);
-    $farmStatement = db()->prepare('SELECT COUNT(*) FROM farm_data WHERE user_id = ?');
-    $farmStatement->execute([$userId]);
+    $totals = aapm_learner_progress_aggregates(db(), $ids);
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $count = static function (string $table) use ($ids, $in): array {
+        $statement = db()->prepare("SELECT user_id, COUNT(*) AS n FROM {$table} WHERE user_id IN ({$in}) GROUP BY user_id");
+        $statement->execute($ids);
+        $counts = [];
+        foreach ($statement->fetchAll() as $row) {
+            $counts[(int) $row['user_id']] = (int) $row['n'];
+        }
+        return $counts;
+    };
+    $certificates = $count('certificates');
+    $farm = $count('farm_data');
+    $contexts = [];
+    foreach ($ids as $id) {
+        $contexts[$id] = [
+            'moduleTotal' => $moduleTotal,
+            'progress' => admin_progress_summary_from_totals($totals[$id], $moduleTotal),
+            'certificates' => $certificates[$id] ?? 0,
+            'farmEntries' => $farm[$id] ?? 0,
+        ];
+    }
+
+    return $contexts;
+}
+
+function profile_learning_summary(int $userId, ?array $context = null): array
+{
+    if ($context === null) {
+        $moduleTotal = count(admin_module_rows());
+        $progress = admin_progress_summary($userId, $moduleTotal);
+        $certificateStatement = db()->prepare('SELECT COUNT(*) FROM certificates WHERE user_id = ?');
+        $certificateStatement->execute([$userId]);
+        $farmStatement = db()->prepare('SELECT COUNT(*) FROM farm_data WHERE user_id = ?');
+        $farmStatement->execute([$userId]);
+        $certificates = (int) $certificateStatement->fetchColumn();
+        $farmEntries = (int) $farmStatement->fetchColumn();
+    } else {
+        $moduleTotal = (int) $context['moduleTotal'];
+        $progress = $context['progress'];
+        $certificates = (int) $context['certificates'];
+        $farmEntries = (int) $context['farmEntries'];
+    }
 
     $entries = (int) ($progress['entries'] ?? 0);
     $completed = (int) ($progress['completedModules'] ?? 0);
@@ -2016,8 +2066,6 @@ function profile_learning_summary(int $userId): array
     $quizTotal = (float) ($progress['quizTotalSum'] ?? 0);
     $quizAverage = $quizTotal > 0 ? max(0, min(100, (int) round(($quizScore / $quizTotal) * 100))) : null;
     $minutes = (int) ($progress['timeSpentMinutes'] ?? 0);
-    $certificates = (int) $certificateStatement->fetchColumn();
-    $farmEntries = (int) $farmStatement->fetchColumn();
     $points = ($completed * 100) + ($practical * 35) + ($certificates * 150) + min(100, $quizAverage ?? 0) + (min(12, $farmEntries) * 10) + min(60, intdiv($minutes, 10));
 
     $level = $points >= 900 ? ['name' => 'Layer Leader', 'nextAt' => null] : ($points >= 450 ? ['name' => 'Farm Analyst', 'nextAt' => 900] : ($points >= 160 ? ['name' => 'Field Builder', 'nextAt' => 450] : ['name' => 'Foundation', 'nextAt' => 160]));
@@ -2093,13 +2141,18 @@ function update_profile_data(array $user, array $input): array
 function hall_of_fame_data(): array
 {
     $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
-    $entries = [];
+    $candidates = [];
     foreach ($rows as $row) {
         $user = present_authenticated_user($row);
         if (in_array($user['role'], ['admin', 'super_admin'], true) || trim($user['full_name']) === '') {
             continue;
         }
-        $learning = profile_learning_summary((int) $user['id']);
+        $candidates[] = $user;
+    }
+    $contexts = profile_learning_contexts(array_map(static fn (array $user): int => (int) $user['id'], $candidates));
+    $entries = [];
+    foreach ($candidates as $user) {
+        $learning = profile_learning_summary((int) $user['id'], $contexts[(int) $user['id']] ?? null);
         if ($learning['points'] < 1) {
             continue;
         }

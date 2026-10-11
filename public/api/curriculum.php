@@ -1556,7 +1556,12 @@ function aapm_assign_new_learner_policy(PDO $pdo, int $userId, string $source): 
 /** The learner's curriculum: published active modules, plus archived modules their policy still requires. */
 function aapm_cur_learner_modules(PDO $pdo, int $userId): array
 {
-    $version = aapm_learner_policy_version($pdo, $userId);
+    return aapm_cur_policy_learner_modules($pdo, aapm_learner_policy_version($pdo, $userId));
+}
+
+/** The learner catalogue for one policy version (shared by every learner on that policy). */
+function aapm_cur_policy_learner_modules(PDO $pdo, string $version): array
+{
     $statement = $pdo->prepare("SELECT cm.*, m.assessment_mode, m.sort_order AS sort_order FROM curriculum_policy_modules m INNER JOIN course_modules cm ON cm.module_number = m.module_number WHERE m.policy_version = ? AND (cm.lifecycle_status = 'active' OR (cm.lifecycle_status = 'archived' AND m.required = 1)) ORDER BY m.sort_order ASC, cm.module_number ASC");
     $statement->execute([$version]);
     return $statement->fetchAll();
