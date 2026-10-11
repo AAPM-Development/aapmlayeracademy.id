@@ -46,7 +46,9 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
 
 /* Launcher: fixed in the viewport (the canvas places it on the board). It
  * steps back while a contextual APPI is on screen and rides above bars. */
-.app .launcher, .launcher-fixed { position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: var(--z-float); padding: 0; cursor: pointer; transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.app .launcher, .launcher-fixed { position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: var(--z-float); padding: 0; cursor: pointer; transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), translate 260ms var(--ease); }
+/* useLauncherClearance lifts the launcher above any control that passes under it. */
+.launcher-fixed { translate: 0 calc(-1 * var(--launcher-lift, 0px)); }
 .launcher:hover, .launcher:focus-visible { transform: translateY(-2px); box-shadow: 0 calc(var(--ledge) + 2px) 0 var(--border-strong), var(--shadow-raised); }
 .launcher:active { transform: translateY(var(--ledge)); box-shadow: 0 0 0 var(--border-strong), var(--shadow-raised); }
 :root[data-appi-on-screen="true"] .launcher { transform: scale(.82); }
@@ -601,3 +603,26 @@ input.input { display: block; }
 .appi-thinking-step-dot { display: grid; place-items: center; flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%;
   background: color-mix(in srgb, var(--success) 18%, var(--surface)); color: var(--success-text); }
 .appi-thinking-step-dot .ic { --ic: 11px; }
+
+/* Page-header back links are small text; give them a 32px tap height. */
+.ph-back { min-height: 32px; margin-bottom: 2px; }
+
+/* The APPI room owns its scroll, so on phones it reserves the floating bottom
+   navigation itself (64px bar + 8px offset + 8px air); otherwise the last
+   starter card and the docked composer sit under the nav. While the keyboard
+   is open the nav steps aside so it never floats over the composer. */
+@media (max-width: 860px) {
+  .app.aapm-app--chat .main-scroll { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  html[data-keyboard="open"] .app .m-nav { display: none; }
+  html[data-keyboard="open"] .app.aapm-app--chat .main-scroll { padding-bottom: 0; }
+}
+
+/* Auth: the brand and the page heading sit on the centre line of the form column. */
+.auth-logo { align-self: center; border-radius: var(--r-sm); }
+.auth-head { align-items: center; text-align: center; }
+/* Text links in auth forms keep their look but get a 32px tap area. */
+.auth .btn-link { padding-block: 6px; margin-block: -6px; }
+/* Peek: no free spot near the corner, so the launcher waits as a tab on the edge. */
+.launcher-fixed[data-peek="true"] { translate: calc(100% + var(--s-6) - 18px) 0; opacity: .92; }
+.launcher-fixed[data-peek="true"]:hover, .launcher-fixed[data-peek="true"]:focus-visible { translate: 0 0; opacity: 1; }
+.launcher-fixed[data-peek="true"] .launcher-label { display: none; }

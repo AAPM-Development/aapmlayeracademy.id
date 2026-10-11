@@ -5,6 +5,7 @@ import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiResponseDetails from "@/components/ai/AiResponseDetails";
 import AiThinking from "@/components/ai/AiThinking";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
+import useLauncherClearance from "@/components/ai/useLauncherClearance";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AiActivityList from "@/components/ai/AiActivityList";
 import {
@@ -191,6 +192,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
   const panelRef = useRef(null);
   const launcherRef = useRef(null);
   const wasOpenRef = useRef(false);
+  useLauncherClearance(launcherRef, !open && showLauncher && location.pathname !== "/ai-assistant");
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   useEffect(() => {
