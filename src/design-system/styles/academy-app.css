@@ -466,12 +466,14 @@ input.input { display: block; }
 @media (max-width: 1199px) {
   .aapm-editor-focus .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); overflow-y: auto; overscroll-behavior: contain; }
   .aapm-editor-focus .aapm-editor-canvas { overflow: visible; }
-  .aapm-editor-focus .aapm-editor-outline { position: fixed; padding: var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); border-right: 0; }
+  .aapm-editor-focus .aapm-editor-outline { position: fixed; max-height: min(78svh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); border-right: 0; }
   .aapm-editor-focus .aapm-editor-inspector { border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
 }
 @media (max-width: 639px) {
   .aapm-editor-focus .aapm-editor-canvas { padding: 20px 16px 32px; }
-  .aapm-editor-focus .aapm-editor-inspector { position: fixed; overflow-y: auto; border-top: 0; padding: var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); }
+  /* The sheet scrolls inside itself; the desktop rule's max-height: none let it
+     grow past the screen and push its header and close button out of reach. */
+  .aapm-editor-focus .aapm-editor-inspector { position: fixed; max-height: min(78svh, 40rem); overflow-y: auto; overscroll-behavior: contain; border-top: 0; padding: var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); }
   .aapm-editor-focus .aapm-editor-actionbar { padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
 }
 .aapm-editor-focus .aapm-editor-outline__section { min-height: 34px; padding: 6px 10px; color: var(--fg); }
@@ -654,7 +656,7 @@ input.input { display: block; }
 .appi-preset { cursor: pointer; border: 0; font: inherit; font-size: var(--fs-xs); }
 .appi-preset[aria-pressed="true"] { background: var(--ai); color: var(--on-ai); }
 .appi-applied { align-items: center; }
-.appi-issue .btn { flex: none; }
+.appi-issue .btn-link { color: var(--ai-ink); }
 .appi-material > summary { cursor: pointer; padding: var(--s-1) var(--s-2); }
 .aapm-editor-ai { container-type: inline-size; }
 /* Paragraph diff inside a text block. */

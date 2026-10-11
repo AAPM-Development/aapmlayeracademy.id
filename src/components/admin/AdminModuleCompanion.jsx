@@ -409,8 +409,11 @@ export default function AdminModuleCompanion({ module = {}, modules = [], scope 
                       {issues.slice(0, 8).map((issue, index) => (
                         <li key={index} className="row-start gap-2 appi-issue">
                           <Ic name="alert" size="xs" className="t-warning" style={{ marginTop: 4 }} />
-                          <span className="grow t-support">{issue}</span>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => fixIssue(issue)}>Perbaiki</button>
+                          {/* The action sits under the finding so the text keeps the column's width. */}
+                          <span className="stack gap-1 grow" style={{ minWidth: 0 }}>
+                            <span className="t-support">{issue}</span>
+                            <button type="button" className="btn btn-link btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => fixIssue(issue)}><Ic name="sparkle" />Perbaiki dengan APPI</button>
+                          </span>
                         </li>
                       ))}
                     </ul>
