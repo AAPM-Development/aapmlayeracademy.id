@@ -22,8 +22,8 @@ const moods = {
 
 const labels = {
   idle: "siap membantu",
-  thinking: "menelaah konteks",
-  responding: "menyusun jawaban",
+  thinking: "lagi berpikir",
+  responding: "lagi menulis jawaban",
   complete: "jawaban selesai",
   success: "berhasil membantu",
   alert: "perlu perhatian",

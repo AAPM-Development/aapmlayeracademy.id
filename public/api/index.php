@@ -1151,7 +1151,8 @@ try {
             rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
             exit;
         }
-        if (!$stopped) ai_sse_emit('status', ['label' => 'APPI menyimpan percakapan']);
+        if (!$stopped) ai_sse_step('APPI lagi simpan obrolan…', 'Menyimpan ke riwayat', 'Jawaban dan langkah ini disimpan di akunmu.');
+        $response['responseDetails'] = array_merge($response['responseDetails'] ?? [], ['steps' => ai_sse_steps()]);
         $savedConversation = null;
         try {
             $database = db();
@@ -1478,6 +1479,10 @@ function ai_record_chat_message(int $conversationId, string $role, string $conte
         'thinkingMs' => max(0, min(600000, (int) ($responseDetails['thinkingMs'] ?? 0))),
         'stopped' => (bool) ($responseDetails['stopped'] ?? false),
         'interrupted' => (bool) ($responseDetails['interrupted'] ?? false),
+        'steps' => array_slice(array_values(array_map(static fn ($step): array => [
+            'label' => substr((string) ($step['label'] ?? ''), 0, 80),
+            'detail' => substr((string) ($step['detail'] ?? ''), 0, 240),
+        ], array_filter(is_array($responseDetails['steps'] ?? null) ? $responseDetails['steps'] : [], 'is_array'))), 0, 12),
     ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
 }
 

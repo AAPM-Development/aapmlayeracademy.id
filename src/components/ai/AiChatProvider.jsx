@@ -16,6 +16,7 @@ import {
   removeConversationFromPages,
   upsertConversationInPages,
 } from "@/lib/aiHistoryState";
+import { installAnswerCopyHandler } from "@/lib/answerClipboard";
 
 const AiChatContext = createContext(null);
 const HISTORY_PAGE_SIZE = 40;
@@ -173,6 +174,9 @@ export function AiChatProvider({ children }) {
   useEffect(() => {
     activeRef.current = activeConversationId;
   }, [activeConversationId]);
+
+  // A manual selection inside an answer pastes with its formatting too.
+  useEffect(() => installAnswerCopyHandler(), []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -535,19 +539,20 @@ export function AiChatProvider({ children }) {
       setHistoryError(null);
       window.clearTimeout(phaseTimerRef.current);
       setStreamPhase("thinking");
-      const startLabel = "APPI menyiapkan konteks percakapan";
-      setStreamStatus(startLabel);
-      setStreamSteps([startLabel]);
-      const reportStep = (label) => {
-        const nextLabel = label || "APPI menyusun jawaban";
-        setStreamStatus(nextLabel);
-        setStreamSteps((current) =>
-          current.at(-1) === nextLabel
-            ? current
-            : [...current, nextLabel].slice(-4),
-        );
+      const startStep = { label: "Menyiapkan obrolan", detail: "" };
+      setStreamStatus("APPI lagi siap-siap…");
+      setStreamSteps([startStep]);
+      // A status carries the live headline plus one timeline step with what
+      // exactly APPI read or decided ({ label, detail }).
+      /** @param {{ label?: string, step?: string, detail?: string }} [status] */
+      const reportStep = ({ label, step, detail } = {}) => {
+        const headline = label || "APPI lagi berpikir…";
+        const entry = { label: step || headline, detail: detail || "" };
+        const same = (item) => item && item.label === entry.label && item.detail === entry.detail;
+        setStreamStatus(headline);
+        setStreamSteps((current) => (same(current.at(-1)) ? current : [...current, entry].slice(-4)));
         setMessages((current) => current.map((item) => item.id === assistantId
-          ? { ...item, processSteps: [...new Set([...(item.processSteps || []), nextLabel])].slice(-8) } : item));
+          ? { ...item, processSteps: same((item.processSteps || []).at(-1)) ? item.processSteps : [...(item.processSteps || []), entry].slice(-12) } : item));
       };
 
       try {
@@ -562,7 +567,7 @@ export function AiChatProvider({ children }) {
           signal: controller.signal,
           onEvent: ({ event, data }) => {
             if (!isCurrentRequest()) return;
-            if (event === "status") reportStep(data.label);
+            if (event === "status") reportStep(data);
             if (event === "response_meta") updateAssistant({ provider: data.provider, model: data.model });
             if (event === "reasoning") {
               if (data.summary) queueReasoning(data.summary);
@@ -591,7 +596,7 @@ export function AiChatProvider({ children }) {
                   "Jawaban belum tersimpan ke riwayat akun.",
                 persisted: false,
               });
-              reportStep("Riwayat akun belum tersimpan");
+              reportStep({ label: "Riwayat belum tersimpan", step: "Riwayat belum tersimpan", detail: "Jawaban tampil, tapi belum masuk riwayat akun." });
               setHistorySyncState("attention");
             }
             if (event === "persisted") {

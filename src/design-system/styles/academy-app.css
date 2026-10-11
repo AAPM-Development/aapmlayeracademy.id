@@ -597,3 +597,7 @@ input.input { display: block; }
   box-shadow: 0 calc(var(--ledge) + 2px) 0 color-mix(in srgb, var(--h) 70%, var(--surface));
 }
 :where(.aapm) .card-tactile.cover-row[data-hue]:active { box-shadow: 0 1px 0 color-mix(in srgb, var(--h) var(--edge-mix), var(--surface)); }
+.appi-thinking-steps { position: relative; }
+.appi-thinking-step-dot { display: grid; place-items: center; flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%;
+  background: color-mix(in srgb, var(--success) 18%, var(--surface)); color: var(--success-text); }
+.appi-thinking-step-dot .ic { --ic: 11px; }

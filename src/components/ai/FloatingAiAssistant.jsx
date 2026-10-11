@@ -482,7 +482,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                         ) : null}
                         {message.content && !message.streaming && !message.error ? (
                           <div className="row wrap gap-1 answer-actions">
-                            <AiCopyButton text={message.content} label="Salin" />
+                            <AiCopyButton text={message.content} label="Salin" rich />
                             <AiMessageMeta message={message} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
                           </div>
                         ) : (
