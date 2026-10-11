@@ -9,6 +9,7 @@ import { useFarmData, useModules } from "@/lib/useCourseData";
 import { getLevelForModule, sortModules } from "@/lib/academyData";
 import { formatNumber, sortByWeek, toNumber } from "@/lib/kpiReading";
 import { cn } from "@/lib/utils";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const rupiah = (value) => `Rp ${Math.round(value).toLocaleString("id-ID")}`;
 const decimal = (value) => String(value).replace(".", ",");
@@ -610,7 +611,7 @@ function ApplyLinks({ tool, farmRows, modules }) {
           <Link className="card card-tactile row gap-3" to={`/modules/${module.moduleNumber}`} data-hue="blue" style={{ padding: "var(--s-3) var(--s-4)" }}>
             <span className="tile tile-round tile-solid"><Ic name="book" /></span>
             <span className="stack grow" style={{ minWidth: 0 }}>
-              <span className="li-title t-strong t-clamp-2">Modul {module.moduleNumber} · {module.title}</span>
+              <span className="li-title t-strong t-clamp-2">Modul {moduleNo(module)} · {module.title}</span>
               <span className="li-meta">{level ? `Level ${level.number} · ${level.name}` : module.levelName}</span>
             </span>
             <Ic name="chev-right" className="t-muted" />

@@ -464,7 +464,8 @@ test("Duolingo-style learner flow keeps its accessibility and motion contracts",
   assert.match(assessment, /<h1 className="t-display aapm-result__title"/);
   assert.doesNotMatch(assessment.slice(assessment.indexOf("export function AssessmentBar"), assessment.indexOf("export function QuizQuestion")), /<h1/);
   // Path nodes are links with a full name; the current one is the step.
-  assert.match(course, /aria-label=\{`Modul \$\{module\.moduleNumber\}: \$\{module\.title\}/);
+  // The label carries the shown (position) number; moduleNumber stays the link id.
+  assert.match(course, /aria-label=\{`Modul \$\{moduleNo\(module\)\}: \$\{module\.title\}/);
   assert.match(course, /aria-current=\{state === "current" \? "step" : undefined\}/);
   // Celebration and theme switching respect motion preferences.
   assert.match(celebrate, /prefers-reduced-motion: reduce/);

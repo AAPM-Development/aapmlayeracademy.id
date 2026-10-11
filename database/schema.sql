@@ -68,8 +68,19 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
   PRIMARY KEY (bucket_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS curricula (
+  id VARCHAR(80) NOT NULL,
+  title VARCHAR(160) NOT NULL,
+  summary VARCHAR(600) NOT NULL DEFAULT '',
+  sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS course_modules (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  curriculum_id VARCHAR(80) NOT NULL DEFAULT 'layer-farm-management',
   level_number TINYINT UNSIGNED NOT NULL,
   level_name VARCHAR(160) NOT NULL DEFAULT '',
   module_number SMALLINT UNSIGNED NOT NULL,
@@ -80,6 +91,7 @@ CREATE TABLE IF NOT EXISTS course_modules (
   editorial_content MEDIUMTEXT NULL,
   video_script TEXT NOT NULL,
   video_url TEXT NULL,
+  visual_json TEXT NULL,
   learning_objectives LONGTEXT NOT NULL,
   key_takeaways LONGTEXT NOT NULL,
   checklist LONGTEXT NOT NULL,
@@ -90,7 +102,8 @@ CREATE TABLE IF NOT EXISTS course_modules (
   PRIMARY KEY (id),
   UNIQUE KEY course_modules_number_unique (module_number),
   KEY course_modules_order_idx (sort_order),
-  KEY course_modules_chapter_order_idx (level_number, sort_order, module_number)
+  KEY course_modules_chapter_order_idx (level_number, sort_order, module_number),
+  KEY course_modules_curriculum_idx (curriculum_id, level_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS quiz_questions (

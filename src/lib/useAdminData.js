@@ -123,10 +123,44 @@ function invalidateCourseData(queryClient) {
   queryClient.invalidateQueries({ queryKey: ["quizQuestions"] });
 }
 
+/** Curricula are created, renamed, and (when empty) removed in place on the course list. */
+export function useCreateCurriculum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => nativeApi.admin.courses.create(data),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
+export function useUpdateCurriculum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {{ courseId: string, data: { title?: string, summary?: string } }} */ { courseId, data }) => nativeApi.admin.courses.update(courseId, data),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
+export function useDeleteCurriculum() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (courseId) => nativeApi.admin.courses.delete(courseId),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
 export function useCreateAdminModule() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data) => nativeApi.admin.modules.create(data),
+    onSuccess: () => invalidateCourseData(queryClient),
+  });
+}
+
+/** Deletes a draft that was never published (the server refuses anything else). */
+export function useDeleteAdminModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (/** @type {{ moduleId: number | string }} */ { moduleId }) => nativeApi.admin.modules.delete(moduleId),
     onSuccess: () => invalidateCourseData(queryClient),
   });
 }

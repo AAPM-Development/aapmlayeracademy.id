@@ -672,3 +672,107 @@ input.input { display: block; }
 .appi-pdiff .appi-diff-md :is(p, li, span, strong, em, a), .appi-diff .appi-diff-md :is(p, li, span, strong, em, a) { font-size: var(--fs-sm); line-height: 20px; }
 /* Presets wrap inside the narrow inspector instead of running off its edge. */
 .appi-preset { height: auto; min-height: 28px; max-width: 100%; padding-block: 4px; white-space: normal; text-align: left; line-height: 16px; }
+
+/* ------------------------------------------------------------ Editor bottom bar */
+/* In the focus editor the bar is the last row of the editor column, not a fixed
+   overlay, so the old footer clearance only left an empty strip under it. */
+.aapm-editor-focus .aapm-editor-content:has([data-editor-actionbar]) { padding-bottom: 0; }
+.aapm-editor-focus .aapm-editor-actionbar { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s-3); }
+.aapm-editor-actionbar__status { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.aapm-editor-actionbar__drawers { display: flex; align-items: center; gap: var(--s-1); }
+.aapm-editor-focus .aapm-editor-actionbar__actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s-2); margin-left: auto; }
+/* Phones: two rows — status and Simpan, then the three panel drawers as equal tabs. */
+@media (max-width: 639px) {
+  .aapm-editor-focus .aapm-editor-actionbar {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "status actions" "drawers drawers";
+    gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); min-height: 0;
+  }
+  .aapm-editor-focus .aapm-editor-actionbar__status { grid-area: status; }
+  .aapm-editor-focus .aapm-editor-actionbar__status .aapm-editor-save-status { max-width: 100%; }
+  .aapm-editor-focus .aapm-editor-actionbar__actions { grid-area: actions; display: flex; margin-left: 0; }
+  .aapm-editor-focus .aapm-editor-actionbar__actions [data-editor-save] { grid-column: auto; width: auto; min-height: 40px; padding-inline: 16px; }
+  .aapm-editor-focus .aapm-editor-actionbar__drawers { grid-area: drawers; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: var(--r-ctl); background: var(--surface-subtle); }
+  .aapm-editor-focus .aapm-editor-actionbar__drawers .btn { width: 100%; min-height: 40px; justify-content: center; }
+}
+
+/* Optional editor sections: a dashed row adds a section back; removing shows an undo. */
+.aapm-editor-section-off { display: grid; gap: var(--s-2); }
+.aapm-editor-section-add { width: 100%; padding: 12px 16px; cursor: pointer; font: inherit; color: inherit; }
+.aapm-editor-section-add:hover { border-color: var(--h); background: color-mix(in srgb, var(--h) 6%, var(--surface)); }
+.aapm-editor-section-undo { padding-inline: var(--s-2); }
+.aapm-editor-section-remove { flex: none; align-self: flex-start; }
+
+/* ------------------------------------------------------------ Curriculum, edited in place */
+.curriculum-add { display: grid; gap: var(--s-1-5); }
+.curriculum-add-row { min-height: 44px; }
+.curriculum-add-egg { background: var(--surface-subtle); color: var(--muted); --egg-ledge: var(--border); }
+.curriculum-add-egg .ic { --ic: 14px; }
+.curriculum-add-input, .curriculum-chapter-input {
+  flex: 1; min-width: 0; height: 40px; padding: 0 12px; border: var(--bw) dashed var(--border-strong); border-radius: var(--r-ctl);
+  background: transparent; color: var(--fg); font: inherit; font-size: var(--fs-md);
+}
+.curriculum-add-input:focus, .curriculum-chapter-input:focus { outline: none; border-style: solid; border-color: var(--primary); background: var(--field-bg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.curriculum-chapter-input { height: 36px; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 800; }
+.curriculum-added { padding: 6px 10px; border-radius: var(--r-sm); background: var(--success-surface); }
+.curriculum-added .btn-link { padding-block: 0; margin-block: 0; }
+.curriculum-added-appi { color: var(--ai-ink); }
+.curriculum-appi { display: grid; gap: var(--s-2); padding: var(--s-3); border-radius: var(--r-panel); background: color-mix(in srgb, var(--ai) 6%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ai) 22%, var(--surface)); }
+.curriculum-appi-item { padding: var(--s-2) 0; border-top: 1px solid color-mix(in srgb, var(--ai) 14%, var(--surface)); }
+.curriculum-appi-item:first-child { border-top: 0; }
+.curriculum-appi-item .btn, .curriculum-appi-item .chip { flex: none; }
+.curriculum-appi-toggle { color: var(--ai-ink); }
+.curriculum-add-chapter { width: 100%; padding: 14px var(--card-pad); cursor: pointer; font: inherit; color: inherit; }
+.curriculum-add-chapter:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--surface)); }
+/* On the tinted new-chapter card the fields need a solid surface to read as fields. */
+.curriculum-new-chapter :is(.curriculum-add-input, .curriculum-chapter-input) { border-style: solid; border-color: var(--field-border); background: var(--field-bg); }
+
+/* Title and summary grow with their text (field-sizing); the 1px border otherwise
+   leaves a 2px scroll range and a stray scrollbar beside each line. */
+.aapm-editor-doc-title,
+.aapm-editor-doc-summary { overflow: hidden; }
+@supports not (field-sizing: content) {
+  .aapm-editor-doc-title,
+  .aapm-editor-doc-summary { overflow: auto; }
+}
+
+/* Module banner (admin "Sampul modul"): the photo replaces the tint, rings, tile and number. */
+.cover[data-image] { background: var(--surface-subtle); }
+.cover[data-image]::before,
+.cover[data-image]::after { display: none; }
+.cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lesson-banner { overflow: hidden; aspect-ratio: 3 / 1; border-radius: var(--r-panel); background: var(--surface-subtle); }
+.lesson-banner > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 640px) { .lesson-banner { aspect-ratio: 2 / 1; } }
+
+/* Editor: cover settings in the Modul tab. */
+.module-cover-previews { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: 8px; align-items: stretch; }
+.module-cover-previews .cover { height: 72px; border-radius: var(--r-ctl) !important; border: 1px solid var(--border); }
+.module-cover-previews .cover > .tile { margin: 10px; }
+.module-cover-previews .cover-num { font-size: 40px; bottom: -4px; right: 6px; }
+.module-cover-previews figcaption { margin-top: 4px; }
+.module-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.module-swatch { position: relative; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 2px solid var(--surface); border-radius: 50%; background: var(--h); box-shadow: 0 0 0 1px var(--border-strong); cursor: pointer; }
+.module-swatch[data-auto] { background: conic-gradient(var(--green), var(--orange), var(--blue), var(--violet), var(--teal), var(--amber), var(--rose), var(--green)); }
+.module-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--fg); }
+.module-swatch[aria-checked="true"]::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); }
+.module-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; }
+.module-icon-option { display: inline-grid; place-items: center; height: 40px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-ctl); background: var(--surface); color: var(--muted); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; }
+.module-icon-option:hover { background: var(--surface-subtle); }
+.module-icon-option[aria-checked="true"] { border-color: var(--h); background: var(--h-tint); color: var(--h-ink); box-shadow: inset 0 0 0 1px var(--h); }
+.module-cover-rules { border-radius: var(--r-ctl); background: var(--surface-subtle); }
+.module-cover-rules > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; list-style: none; font-weight: 700; font-size: var(--fs-sm, 14px); }
+.module-cover-rules > summary::-webkit-details-marker { display: none; }
+.module-cover-rules[open] > summary .ic-chev-down { transform: rotate(180deg); }
+.module-cover-rules ul { display: grid; gap: 6px; margin: 0; padding: 0 12px 4px 30px; list-style: disc; }
+.module-cover-rules .module-cover-template { margin: 4px 12px 12px; }
+@media (max-width: 639px), (pointer: coarse) {
+  .module-swatch { width: 40px; height: 40px; }
+  .module-icon-option { height: 44px; }
+}
+
+/* Document/slide header in a narrow column (editor split view): the file name keeps a
+   readable width and the actions drop below instead of squeezing it to one word per line. */
+.aapm-presentation-header { flex-wrap: wrap; row-gap: 8px; }
+.aapm-presentation-header > :first-child { flex: 1 1 180px; min-width: 0; }
+.aapm-presentation-header > :first-child p { overflow-wrap: anywhere; }
+.aapm-presentation-header > :last-child { margin-left: auto; }

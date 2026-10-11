@@ -195,7 +195,7 @@ function editorial_referenced_uploads(): ?array
 {
     $references = [];
     try {
-        $statement = db()->query('SELECT editorial_content, content, video_url, video_script FROM course_modules');
+        $statement = db()->query('SELECT editorial_content, content, video_url, video_script, visual_json FROM course_modules');
         if (!$statement) {
             error_log('Editorial media cleanup skipped: reference query returned no statement.');
             return null;
@@ -207,6 +207,7 @@ function editorial_referenced_uploads(): ?array
                 (string) ($row['content'] ?? ''),
                 (string) ($row['video_url'] ?? ''),
                 (string) ($row['video_script'] ?? ''),
+                (string) ($row['visual_json'] ?? ''),
             ]));
             if (!preg_match_all('#/uploads/editorial/(?:images/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:jpe?g|png|gif|webp|avif)|presentations/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:pptx|ppt|key|odp|pdf)|videos/[0-9]{4}/[0-9]{2}/[a-f0-9]{40}\.(?:mp4|webm))#i', $source, $matches)) {
                 continue;

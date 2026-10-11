@@ -19,6 +19,7 @@ import AppiMascot from "@/components/appi/AppiMascot";
 import useStudyTime from "@/lib/useStudyTime";
 import { editorialLearnerNavigationItems, hasEditorialVideo } from "@/lib/editorialDocument";
 import { scrollLessonSection } from "@/lib/lessonNavigation";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const hasText = (value) => typeof value === "string" && value.trim().length > 0;
 const hasListContent = (value) => Array.isArray(value)
@@ -210,7 +211,7 @@ export default function ModuleDetail() {
       onNavigate={() => setOutlineSheet(false)}
     />
   );
-  const askAboutModule = () => askAppi(`Saya sedang belajar Modul ${module.moduleNumber}: ${module.title}. Bantu saya memahami poin pentingnya dan cara menerapkannya di kandang.`);
+  const askAboutModule = () => askAppi(`Saya sedang belajar Modul ${moduleNo(module)}: ${module.title}. Bantu saya memahami poin pentingnya dan cara menerapkannya di kandang.`);
 
   // Primary next step follows the bounded flow: Materi → Praktik → Kuis → Selesai.
   // A quiz module is complete only when the quiz is passed, so no shortcut button here.
@@ -247,7 +248,7 @@ export default function ModuleDetail() {
           <button type="button" className="btn btn-ghost btn-icon btn-quiet hide-md" aria-label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} aria-pressed={outlineOpen} onClick={toggleOutline}><Ic name="sidebar" /></button>
           <span className="vr hide-sm" style={{ margin: "14px 4px" }} />
           <div className="stack grow" style={{ minWidth: 0 }}>
-            <span className="t-caption t-muted t-clamp-1">Modul {module.moduleNumber} dari {summary.total} · Level {module.level} {module.levelName || module.category}</span>
+            <span className="t-caption t-muted t-clamp-1">Modul {moduleNo(module)} dari {summary.total} · Level {module.level} {module.levelName || module.category}</span>
             <span className="t-heading t-clamp-1">{module.title}</span>
           </div>
           <FlowSteps steps={steps} className="hide-md" style={{ width: 380 }} />
@@ -261,7 +262,7 @@ export default function ModuleDetail() {
         <>
           {previous ? (
             <Link className="btn btn-secondary lesson-prev" to={`/modules/${previous.moduleNumber}`} aria-label={`Modul sebelumnya: ${previous.title}`}>
-              <Ic name="arrow-left" /><span className="hide-sm">Modul {previous.moduleNumber}</span>
+              <Ic name="arrow-left" /><span className="hide-sm">Modul {moduleNo(previous)}</span>
             </Link>
           ) : <span className="hide-sm" />}
           <span className="grow t-center t-caption t-muted hide-sm">
@@ -276,7 +277,7 @@ export default function ModuleDetail() {
     >
       <div className="lesson-stage">
         <article className="reading-col" aria-labelledby="lesson-title" data-hue={visual.hue}>
-          <LessonHeader module={module} completed={flow.completed} hue={visual.hue} minutes={minutes} />
+          <LessonHeader module={module} completed={flow.completed} hue={visual.hue} minutes={minutes} banner={visual.image} bannerFocus={visual.focus} />
 
           <LessonSection id="content" title="Materi" ic="book">
             <EditorialContent document={module.editorialContent} fallback={module.content} title={module.title} />
@@ -325,7 +326,7 @@ export default function ModuleDetail() {
               <h2 className="t-heading" id="h-lanjut">{flow.completed ? "Modul ini sudah tuntas" : flow.hasQuiz ? "Siap uji pemahaman?" : "Selesai membaca?"}</h2>
               <p className="t-support t-muted">
                 {flow.completed
-                  ? next ? `Lanjutkan ke Modul ${next.moduleNumber}: ${next.title}.` : "Semua modul tuntas — saatnya ujian akhir."
+                  ? next ? `Lanjutkan ke Modul ${moduleNo(next)}: ${next.title}.` : "Semua modul tuntas — saatnya ujian akhir."
                   : flow.hasQuiz ? `${questions.length ? `${questions.length} soal · ` : ""}nilai lulus ${passPercent}% · umpan balik langsung.` : "Konfirmasikan setelah materi dipahami."}
               </p>
             </div>

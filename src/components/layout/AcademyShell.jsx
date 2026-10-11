@@ -21,6 +21,7 @@ import {
   Topbar,
 } from "@/design-system/patterns/AppShell";
 import { academyBottomNavigation, academyNavigation, getNavigationMeta, isFocusRoute } from "./academyNavigation";
+import { moduleNo } from "@/lib/moduleNumber";
 
 const COLLAPSE_KEY = "aapm-sidebar-collapsed";
 
@@ -39,12 +40,12 @@ function readCollapsed() {
 function JourneyCard({ summary, next, rank }) {
   const to = next ? `/modules/${next.moduleNumber}` : "/certification";
   return (
-    <Link className="journey" to={to} aria-label={`Progres belajar ${summary.percent} persen. ${next ? `Lanjutkan Modul ${next.moduleNumber}` : "Semua modul selesai"}`}>
+    <Link className="journey" to={to} aria-label={`Progres belajar ${summary.percent} persen. ${next ? `Lanjutkan Modul ${moduleNo(next)}` : "Semua modul selesai"}`}>
       <div className="row gap-3">
         <Ring value={summary.percent} size={46} animate />
         <div className="stack grow">
           <span className="t-heading t-heading-sm">{summary.completed} dari {summary.total} modul</span>
-          <span className="t-caption t-muted t-clamp-2">{next ? `Lanjut: Modul ${next.moduleNumber} · ${next.title}` : "Semua modul tuntas · siap sertifikasi"}</span>
+          <span className="t-caption t-muted t-clamp-2">{next ? `Lanjut: Modul ${moduleNo(next)} · ${next.title}` : "Semua modul tuntas · siap sertifikasi"}</span>
         </div>
       </div>
       <div className="rank">

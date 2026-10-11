@@ -11,6 +11,7 @@ import { celebrate } from "@/lib/celebrate";
 import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
 import { CertificatePreview } from "@/components/certificate/CertificateDocument";
 import { Bar, Ic } from "@/design-system/canvas";
+import { moduleNo } from "@/lib/moduleNumber";
 
 // Canvas tier hues, in tier order.
 const TIER_HUES = ["green", "teal", "blue", "violet", "rose", "gold"];
@@ -139,7 +140,7 @@ function CertificationHero({ tiers, focus }) {
   );
 }
 
-function TierCard({ tier, index, nextModuleNumber, onClaim, pending, onOpen }) {
+function TierCard({ tier, index, nextModuleNumber, onClaim, pending, onOpen, shownNumber = (number) => number }) {
   const status = tier.status;
   const required = tier.requiredModules?.length ? tier.requiredModules : tier.missingModuleNumbers;
   const missing = new Set(tier.missingModuleNumbers);
@@ -173,7 +174,7 @@ function TierCard({ tier, index, nextModuleNumber, onClaim, pending, onOpen }) {
     } else {
       const target = missing.has(nextModuleNumber) ? nextModuleNumber : tier.missingModuleNumbers[0];
       note = <><Ic name="target" size="xs" />Masih perlu {missing.size} modul</>;
-      action = <Link className="btn btn-learn btn-sm" to={`/modules/${target}`}>Lanjutkan Modul {target}<Ic name="arrow-right" /></Link>;
+      action = <Link className="btn btn-learn btn-sm" to={`/modules/${target}`}>Lanjutkan Modul {shownNumber(target)}<Ic name="arrow-right" /></Link>;
     }
   } else if (tier.requiresFinal) {
     note = <><Ic name="exam" size="xs" />Seluruh modul + ujian akhir ≥ 80%</>;
@@ -203,7 +204,7 @@ function TierCard({ tier, index, nextModuleNumber, onClaim, pending, onOpen }) {
           const current = !done && moduleNumber === nextModuleNumber && status === "in_progress";
           return (
             <li key={moduleNumber} className={`egg egg-xs${done ? " is-done" : current ? " is-current" : ""}`} aria-current={current ? "step" : undefined}>
-              {moduleNumber}
+              {shownNumber(moduleNumber)}
               {done ? <span className="sr-only">, selesai</span> : current ? <span className="sr-only">, sedang dipelajari</span> : null}
             </li>
           );
@@ -289,6 +290,8 @@ export default function Certification() {
   const tiers = eligibility?.tiers ?? [];
   const focus = focusTier(tiers);
   const nextModuleNumber = getNextModule(modules, progress)?.moduleNumber;
+  // Tiers list module ids; show each module's position number instead.
+  const shownNumber = (number) => moduleNo(modules.find((module) => module.moduleNumber === number)) ?? number;
   const verifiedCertificates = certificates.filter((item) => item.source !== "legacy_unverified" && item.status !== "revoked");
   const legacyCertificates = certificates.filter((item) => item.source === "legacy_unverified");
   const nextUnclaimed = tiers.find((tier) => tier.status !== "issued");
@@ -367,6 +370,7 @@ export default function Certification() {
               tier={tier}
               index={index}
               nextModuleNumber={nextModuleNumber}
+              shownNumber={shownNumber}
               onClaim={onClaim}
               pending={pendingTier === tier.tierNumber}
               onOpen={setViewing}

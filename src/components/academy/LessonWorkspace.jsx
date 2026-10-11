@@ -5,6 +5,7 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import { cn } from "@/lib/utils";
 import LessonVideoPlayer from "./LessonVideoPlayer";
 import { trustedVideoSource } from "@/lib/lessonVideoSource";
+import { moduleNo } from "@/lib/moduleNumber";
 export { trustedVideoSource } from "@/lib/lessonVideoSource";
 
 // Lesson anatomy of the Redesign v2 canvas (focus shell, reading column of
@@ -90,13 +91,14 @@ export function LessonMedia({ module = null } = {}) {
 }
 
 /** Lesson title block: level chip, module and time chips, title and summary. */
-export function LessonHeader({ module = null, completed = false, hue = "green", minutes = null } = {}) {
+export function LessonHeader({ module = null, completed = false, hue = "green", minutes = null, banner = "", bannerFocus = "center" } = {}) {
   if (!module) return null;
   return (
     <header className="stack gap-3" data-hue={hue}>
+      {banner ? <div className="lesson-banner" aria-hidden="true"><img src={banner} alt="" decoding="async" style={{ objectPosition: `center ${bannerFocus}` }} /></div> : null}
       <div className="row wrap gap-2">
         <span className="chip chip-hue">Level {module.level} · {module.levelName || module.category}</span>
-        <span className="chip">Modul {module.moduleNumber}</span>
+        <span className="chip">Modul {moduleNo(module)}</span>
         {minutes ? <span className="chip"><Ic name="clock" />±{minutes} menit</span> : null}
         {completed ? <span className="chip chip-success"><Ic name="check-circle" />Tuntas</span> : null}
       </div>

@@ -50,7 +50,7 @@ function PathRail({ curriculum, completedSet, ownedTiers }) {
           {curriculum.map((level) => {
             const done = level.total && level.completed === level.total;
             return (
-              <a key={level.number} className="li" href={`#level-${level.number}`} style={{ minHeight: 44, ...(level.hasCurrent ? { background: "var(--ai-soft)" } : null) }} aria-current={level.hasCurrent ? "true" : undefined}>
+              <a key={level.key || level.number} className="li" href={`#${level.anchor || `level-${level.number}`}`} style={{ minHeight: 44, ...(level.hasCurrent ? { background: "var(--ai-soft)" } : null) }} aria-current={level.hasCurrent ? "true" : undefined}>
                 {done ? (
                   <Egg size="xs" state="done"><Ic name="check" /><span className="sr-only">Tuntas:</span></Egg>
                 ) : level.hasCurrent ? (
@@ -58,7 +58,7 @@ function PathRail({ curriculum, completedSet, ownedTiers }) {
                 ) : (
                   <Egg size="xs">{level.number}</Egg>
                 )}
-                <span className={cn("li-title grow t-clamp-2", level.hasCurrent && "t-strong")}>L{level.number} · {level.name}</span>
+                <span className={cn("li-title grow t-clamp-2", level.hasCurrent && "t-strong")}>{level.anchor && level.anchor !== `level-${level.number}` ? `${level.curriculumTitle} · ` : ""}L{level.number} · {level.name}</span>
                 <span className={cn("t-caption t-num", level.hasCurrent ? "t-ai t-strong" : "t-muted")}>{level.completed}/{level.total}</span>
               </a>
             );

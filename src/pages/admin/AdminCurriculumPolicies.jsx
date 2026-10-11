@@ -82,7 +82,8 @@ function ContractNote() {
 
 function PolicyEditor({ version, onDirty, onSaved }) {
   const editor = useCurriculumDraft(['admin', 'curriculum', 'policy', version], () => policiesApi.detail(version).then((value) => value.policy));
-  const catalogue = useQuery({ queryKey: ['admin', 'courses', 'layer-farm-management'], queryFn: () => nativeApi.admin.courses.detail('layer-farm-management') });
+  // Every curriculum's modules can join the policy (wajib or pilihan).
+  const catalogue = useQuery({ queryKey: ['admin', 'courses', 'catalogue'], queryFn: () => nativeApi.admin.courses.list({ withCurriculum: true }) });
   const [validation, setValidation] = useState(null);
   const [reloadOpen, setReloadOpen] = useState(false);
   const [addNumber, setAddNumber] = useState('');
@@ -93,7 +94,9 @@ function PolicyEditor({ version, onDirty, onSaved }) {
   const immutable = !['draft', 'ready'].includes(policy.status);
   const disabled = immutable || editor.busy;
   const primary = curriculumPrimaryAction({ dirty: editor.dirty, valid: validation?.valid, ready: policy.status === 'ready' });
-  const modules = (catalogue.data?.curriculum || []).flatMap((chapter) => chapter.modules || []);
+  const courses = catalogue.data?.courses || [];
+  const manyCurricula = courses.length > 1;
+  const modules = courses.flatMap((course) => (course.curriculum || []).flatMap((chapter) => (chapter.modules || []).map((module) => ({ ...module, curriculumTitle: course.title }))));
   const available = modules.filter((module) => !policy.modules.some((member) => member.moduleNumber === module.moduleNumber));
   const change = (patch) => { editor.setDraft({ ...policy, ...patch }); setValidation(null); };
   const changeMember = (index, patch) => change({ modules: policy.modules.map((member, i) => i === index ? { ...member, ...patch } : member) });
@@ -137,10 +140,10 @@ function PolicyEditor({ version, onDirty, onSaved }) {
           </thead>
           <tbody>
             {visibleMembers.map((member, index) => {
-              const title = modules.find((module) => module.moduleNumber === member.moduleNumber)?.title;
+              const found = modules.find((module) => module.moduleNumber === member.moduleNumber);
               return <tr key={member.moduleNumber}>
                 <td className="t-num t-muted">{index + 1}</td>
-                <td><span className="t-clamp-1"><span className="t-num t-medium">{member.moduleNumber}</span>{title ? ` · ${title}` : ''}</span></td>
+                <td><span className="t-clamp-1" title={`ID modul #${member.moduleNumber}`}>{manyCurricula && found ? <span className="t-muted">{found.curriculumTitle} · </span> : null}{found?.title || `Modul #${member.moduleNumber}`}</span></td>
                 <td><label className="check" style={{ display: 'flex' }}><input type="checkbox" checked={member.required} disabled={disabled} onChange={(event) => changeMember(index, { required: event.target.checked })} /><span className="sr-only">Modul {member.moduleNumber} wajib</span></label></td>
                 <td>
                   <label className="sr-only" htmlFor={`mode-${member.moduleNumber}`}>Mode asesmen Modul {member.moduleNumber}</label>
@@ -169,7 +172,7 @@ function PolicyEditor({ version, onDirty, onSaved }) {
           <label className="sr-only" htmlFor="add-module">Pilih modul untuk ditambahkan</label>
           <select className="select select-sm" id="add-module" style={{ flex: '0 1 320px' }} value={addNumber} disabled={disabled} onChange={(event) => setAddNumber(event.target.value)}>
             <option value="">Pilih modul</option>
-            {available.map((module) => <option value={String(module.moduleNumber)} key={module.id}>{module.moduleNumber} · {module.title}</option>)}
+            {available.map((module) => <option value={String(module.moduleNumber)} key={module.id}>{manyCurricula ? `${module.curriculumTitle} · ` : ''}Modul {module.displayNumber ?? module.moduleNumber} · {module.title}</option>)}
           </select>
           <button type="button" className="btn btn-secondary btn-sm" disabled={disabled || !addNumber} onClick={() => { change({ modules: [...policy.modules, { moduleNumber: Number(addNumber), required: false, assessmentMode: 'quiz' }] }); setAddNumber(''); }}><Ic name="plus" />Tambahkan modul</button>
         </div> : null}

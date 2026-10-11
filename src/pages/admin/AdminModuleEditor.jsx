@@ -14,7 +14,9 @@ import CurriculumPublishingPanel from "@/components/admin/CurriculumPublishingPa
 import { useQueryClient } from "@tanstack/react-query";
 import { cancelQuestionEdit, curriculumModule, recoverCurriculumDraft } from "@/lib/curriculumEditorState";
 import useModalFocus from "@/components/ai/useModalFocus";
-import { levelVisual } from "@/lib/academyVisuals";
+import { moduleVisual } from "@/lib/academyVisuals";
+import { DEFAULT_MODULE_VISUAL, normaliseModuleVisual } from "@/lib/moduleVisual";
+import ModuleCoverField from "@/components/admin/ModuleCoverField";
 import { Ic } from "@/design-system/canvas";
 import {
   Badge,
@@ -73,6 +75,7 @@ const emptyModule = {
   checklist: "",
   practicalAssignment: "",
   order: "",
+  visual: DEFAULT_MODULE_VISUAL,
 };
 const emptyQuestion = {
   question: "",
@@ -127,8 +130,15 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
     emitPoints(nextPoints.length ? nextPoints : [""]);
   };
 
+  // Leaving the list drops the empty rows Enter left behind (one stays to type in).
+  const tidyOnLeave = (event) => {
+    if (event.currentTarget.contains(event.relatedTarget)) return;
+    const filled = points.filter((point) => point.trim());
+    if (filled.length !== points.length && !(filled.length === 0 && points.length === 1)) emitPoints(filled.length ? filled : [""]);
+  };
+
   return (
-    <div className="aapm-editor-point-card min-w-0" data-hue={tone === "orange" ? "orange" : "green"}>
+    <div className="aapm-editor-point-card min-w-0" data-hue={tone === "orange" ? "orange" : "green"} onBlur={tidyOnLeave}>
       <div className="aapm-editor-point-card__head">
         <IconTile icon={icon} hue={tone === "orange" ? "orange" : "green"} size="xs" shape="circle" />
         <Label htmlFor={`${id}-point-1`} className="min-w-0 flex-1">{label}</Label>
@@ -150,7 +160,11 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  insertPointAfter(index);
+                  // Enter on an empty row does not stack another empty row.
+                  if (point.trim()) insertPointAfter(index);
+                } else if (event.key === "Backspace" && !point && points.length > 1) {
+                  event.preventDefault();
+                  removePoint(index);
                 }
               }}
               className="aapm-editor-point-input"
@@ -176,6 +190,31 @@ function CompactListField({ id, label, value, onChange, icon = "target", tone = 
         <AapmIcon name="plus" />Tambah poin
       </button>
     </div>
+  );
+}
+
+/**
+ * An optional editor section that is not used in this module: a dashed row that
+ * adds it back, plus the undo for a section that was just removed.
+ */
+function OptionalSectionRow({ id, title, detail, ic, hue, undo, onAdd, onUndo }) {
+  return (
+    <section id={id} className="aapm-editor-section aapm-editor-section-off" aria-label={`${title} (tidak dipakai)`}>
+      <button type="button" className="card card-dashed row gap-3 aapm-editor-section-add" data-hue={hue} onClick={onAdd}>
+        <span className="tile tile-sm"><Ic name={ic} /></span>
+        <span className="stack grow" style={{ minWidth: 0, textAlign: "left" }}>
+          <span className="t-support t-strong">Tambah {title}</span>
+          <span className="t-caption t-muted">{detail} · opsional</span>
+        </span>
+        <Ic name="plus" className="t-muted" />
+      </button>
+      {undo ? (
+        <p className="row wrap gap-2 t-caption t-muted aapm-editor-section-undo" role="status">
+          {title} dihapus dari modul ini.
+          <button type="button" className="btn btn-link btn-sm" onClick={onUndo}><Ic name="undo" />Batalkan</button>
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -242,6 +281,7 @@ function moduleFormFromApi(module) {
     checklist: listToText(module?.checklist),
     practicalAssignment: module?.practicalAssignment || "",
     order: module?.order || "",
+    visual: normaliseModuleVisual(module?.visual),
   };
 }
 
@@ -265,6 +305,7 @@ function moduleFormFromDraft(candidate) {
     checklist: textValue(candidate.checklist),
     practicalAssignment: textValue(candidate.practicalAssignment),
     order: numberValue(candidate.order),
+    visual: normaliseModuleVisual(candidate.visual),
   };
 }
 
@@ -623,15 +664,25 @@ export default function AdminModuleEditor() {
   const [editorReady, setEditorReady] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
   const [activeSection, setActiveSection] = useState(EDITOR_SECTIONS[0].id);
-  const [inspectorTab, setInspectorTab] = useState("block");
+  // "Isi dengan APPI" from the curriculum list opens the editor on the APPI tab.
+  const openWithAppi = new URLSearchParams(location.search).get("panel") === "appi";
+  const [inspectorTab, setInspectorTab] = useState(openWithAppi ? "ai" : "block");
   const [blockInspectorNode, setBlockInspectorNode] = useState(null);
   const [outlineSlot, setOutlineSlot] = useState(null);
   const [saveError, setSaveError] = useState("");
   const [savedAt, setSavedAt] = useState(null);
   // Which bottom sheet is open on small screens: the outline or the inspector.
   const [drawer, setDrawer] = useState(null);
+  useEffect(() => {
+    // On phones the inspector is a sheet; open it so the APPI tab is visible.
+    if (openWithAppi && window.matchMedia("(max-width: 639px)").matches) setDrawer("inspector");
+  }, [openWithAppi]);
   const [barActions, setBarActions] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
+  // Tujuan & insight and Praktik are optional: shown when they hold content or the
+  // editor adds them; "Hapus bagian" clears them (with undo) and folds them away.
+  const [openedSections, setOpenedSections] = useState({ outcomes: false, practice: false });
+  const [removedSection, setRemovedSection] = useState(null);
   const handleBlockSelection = React.useCallback((selection) => {
     setSelectedBlock(selection);
     // Picking a block while working with APPI keeps APPI open: it offers help
@@ -708,9 +759,14 @@ export default function AdminModuleEditor() {
   const identityIsComplete = Boolean(
     String(form.levelNumber ?? "").trim() &&
     form.levelName.trim() &&
-    String(form.moduleNumber ?? "").trim() &&
     form.title.trim(),
   );
+  // The number people see is the module's position in this curriculum; the
+  // stored moduleNumber is a permanent id the server assigns on creation.
+  const shownNumber = useMemo(() => {
+    const listed = (course?.curriculum || []).flatMap((level) => level.modules || []).find((item) => String(item.id) === String(moduleId));
+    return listed?.displayNumber ?? null;
+  }, [course, moduleId]);
 
   useEffect(() => {
     const resizeHeadings = () => {
@@ -1011,6 +1067,26 @@ export default function AdminModuleEditor() {
       return next;
     });
   };
+  const SECTION_FIELDS = { outcomes: ["learningObjectives", "keyTakeaways"], practice: ["practicalAssignment", "checklist"] };
+  const sectionHasContent = (section) => SECTION_FIELDS[section].some((field) => String(form[field] || "").trim());
+  const sectionShown = (section) => openedSections[section] || sectionHasContent(section);
+  const addSection = (section) => {
+    setOpenedSections((current) => ({ ...current, [section]: true }));
+    setRemovedSection(null);
+    window.requestAnimationFrame(() => document.querySelector(`#module-section-${section === "outcomes" ? "outcomes" : "practice"} input, #module-section-${section === "outcomes" ? "outcomes" : "practice"} textarea`)?.focus());
+  };
+  const removeSection = (section) => {
+    const snapshot = Object.fromEntries(SECTION_FIELDS[section].map((field) => [field, form[field]]));
+    SECTION_FIELDS[section].forEach((field) => set(field, ""));
+    setOpenedSections((current) => ({ ...current, [section]: false }));
+    setRemovedSection({ section, snapshot });
+  };
+  const undoRemoveSection = () => {
+    if (!removedSection) return;
+    Object.entries(removedSection.snapshot).forEach(([field, value]) => set(field, value));
+    setOpenedSections((current) => ({ ...current, [removedSection.section]: true }));
+    setRemovedSection(null);
+  };
   const setEditorialPresentation = (section, key, value) => {
     const current = parseEditorialDocument(form.editorialContent) || { version: 1, blocks: [] };
     const presentation = normaliseEditorialPresentation(current.presentation);
@@ -1083,16 +1159,14 @@ export default function AdminModuleEditor() {
       return;
     }
     const submittedForm = formRef.current;
-    if (!submittedForm.content.trim() && !parseEditorialDocument(submittedForm.editorialContent)?.blocks?.some((block) => block.type !== "divider")) {
-      setSaveError("Tambahkan materi utama sebelum menyimpan modul.");
-      scrollToEditorSection("module-section-content");
-      return;
-    }
+    // A draft may be saved before material exists (modules added inline start
+    // with a title). Validasi before publishing still requires material.
     const submittedContext = editorContextKey;
     const payload = {
       ...submittedForm,
       levelNumber: Number(submittedForm.levelNumber),
-      moduleNumber: Number(submittedForm.moduleNumber),
+      moduleNumber: Number(submittedForm.moduleNumber) || 0,
+      ...(isNew ? { curriculumId: courseId } : {}),
       order: Number(submittedForm.order || 0),
       learningObjectives: textToList(submittedForm.learningObjectives),
       keyTakeaways: textToList(submittedForm.keyTakeaways),
@@ -1324,7 +1398,8 @@ export default function AdminModuleEditor() {
           </span>
           <span className="vr hide-md" style={{ margin: "14px 0" }} />
           {isNew ? (
-            <button type="button" className="btn btn-primary btn-sm" disabled={operationBusy || Boolean(conflict)} onClick={submitEditorForm}>Simpan draf</button>
+            // Phones save from the bottom bar; one save button per screen.
+            <button type="button" className="btn btn-primary btn-sm hide-sm" disabled={operationBusy || Boolean(conflict)} onClick={submitEditorForm}>Simpan draf</button>
           ) : <div ref={setBarActions} className="row" />}
         </div>
       </header>
@@ -1366,10 +1441,10 @@ export default function AdminModuleEditor() {
             <div className="aapm-editor-canvas">
               <header className="aapm-editor-doc-head">
                 <div className="row wrap gap-2">
-                  <button type="button" className="chip chip-hue" data-hue={levelVisual(form.levelNumber).hue} onClick={() => openInspector("module")}>
+                  <button type="button" className="chip chip-hue" data-hue={moduleVisual({ level: form.levelNumber, visual: form.visual }).hue} onClick={() => openInspector("module")}>
                     Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}
                   </button>
-                  <button type="button" className="chip" onClick={() => openInspector("module")}>Modul {form.moduleNumber || "—"}</button>
+                  <button type="button" className="chip" onClick={() => openInspector("module")} title={form.moduleNumber ? `ID modul #${form.moduleNumber}` : undefined}>{isNew ? "Modul baru" : `Modul ${shownNumber ?? form.moduleNumber ?? "—"}`}</button>
                   {form.category ? <span className="chip chip-outline">{form.category}</span> : null}
                 </div>
                 <label className="aapm-visually-hidden" htmlFor="module-title">Judul modul</label>
@@ -1421,6 +1496,7 @@ export default function AdminModuleEditor() {
                 />
               </section>
 
+              {sectionShown("outcomes") ? (
               <section id="module-section-outcomes" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-outcomes" ? "true" : "false"} aria-labelledby="editor-outcomes-title">
                 <header className="lesson-sect-head" data-hue="green">
                   <span className="tile tile-sm"><Ic name="target" /></span>
@@ -1428,6 +1504,7 @@ export default function AdminModuleEditor() {
                     <h2 id="editor-outcomes-title" className="t-section">Tujuan & insight</h2>
                     <p className="t-caption t-muted">Satu baris = satu poin. Tekan Enter untuk menambah poin baru.</p>
                   </div>
+                  <button type="button" className="btn btn-ghost btn-sm btn-quiet aapm-editor-section-remove" onClick={() => removeSection("outcomes")} aria-label="Hapus bagian Tujuan & insight dari modul ini"><Ic name="trash" /><span className="hide-sm">Hapus bagian</span></button>
                 </header>
                 <div className="aapm-editor-outcome-grid">
                   <CompactListField
@@ -1447,7 +1524,12 @@ export default function AdminModuleEditor() {
                   />
                 </div>
               </section>
+              ) : (
+                <OptionalSectionRow id="module-section-outcomes" title="Tujuan & insight" detail="Tujuan pembelajaran dan poin penting" ic="target" hue="green"
+                  undo={removedSection?.section === "outcomes"} onAdd={() => addSection("outcomes")} onUndo={undoRemoveSection} />
+              )}
 
+              {sectionShown("practice") ? (
               <section id="module-section-practice" className="aapm-editor-panel aapm-editor-section" data-active={activeSection === "module-section-practice" ? "true" : "false"} aria-labelledby="editor-practice-title">
                 <header className="lesson-sect-head" data-hue="teal">
                   <span className="tile tile-sm"><Ic name="egg" /></span>
@@ -1455,6 +1537,7 @@ export default function AdminModuleEditor() {
                     <h2 id="editor-practice-title" className="t-section">Praktik</h2>
                     <p className="t-caption t-muted">Tugas yang dikerjakan di kandang dan checklist observasinya.</p>
                   </div>
+                  <button type="button" className="btn btn-ghost btn-sm btn-quiet aapm-editor-section-remove" onClick={() => removeSection("practice")} aria-label="Hapus bagian Praktik dari modul ini"><Ic name="trash" /><span className="hide-sm">Hapus bagian</span></button>
                 </header>
                 <div className="aapm-editor-practice-fields">
                   <Field id="module-practical-assignment" label="Tugas praktik" hint="Satu tugas konkret yang dapat dikerjakan learner.">
@@ -1468,11 +1551,12 @@ export default function AdminModuleEditor() {
                     value={form.checklist}
                     onChange={(event) => set("checklist", event.target.value)}
                   />
-                  <Field id="module-video-script" label="Naskah video" hint="Opsional — tampil sebagai catatan instruktur di bawah video.">
-                    <Textarea rows={3} value={form.videoScript} onChange={(event) => set("videoScript", event.target.value)} placeholder="Tulis catatan video…" />
-                  </Field>
                 </div>
               </section>
+              ) : (
+                <OptionalSectionRow id="module-section-practice" title="Praktik" detail="Tugas kandang dan checklist observasi" ic="egg" hue="teal"
+                  undo={removedSection?.section === "practice"} onAdd={() => addSection("practice")} onUndo={undoRemoveSection} />
+              )}
             </div>
 
             <aside ref={inspectorDrawerRef} className="aapm-editor-inspector" aria-label="Inspektor editor" role={drawer === "inspector" ? "dialog" : undefined} aria-modal={drawer === "inspector" ? true : undefined} tabIndex={drawer === "inspector" ? -1 : undefined} data-drawer-open={drawer === "inspector" ? "true" : undefined}>
@@ -1533,15 +1617,28 @@ export default function AdminModuleEditor() {
                         return next;
                       });
                     }} /></Field>
-                    <Field id="module-number" label="No. modul" required><Input type="number" min="1" max="999" readOnly={!isNew} value={form.moduleNumber} onChange={(event) => set("moduleNumber", event.target.value)} /></Field>
+                    <Field id="module-number" label="Nomor modul" hint={isNew ? "Otomatis setelah disimpan." : `Mengikuti urutan · ID tetap #${form.moduleNumber}`}>
+                      <Input readOnly value={isNew ? "Otomatis" : `Modul ${shownNumber ?? form.moduleNumber}`} aria-readonly="true" />
+                    </Field>
                   </div>
                   <Field id="module-level-name" label="Nama chapter" required><Input value={form.levelName} onChange={(event) => set("levelName", event.target.value)} /></Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field id="module-category" label="Kategori"><Input value={form.category} onChange={(event) => set("category", event.target.value)} /></Field>
                     <Field id="module-order" label="Urutan roadmap"><Input type="number" min="0" value={form.order} onChange={(event) => set("order", event.target.value)} /></Field>
                   </div>
-                  {!identityIsComplete ? <Alert tone="warning" title="Lengkapi field wajib" description="Chapter, nomor modul, dan judul diperlukan sebelum menyimpan." /> : null}
+                  <Field id="module-video-script" label="Naskah video" hint="Opsional — tampil sebagai catatan instruktur di bawah video materi.">
+                    <Textarea rows={3} value={form.videoScript} onChange={(event) => set("videoScript", event.target.value)} placeholder="Tulis catatan video…" />
+                  </Field>
+                  {!identityIsComplete ? <Alert tone="warning" title="Lengkapi field wajib" description="Chapter dan judul diperlukan sebelum menyimpan." /> : null}
                 </div>
+              </section>
+
+              <section className="card card-pad stack gap-4" aria-labelledby="editor-cover-title" hidden={inspectorTab !== "module"}>
+                <div className="stack gap-0-5">
+                  <h2 id="editor-cover-title" className="card-title">Sampul modul</h2>
+                  <p className="card-desc">Warna, ikon, atau banner di katalog dan halaman lesson. Biarkan “Ikut chapter” bila tidak perlu beda.</p>
+                </div>
+                <ModuleCoverField value={form.visual} onChange={(visual) => set("visual", visual)} levelNumber={form.levelNumber} moduleNumber={form.moduleNumber} disabled={operationBusy} />
               </section>
 
               <section className="card card-pad stack gap-4" aria-labelledby="editor-appearance-title" hidden={inspectorTab !== "module"}>
