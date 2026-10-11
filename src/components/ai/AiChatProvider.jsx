@@ -66,8 +66,15 @@ function clientMessage(message) {
     reasoningSummary: message.reasoningSummary ?? "",
     reasoningObserved: Boolean(message.reasoningObserved),
     processSteps: message.processSteps ?? [],
+    thinkingMs: Number(message.thinkingMs) || 0,
+    startedAt: message.startedAt ?? null,
+    stopped: Boolean(message.stopped),
+    interrupted: Boolean(message.interrupted),
   };
 }
+
+const conversationDetailKey = (accountId, id) => ["aiConversation", accountId ?? "anonymous", String(id)];
+const sleep = (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); });
 
 export function AiChatProvider({ children }) {
   const queryClient = useQueryClient();
@@ -141,6 +148,7 @@ export function AiChatProvider({ children }) {
   const selectionBaselineRef = useRef(null);
   const accountRequestRef = useRef(0);
   const streamControllerRef = useRef(null);
+  const stopRequestedRef = useRef(false);
   const promptDraftRef = useRef("");
 
   const settleStreamPhase = useCallback((phase, delay = 1100) => {
@@ -253,6 +261,7 @@ export function AiChatProvider({ children }) {
       try {
         const detail = await nativeApi.ai.conversations.detail(id);
         if (accountRequest !== accountRequestRef.current) return { ok: false, assistantPersisted: false };
+        queryClient.setQueryData(conversationDetailKey(accountId, id), detail);
         const detailMessages = detail?.messages ?? [];
         const latestMessage = detailMessages.at(-1);
         const assistantPersisted =
@@ -276,7 +285,7 @@ export function AiChatProvider({ children }) {
         return { ok: false, assistantPersisted: false };
       }
     },
-    [accountId, upsertConversation],
+    [accountId, queryClient, upsertConversation],
   );
 
   const selectConversation = useCallback(
@@ -289,18 +298,24 @@ export function AiChatProvider({ children }) {
         draft: draftRef.current,
       };
       const baseline = selectionBaselineRef.current;
+      const detailKey = conversationDetailKey(accountId, id);
+      const cached = /** @type {{ messages?: any[] } | undefined} */ (queryClient.getQueryData(detailKey));
       setHistoryError(null);
       setIsDraft(false);
-      setMessages([]);
+      // A conversation opened before shows at once; the fresh copy replaces it.
+      setMessages(cached?.messages ? cached.messages.map((message) => clientMessage({ ...message, persisted: true })) : []);
       setActiveConversationId(id);
       activeRef.current = id;
-      setIsLoadingConversation(true);
-      loadingConversationRef.current = true;
+      setIsLoadingConversation(!cached);
+      // With a cached copy the learner can already ask; the refresh below then
+      // leaves a turn in flight alone.
+      loadingConversationRef.current = !cached;
       try {
         const detail = await nativeApi.ai.conversations.detail(id);
+        queryClient.setQueryData(detailKey, detail);
         if (selectionRequestRef.current === requestId && activeRef.current === id) {
           if (detail?.conversation) upsertConversation(detail.conversation);
-          setMessages(
+          if (!sendInFlightRef.current) setMessages(
             (detail?.messages ?? []).map((message) =>
               clientMessage({ ...message, persisted: true }),
             ),
@@ -329,7 +344,7 @@ export function AiChatProvider({ children }) {
         }
       }
     },
-    [composerDraftStorageKey, persistActiveConversation, upsertConversation],
+    [accountId, composerDraftStorageKey, persistActiveConversation, queryClient, upsertConversation],
   );
 
   const startNewConversation = useCallback(() => {
@@ -409,6 +424,16 @@ export function AiChatProvider({ children }) {
       const accountRequest = accountRequestRef.current;
       const isCurrentRequest = () => accountRequest === accountRequestRef.current;
       const submittedDraft = promptDraftRef.current;
+      // The composer empties as soon as its own text is sent, so the question is
+      // never shown twice or sent again by accident. Storage keeps the draft until
+      // the answer is persisted; a failed answer puts the text back (below).
+      const sentFromComposer = submittedDraft.trim() === message;
+      const restoreComposer = () => {
+        if (sentFromComposer && !promptDraftRef.current) {
+          promptDraftRef.current = submittedDraft;
+          setPromptDraftState(submittedDraft);
+        }
+      };
 
       let conversation;
       try {
@@ -428,10 +453,14 @@ export function AiChatProvider({ children }) {
 
       const assistantId = idFor("assistant");
       const userId = idFor("user");
+      const startedAt = Date.now();
       let pendingText = "";
+      let pendingReasoning = "";
       let streamedContent = "";
       let deltaFrame = null;
       let persisted = false;
+      let firstTokenSeen = false;
+      stopRequestedRef.current = false;
       const updateAssistant = (update) =>
         setMessages((current) =>
           current.map((item) =>
@@ -443,25 +472,47 @@ export function AiChatProvider({ children }) {
           window.cancelAnimationFrame(deltaFrame);
           deltaFrame = null;
         }
-        if (!pendingText) return;
+        if (!pendingText && !pendingReasoning) return;
         const text = pendingText;
+        const reasoning = pendingReasoning;
         pendingText = "";
+        pendingReasoning = "";
+        // One state update per frame for both streams keeps long answers smooth.
         setMessages((current) =>
           current.map((item) =>
             item.id === assistantId
-              ? { ...item, content: `${item.content}${text}` }
+              ? {
+                ...item,
+                content: text ? `${item.content}${text}` : item.content,
+                reasoningSummary: reasoning ? `${item.reasoningSummary}${reasoning}`.slice(0, 12000) : item.reasoningSummary,
+              }
               : item,
           ),
         );
       };
-      const queueDelta = (text) => {
-        streamedContent += text;
-        pendingText += text;
+      const scheduleFlush = () => {
         if (deltaFrame === null) {
           deltaFrame = window.requestAnimationFrame(flushPendingText);
         }
       };
+      const queueDelta = (text) => {
+        if (!firstTokenSeen) {
+          firstTokenSeen = true;
+          updateAssistant({ thinkingMs: Date.now() - startedAt });
+        }
+        streamedContent += text;
+        pendingText += text;
+        scheduleFlush();
+      };
+      const queueReasoning = (text) => {
+        pendingReasoning += text;
+        scheduleFlush();
+      };
 
+      if (sentFromComposer) {
+        promptDraftRef.current = "";
+        setPromptDraftState("");
+      }
       setMessages((current) => [
         ...current,
         clientMessage({
@@ -477,6 +528,7 @@ export function AiChatProvider({ children }) {
           content: "",
           streaming: true,
           persisted: false,
+          startedAt,
         }),
       ]);
       setHistorySyncState("saving");
@@ -513,15 +565,24 @@ export function AiChatProvider({ children }) {
             if (event === "status") reportStep(data.label);
             if (event === "response_meta") updateAssistant({ provider: data.provider, model: data.model });
             if (event === "reasoning") {
-              setMessages((current) => current.map((item) => item.id === assistantId
-                ? { ...item, reasoningObserved: true, reasoningSummary: (item.reasoningSummary + (data.summary || "")).slice(0, 12000) } : item));
+              if (data.summary) queueReasoning(data.summary);
+              else updateAssistant({ reasoningObserved: true });
             }
             if (event === "delta" && data.text) {
               setStreamPhase("responding");
               queueDelta(data.text);
             }
+            if (event === "reset") {
+              // The server replaces a broken partial answer; drop what was shown.
+              if (deltaFrame !== null) window.cancelAnimationFrame(deltaFrame);
+              deltaFrame = null;
+              pendingText = "";
+              streamedContent = "";
+              updateAssistant({ content: "" });
+            }
             if (event === "notice") {
-              updateAssistant({ notice: data.text || "", fallback: true });
+              // Whether the answer is local is decided by `done`, not by a notice.
+              updateAssistant({ notice: data.text || "" });
             }
             if (event === "persistence_error") {
               updateAssistant({
@@ -572,12 +633,41 @@ export function AiChatProvider({ children }) {
           updateAssistant({ persisted: true, error: false, notice: "", streaming: false });
         }
         updateAssistant({ streaming: false });
-        if (didPersist) clearPromptDraft(conversation.id, submittedDraft);
+        if (didPersist) clearPromptDraft(conversation.id, "");
+        else restoreComposer();
         settleStreamPhase("complete");
         return { ok: true, persisted: didPersist, conversationId: conversation.id, assistantId };
       } catch (error) {
         if (!isCurrentRequest()) return { ok: false, persisted: false };
         flushPendingText();
+        if (stopRequestedRef.current) {
+          // Stopped by the learner. The server keeps what was written and saves
+          // it after it notices the closed connection, so poll briefly for it.
+          if (!streamedContent) {
+            setMessages((current) => current.filter((item) => item.id !== assistantId));
+            setHistorySyncState("saved");
+            settleStreamPhase("complete");
+            return { ok: true, persisted: true, stopped: true, conversationId: conversation.id };
+          }
+          updateAssistant({ streaming: false, stopped: true, error: false, notice: "Dihentikan sebelum selesai." });
+          let saved = false;
+          for (const wait of [700, 1400, 2400]) {
+            await sleep(wait);
+            if (!isCurrentRequest()) return { ok: false, persisted: false };
+            const reconciled = await reconcileConversation(conversation.id, {
+              replaceMessages: false,
+              expectedAssistantContent: null,
+            });
+            if (reconciled.assistantPersisted) {
+              saved = true;
+              break;
+            }
+          }
+          if (saved) await reconcileConversation(conversation.id, { replaceMessages: true });
+          setHistorySyncState(saved ? "saved" : "attention");
+          settleStreamPhase("complete");
+          return { ok: true, persisted: saved, stopped: true, conversationId: conversation.id, assistantId };
+        }
         const visibleContent = streamedContent || error?.message || "Koneksi ke asisten belum tersedia.";
         updateAssistant({
           streaming: false,
@@ -598,10 +688,12 @@ export function AiChatProvider({ children }) {
         setHistorySyncState(didPersist ? "saved" : "attention");
         setHistoryError(didPersist ? null : error);
         settleStreamPhase(didPersist ? "complete" : "alert", didPersist ? 1100 : 1500);
-        if (didPersist) clearPromptDraft(conversation.id, submittedDraft);
+        if (didPersist) clearPromptDraft(conversation.id, "");
+        else restoreComposer();
         return { ok: didPersist, persisted: didPersist, conversationId: conversation.id, assistantId };
       } finally {
         if (deltaFrame !== null) window.cancelAnimationFrame(deltaFrame);
+        stopRequestedRef.current = false;
         if (isCurrentRequest()) {
           sendInFlightRef.current = false;
           streamControllerRef.current = null;
@@ -626,6 +718,14 @@ export function AiChatProvider({ children }) {
       upsertConversation,
     ],
   );
+
+  // Ends the answer being written. Closing the stream also tells the server to
+  // stop the provider and keep the text written so far.
+  const stopStreaming = useCallback(() => {
+    if (!streamControllerRef.current) return;
+    stopRequestedRef.current = true;
+    streamControllerRef.current.abort();
+  }, []);
 
   const retryPersistAssistant = useCallback(
     async (message) => {
@@ -684,6 +784,7 @@ export function AiChatProvider({ children }) {
     async (id) => {
       if (!id || isStreaming) return false;
       await nativeApi.ai.conversations.delete(id);
+      queryClient.removeQueries({ queryKey: conversationDetailKey(accountId, id) });
       queryClient.setQueryData(conversationQueryKey, (current) =>
         removeConversationFromPages(current, id),
       );
@@ -701,7 +802,7 @@ export function AiChatProvider({ children }) {
       }
       return true;
     },
-    [activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
+    [accountId, activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
   );
 
   const deleteAllConversations = useCallback(async () => {
@@ -712,6 +813,7 @@ export function AiChatProvider({ children }) {
     accountRequestRef.current += 1;
     const deletionRequest = accountRequestRef.current;
     await queryClient.cancelQueries({ queryKey: conversationQueryKey });
+    queryClient.removeQueries({ queryKey: ["aiConversation", accountId] });
     if (deletionRequest !== accountRequestRef.current) return result;
     activeRef.current = null;
     persistActiveConversation(null);
@@ -796,6 +898,7 @@ export function AiChatProvider({ children }) {
         const id = uniqueIds[index];
         if (result.status === "fulfilled") {
           deleted.push(id);
+          queryClient.removeQueries({ queryKey: conversationDetailKey(accountId, id) });
           queryClient.setQueryData(conversationQueryKey, (current) =>
             removeConversationFromPages(current, id),
           );
@@ -817,7 +920,7 @@ export function AiChatProvider({ children }) {
       queryClient.invalidateQueries({ queryKey: activityQueryKey });
       return { ok: failed.length === 0, deleted, failed };
     },
-    [activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
+    [accountId, activityQueryKey, clearPromptDraft, composerDraftStorageKey, conversationQueryKey, isStreaming, persistActiveConversation, queryClient],
   );
 
   const refreshHistory = useCallback(async () => {
@@ -877,6 +980,7 @@ export function AiChatProvider({ children }) {
       bulkArchiveConversations,
       bulkDeleteConversations,
       send,
+      stopStreaming,
     }),
     [
       activeConversationId,
@@ -913,6 +1017,7 @@ export function AiChatProvider({ children }) {
       selectConversation,
       send,
       startNewConversation,
+      stopStreaming,
       streamPhase,
       streamStatus,
       streamSteps,

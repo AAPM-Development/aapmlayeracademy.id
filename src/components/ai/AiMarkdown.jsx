@@ -6,6 +6,8 @@ import { Table } from "@/components/primitives";
 import AiCopyButton from "@/components/ai/AiCopyButton";
 
 const MermaidDiagram = React.lazy(() => import("@/components/ai/MermaidDiagram"));
+// A diagram half-written is invalid Mermaid; draw it once the answer is complete.
+const StreamingContext = React.createContext(false);
 
 /** Plain text of a hast node (fenced code carries text children only). */
 function nodeText(node) {
@@ -27,6 +29,10 @@ function CodeBlock({ node }) {
   const code = node?.children?.find((child) => child.tagName === "code");
   const language = fenceLanguage(code);
   const source = nodeText(code).replace(/\n$/, "");
+  const streaming = React.useContext(StreamingContext);
+  if (language === "mermaid" && streaming) {
+    return <div className="aapm-ai-mermaid-loading">Diagram muncul setelah jawaban selesai…</div>;
+  }
   if (language === "mermaid") {
     return (
       <React.Suspense fallback={<div className="aapm-ai-mermaid-loading">Menyiapkan diagram…</div>}>
@@ -59,29 +65,37 @@ function AnswerLink({ href = "", children }) {
   );
 }
 
+const REMARK_PLUGINS = [remarkGfm];
+const componentsFor = (compact) => ({
+  h1: ({ children }) => (compact ? <h3>{children}</h3> : <h2>{children}</h2>),
+  h2: ({ children }) => <h3>{children}</h3>,
+  h3: ({ children }) => <h4>{children}</h4>,
+  a: ({ href, children }) => <AnswerLink href={href}>{children}</AnswerLink>,
+  table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
+  pre: ({ node }) => <CodeBlock node={node} />,
+  code: ({ children }) => <code className="aapm-ai-inline-code">{children}</code>,
+});
+// Stable component maps: a new object per render made every answer re-render.
+const COMPONENTS = componentsFor(false);
+const COMPACT_COMPONENTS = componentsFor(true);
+
 /**
  * The one Markdown renderer for APPI answers, in the workspace and the
  * floating panel. Headings start one level under the surface's own heading,
  * tables scroll inside their frame, links say when they open a new tab and
  * fenced code gets a label and a copy action. `compact` tightens the rhythm.
+ * Memoised on its props, so streaming one answer does not re-parse the others.
  */
-export default function AiMarkdown({ content, compact = false }) {
+function AiMarkdown({ content, compact = false, streaming = false }) {
   return (
     <div className="aapm-ai-markdown" data-density={compact ? "compact" : undefined}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children }) => (compact ? <h3>{children}</h3> : <h2>{children}</h2>),
-          h2: ({ children }) => <h3>{children}</h3>,
-          h3: ({ children }) => <h4>{children}</h4>,
-          a: ({ href, children }) => <AnswerLink href={href}>{children}</AnswerLink>,
-          table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
-          pre: ({ node }) => <CodeBlock node={node} />,
-          code: ({ children }) => <code className="aapm-ai-inline-code">{children}</code>,
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+      <StreamingContext.Provider value={streaming}>
+        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={compact ? COMPACT_COMPONENTS : COMPONENTS}>
+          {content}
+        </ReactMarkdown>
+      </StreamingContext.Provider>
     </div>
   );
 }
+
+export default React.memo(AiMarkdown);

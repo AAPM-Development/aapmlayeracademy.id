@@ -76,6 +76,20 @@ test('only provider-designated summaries reach the public reasoning renderer', (
   ] }), ['Memeriksa periode data KPI.']);
 });
 
+test('conversation turns reach the provider as alternating messages before the new question', () => {
+  const php = String.raw`
+require "public/api/openrouter.php";
+$history = [['role'=>'assistant','content'=>'orphan'],['role'=>'user','content'=>'Berapa HDP?'],['role'=>'user','content'=>'Minggu 30'],['role'=>'assistant','content'=>'HDP 92%'],['role'=>'system','content'=>'x'],['role'=>'user','content'=>'Lalu FCR?']];
+echo json_encode(ai_openai_messages('S', 'Pertanyaan baru', null, $history));
+`;
+  const result = spawnSync('php', ['-r', php], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const messages = JSON.parse(result.stdout);
+  assert.deepEqual(messages.map((m) => m.role), ['system', 'user', 'assistant', 'user', 'assistant', 'user']);
+  assert.equal(messages[1].content, 'Berapa HDP?\n\nMinggu 30');
+  assert.equal(messages.at(-1).content, 'Pertanyaan baru');
+});
+
 test('missing or malformed reasoning remains empty and oversized summaries are bounded', () => {
   assert.deepEqual(summaries({}), []);
   assert.deepEqual(summaries({ reasoning_details: 'invalid' }), []);

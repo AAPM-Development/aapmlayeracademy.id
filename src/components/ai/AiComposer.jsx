@@ -12,6 +12,7 @@ export default function AiComposer({
   input = "",
   setInput = (_value) => {},
   onSubmit = () => {},
+  onStop = null,
   isStreaming = false,
   disabled = false,
   imageInputRef,
@@ -161,7 +162,13 @@ export default function AiComposer({
             Cari web
           </label>
           <span className="grow" />
-          <button
+          {isStreaming && onStop ? (
+            // While APPI writes, the round button stops the answer; the text so
+            // far is kept and saved.
+            <button type="button" className="send send-stop aapm-ai-send-control" onClick={onStop} aria-label="Hentikan jawaban APPI" title="Hentikan">
+              <span className="send-stop-glyph" aria-hidden="true" />
+            </button>
+          ) : <button
             type="button"
             className="send aapm-ai-send-control"
             onClick={handleSendClick}
@@ -171,7 +178,7 @@ export default function AiComposer({
             title="Kirim"
           >
             {isStreaming ? <span className="typing typing-light" aria-hidden="true"><i /><i /><i /></span> : <Ic name="send" />}
-          </button>
+          </button>}
         </div>
       </div>
 
