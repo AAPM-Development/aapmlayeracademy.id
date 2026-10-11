@@ -77,8 +77,10 @@ export default function useLauncherClearance(launcherRef, enabled) {
       lift = next;
       launcher.style.setProperty("--launcher-lift", `${lift}px`);
     };
+    // A short timer, not requestAnimationFrame: rAF stops in background tabs
+    // and previews, which left the launcher unmeasured there.
     const schedule = () => {
-      if (!frame) frame = window.requestAnimationFrame(measure);
+      if (!frame) frame = window.setTimeout(measure, 40);
     };
     schedule();
     // Content changes (route, data, opened sections) can bring a control under it.
@@ -86,7 +88,7 @@ export default function useLauncherClearance(launcherRef, enabled) {
     window.addEventListener("resize", schedule);
     document.addEventListener("scroll", schedule, true);
     return () => {
-      window.cancelAnimationFrame(frame);
+      window.clearTimeout(frame);
       window.clearInterval(timer);
       window.removeEventListener("resize", schedule);
       document.removeEventListener("scroll", schedule, true);
