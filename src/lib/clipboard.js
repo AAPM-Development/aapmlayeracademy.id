@@ -32,3 +32,23 @@ export async function copyText(text) {
     if (previousFocus instanceof HTMLElement) previousFocus.focus({ preventScroll: true });
   }
 }
+
+/**
+ * Copy rich content: `html` for editors that read formatting, `text` for
+ * everywhere else. Falls back to plain text when the browser cannot write
+ * HTML to the clipboard.
+ */
+export async function copyRich({ html = "", text = "" } = {}) {
+  try {
+    if (html && window.isSecureContext && typeof window.ClipboardItem === "function" && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new window.ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      })]);
+      return true;
+    }
+  } catch {
+    // Fall through to plain text.
+  }
+  return copyText(text);
+}

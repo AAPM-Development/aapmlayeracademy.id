@@ -102,6 +102,7 @@ export default function MermaidDiagram({ chart }) {
   return (
     <div
       className="aapm-ai-mermaid"
+      data-mermaid-source={chart}
       role="img"
       aria-label="Diagram APPI"
       dangerouslySetInnerHTML={{ __html: svg }}

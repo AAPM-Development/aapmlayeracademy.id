@@ -556,6 +556,7 @@ function ai_sse_start(): void
     @set_time_limit(300);
     $GLOBALS['aapm_sse_last_write'] = microtime(true);
     $GLOBALS['aapm_sse_text_emitted'] = false;
+    $GLOBALS['aapm_sse_steps'] = [];
     header('Content-Type: text/event-stream; charset=utf-8');
     header('Cache-Control: no-cache, no-transform');
     header('Connection: keep-alive');
@@ -588,6 +589,63 @@ function ai_sse_heartbeat(): void
 function ai_sse_text_emitted(): bool
 {
     return !empty($GLOBALS['aapm_sse_text_emitted']);
+}
+
+/**
+ * One step of what APPI does before it answers. `$headline` is the live line
+ * ("APPI lagi baca data farm…"), `$step` the short timeline entry and `$detail`
+ * what exactly was read or decided. Steps are kept and saved with the answer.
+ */
+function ai_sse_step(string $headline, string $step, string $detail = ''): void
+{
+    $steps = $GLOBALS['aapm_sse_steps'] ?? [];
+    $last = $steps ? $steps[count($steps) - 1] : null;
+    if (!$last || $last['label'] !== $step || $last['detail'] !== $detail) {
+        $steps[] = ['label' => $step, 'detail' => $detail];
+    }
+    $GLOBALS['aapm_sse_steps'] = array_slice($steps, -12);
+    ai_sse_emit('status', ['label' => $headline, 'step' => $step, 'detail' => $detail]);
+}
+
+function ai_sse_steps(): array
+{
+    return $GLOBALS['aapm_sse_steps'] ?? [];
+}
+
+function ai_page_context_label(string $pageContext): string
+{
+    return [
+        'calculators' => 'Kalkulator Farm', 'kpi' => 'Farm KPI', 'learning' => 'materi belajar',
+        'certification' => 'Sertifikasi', 'exam' => 'Ujian akhir', 'admin' => 'area Admin',
+        'dashboard' => 'Beranda', 'ai-assistant' => 'workspace APPI',
+    ][$pageContext] ?? '';
+}
+
+/** The context steps: what APPI reads for this question, in learner words. */
+function ai_stream_context_steps(array $farmContext, array $accountContext, array $history, string $accountMemory, string $pageContext): void
+{
+    if ($farmContext) {
+        $weeks = array_values(array_filter(array_map(static fn ($row) => $row['week'] ?? null, $farmContext), static fn ($week) => $week !== null && $week !== ''));
+        $range = $weeks ? ' (minggu ' . min($weeks) . (min($weeks) != max($weeks) ? '–' . max($weeks) : '') . ')' : '';
+        ai_sse_step('APPI lagi baca data farm…', 'Membaca data farm', count($farmContext) . ' catatan KPI terbaru' . $range . ' ikut dipertimbangkan.');
+    } else {
+        ai_sse_step('APPI lagi baca data farm…', 'Membaca data farm', 'Tidak ada data KPI yang ikut dibaca untuk pertanyaan ini.');
+    }
+    $progress = is_array($accountContext['progress'] ?? null) ? $accountContext['progress'] : [];
+    $completed = count(array_filter($progress, static fn ($row) => (int) ($row['completed'] ?? 0) === 1));
+    ai_sse_step('APPI lagi cek progres belajar…', 'Mengecek progres belajar', $progress
+        ? $completed . ' dari ' . count($progress) . ' modul tercatat selesai.'
+        : 'Belum ada progres belajar yang tercatat.');
+    if ($history || $accountMemory !== '') {
+        $parts = [];
+        if ($history) $parts[] = count($history) . ' pesan sebelumnya di obrolan ini';
+        if ($accountMemory !== '') $parts[] = 'catatan singkat dari obrolan lain';
+        ai_sse_step('APPI lagi ingat obrolan sebelumnya…', 'Mengingat obrolan', ucfirst(implode(' dan ', $parts)) . '.');
+    }
+    $page = ai_page_context_label($pageContext);
+    if ($page !== '') {
+        ai_sse_step('APPI lagi pahami halamanmu…', 'Memahami halaman aktif', 'Pertanyaan dikirim dari ' . $page . ', jadi jawabannya dikaitkan ke sana.');
+    }
 }
 
 function ai_openrouter_stream_completion(array $settings, string $apiKey, string $systemPrompt, string $userPrompt, bool $allowWebSearch = false, ?string $imageDataUrl = null, ?array &$responseDetails = null, array $history = []): string
@@ -685,7 +743,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                     $reasoningObserved = true;
                     $responseDetails['reasoningObserved'] = true;
                     ai_sse_emit('reasoning', ['summary' => '']);
-                    ai_sse_emit('status', ['label' => 'Model sedang menelaah pertanyaan']);
+                    ai_sse_step('APPI lagi berpikir…', 'Menimbang jawaban', 'APPI menalar dulu sebelum menulis.');
                 }
                 $content = $delta['content'] ?? '';
                 if (is_array($content)) {
@@ -695,7 +753,8 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                 if ($content !== '') {
                     if (!$receivedText) {
                         $responseDetails['thinkingMs'] = (int) round((microtime(true) - $startedAt) * 1000);
-                        ai_sse_emit('status', ['label' => 'APPI menulis jawaban']);
+                        $seconds = max(1, (int) round($responseDetails['thinkingMs'] / 1000));
+                        ai_sse_step('APPI lagi menulis jawaban…', 'Mulai menulis', 'Setelah berpikir sekitar ' . $seconds . ' detik.');
                     }
                     $receivedText = true;
                     $responseText .= $content;
@@ -732,30 +791,30 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
     $settings = ai_settings_status();
     $apiKey = ai_api_key($settings);
     $responseDetails = [];
-    ai_sse_emit('status', ['label' => 'APPI memeriksa konteks KPI']);
+    ai_stream_context_steps($farmContext, $accountContext, $history, $accountMemory, $pageContext);
     try {
         if (!$settings['enabled'] || ($settings['apiKeyRequired'] && $apiKey === '')) {
             throw new RuntimeException('Provider belum dikonfigurasi.');
         }
         ai_sse_emit('response_meta', ['provider' => $settings['provider'], 'model' => $settings['model']]);
-        if ($history || $accountMemory !== '') {
-            ai_sse_emit('status', ['label' => 'APPI mengingat konteks percakapan']);
-        }
         $webSearch = $allowWebSearch && $settings['provider'] === 'openrouter';
         if ($imageDataUrl !== null && empty($settings['supportsVision'])) {
             throw new RuntimeException('Provider atau model aktif belum ditandai mendukung input gambar.');
         }
         if ($webSearch) {
-            ai_sse_emit('status', ['label' => 'APPI menyiapkan referensi web']);
+            ai_sse_step('APPI lagi menyiapkan pencarian web…', 'Menyiapkan pencarian web', 'Maksimal 5 sumber, dipakai hanya bila perlu info terbaru.');
+        }
+        if ($imageDataUrl !== null) {
+            ai_sse_step('APPI lagi lihat fotomu…', 'Melihat foto', 'Foto ikut dikirim untuk dianalisis; observasi dipisah dari dugaan.');
         }
         if ($settings['adapter'] !== 'openai-compatible' || empty($settings['supportsStreaming'])) {
-            ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
+            ai_sse_step('APPI lagi berpikir…', 'Menyusun pemikiran', 'Pertanyaan dan konteks dikirim ke ' . $settings['model'] . '.');
             $startedAt = microtime(true);
             $reply = ai_provider_completion($settings, $apiKey, ai_system_prompt(), ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext), false, null, $history);
             $responseDetails = ['thinkingMs' => (int) round((microtime(true) - $startedAt) * 1000)];
             ai_sse_emit('delta', ['text' => $reply]);
         } else {
-            ai_sse_emit('status', ['label' => 'APPI menghubungkan konteks dan pertanyaan']);
+            ai_sse_step('APPI lagi berpikir…', 'Menyusun pemikiran', 'Pertanyaan dan konteks dikirim ke ' . $settings['model'] . '.');
             $userPrompt = ai_user_prompt($message, $farmContext, $pageContext, $accountMemory, $accountContext);
             try {
                 $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), $userPrompt, $webSearch, $imageDataUrl, $responseDetails, $history);
@@ -776,7 +835,7 @@ function ai_assistant_stream(string $message, array $farmContext, bool $allowWeb
                 $retryable = $code === 0 || $code === 408 || $code >= 500
                     || ($code === 429 && !preg_match('/quota|credit|billing/i', $exception->getMessage()));
                 if (!$retryable) throw $exception;
-                ai_sse_emit('status', ['label' => 'APPI menghubungkan ulang provider']);
+                ai_sse_step('APPI lagi menyambung ulang…', 'Menyambung ulang', 'Percobaan pertama ditolak provider, APPI mencoba sekali lagi.');
                 $reply = ai_openrouter_stream_completion($settings, $apiKey, ai_system_prompt(), $userPrompt, $webSearch, $imageDataUrl, $responseDetails, $history);
             }
         }
