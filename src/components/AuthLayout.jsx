@@ -169,25 +169,25 @@ function AuthLayout({ title, subtitle, footer = null, children, icon = null, ton
     <div className="auth">
       <main className="stack auth-main" aria-labelledby="auth-title">
         <div className="stack gap-8 w-full auth-col">
-          <Link to="/" aria-label="AAPM Layer Academy" style={{ alignSelf: "flex-start" }}><Logo variant="main" alt="AAPM .academy" style={{ height: 84 }} /></Link>
+          <Link to="/" aria-label="AAPM Layer Academy" className="auth-logo"><Logo variant="main" alt="AAPM .academy" style={{ height: 84 }} /></Link>
           <div className="stack gap-6">
             {compact ? (
-              <div className="row" style={{ height: 64 }}>
+              <div className="row justify-center" style={{ height: 64 }}>
                 {visual || <span className="tile tile-xl" style={TONE_STYLE[tone] || undefined}><Ic name={icon} /></span>}
               </div>
             ) : null}
-            <header className="stack gap-1">
+            <header className="stack gap-1 auth-head">
               <h1 className={compact ? "t-title-c" : "t-title"} id="auth-title">{title}</h1>
               {subtitle ? <p className="t-body t-muted t-pretty">{subtitle}</p> : null}
             </header>
             <div className="stack gap-5 auth-body">{children}</div>
             {back ? (
-              <Link className="btn btn-link" to={back.to || "/login"} style={{ alignSelf: "flex-start" }}><Ic name="arrow-left" />{back.label || "Kembali ke halaman masuk"}</Link>
+              <Link className="btn btn-link" to={back.to || "/login"} style={{ alignSelf: "center" }}><Ic name="arrow-left" />{back.label || "Kembali ke halaman masuk"}</Link>
             ) : null}
-            {footer ? <p className="t-body t-muted">{footer}</p> : null}
+            {footer ? <p className="t-body t-muted t-center">{footer}</p> : null}
           </div>
         </div>
-        <footer className="stack gap-1 t-caption t-muted w-full mt-auto auth-col" style={{ paddingTop: "var(--s-10)" }}>
+        <footer className="stack gap-1 t-caption t-muted t-center w-full mt-auto auth-col" style={{ paddingTop: "var(--s-10)" }}>
           <span>© {new Date().getFullYear()} AAPM · Pelatihan profesional manajemen layer farm</span>
         </footer>
       </main>

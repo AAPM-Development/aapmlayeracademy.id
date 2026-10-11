@@ -114,7 +114,7 @@
   .aapm-insert-point__button .aapm-icon { width: 16px; height: 16px; }
   .aapm-block__bar { opacity: 1; pointer-events: auto; transform: none; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - var(--aapm-primitive-space-4)); }
   .aapm-block__tools { flex-wrap: wrap; justify-content: flex-end; }
-  .aapm-block__bar .aapm-button { min-width: 44px; min-height: 44px; }
+  .aapm-block__bar .aapm-button, .aapm-block__bar .btn { min-width: 44px; min-height: 44px; }
 }
 
 /* Block library. */
