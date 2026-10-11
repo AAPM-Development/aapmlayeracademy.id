@@ -634,3 +634,39 @@ input.input { display: block; }
 /* The cover number sits inside the cover instead of bleeding off its bottom
    edge, which read as clipped. */
 .aapm .cover-num { bottom: 8px; right: 12px; }
+
+/* ------------------------------------------------------------ APPI editor companion */
+/* Before → after: the old value muted on the left, APPI's version on the right
+   (stacked in the narrow inspector). */
+.appi-diff { display: grid; gap: var(--s-2); grid-template-columns: 1fr; }
+@container (min-width: 520px) { .appi-diff { grid-template-columns: 1fr 1fr; } }
+.appi-diff-side { display: grid; gap: 4px; min-width: 0; padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); font-size: var(--fs-sm); line-height: 20px; overflow-wrap: anywhere; }
+.appi-diff-side .t-overline { font-size: 11px; }
+.appi-diff-before { background: var(--surface-subtle); color: var(--muted); }
+.appi-diff-after { background: color-mix(in srgb, var(--ai) 9%, var(--surface)); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--ai) 55%, var(--surface)); color: var(--fg); }
+.appi-diff-after .t-overline { color: var(--ai-ink); }
+.appi-diff-text { white-space: pre-wrap; }
+.appi-diff-list { display: grid; gap: 2px; padding-left: 16px; list-style: disc; }
+.appi-diff-md { font-size: var(--fs-sm); line-height: 20px; max-height: 220px; overflow: auto; }
+.appi-diff-md :is(p, ul, ol) { margin: 0 0 6px; }
+.appi-diff-md :is(h1, h2, h3, h4) { font-size: var(--fs-md); margin: 0 0 4px; }
+.appi-diff-md img { max-height: 80px; width: auto; }
+.appi-preset { cursor: pointer; border: 0; font: inherit; font-size: var(--fs-xs); }
+.appi-preset[aria-pressed="true"] { background: var(--ai); color: var(--on-ai); }
+.appi-applied { align-items: center; }
+.appi-issue .btn { flex: none; }
+.appi-material > summary { cursor: pointer; padding: var(--s-1) var(--s-2); }
+.aapm-editor-ai { container-type: inline-size; }
+/* Paragraph diff inside a text block. */
+.appi-pdiff { display: grid; gap: var(--s-1-5); }
+.appi-pdiff-same { padding: 2px var(--s-2); border-left: 2px dashed var(--border-strong); }
+.appi-pdiff-row { display: grid; gap: 2px; padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); }
+.appi-pdiff-added { background: color-mix(in srgb, var(--ai) 9%, var(--surface)); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--ai) 60%, var(--surface)); }
+.appi-pdiff-removed { background: var(--surface-subtle); color: var(--muted); }
+.appi-pdiff-removed .appi-diff-md { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.appi-pdiff-tag { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.appi-pdiff-added .appi-pdiff-tag { color: var(--ai-ink); }
+.appi-pdiff-removed .appi-pdiff-tag { color: var(--danger-text); }
+.appi-pdiff .appi-diff-md :is(p, li, span, strong, em, a), .appi-diff .appi-diff-md :is(p, li, span, strong, em, a) { font-size: var(--fs-sm); line-height: 20px; }
+/* Presets wrap inside the narrow inspector instead of running off its edge. */
+.appi-preset { height: auto; min-height: 28px; max-width: 100%; padding-block: 4px; white-space: normal; text-align: left; line-height: 16px; }
