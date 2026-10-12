@@ -828,3 +828,12 @@ input.input { display: block; }
 /* Calculator chip strip: still swipeable, without the native scrollbar on phones. */
 .calc-pills { scrollbar-width: none; -ms-overflow-style: none; }
 .calc-pills::-webkit-scrollbar { display: none; }
+
+/* Quiz result stats: three compact columns even on phones (not one tall card each). */
+.result-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+@media (max-width: 639px) {
+  .result-stats .metric { padding: 10px 6px; gap: 4px; min-width: 0; }
+  .result-stats .metric-label { flex-direction: column; gap: 4px; font-size: 11px; line-height: 14px; text-align: center; }
+  .result-stats .metric-value { font-size: 20px; line-height: 24px; }
+  .result-stats .metric-value small { font-size: 12px; }
+}
