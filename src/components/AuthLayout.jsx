@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
 import { Ic, Logo } from "@/design-system/canvas";
+import { usePwaInstall } from "@/lib/usePwaInstall";
 
 const academyInsights = [
   "Performa farm yang sehat dimulai dari kemampuan membaca sinyal—pakan, air, telur, dan perilaku ayam.",
@@ -157,6 +158,53 @@ export function PasswordRequirements({ id, value }) {
  * 64 px visual row (an icon tile whose tone carries meaning, or APPI) and a
  * "back" link under the main action.
  */
+/**
+ * Install the web app from the sign-in pages. Android (and desktop Chromium) get a
+ * one-tap prompt when the browser offers it; iPhone and iPad get the Safari steps,
+ * since iOS has no install prompt. Hidden once the app is installed or run standalone.
+ */
+function AuthInstallHint() {
+  const pwa = usePwaInstall();
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!pwa || pwa.isInstalled) return null;
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const ios = /iPad|iPhone|iPod/.test(ua) || (typeof navigator !== "undefined" && navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const android = /Android/i.test(ua);
+  if (!pwa.canInstall && !ios && !android) return null;
+
+  const install = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const choice = await pwa.install();
+      if (choice?.outcome !== "accepted") setMessage("Pemasangan dibatalkan. Anda bisa mencobanya lagi kapan saja.");
+    } catch {
+      setMessage("Pemasangan belum bisa dibuka. Gunakan menu browser, lalu pilih Instal aplikasi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const steps = ios
+    ? "Di iPhone atau iPad: buka Academy di Safari, ketuk Bagikan, lalu Tambahkan ke Layar Utama."
+    : "Di Android: buka menu browser (⋮), lalu pilih Instal aplikasi atau Tambahkan ke layar utama.";
+
+  return (
+    <aside className="card row wrap gap-3 auth-install" aria-label="Pasang Academy" style={{ padding: "12px 16px" }}>
+      <span className="tile tile-sm" data-hue="green" aria-hidden="true"><Ic name="phone" /></span>
+      <div className="stack grow" style={{ minWidth: 200 }}>
+        <span className="t-support t-strong">Pasang Academy di ponsel</span>
+        <span className="t-caption t-muted">{pwa.canInstall ? "Buka lebih cepat langsung dari layar utama." : steps}</span>
+        {message ? <span className="t-caption t-muted" role="status">{message}</span> : null}
+      </div>
+      {pwa.canInstall ? (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={install} disabled={busy} aria-busy={busy || undefined}><Ic name="download" />{busy ? "Membuka…" : "Pasang"}</button>
+      ) : null}
+    </aside>
+  );
+}
+
 function AuthLayout({ title, subtitle, footer = null, children, icon = null, tone = null, visual = null, back = null }) {
   const compact = Boolean(icon || visual);
   useEffect(() => {
@@ -185,6 +233,7 @@ function AuthLayout({ title, subtitle, footer = null, children, icon = null, ton
               <Link className="btn btn-link" to={back.to || "/login"} style={{ alignSelf: "center" }}><Ic name="arrow-left" />{back.label || "Kembali ke halaman masuk"}</Link>
             ) : null}
             {footer ? <p className="t-body t-muted t-center">{footer}</p> : null}
+            <AuthInstallHint />
           </div>
         </div>
         <footer className="stack gap-1 t-caption t-muted t-center w-full mt-auto auth-col" style={{ paddingTop: "var(--s-10)" }}>

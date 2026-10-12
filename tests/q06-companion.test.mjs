@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
-const run = spawnSync("php", ["-d", "extension=mbstring", join(repo, "tests", "fixtures", "q06", "companion.php")], { encoding: "utf8" });
+const run = spawnSync("php", [join(repo, "tests", "fixtures", "q06", "companion.php")], { encoding: "utf8" });
 assert.equal(run.status, 0, run.stderr || run.stdout);
 const out = JSON.parse(run.stdout);
 
