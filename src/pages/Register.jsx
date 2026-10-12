@@ -18,7 +18,7 @@ import {
 // Development builds may receive a verification token so the flow can be exercised
 // locally. Deployed responses never include one, and this link is never rendered for them.
 function devVerificationLink(token) {
-  return token ? `${window.location.origin}/verify-email#token=${encodeURIComponent(token)}` : "";
+  return token ? `${window.location.origin}/verify-email?token=${encodeURIComponent(token)}` : "";
 }
 
 export default function Register() {

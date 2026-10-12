@@ -228,7 +228,9 @@ function aapm_bump_auth_version(PDO $pdo, int $userId): void
 
 function aapm_verification_url(string $token): string
 {
-    return app_base_url() . '/verify-email#token=' . $token;
+    // A query string survives mail-client link rewriting and scanners that drop "#fragments";
+    // the page removes it from the address bar as soon as it has read it.
+    return app_base_url() . '/verify-email?token=' . rawurlencode($token);
 }
 
 function aapm_send_verification_email(string $email, string $token): bool
@@ -243,21 +245,15 @@ function aapm_send_verification_email(string $email, string $token): bool
         return false;
     }
 
-    $subject = 'Verifikasi email AAPM Layer Academy';
-    $body = "Halo,\n\nGunakan tautan berikut untuk memverifikasi alamat email akun AAPM Layer Academy Anda dalam waktu 24 jam:\n"
-        . $link . "\n\nJika Anda tidak membuat akun ini, abaikan email ini.\n";
-    $headers = implode("\r\n", [
-        'From: ' . $from,
-        'Reply-To: ' . $from,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
-    ]);
+    $bodies = aapm_mail_bodies(
+        'Halo,',
+        'Konfirmasi alamat email akun AAPM Layer Academy Anda. Tautan berlaku 24 jam dan hanya bisa dipakai sekali.',
+        'Verifikasi email',
+        $link,
+        'Jika Anda tidak membuat akun ini, abaikan email ini.'
+    );
 
-    if (function_exists('mail') && @mail($email, $subject, $body, $headers)) {
-        return true;
-    }
-
-    return send_smtp_email($email, $from, $subject, $body);
+    return aapm_mail_deliver($email, $from, 'Verifikasi email AAPM Layer Academy', $bodies);
 }
 
 /**

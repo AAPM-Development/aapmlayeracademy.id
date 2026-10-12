@@ -5,6 +5,8 @@ require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/assessment.php';
 require_once __DIR__ . '/certification.php';
 require_once __DIR__ . '/curriculum.php';
+require_once __DIR__ . '/rewards.php';
+require_once __DIR__ . '/mail.php';
 
 /**
  * Shared native API bootstrap.
@@ -797,6 +799,7 @@ function ensure_schema(PDO $pdo, string $driver): void
     ensure_curricula($pdo, $driver);
     ensure_learner_achievements($pdo, $driver);
     ensure_user_profile_avatar($pdo, $driver);
+    ensure_admin_hall_default_off($pdo);
     ensure_user_ai_supports_vision($pdo, $driver);
     ensure_ai_conversation_archive($pdo, $driver);
     ensure_ai_response_details($pdo, $driver);
@@ -1001,6 +1004,26 @@ function ensure_curricula(PDO $pdo, string $driver): void
     }
     $pdo->prepare('INSERT IGNORE INTO curricula (id, title, summary, sort_order) VALUES (?, ?, ?, 0)')
         ->execute([AAPM_PRIMARY_CURRICULUM, 'Layer Poultry Farm Management', '']);
+}
+
+/**
+ * Admins were never listed in the Hall of Fame, so any opt-in stored on an admin
+ * profile was never seen. Now that admins may opt in, reset those once so nobody
+ * appears by surprise; they can switch it on in their profile.
+ */
+function ensure_admin_hall_default_off(PDO $pdo): void
+{
+    try {
+        $done = $pdo->prepare('SELECT 1 FROM app_settings WHERE setting_key = ? LIMIT 1');
+        $done->execute(['hall_admin_default_off']);
+        if ($done->fetchColumn()) {
+            return;
+        }
+        $pdo->exec("UPDATE user_profiles SET hall_of_fame_opt_in = 0 WHERE user_id IN (SELECT id FROM users WHERE role IN ('admin', 'super_admin'))");
+        $pdo->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)')->execute(['hall_admin_default_off', '1']);
+    } catch (Throwable $error) {
+        error_log('Hall of Fame admin default skipped.');
+    }
 }
 
 /** Achievements stay earned: a later catalogue change must not take a badge back. */
@@ -1454,20 +1477,15 @@ function send_password_reset_email(string $email, string $token): bool
         return false;
     }
 
-    $subject = 'Atur ulang kata sandi AAPM Layer Academy';
-    $body = "Halo,\n\nKami menerima permintaan untuk mengganti kata sandi akun AAPM Layer Academy Anda.\n\nBuka tautan berikut dalam waktu 60 menit:\n" . $link . "\n\nJika Anda tidak meminta perubahan ini, abaikan email ini.\n";
-    $headers = implode("\r\n", [
-        'From: ' . $from,
-        'Reply-To: ' . $from,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
-    ]);
+    $bodies = aapm_mail_bodies(
+        'Halo,',
+        'Kami menerima permintaan untuk mengganti kata sandi akun AAPM Layer Academy Anda. Tautan berlaku 60 menit.',
+        'Atur ulang kata sandi',
+        $link,
+        'Jika Anda tidak meminta perubahan ini, abaikan email ini. Kata sandi Anda tidak berubah.'
+    );
 
-    if (function_exists('mail') && @mail($email, $subject, $body, $headers)) {
-        return true;
-    }
-
-    return send_smtp_email($email, $from, $subject, $body);
+    return aapm_mail_deliver($email, $from, 'Atur ulang kata sandi AAPM Layer Academy', $bodies);
 }
 
 function smtp_response($socket): string
@@ -1497,7 +1515,8 @@ function smtp_command($socket, string $command, array $expectedCodes): bool
     return in_array(smtp_code(smtp_response($socket)), $expectedCodes, true);
 }
 
-function send_smtp_email(string $email, string $from, string $subject, string $body): bool
+/** Sends a built message (see aapm_mail_build) over SMTP. CRLF throughout, dot-stuffed. */
+function send_smtp_message(string $email, string $from, string $encodedSubject, array $message): bool
 {
     $config = app_config();
     $host = (string) ($config['mail_host'] ?? '127.0.0.1');
@@ -1517,26 +1536,39 @@ function send_smtp_email(string $email, string $from, string $subject, string $b
     $connected = $connected && smtp_command($socket, 'DATA', [354]);
 
     if ($connected) {
-        $message = implode("\r\n", [
-            'From: ' . $from,
-            'To: ' . $email,
-            'Subject: ' . $subject,
-            'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-            '',
-            $body,
-        ]);
-        $message = preg_replace('/(?m)^\./', '..', $message);
-        $connected = fwrite($socket, $message . "\r\n.\r\n") !== false
+        $raw = $message['headers'] . "
+To: " . aapm_mail_header_value($email) . "
+Subject: " . $encodedSubject . "
+
+" . $message['body'];
+        $raw = preg_replace('/(?m)^\./', '..', $raw);
+        $connected = fwrite($socket, $raw . "
+.
+") !== false
             && in_array(smtp_code(smtp_response($socket)), [250], true);
     }
 
     if (is_resource($socket)) {
-        @fwrite($socket, "QUIT\r\n");
+        @fwrite($socket, "QUIT
+");
         fclose($socket);
     }
 
     return $connected;
+}
+
+/** Plain-text entry point kept for callers that only have a text body. */
+function send_smtp_email(string $email, string $from, string $subject, string $body): bool
+{
+    $text = str_replace(["
+", ""], "
+", $body);
+    $text = str_replace("
+", "
+", $text);
+    $message = aapm_mail_build($from, $subject, ['text' => $text, 'html' => '<pre style="font-family:inherit;white-space:pre-wrap">' . htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</pre>']);
+
+    return send_smtp_message($email, $from, aapm_mail_encode_subject($subject), $message);
 }
 
 function nullable_number(array $data, string $key)
@@ -2300,36 +2332,13 @@ function profile_learning_summary(int $userId, ?array $context = null, bool $rec
     $quizTotal = (float) ($progress['quizTotalSum'] ?? 0);
     $quizAverage = $quizTotal > 0 ? max(0, min(100, (int) round(($quizScore / $quizTotal) * 100))) : null;
     $minutes = (int) ($progress['timeSpentMinutes'] ?? 0);
-    $points = ($completed * 100) + ($practical * 35) + ($certificates * 150) + min(100, $quizAverage ?? 0) + (min(12, $farmEntries) * 10) + min(60, intdiv($minutes, 10));
+    $points = aapm_reward_points(['completed' => $completed, 'practical' => $practical, 'certificates' => $certificates, 'quizAverage' => $quizAverage, 'farmEntries' => $farmEntries, 'minutes' => $minutes]);
 
-    $level = $points >= 900 ? ['name' => 'Layer Leader', 'nextAt' => null] : ($points >= 450 ? ['name' => 'Farm Analyst', 'nextAt' => 900] : ($points >= 160 ? ['name' => 'Field Builder', 'nextAt' => 450] : ['name' => 'Foundation', 'nextAt' => 160]));
-    $achievements = [
-        ['id' => 'first-step', 'title' => 'Langkah pertama', 'description' => 'Simpan aktivitas pada modul pertama.', 'icon' => 'solar:flag-2-bold-duotone', 'current' => $entries, 'target' => 1],
-        ['id' => 'module-finisher', 'title' => 'Modul tuntas', 'description' => 'Selesaikan minimal satu modul pembelajaran.', 'icon' => 'solar:check-read-bold-duotone', 'current' => $completed, 'target' => 1],
-        ['id' => 'field-practice', 'title' => 'Praktik lapangan', 'description' => 'Tandai sedikitnya satu praktik sebagai selesai.', 'icon' => 'solar:leaf-bold-duotone', 'current' => $practical, 'target' => 1],
-        ['id' => 'quiz-ready', 'title' => 'Siap evaluasi', 'description' => 'Kumpulkan nilai kuis rata-rata minimal 80%.', 'icon' => 'solar:cup-star-bold-duotone', 'current' => $quizAverage ?? 0, 'target' => 80],
-        ['id' => 'farm-journal', 'title' => 'Catatan farm konsisten', 'description' => 'Simpan empat catatan KPI untuk analisis yang lebih bermakna.', 'icon' => 'solar:chart-2-bold-duotone', 'current' => $farmEntries, 'target' => 4],
-        ['id' => 'certified', 'title' => 'Tersertifikasi', 'description' => 'Peroleh sertifikat dari alur pembelajaran.', 'icon' => 'solar:diploma-verified-bold-duotone', 'current' => $certificates, 'target' => 1],
-        // Every goal below is counted from stored learning data only.
-        ['id' => 'modules-3', 'title' => 'Mulai melaju', 'description' => 'Selesaikan 3 modul.', 'current' => $completed, 'target' => 3],
-        ['id' => 'modules-5', 'title' => 'Konsisten belajar', 'description' => 'Selesaikan 5 modul.', 'current' => $completed, 'target' => 5],
-        ['id' => 'modules-10', 'title' => 'Sepuluh modul', 'description' => 'Selesaikan 10 modul pembelajaran.', 'current' => $completed, 'target' => 10],
-        ['id' => 'halfway', 'title' => 'Setengah jalan', 'description' => 'Capai 50% kurikulum.', 'current' => bounded_progress_percent($completed, $moduleTotal), 'target' => 50],
-        ['id' => 'course-complete', 'title' => 'Lulus kurikulum', 'description' => 'Selesaikan seluruh modul kurikulum.', 'current' => $completed, 'target' => max(1, $moduleTotal)],
-        ['id' => 'practice-3', 'title' => 'Tangan di kandang', 'description' => 'Selesaikan 3 praktik lapangan.', 'current' => $practical, 'target' => 3],
-        ['id' => 'practice-10', 'title' => 'Praktisi andal', 'description' => 'Selesaikan 10 praktik lapangan.', 'current' => $practical, 'target' => 10],
-        ['id' => 'quiz-90', 'title' => 'Nilai cemerlang', 'description' => 'Pertahankan rata-rata kuis minimal 90%.', 'current' => $quizAverage ?? 0, 'target' => 90],
-        ['id' => 'farm-8', 'title' => 'Data makin tajam', 'description' => 'Simpan 8 catatan KPI farm.', 'current' => $farmEntries, 'target' => 8],
-        ['id' => 'farm-12', 'title' => 'Pencatat setia', 'description' => 'Simpan 12 catatan KPI farm.', 'current' => $farmEntries, 'target' => 12],
-        ['id' => 'study-1h', 'title' => 'Satu jam fokus', 'description' => 'Belajar total 1 jam.', 'current' => $minutes, 'target' => 60],
-        ['id' => 'study-5h', 'title' => 'Lima jam belajar', 'description' => 'Belajar total 5 jam.', 'current' => $minutes, 'target' => 300],
-        ['id' => 'study-10h', 'title' => 'Sepuluh jam belajar', 'description' => 'Belajar total 10 jam.', 'current' => $minutes, 'target' => 600],
-        ['id' => 'level-builder', 'title' => 'Field Builder', 'description' => 'Capai 160 poin pembelajaran.', 'current' => $points, 'target' => 160],
-        ['id' => 'level-analyst', 'title' => 'Farm Analyst', 'description' => 'Capai 450 poin pembelajaran.', 'current' => $points, 'target' => 450],
-        ['id' => 'level-leader', 'title' => 'Layer Leader', 'description' => 'Capai 900 poin pembelajaran.', 'current' => $points, 'target' => 900],
-        ['id' => 'points-1500', 'title' => 'Bintang Academy', 'description' => 'Kumpulkan 1.500 poin pembelajaran.', 'current' => $points, 'target' => 1500],
-        ['id' => 'certified-2', 'title' => 'Dua sertifikat', 'description' => 'Peroleh 2 sertifikat dari alur pembelajaran.', 'current' => $certificates, 'target' => 2],
-    ];
+    $level = aapm_reward_level($points);
+    $achievements = aapm_reward_achievement_definitions([
+        'entries' => $entries, 'completed' => $completed, 'practical' => $practical, 'quizAverage' => $quizAverage,
+        'farmEntries' => $farmEntries, 'certificates' => $certificates, 'minutes' => $minutes, 'moduleTotal' => $moduleTotal, 'points' => $points,
+    ]);
     // With several curricula in the learner's catalogue, finishing each one is its own goal.
     $perCurriculum = [];
     foreach ($catalogue as $entry) {
@@ -2422,6 +2431,7 @@ function profile_data(array $user): array
             'updatedAt' => $profile['updated_at'] ?? null,
         ],
         'learning' => profile_learning_summary((int) $user['id'], null, true),
+        'rewardLevels' => aapm_reward_levels(),
         'achievementNote' => 'Prestasi dan level dihitung dari aktivitas belajar serta data farm yang benar-benar tersimpan.',
     ];
 }
@@ -2457,7 +2467,8 @@ function hall_of_fame_data(?int $viewerId = null): array
     $candidates = [];
     foreach ($rows as $row) {
         $user = present_authenticated_user($row);
-        if (in_array($user['role'], ['admin', 'super_admin'], true) || trim($user['full_name']) === '') {
+        // Admins are listed only when they chose to appear (the switch defaults to off for everyone).
+        if (trim($user['full_name']) === '') {
             continue;
         }
         $candidates[] = $user;
