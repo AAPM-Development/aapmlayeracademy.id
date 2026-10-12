@@ -1,12 +1,12 @@
 {
   "schema": "aapm-release-manifest/1",
-  "channel": "staging",
-  "sourceCommit": "b05529822fe97be3c94fe5da5eb0026889f58b45",
+  "channel": "production",
+  "sourceCommit": "aff3e993c90cc1d8598f423d87f2fe3c4355f52a",
   "sourceDirty": false,
   "sourceTreeFingerprint": "64a730c1ba4ec2044ccd76365dc35aaed0e5df24a8d50ccc324232bc07920e39",
   "sourceFileCount": 287,
   "artifactId": "a91559b8a2da910b1c2f7096b9ddef063c2f03860f95716b59cf7de4e7a013e2",
-  "builtAt": "2026-10-12T04:32:08.193Z",
+  "builtAt": "2026-10-12T04:33:57.298Z",
   "schemaCompatibility": {
     "migrationKey": "20260909_ai_conversation_archiving_v1",
     "environmentMarkerTable": "aapm_environment_marker"
@@ -55,22 +55,22 @@
     {
       "path": "api/mail.php",
       "sha256": "ac58772b7f1dee7869abed49c9b903a2f79db42bad6f703a26e41f83b317830f",
-      "bytes": 4821
+      "bytes": 4911
     },
     {
       "path": "api/openrouter.php",
       "sha256": "d1acbcdf482c76358895966350b3c25c7fbf0aac9b25ac1a572473ea64883afc",
-      "bytes": 66371
+      "bytes": 67560
     },
     {
       "path": "api/rewards.php",
       "sha256": "fb0ce4695c85d51eddfd2411ea129d2038d531e2170b9d11d5f24407c8288f31",
-      "bytes": 7416
+      "bytes": 7527
     },
     {
       "path": "api/security.php",
       "sha256": "222e921790890539e89debe8c25fd6ba72c957dba635a7eddeb02fa325d6ea79",
-      "bytes": 16878
+      "bytes": 17328
     },
     {
       "path": "assets/AdminAiSettings-Db2oMX1X.js",
