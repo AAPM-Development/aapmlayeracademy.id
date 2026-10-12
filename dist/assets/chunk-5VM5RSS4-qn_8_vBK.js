@@ -1,4 +1,4 @@
-import{_ as e}from"./MermaidDiagram-VuL8bbph.js";var l=e(()=>`
+import{_ as e}from"./MermaidDiagram-Cl6cAMJx.js";var l=e(()=>`
   /* Font Awesome icon styling - consolidated */
   .label-icon {
     display: inline-block;

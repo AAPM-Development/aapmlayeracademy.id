@@ -1006,26 +1006,6 @@ function ensure_curricula(PDO $pdo, string $driver): void
         ->execute([AAPM_PRIMARY_CURRICULUM, 'Layer Poultry Farm Management', '']);
 }
 
-/**
- * Admins were never listed in the Hall of Fame, so any opt-in stored on an admin
- * profile was never seen. Now that admins may opt in, reset those once so nobody
- * appears by surprise; they can switch it on in their profile.
- */
-function ensure_admin_hall_default_off(PDO $pdo): void
-{
-    try {
-        $done = $pdo->prepare('SELECT 1 FROM app_settings WHERE setting_key = ? LIMIT 1');
-        $done->execute(['hall_admin_default_off']);
-        if ($done->fetchColumn()) {
-            return;
-        }
-        $pdo->exec("UPDATE user_profiles SET hall_of_fame_opt_in = 0 WHERE user_id IN (SELECT id FROM users WHERE role IN ('admin', 'super_admin'))");
-        $pdo->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)')->execute(['hall_admin_default_off', '1']);
-    } catch (Throwable $error) {
-        error_log('Hall of Fame admin default skipped.');
-    }
-}
-
 /** Achievements stay earned: a later catalogue change must not take a badge back. */
 function ensure_learner_achievements(PDO $pdo, string $driver): void
 {
@@ -2334,11 +2314,34 @@ function profile_learning_summary(int $userId, ?array $context = null, bool $rec
     $minutes = (int) ($progress['timeSpentMinutes'] ?? 0);
     $points = aapm_reward_points(['completed' => $completed, 'practical' => $practical, 'certificates' => $certificates, 'quizAverage' => $quizAverage, 'farmEntries' => $farmEntries, 'minutes' => $minutes]);
 
-    $level = aapm_reward_level($points);
-    $achievements = aapm_reward_achievement_definitions([
-        'entries' => $entries, 'completed' => $completed, 'practical' => $practical, 'quizAverage' => $quizAverage,
-        'farmEntries' => $farmEntries, 'certificates' => $certificates, 'minutes' => $minutes, 'moduleTotal' => $moduleTotal, 'points' => $points,
-    ]);
+    $level = $points >= 900 ? ['name' => 'Layer Leader', 'nextAt' => null] : ($points >= 450 ? ['name' => 'Farm Analyst', 'nextAt' => 900] : ($points >= 160 ? ['name' => 'Field Builder', 'nextAt' => 450] : ['name' => 'Foundation', 'nextAt' => 160]));
+    $achievements = [
+        ['id' => 'first-step', 'title' => 'Langkah pertama', 'description' => 'Simpan aktivitas pada modul pertama.', 'icon' => 'solar:flag-2-bold-duotone', 'current' => $entries, 'target' => 1],
+        ['id' => 'module-finisher', 'title' => 'Modul tuntas', 'description' => 'Selesaikan minimal satu modul pembelajaran.', 'icon' => 'solar:check-read-bold-duotone', 'current' => $completed, 'target' => 1],
+        ['id' => 'field-practice', 'title' => 'Praktik lapangan', 'description' => 'Tandai sedikitnya satu praktik sebagai selesai.', 'icon' => 'solar:leaf-bold-duotone', 'current' => $practical, 'target' => 1],
+        ['id' => 'quiz-ready', 'title' => 'Siap evaluasi', 'description' => 'Kumpulkan nilai kuis rata-rata minimal 80%.', 'icon' => 'solar:cup-star-bold-duotone', 'current' => $quizAverage ?? 0, 'target' => 80],
+        ['id' => 'farm-journal', 'title' => 'Catatan farm konsisten', 'description' => 'Simpan empat catatan KPI untuk analisis yang lebih bermakna.', 'icon' => 'solar:chart-2-bold-duotone', 'current' => $farmEntries, 'target' => 4],
+        ['id' => 'certified', 'title' => 'Tersertifikasi', 'description' => 'Peroleh sertifikat dari alur pembelajaran.', 'icon' => 'solar:diploma-verified-bold-duotone', 'current' => $certificates, 'target' => 1],
+        // Every goal below is counted from stored learning data only.
+        ['id' => 'modules-3', 'title' => 'Mulai melaju', 'description' => 'Selesaikan 3 modul.', 'current' => $completed, 'target' => 3],
+        ['id' => 'modules-5', 'title' => 'Konsisten belajar', 'description' => 'Selesaikan 5 modul.', 'current' => $completed, 'target' => 5],
+        ['id' => 'modules-10', 'title' => 'Sepuluh modul', 'description' => 'Selesaikan 10 modul pembelajaran.', 'current' => $completed, 'target' => 10],
+        ['id' => 'halfway', 'title' => 'Setengah jalan', 'description' => 'Capai 50% kurikulum.', 'current' => bounded_progress_percent($completed, $moduleTotal), 'target' => 50],
+        ['id' => 'course-complete', 'title' => 'Lulus kurikulum', 'description' => 'Selesaikan seluruh modul kurikulum.', 'current' => $completed, 'target' => max(1, $moduleTotal)],
+        ['id' => 'practice-3', 'title' => 'Tangan di kandang', 'description' => 'Selesaikan 3 praktik lapangan.', 'current' => $practical, 'target' => 3],
+        ['id' => 'practice-10', 'title' => 'Praktisi andal', 'description' => 'Selesaikan 10 praktik lapangan.', 'current' => $practical, 'target' => 10],
+        ['id' => 'quiz-90', 'title' => 'Nilai cemerlang', 'description' => 'Pertahankan rata-rata kuis minimal 90%.', 'current' => $quizAverage ?? 0, 'target' => 90],
+        ['id' => 'farm-8', 'title' => 'Data makin tajam', 'description' => 'Simpan 8 catatan KPI farm.', 'current' => $farmEntries, 'target' => 8],
+        ['id' => 'farm-12', 'title' => 'Pencatat setia', 'description' => 'Simpan 12 catatan KPI farm.', 'current' => $farmEntries, 'target' => 12],
+        ['id' => 'study-1h', 'title' => 'Satu jam fokus', 'description' => 'Belajar total 1 jam.', 'current' => $minutes, 'target' => 60],
+        ['id' => 'study-5h', 'title' => 'Lima jam belajar', 'description' => 'Belajar total 5 jam.', 'current' => $minutes, 'target' => 300],
+        ['id' => 'study-10h', 'title' => 'Sepuluh jam belajar', 'description' => 'Belajar total 10 jam.', 'current' => $minutes, 'target' => 600],
+        ['id' => 'level-builder', 'title' => 'Field Builder', 'description' => 'Capai 160 poin pembelajaran.', 'current' => $points, 'target' => 160],
+        ['id' => 'level-analyst', 'title' => 'Farm Analyst', 'description' => 'Capai 450 poin pembelajaran.', 'current' => $points, 'target' => 450],
+        ['id' => 'level-leader', 'title' => 'Layer Leader', 'description' => 'Capai 900 poin pembelajaran.', 'current' => $points, 'target' => 900],
+        ['id' => 'points-1500', 'title' => 'Bintang Academy', 'description' => 'Kumpulkan 1.500 poin pembelajaran.', 'current' => $points, 'target' => 1500],
+        ['id' => 'certified-2', 'title' => 'Dua sertifikat', 'description' => 'Peroleh 2 sertifikat dari alur pembelajaran.', 'current' => $certificates, 'target' => 2],
+    ];
     // With several curricula in the learner's catalogue, finishing each one is its own goal.
     $perCurriculum = [];
     foreach ($catalogue as $entry) {
@@ -2431,7 +2434,6 @@ function profile_data(array $user): array
             'updatedAt' => $profile['updated_at'] ?? null,
         ],
         'learning' => profile_learning_summary((int) $user['id'], null, true),
-        'rewardLevels' => aapm_reward_levels(),
         'achievementNote' => 'Prestasi dan level dihitung dari aktivitas belajar serta data farm yang benar-benar tersimpan.',
     ];
 }
