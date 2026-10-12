@@ -663,6 +663,16 @@ export default function Calculators() {
         </div>
       </header>
 
+      {/* Farm KPI lives beside the calculators: on phones the Alat tab is the only path to it. */}
+      <Link className="card card-tactile row gap-3 calc-kpi-link" to="/kpi" data-hue="teal">
+        <span className="tile tile-sm" aria-hidden="true"><Ic name="chart" /></span>
+        <span className="stack grow gap-0-5" style={{ minWidth: 0 }}>
+          <span className="t-strong">Farm KPI</span>
+          <span className="t-caption t-muted">Catat data mingguan untuk dibaca bersama kalkulator.</span>
+        </span>
+        <Ic name="chev-right" className="t-muted" />
+      </Link>
+
       <div className="scroll-x calc-pills" aria-label="Pilih kalkulator">
         <div className="row gap-2" role="group" aria-label="Pilih kalkulator" style={{ width: "max-content" }}>
           {tools.map((item) => (
