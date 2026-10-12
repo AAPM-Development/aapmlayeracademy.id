@@ -202,7 +202,7 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .suggest:hover { border-color: var(--border-strong); background: var(--surface-subtle); }
 .suggest .aapm-icon { --ic: 14px; }
 /* APPI cepat: a non-modal panel docked where the launcher sits. */
-.appi-panel { position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: var(--z-overlay); width: min(400px, calc(100vw - 48px)); height: min(640px, calc(100dvh - 48px)); border-radius: var(--r-surface); overflow: hidden; box-shadow: var(--shadow-overlay); }
+.appi-panel { position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: var(--z-overlay); width: min(468px, calc(100vw - 48px)); height: min(780px, calc(100dvh - 48px)); border-radius: var(--r-surface); overflow: hidden; box-shadow: var(--shadow-overlay); }
 .appi-panel.aapm-ai-panel--enter { animation: rise 420ms var(--ease) both; }
 .appi-panel.aapm-ai-panel--exit { animation: dialog-panel-out var(--dur) var(--ease) forwards; }
 @keyframes dialog-panel-out { to { opacity: 0; transform: translateY(12px) scale(.98); } }
@@ -776,3 +776,26 @@ input.input { display: block; }
 .aapm-presentation-header > :first-child { flex: 1 1 180px; min-width: 0; }
 .aapm-presentation-header > :first-child p { overflow-wrap: anywhere; }
 .aapm-presentation-header > :last-child { margin-left: auto; }
+
+/* Pencapaian: unlocked ones read as earned (gold ledge, glow), near-complete ones as "almost". */
+.achv-hero { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: var(--r-panel); background: var(--h-tint, var(--primary-soft)); border: 2px solid var(--h-soft, var(--primary-tint)); }
+.achv-hero[data-hue="gold"] { background: var(--gold-soft); border-color: var(--gold-tint); --h: var(--gold); }
+.achv-hero-medal { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%; background: var(--gold); color: var(--on-gold); box-shadow: 0 4px 0 var(--gold-ledge); }
+.achv-hero-medal .ic { width: 26px; height: 26px; }
+.achv.is-unlocked { border-color: var(--h); background: var(--h-tint); box-shadow: 0 var(--ledge) 0 var(--h); }
+.achv.is-new { animation: achv-pop .7s cubic-bezier(.2, 1.4, .4, 1) both; box-shadow: 0 var(--ledge) 0 var(--gold-ledge), 0 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent); border-color: var(--gold); }
+@keyframes achv-pop { 0% { transform: scale(.94); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .achv.is-new { animation: none; } }
+
+/* Quick APPI composer: one tidy row (photo, context, web, send) that never wraps, and a
+   shorter footer so the answer keeps most of the panel. */
+.composer-compact .composer-foot { flex-wrap: nowrap; gap: 4px; min-width: 0; }
+.composer-compact .composer-foot > * { flex: none; }
+.composer-compact .composer-foot .composer-context { flex: 0 1 auto; min-width: 0; max-width: 8.5rem; }
+.composer-compact .composer-foot .grow { flex: 1 1 0; min-width: 0; }
+.composer-compact .composer-sep { display: none; }
+.composer-compact .composer-foot .switch { white-space: nowrap; }
+.composer-compact .composer-foot .btn { padding-inline: 10px; }
+.appi-panel-foot { padding: var(--s-2) var(--s-3) var(--s-3); gap: var(--s-1-5); }
+.appi-panel-scroll { padding: var(--s-4) var(--s-4) var(--s-3); }
+@media (max-width: 380px) { .composer-compact .composer-foot .composer-label { display: none; } }
