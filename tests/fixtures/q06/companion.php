@@ -2,12 +2,32 @@
 declare(strict_types=1);
 // The companion's validation functions are pure; load only what they use.
 function error_response(...$args) { throw new RuntimeException('error_response'); }
+
 $source = file_get_contents(__DIR__ . '/../../../public/api/openrouter.php');
-foreach (['ai_cut', 'ai_admin_companion_clean_strings', 'ai_admin_companion_clean_payload', 'ai_admin_companion_trim_value', 'ai_admin_companion_material_block', 'ai_admin_companion_normalise_suggestions'] as $name) {
-    preg_match('/^function ' . $name . '\(.*?^\}\n/ms', $source, $match);
-    if (!$match) { fwrite(STDERR, "missing $name\n"); exit(2); }
-    eval($match[0]);
+// Windows checkouts may use CRLF: normalise so the markers below match.
+$source = str_replace("\r\n", "\n", $source);
+$names = [
+    'ai_cut',
+    'ai_admin_companion_clean_strings',
+    'ai_admin_companion_clean_payload',
+    'ai_admin_companion_trim_value',
+    'ai_admin_companion_material_block',
+    'ai_admin_companion_normalise_suggestions',
+];
+foreach ($names as $name) {
+    $start = strpos($source, 'function ' . $name . '(');
+    if ($start === false) {
+        fwrite(STDERR, "missing {$name}\n");
+        exit(2);
+    }
+    $end = strpos($source, "\n}\n", $start);
+    if ($end === false) {
+        fwrite(STDERR, "unterminated {$name}\n");
+        exit(2);
+    }
+    eval(substr($source, $start, $end + 2 - $start));
 }
+
 $modules = [['id' => 'a'], ['id' => 'b'], ['id' => 'c']];
 $suggest = static fn (array $items): array => ai_admin_companion_normalise_suggestions($items, $modules);
 $long = str_repeat('é', 200); // 2 bytes each
