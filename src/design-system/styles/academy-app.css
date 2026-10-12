@@ -811,3 +811,16 @@ input.input { display: block; }
   .appi-panel .composer { padding: 8px 10px 8px 12px; border-radius: 18px; }
   .appi-panel .composer textarea { font-size: 15px; line-height: 21px; }
 }
+
+/* Phone composer (every APPI composer): the tools and the send button stay on ONE row.
+   Foto becomes icon-only and the switches shrink, so the round send button never wraps. */
+@media (max-width: 639px) {
+  .composer-foot { flex-wrap: nowrap; align-items: center; gap: 4px; min-width: 0; }
+  .composer-foot > * { flex: none; }
+  .composer-foot .grow { flex: 1 1 0; min-width: 0; }
+  .composer-foot .composer-label { display: none; }
+  .composer-foot .btn.aapm-ai-attachment-control, .composer-foot > .btn-quiet { padding-inline: 8px; }
+  .composer-foot .switch { gap: 4px; padding: 0 2px !important; font-size: 12px; white-space: nowrap; }
+  .composer-foot .composer-sep { margin: 4px 2px !important; }
+  .composer .send { width: 34px; height: 34px; }
+}
