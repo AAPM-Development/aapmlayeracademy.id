@@ -243,7 +243,7 @@ export function AssessmentResult({ passed = false, score = 0, total = 0, passing
         </div>
       </section>
 
-      <section className="cols-3" aria-label="Ringkasan hasil">
+      <section className="cols-3 result-stats" aria-label="Ringkasan hasil">
         <div className="card metric items-center t-center anim-pop" data-hue={passed ? "green" : "orange"} style={{ "--i": 1 }}>
           <span className="metric-label"><span className="tile tile-xs tile-round tile-solid"><Ic name="target" /></span>Skor</span>
           <span className="metric-value"><CountUp value={percent} format={(value) => `${Math.round(value)}%`} duration={900} /></span>

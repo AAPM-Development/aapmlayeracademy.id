@@ -114,6 +114,11 @@ export default function AcademyShell() {
       onToggleTheme={compact ? toggleTheme : undefined}
       onLogout={() => logout()}
       items={[
+        // Phones have no sidebar: the farm tools live here as well as under Alat.
+        ...(compact ? [
+          { label: "Farm KPI", icon: "kpi", to: "/kpi" },
+          { label: "Kalkulator farm", icon: "calculator", to: "/calculators" },
+        ] : []),
         { label: "Prestasi & profil", icon: "award", to: "/profile" },
         { label: "Sertifikasi", icon: "certificate", to: "/certification" },
         ...(isAdmin ? [{ label: "Panel admin", icon: "admin", to: "/admin" }] : []),
