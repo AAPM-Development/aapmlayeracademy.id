@@ -799,3 +799,15 @@ input.input { display: block; }
 .appi-panel-foot { padding: var(--s-2) var(--s-3) var(--s-3); gap: var(--s-1-5); }
 .appi-panel-scroll { padding: var(--s-4) var(--s-4) var(--s-3); }
 @media (max-width: 380px) { .composer-compact .composer-foot .composer-label { display: none; } }
+
+/* Phone APPI panel: the composer and its footer each stay on one tidy line. The safety line
+   ellipsises instead of wrapping, so the panel footer keeps a constant height. */
+@media (max-width: 639px) {
+  .appi-panel-foot { gap: 6px; padding: 8px 12px 10px; }
+  .appi-panel-foot .composer-foot { padding-inline: 2px; }
+  .appi-panel-foot > .row { flex-wrap: nowrap !important; align-items: center; gap: 8px; }
+  .appi-panel-foot > .row > .btn { flex: none; white-space: nowrap; }
+  .appi-panel-foot > .row > .t-caption { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+  .appi-panel .composer { padding: 8px 10px 8px 12px; border-radius: 18px; }
+  .appi-panel .composer textarea { font-size: 15px; line-height: 21px; }
+}

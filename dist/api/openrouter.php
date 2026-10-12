@@ -298,9 +298,9 @@ function ai_account_context_text(array $context): string
     $name = trim((string) ($profile['full_name'] ?? ''));
     $role = trim((string) ($profile['role'] ?? ''));
     $bio = trim((string) ($profile['bio'] ?? ''));
-    if ($name !== '') $lines[] = 'Nama peserta: ' . substr($name, 0, 160);
+    if ($name !== '') $lines[] = 'Nama peserta: ' . ai_cut($name, 160);
     if ($role !== '') $lines[] = 'Peran akun: ' . ($role === 'admin' ? 'admin' : 'learner');
-    if ($bio !== '') $lines[] = 'Catatan profil: ' . substr($bio, 0, 280);
+    if ($bio !== '') $lines[] = 'Catatan profil: ' . ai_cut($bio, 280);
 
     if (!$progress) {
         $lines[] = 'Progress belajar: belum ada catatan progress yang tersimpan.';
@@ -319,7 +319,7 @@ function ai_account_context_text(array $context): string
             $score = ($row['quiz_score'] ?? null) !== null && ($row['quiz_total'] ?? null) !== null
                 ? ' | kuis ' . $row['quiz_score'] . '/' . $row['quiz_total']
                 : '';
-            $lines[] = '- ' . substr($module, 0, 140) . ': ' . $status . $score;
+            $lines[] = '- ' . ai_cut($module, 140) . ': ' . $status . $score;
         }
     }
 
@@ -336,7 +336,7 @@ function ai_context_text(array $rows): string
             if ($row[$field] !== null && $row[$field] !== '') $parts[] = $label . ' ' . $row[$field];
         }
         $note = trim((string) ($row['notes'] ?? ''));
-        if ($note !== '') $parts[] = 'Catatan ' . substr($note, 0, 280);
+        if ($note !== '') $parts[] = 'Catatan ' . ai_cut($note, 280);
         $lines[] = implode(' | ', $parts);
     }
     return implode("\n", $lines);
@@ -361,7 +361,7 @@ function ai_user_prompt(string $message, array $farmContext, string $pageContext
 {
     $pageText = ai_page_context_text($pageContext);
     $messageLimit = max(1, min(24000, $messageLimit));
-    return "Pertanyaan pengguna:\n" . substr($message, 0, $messageLimit)
+    return "Pertanyaan pengguna:\n" . ai_cut($message, $messageLimit)
         . ($pageText !== '' ? "\n\nKonteks halaman aktif:\n" . $pageText : '')
         . "\n\n[KONTEKS AKUN TERVALIDASI OLEH SERVER]\n" . ai_account_context_text($accountContext)
         . "\n[AKHIR KONTEKS AKUN]\n"
@@ -533,7 +533,7 @@ function ai_public_reasoning_summaries(array $delta): array
     $summaries = [];
     foreach ((is_array($delta['reasoning_details'] ?? null) ? $delta['reasoning_details'] : []) as $detail) {
         if (is_array($detail) && ($detail['type'] ?? '') === 'reasoning.summary' && is_string($detail['summary'] ?? null)) {
-            $summaries[] = substr($detail['summary'], 0, 12000);
+            $summaries[] = ai_cut($detail['summary'], 12000);
         }
     }
     return $summaries;
@@ -736,7 +736,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
                 $delta = $decoded['choices'][0]['delta'] ?? [];
                 if (!is_array($delta)) continue;
                 foreach (ai_public_reasoning_summaries($delta) as $summary) {
-                    $responseDetails['reasoningSummary'] = substr($responseDetails['reasoningSummary'] . $summary, 0, 12000);
+                    $responseDetails['reasoningSummary'] = ai_cut($responseDetails['reasoningSummary'] . $summary, 12000);
                     ai_sse_emit('reasoning', ['summary' => $summary]);
                 }
                 if (!$reasoningObserved && (!empty($delta['reasoning']) || !empty($delta['reasoning_content']) || !empty($delta['reasoning_details']))) {
@@ -970,7 +970,7 @@ PROMPT;
     ][$action];
 
     $userPrompt = "Aksi yang diminta: {$action}\nPanduan aksi: {$actionGuidance}\n"
-        . "Instruksi editor: " . ($message !== '' ? substr($message, 0, 4000) : 'Gunakan penilaian editorial terbaik.') . "\n\n"
+        . "Instruksi editor: " . ($message !== '' ? ai_cut($message, 4000) : 'Gunakan penilaian editorial terbaik.') . "\n\n"
         . "Modul aktif (JSON):\n{$moduleJson}\n\nDaftar modul kurikulum (JSON):\n{$modulesJson}";
 
     $settings = ai_settings_status();
@@ -986,8 +986,8 @@ PROMPT;
             throw new RuntimeException('Provider tidak mengembalikan JSON companion yang valid.');
         }
         return [
-            'reply' => trim(substr((string) ($decoded['reply'] ?? 'Saran APPI siap ditinjau.'), 0, 1600)),
-            'suggestions' => ai_admin_companion_normalise_suggestions($decoded['suggestions'] ?? []),
+            'reply' => trim(ai_cut((string) ($decoded['reply'] ?? 'Saran APPI siap ditinjau.'), 1600)),
+            'suggestions' => ai_admin_companion_normalise_suggestions($decoded['suggestions'] ?? [], $modules),
             'provider' => $settings['provider'],
             'model' => $settings['model'],
             'fallback' => false,
@@ -1000,9 +1000,71 @@ PROMPT;
     }
 }
 
+/** Cuts to at most $bytes without splitting a multibyte character. */
+function ai_cut(string $value, int $bytes): string
+{
+    return function_exists('mb_strcut') ? mb_strcut($value, 0, $bytes, 'UTF-8') : substr($value, 0, $bytes);
+}
+
+/** Short plain strings only: no empties, no repeats, bounded count and length. */
+function ai_admin_companion_clean_strings($items, int $maxItems, int $maxBytes): array
+{
+    $clean = [];
+    foreach (is_array($items) ? $items : [] as $item) {
+        if (!is_string($item) && !is_numeric($item)) continue;
+        $text = trim(preg_replace('/\s+/u', ' ', (string) $item) ?? '');
+        if ($text === '' || in_array($text, $clean, true)) continue;
+        $clean[] = ai_cut($text, $maxBytes);
+        if (count($clean) >= $maxItems) break;
+    }
+    return $clean;
+}
+
+/**
+ * Enforces what the prompt only asks for. Returns null when a suggestion would be
+ * unusable or unsafe to show (an order with unknown ids, an empty module list).
+ */
+function ai_admin_companion_clean_payload(string $kind, array $payload, array $modules): ?array
+{
+    if ($kind === 'order') {
+        $known = [];
+        foreach ($modules as $module) {
+            if (is_array($module) && isset($module['id'])) $known[(string) $module['id']] = true;
+        }
+        $ids = [];
+        foreach ((array) ($payload['moduleIds'] ?? []) as $id) {
+            $id = (string) $id;
+            if (isset($known[$id]) && !in_array($id, $ids, true)) $ids[] = $id;
+        }
+        return count($ids) >= 2 ? array_merge($payload, ['moduleIds' => $ids]) : null;
+    }
+    if ($kind === 'structure' && array_key_exists('modules', $payload)) {
+        $items = [];
+        $seen = [];
+        foreach (is_array($payload['modules']) ? $payload['modules'] : [] as $item) {
+            if (!is_array($item)) continue;
+            $title = ai_admin_companion_clean_strings([(string) ($item['title'] ?? '')], 1, 120)[0] ?? '';
+            if ($title === '' || isset($seen[mb_strtolower($title)])) continue;
+            $seen[mb_strtolower($title)] = true;
+            $items[] = ['title' => $title, 'summary' => ai_admin_companion_clean_strings([(string) ($item['summary'] ?? '')], 1, 300)[0] ?? ''];
+            if (count($items) >= 5) break;
+        }
+        if ($items === []) return null;
+        $cleaned = ['modules' => $items];
+        $levelName = ai_admin_companion_clean_strings([(string) ($payload['levelName'] ?? '')], 1, 160)[0] ?? '';
+        if ($levelName !== '') $cleaned['levelName'] = $levelName;
+        return $cleaned;
+    }
+    if ($kind === 'review' && array_key_exists('issues', $payload)) {
+        $issues = ai_admin_companion_clean_strings($payload['issues'], 8, 400);
+        return $issues === [] ? null : array_merge($payload, ['issues' => $issues]);
+    }
+    return $payload;
+}
+
 function ai_admin_companion_trim_value($value, int $depth = 0)
 {
-    if ($depth > 4) return is_array($value) ? [] : substr((string) $value, 0, 500);
+    if ($depth > 4) return is_array($value) ? [] : ai_cut((string) $value, 500);
     if (is_string($value)) return substr($value, 0, $depth === 0 ? 12000 : 2400);
     if (!is_array($value)) return $value;
 
@@ -1034,16 +1096,16 @@ function ai_admin_companion_decode(string $raw): ?array
 function ai_admin_companion_material_block(array $block): array
 {
     $result = [
-        'id' => substr(trim((string) ($block['id'] ?? '')), 0, 120),
-        'type' => substr(trim((string) ($block['type'] ?? '')), 0, 40),
-        'content' => substr((string) ($block['content'] ?? ''), 0, 12000),
+        'id' => ai_cut(trim((string) ($block['id'] ?? '')), 120),
+        'type' => ai_cut(trim((string) ($block['type'] ?? '')), 40),
+        'content' => ai_cut((string) ($block['content'] ?? ''), 12000),
     ];
-    if (array_key_exists('title', $block)) $result['title'] = substr((string) $block['title'], 0, 160);
+    if (array_key_exists('title', $block)) $result['title'] = ai_cut((string) $block['title'], 160);
     if (array_key_exists('level', $block)) $result['level'] = (int) $block['level'];
     return $result;
 }
 
-function ai_admin_companion_normalise_suggestions($suggestions): array
+function ai_admin_companion_normalise_suggestions($suggestions, array $modules = []): array
 {
     if (!is_array($suggestions)) return [];
     $allowedKinds = ['title', 'summary', 'module_draft', 'copy', 'structure', 'review', 'order'];
@@ -1058,11 +1120,13 @@ function ai_admin_companion_normalise_suggestions($suggestions): array
             // Text blocks keep their full length so media tokens survive the round trip.
             $payload['materialBlocks'] = array_values(array_map('ai_admin_companion_material_block', array_slice(array_filter($rawPayload['materialBlocks'], 'is_array'), 0, 24)));
         }
+        $payload = ai_admin_companion_clean_payload($kind, $payload, $modules);
+        if ($payload === null) continue;
         $result[] = [
-            'id' => trim((string) ($suggestion['id'] ?? ('saran-' . ($index + 1)))),
+            'id' => ai_cut(trim((string) ($suggestion['id'] ?? ('saran-' . ($index + 1)))), 60),
             'kind' => $kind,
-            'title' => trim(substr((string) ($suggestion['title'] ?? 'Saran APPI'), 0, 180)),
-            'reason' => trim(substr((string) ($suggestion['reason'] ?? ''), 0, 600)),
+            'title' => trim(ai_cut((string) ($suggestion['title'] ?? 'Saran APPI'), 180)),
+            'reason' => trim(ai_cut((string) ($suggestion['reason'] ?? ''), 600)),
             'payload' => $payload,
         ];
         if (count($result) >= 5) break;
