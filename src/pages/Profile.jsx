@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Page } from "@/design-system/patterns/AppShell";
 import { nativeApi } from "@/api/nativeClient";
-import ProfileAvatar, { initialsOf } from "@/components/ProfileAvatar";
+import { celebrate } from "@/lib/celebrate";
+import ProfileAvatar from "@/components/ProfileAvatar";
 import { appiAsset } from "@/components/appi/AppiMascot";
 import AapmIcon from "@/components/icons/AapmIcon";
 import {
@@ -75,8 +76,29 @@ const ACHIEVEMENT_LOOK = {
   "farm-journal": { ic: "chart", hue: "violet" },
   certified: { ic: "cert", hue: "teal" },
   "quiz-ready": { ic: "target", hue: "blue" },
+  "modules-3": { ic: "route", hue: "green" },
+  "modules-5": { ic: "flame", hue: "orange" },
+  "modules-10": { ic: "layers", hue: "green" },
+  halfway: { ic: "flag", hue: "blue" },
+  "course-complete": { ic: "grad", hue: "amber" },
+  "practice-3": { ic: "home", hue: "amber" },
+  "practice-10": { ic: "heart", hue: "rose" },
+  "quiz-90": { ic: "star", hue: "violet" },
+  "farm-8": { ic: "trend-up", hue: "violet" },
+  "farm-12": { ic: "calc", hue: "teal" },
+  "study-1h": { ic: "clock", hue: "blue" },
+  "study-5h": { ic: "bulb", hue: "amber" },
+  "study-10h": { ic: "sparkle", hue: "orange" },
+  "level-builder": { ic: "shield", hue: "green" },
+  "level-analyst": { ic: "chart", hue: "blue" },
+  "level-leader": { ic: "award", hue: "amber" },
+  "points-1500": { ic: "medal", hue: "amber" },
+  "certified-2": { ic: "cert", hue: "teal" },
 };
-const ACHIEVEMENT_UNIT = { "farm-journal": "catatan", "module-finisher": "modul", "field-practice": "praktik", certified: "sertifikat" };
+const ACHIEVEMENT_UNIT = { "farm-journal": "catatan", "farm-8": "catatan", "farm-12": "catatan", "module-finisher": "modul", "modules-3": "modul", "modules-5": "modul", "modules-10": "modul", "field-practice": "praktik", "practice-3": "praktik", "practice-10": "praktik", certified: "sertifikat", "certified-2": "sertifikat", "study-1h": "menit", "study-5h": "menit", "study-10h": "menit",
+  "level-builder": "poin", "level-analyst": "poin", "level-leader": "poin", "points-1500": "poin", "course-complete": "modul", "first-step": "aktivitas" };
+const unitOf = (id) => ACHIEVEMENT_UNIT[id] || (String(id).startsWith("curriculum-") ? "modul" : "");
+const ACHIEVEMENT_SHOWN_COLLAPSED = 9;
 
 const POINT_RULES = [
   { ic: "book", hue: "green", reward: "+100", title: "Modul selesai", meta: "per modul" },
@@ -172,10 +194,55 @@ function SummaryMetrics({ learning, user, certificates }) {
   );
 }
 
-function Achievements({ achievements }) {
-  const unlocked = achievements.filter((item) => item.unlocked).length;
+const SEEN_ACHIEVEMENTS_KEY = "aapm.achievements.seen";
+
+function readSeenAchievements(userId) {
+  try { return JSON.parse(window.localStorage.getItem(`${SEEN_ACHIEVEMENTS_KEY}:${userId}`) || "null"); } catch { return null; }
+}
+
+function writeSeenAchievements(userId, ids) {
+  try { window.localStorage.setItem(`${SEEN_ACHIEVEMENTS_KEY}:${userId}`, JSON.stringify(ids)); } catch { /* private mode: the celebration just repeats next visit */ }
+}
+
+// Always names the unit ("250 poin lagi"), so a number never stands alone.
+function remainingText(achievement, current) {
+  const left = Math.max(0, achievement.target - current);
+  if (["quiz-ready", "quiz-90"].includes(achievement.id)) return `Naikkan rata-rata kuis ${left}% lagi`;
+  if (achievement.id === "halfway") return `${left}% kurikulum lagi`;
+  const unit = unitOf(achievement.id);
+  return `${left}${unit ? ` ${unit}` : ""} lagi`;
+}
+
+function Achievements({ achievements, userId = "" }) {
+  const unlockedList = achievements.filter((item) => item.unlocked);
+  const unlocked = unlockedList.length;
+  const total = achievements.length;
+  const percentAll = total ? Math.round((unlocked / total) * 100) : 0;
   // Unlocked first, in the server's order; locked ones keep a progress bar.
-  const ordered = [...achievements.filter((item) => item.unlocked), ...achievements.filter((item) => !item.unlocked)];
+  // Locked ones are sorted by how close they are, so the next win is always first.
+  const closeness = (item) => (item.target ? Math.min(item.current, item.target) / item.target : 0);
+  const allOrdered = [...unlockedList, ...achievements.filter((item) => !item.unlocked).sort((a, b) => closeness(b) - closeness(a))];
+  const [showAll, setShowAll] = React.useState(false);
+  const ordered = showAll ? allOrdered : allOrdered.slice(0, Math.max(ACHIEVEMENT_SHOWN_COLLAPSED, unlocked));
+  const progressOf = (item) => (item.target ? Math.min(item.current, item.target) / item.target : 0);
+  const next = achievements.filter((item) => !item.unlocked).sort((a, b) => progressOf(b) - progressOf(a))[0] || null;
+  const { toast } = useToast();
+  const [fresh, setFresh] = React.useState([]);
+
+  // First visit just records what is already unlocked; later visits celebrate what is new.
+  React.useEffect(() => {
+    if (!userId || !total) return;
+    const ids = unlockedList.map((item) => item.id);
+    const seen = readSeenAchievements(userId);
+    if (seen === null) { writeSeenAchievements(userId, ids); return; }
+    const added = unlockedList.filter((item) => !seen.includes(item.id));
+    if (!added.length) return;
+    setFresh(added.map((item) => item.id));
+    writeSeenAchievements(userId, ids);
+    celebrate("milestone");
+    toast({ title: added.length > 1 ? `${added.length} pencapaian baru!` : "Pencapaian baru!", description: added.map((item) => item.title).join(" · ") });
+  }, [userId, total, unlockedList.map((item) => item.id).join(",")]);
+
   return (
     <section className="card card-pad stack gap-4 anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 5 })} aria-labelledby="ach-title">
       <div className="card-head">
@@ -183,31 +250,46 @@ function Achievements({ achievements }) {
           <h2 className="card-title" id="ach-title">Pencapaian</h2>
           <p className="card-desc">Dihitung dari aktivitas belajar dan data farm yang benar-benar tersimpan.</p>
         </div>
-        <span className={`chip ${unlocked ? "chip-success" : ""}`}><Ic name="check" />{unlocked}/{achievements.length} terbuka</span>
+        <span className={`chip ${unlocked ? "chip-success" : ""}`}><Ic name="check" />{unlocked}/{total} terbuka</span>
       </div>
-      {achievements.length ? (
+      {total ? (
+        <div className="achv-hero" data-hue={unlocked === total ? "gold" : "green"}>
+          <span className="achv-hero-medal" aria-hidden="true"><Ic name={unlocked === total ? "award" : "star"} /></span>
+          <div className="stack grow gap-1-5" style={{ minWidth: 0 }}>
+            <span className="t-heading">{unlocked === total ? "Semua pencapaian terbuka!" : unlocked ? `${unlocked} pencapaian sudah jadi milikmu` : "Buka pencapaian pertamamu"}</span>
+            <Bar value={percentAll} size="sm" animate label={`Pencapaian terbuka ${percentAll}%`} />
+            {next ? <span className="t-caption t-muted">Berikutnya: <span className="t-strong t-ink">{next.title}</span> · {remainingText(next, Math.min(next.current, next.target))}</span> : <span className="t-caption t-muted">Kamu luar biasa. Pertahankan kebiasaan belajarmu.</span>}
+          </div>
+        </div>
+      ) : null}
+      {total ? (
         <div className="grid-md">
           {ordered.map((achievement) => {
-            const look = ACHIEVEMENT_LOOK[achievement.id] || { ic: "award", hue: "green" };
+            const look = ACHIEVEMENT_LOOK[achievement.id] || (String(achievement.id).startsWith("curriculum-") ? { ic: "grad", hue: "teal" } : { ic: "award", hue: "green" });
             const current = Math.min(achievement.current, achievement.target);
             const percent = achievement.target ? Math.round((current / achievement.target) * 100) : 0;
-            const unit = ACHIEVEMENT_UNIT[achievement.id];
+            const unit = unitOf(achievement.id);
             const extra = achievement.unlocked && unit && achievement.current > achievement.target ? ` · ${achievement.current} ${unit}` : "";
+            const isNew = fresh.includes(achievement.id);
+            const close = !achievement.unlocked && percent >= 60;
             return (
-              <article key={achievement.id} className={`achv${achievement.unlocked ? "" : " is-locked"}`} data-hue={look.hue}>
+              <article key={achievement.id} className={`achv${achievement.unlocked ? " is-unlocked" : " is-locked"}${isNew ? " is-new" : ""}`} data-hue={look.hue}>
                 <span className={`tile tile-lg tile-round${achievement.unlocked ? " tile-solid rel" : ""}`}>
                   <Ic name={look.ic} />
                   {achievement.unlocked ? <span className="medal-badge"><Ic name="check" /></span> : null}
                 </span>
                 <div className="stack gap-1">
-                  <h3 className="t-heading">{achievement.title}</h3>
+                  <div className="row wrap gap-2">
+                    <h3 className="t-heading">{achievement.title}</h3>
+                    {isNew ? <span className="chip chip-warning chip-dot">Baru!</span> : null}
+                  </div>
                   <p className="t-caption t-muted">{achievement.description}</p>
                   {achievement.unlocked ? (
-                    <span className="t-caption t-strong t-success row gap-1"><Ic name="check-circle" size="xs" />Terbuka{extra}</span>
+                    <span className="t-caption t-strong t-success row wrap gap-1"><Ic name="check-circle" size="xs" />Terbuka{extra}{achievement.earnedAt ? <span className="t-muted" style={{ fontWeight: 400 }}> · diraih {formatDate(achievement.earnedAt, { day: "numeric", month: "short", year: "numeric" })}</span> : null}{achievement.retained ? <span className="t-muted" style={{ fontWeight: 400 }}> · tetap milikmu meski kurikulum berubah</span> : null}</span>
                   ) : (
                     <div className="stack gap-1" style={{ paddingTop: 4 }}>
                       <Bar value={percent} size="sm" animate label={`${achievement.title} ${percent}%`} />
-                      <span className="t-caption t-strong t-num">{achievement.id === "quiz-ready" ? `${current}% dari ${achievement.target}%` : `${current} dari ${achievement.target}`}</span>
+                      <span className={`t-caption t-strong t-num${close ? " t-warning" : ""}`}>{close ? `${remainingText(achievement, current)} — hampir!` : (achievement.id === "quiz-ready" ? `${current}% dari ${achievement.target}%` : `${current} dari ${achievement.target}${achievement.id === "halfway" ? "%" : unit ? ` ${unit}` : ""}`)}</span>
                     </div>
                   )}
                 </div>
@@ -218,6 +300,11 @@ function Achievements({ achievements }) {
       ) : (
         <StateView kind="empty" icon="award" title="Pencapaian belum tersedia" description="Pencapaian akan muncul setelah aktivitas belajar tercatat." framed={false} />
       )}
+      {total > ACHIEVEMENT_SHOWN_COLLAPSED && (showAll || total > ordered.length) ? (
+        <button type="button" className="btn btn-link btn-sm" style={{ alignSelf: "center" }} aria-expanded={showAll} onClick={() => setShowAll((value) => !value)}>
+          {showAll ? "Tampilkan lebih sedikit" : `Lihat semua ${total} pencapaian`}<Ic name={showAll ? "chev-up" : "chev-down"} />
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -232,6 +319,8 @@ function RankMarker({ rank }) {
 function HallOfFame({ hall, userId, me, profileUser }) {
   const entries = hall?.entries ?? [];
   const mine = entries.find((entry) => String(entry.userId) === String(userId));
+  // Your rank also counts when you are outside the ten shown.
+  const myRank = mine?.rank ?? hall?.viewerRank ?? null;
   return (
     <section className="card stack anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 6 })} aria-labelledby="hof-title">
       <div className="card-pad stack gap-0-5" style={{ paddingBottom: 12 }}>
@@ -243,7 +332,7 @@ function HallOfFame({ hall, userId, me, profileUser }) {
           {entries.slice(0, 5).map((entry, index) => (
             <li key={entry.userId} className="li">
               <RankMarker rank={entry.rank} />
-              <span className="avatar avatar-sm" data-hue={AVATAR_HUES[index % AVATAR_HUES.length]} aria-hidden="true">{initialsOf(entry.name)}</span>
+              <ProfileAvatar user={{ avatar: entry.avatar }} name={entry.name} hue={AVATAR_HUES[index % AVATAR_HUES.length]} className="avatar-sm" alt="" />
               <div className="stack grow" style={{ minWidth: 0 }}>
                 <span className="li-title t-clamp-1"><span className="sr-only">Peringkat {entry.rank}, </span>{entry.name}</span>
                 <span className="li-meta">{entry.level}</span>
@@ -257,11 +346,11 @@ function HallOfFame({ hall, userId, me, profileUser }) {
       )}
       <div className="card-sect list" aria-label="Posisi Anda">
         <div className="li" style={{ background: "var(--primary-soft)" }}>
-          <span className="row justify-center t-support t-strong t-num none" style={{ width: 36 }}>{mine ? `#${mine.rank}` : "—"}</span>
+          <span className="row justify-center t-support t-strong t-num none" style={{ width: 36 }}>{myRank ? `#${myRank}` : "—"}</span>
           <ProfileAvatar user={profileUser} name={profileUser?.full_name} className="avatar-sm" alt="" />
           <div className="stack grow">
             <span className="li-title t-strong">Anda</span>
-            <span className="li-meta">{me.optIn ? me.level : `${me.level} · belum tampil`}</span>
+            <span className="li-meta">{me.isAdmin ? `${me.level} · akun admin tidak masuk peringkat` : me.optIn ? me.level : `${me.level} · belum tampil`}</span>
           </div>
           <span className="t-support t-strong t-num t-nowrap">{formatPoints(me.points)} poin</span>
         </div>
@@ -730,8 +819,8 @@ export default function Profile() {
           <ProfileHero user={user} profileUser={profileUser} rank={rank} />
           <SummaryMetrics learning={learning} user={user} certificates={Array.isArray(certificates) ? certificates : []} />
           <div className="split stretch">
-            <Achievements achievements={learning.achievements || []} />
-            <HallOfFame hall={hall} userId={user.id} profileUser={profileUser} me={{ points: rank.points, level: rank.name, optIn: Boolean(data?.profile?.hallOfFameOptIn) }} />
+            <Achievements achievements={learning.achievements || []} userId={user?.id ? String(user.id) : ""} />
+            <HallOfFame hall={hall} userId={user.id} profileUser={profileUser} me={{ points: rank.points, level: rank.name, optIn: Boolean(data?.profile?.hallOfFameOptIn), isAdmin: ["admin", "super_admin"].includes(user?.role) }} />
           </div>
           <PointRules />
         </>

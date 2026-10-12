@@ -131,10 +131,10 @@ export default function AiComposer({
             aria-label="Lampirkan foto farm"
             aria-busy={imageLoading || undefined}
           >
-            <Ic name="camera" />Foto
+            <Ic name="camera" /><span className="composer-label">Foto</span>
           </button>
           {contextLabel ? <span className="chip chip-ai hide-sm composer-context" title={contextLabel}><Ic name="pin" />{contextLabel}</span> : null}
-          <span className="vr" style={{ margin: "6px 4px" }} aria-hidden="true" />
+          <span className="vr composer-sep" style={{ margin: "6px 4px" }} aria-hidden="true" />
           {showFarmToggle ? (
             <label className="switch switch-ai" style={{ padding: "0 var(--s-2)" }} title={farmAvailable ? undefined : "Belum ada catatan KPI. Isi di Farm KPI agar APPI bisa membaca data farm."}>
               <input
@@ -149,7 +149,7 @@ export default function AiComposer({
               {farmAvailable ? "Pakai KPI" : "KPI kosong"}
             </label>
           ) : null}
-          <label className="switch" style={{ padding: "0 var(--s-2)" }}>
+          <label className="switch composer-web" style={{ padding: "0 var(--s-2)" }}>
             <input
               type="checkbox"
               role="switch"

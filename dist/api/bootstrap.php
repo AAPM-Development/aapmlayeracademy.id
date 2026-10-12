@@ -795,6 +795,7 @@ function ensure_schema(PDO $pdo, string $driver): void
     ensure_course_module_video_url($pdo, $driver);
     ensure_course_module_visual($pdo, $driver);
     ensure_curricula($pdo, $driver);
+    ensure_learner_achievements($pdo, $driver);
     ensure_user_profile_avatar($pdo, $driver);
     ensure_user_ai_supports_vision($pdo, $driver);
     ensure_ai_conversation_archive($pdo, $driver);
@@ -1000,6 +1001,27 @@ function ensure_curricula(PDO $pdo, string $driver): void
     }
     $pdo->prepare('INSERT IGNORE INTO curricula (id, title, summary, sort_order) VALUES (?, ?, ?, 0)')
         ->execute([AAPM_PRIMARY_CURRICULUM, 'Layer Poultry Farm Management', '']);
+}
+
+/** Achievements stay earned: a later catalogue change must not take a badge back. */
+function ensure_learner_achievements(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS learner_achievements (
+            user_id INTEGER NOT NULL,
+            achievement_id TEXT NOT NULL,
+            earned_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, achievement_id)
+        )');
+        return;
+    }
+    $pdo->exec('CREATE TABLE IF NOT EXISTS learner_achievements (
+        user_id BIGINT UNSIGNED NOT NULL,
+        achievement_id VARCHAR(120) NOT NULL,
+        earned_at DATETIME NOT NULL,
+        PRIMARY KEY (user_id, achievement_id),
+        KEY learner_achievements_user_idx (user_id, earned_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 }
 
 function default_course_module_video_urls(): array
@@ -2192,13 +2214,34 @@ function profile_row(int $userId): array
  * Inputs for profile_learning_summary() for many learners at once: one progress
  * prefetch and two grouped counts instead of a full set of queries per learner.
  */
+/**
+ * The modules this learner can actually learn: their policy's catalogue, per
+ * curriculum. Drafts, other policies' modules and archived modules the policy
+ * does not require are not part of "100%" for them.
+ */
+function profile_learner_catalogue(int $userId): array
+{
+    static $byVersion = [];
+    try {
+        $version = aapm_learner_policy_version(db(), $userId);
+        if (!isset($byVersion[$version])) {
+            $byVersion[$version] = array_map(static fn (array $row): array => [
+                'moduleNumber' => (int) $row['module_number'],
+                'curriculumId' => (string) ($row['curriculum_id'] ?? AAPM_PRIMARY_CURRICULUM),
+            ], aapm_cur_policy_learner_modules(db(), $version));
+        }
+        return $byVersion[$version];
+    } catch (Throwable $error) {
+        return [];
+    }
+}
+
 function profile_learning_contexts(array $userIds): array
 {
     $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn (int $id): bool => $id > 0)));
     if ($ids === []) {
         return [];
     }
-    $moduleTotal = count(admin_module_rows());
     $totals = aapm_learner_progress_aggregates(db(), $ids);
     $in = implode(',', array_fill(0, count($ids), '?'));
     $count = static function (string $table) use ($ids, $in): array {
@@ -2214,8 +2257,10 @@ function profile_learning_contexts(array $userIds): array
     $farm = $count('farm_data');
     $contexts = [];
     foreach ($ids as $id) {
+        $moduleTotal = count(profile_learner_catalogue($id));
         $contexts[$id] = [
             'moduleTotal' => $moduleTotal,
+            'completions' => array_column($totals[$id]['completions'] ?? [], 'moduleNumber'),
             'progress' => admin_progress_summary_from_totals($totals[$id], $moduleTotal),
             'certificates' => $certificates[$id] ?? 0,
             'farmEntries' => $farm[$id] ?? 0,
@@ -2225,11 +2270,14 @@ function profile_learning_contexts(array $userIds): array
     return $contexts;
 }
 
-function profile_learning_summary(int $userId, ?array $context = null): array
+function profile_learning_summary(int $userId, ?array $context = null, bool $recordAchievements = false): array
 {
     if ($context === null) {
-        $moduleTotal = count(admin_module_rows());
-        $progress = admin_progress_summary($userId, $moduleTotal);
+        $catalogue = profile_learner_catalogue($userId);
+        $moduleTotal = count($catalogue);
+        $totals = aapm_learner_progress_aggregates(db(), [$userId])[$userId];
+        $completedNumbers = array_column($totals['completions'] ?? [], 'moduleNumber');
+        $progress = admin_progress_summary_from_totals($totals, $moduleTotal);
         $certificateStatement = db()->prepare('SELECT COUNT(*) FROM certificates WHERE user_id = ?');
         $certificateStatement->execute([$userId]);
         $farmStatement = db()->prepare('SELECT COUNT(*) FROM farm_data WHERE user_id = ?');
@@ -2238,6 +2286,8 @@ function profile_learning_summary(int $userId, ?array $context = null): array
         $farmEntries = (int) $farmStatement->fetchColumn();
     } else {
         $moduleTotal = (int) $context['moduleTotal'];
+        $catalogue = [];
+        $completedNumbers = (array) ($context['completions'] ?? []);
         $progress = $context['progress'];
         $certificates = (int) $context['certificates'];
         $farmEntries = (int) $context['farmEntries'];
@@ -2260,11 +2310,46 @@ function profile_learning_summary(int $userId, ?array $context = null): array
         ['id' => 'quiz-ready', 'title' => 'Siap evaluasi', 'description' => 'Kumpulkan nilai kuis rata-rata minimal 80%.', 'icon' => 'solar:cup-star-bold-duotone', 'current' => $quizAverage ?? 0, 'target' => 80],
         ['id' => 'farm-journal', 'title' => 'Catatan farm konsisten', 'description' => 'Simpan empat catatan KPI untuk analisis yang lebih bermakna.', 'icon' => 'solar:chart-2-bold-duotone', 'current' => $farmEntries, 'target' => 4],
         ['id' => 'certified', 'title' => 'Tersertifikasi', 'description' => 'Peroleh sertifikat dari alur pembelajaran.', 'icon' => 'solar:diploma-verified-bold-duotone', 'current' => $certificates, 'target' => 1],
+        // Every goal below is counted from stored learning data only.
+        ['id' => 'modules-3', 'title' => 'Mulai melaju', 'description' => 'Selesaikan 3 modul.', 'current' => $completed, 'target' => 3],
+        ['id' => 'modules-5', 'title' => 'Konsisten belajar', 'description' => 'Selesaikan 5 modul.', 'current' => $completed, 'target' => 5],
+        ['id' => 'modules-10', 'title' => 'Sepuluh modul', 'description' => 'Selesaikan 10 modul pembelajaran.', 'current' => $completed, 'target' => 10],
+        ['id' => 'halfway', 'title' => 'Setengah jalan', 'description' => 'Capai 50% kurikulum.', 'current' => bounded_progress_percent($completed, $moduleTotal), 'target' => 50],
+        ['id' => 'course-complete', 'title' => 'Lulus kurikulum', 'description' => 'Selesaikan seluruh modul kurikulum.', 'current' => $completed, 'target' => max(1, $moduleTotal)],
+        ['id' => 'practice-3', 'title' => 'Tangan di kandang', 'description' => 'Selesaikan 3 praktik lapangan.', 'current' => $practical, 'target' => 3],
+        ['id' => 'practice-10', 'title' => 'Praktisi andal', 'description' => 'Selesaikan 10 praktik lapangan.', 'current' => $practical, 'target' => 10],
+        ['id' => 'quiz-90', 'title' => 'Nilai cemerlang', 'description' => 'Pertahankan rata-rata kuis minimal 90%.', 'current' => $quizAverage ?? 0, 'target' => 90],
+        ['id' => 'farm-8', 'title' => 'Data makin tajam', 'description' => 'Simpan 8 catatan KPI farm.', 'current' => $farmEntries, 'target' => 8],
+        ['id' => 'farm-12', 'title' => 'Pencatat setia', 'description' => 'Simpan 12 catatan KPI farm.', 'current' => $farmEntries, 'target' => 12],
+        ['id' => 'study-1h', 'title' => 'Satu jam fokus', 'description' => 'Belajar total 1 jam.', 'current' => $minutes, 'target' => 60],
+        ['id' => 'study-5h', 'title' => 'Lima jam belajar', 'description' => 'Belajar total 5 jam.', 'current' => $minutes, 'target' => 300],
+        ['id' => 'study-10h', 'title' => 'Sepuluh jam belajar', 'description' => 'Belajar total 10 jam.', 'current' => $minutes, 'target' => 600],
+        ['id' => 'level-builder', 'title' => 'Field Builder', 'description' => 'Capai 160 poin pembelajaran.', 'current' => $points, 'target' => 160],
+        ['id' => 'level-analyst', 'title' => 'Farm Analyst', 'description' => 'Capai 450 poin pembelajaran.', 'current' => $points, 'target' => 450],
+        ['id' => 'level-leader', 'title' => 'Layer Leader', 'description' => 'Capai 900 poin pembelajaran.', 'current' => $points, 'target' => 900],
+        ['id' => 'points-1500', 'title' => 'Bintang Academy', 'description' => 'Kumpulkan 1.500 poin pembelajaran.', 'current' => $points, 'target' => 1500],
+        ['id' => 'certified-2', 'title' => 'Dua sertifikat', 'description' => 'Peroleh 2 sertifikat dari alur pembelajaran.', 'current' => $certificates, 'target' => 2],
     ];
+    // With several curricula in the learner's catalogue, finishing each one is its own goal.
+    $perCurriculum = [];
+    foreach ($catalogue as $entry) {
+        $perCurriculum[$entry['curriculumId']][] = $entry['moduleNumber'];
+    }
+    if (count($perCurriculum) > 1) {
+        $titles = aapm_curriculum_titles();
+        foreach ($perCurriculum as $curriculumId => $numbers) {
+            $done = count(array_intersect($numbers, $completedNumbers));
+            $achievements[] = ['id' => 'curriculum-' . $curriculumId, 'title' => 'Lulus ' . ($titles[$curriculumId] ?? 'kurikulum'), 'description' => 'Selesaikan seluruh modul di kurikulum ini.', 'current' => $done, 'target' => count($numbers), 'curriculumId' => $curriculumId];
+        }
+    }
     foreach ($achievements as &$achievement) {
-        $achievement['unlocked'] = $achievement['current'] >= $achievement['target'];
+        $achievement['unlocked'] = $achievement['target'] > 0 && $achievement['current'] >= $achievement['target'];
+        $achievement['earnedAt'] = null;
     }
     unset($achievement);
+    if ($context === null) {
+        profile_reconcile_achievements($userId, $achievements, $recordAchievements);
+    }
 
     return [
         'points' => $points,
@@ -2283,6 +2368,48 @@ function profile_learning_summary(int $userId, ?array $context = null): array
     ];
 }
 
+/**
+ * Earned achievements are remembered. When the learner views their own profile
+ * newly met goals are recorded; anyone else's view only reads them. A badge
+ * already earned stays unlocked even if the catalogue later changes (a new
+ * module, an archived one), and its progress is shown as complete.
+ */
+function profile_reconcile_achievements(int $userId, array &$achievements, bool $record): void
+{
+    try {
+        $statement = db()->prepare('SELECT achievement_id, earned_at FROM learner_achievements WHERE user_id = ?');
+        $statement->execute([$userId]);
+        $earned = [];
+        foreach ($statement->fetchAll() as $row) {
+            $earned[(string) $row['achievement_id']] = (string) $row['earned_at'];
+        }
+        $insert = db()->prepare('INSERT INTO learner_achievements (user_id, achievement_id, earned_at) VALUES (?, ?, ?)');
+        foreach ($achievements as &$achievement) {
+            $id = (string) $achievement['id'];
+            if ($achievement['unlocked'] && !isset($earned[$id]) && $record) {
+                $now = aapm_utc_now();
+                try {
+                    $insert->execute([$userId, $id, $now]);
+                    $earned[$id] = $now;
+                } catch (Throwable $duplicate) {
+                    // A concurrent view recorded it first.
+                }
+            }
+            if (isset($earned[$id])) {
+                $achievement['earnedAt'] = $earned[$id];
+                if (!$achievement['unlocked']) {
+                    $achievement['unlocked'] = true;
+                    $achievement['retained'] = true;
+                    $achievement['current'] = max((int) $achievement['current'], (int) $achievement['target']);
+                }
+            }
+        }
+        unset($achievement);
+    } catch (Throwable $error) {
+        error_log('Achievement reconciliation skipped.');
+    }
+}
+
 function profile_data(array $user): array
 {
     $profile = profile_row((int) $user['id']);
@@ -2294,7 +2421,7 @@ function profile_data(array $user): array
             'avatar' => (string) ($profile['avatar_data'] ?? ''),
             'updatedAt' => $profile['updated_at'] ?? null,
         ],
-        'learning' => profile_learning_summary((int) $user['id']),
+        'learning' => profile_learning_summary((int) $user['id'], null, true),
         'achievementNote' => 'Prestasi dan level dihitung dari aktivitas belajar serta data farm yang benar-benar tersimpan.',
     ];
 }
@@ -2322,9 +2449,11 @@ function update_profile_data(array $user, array $input): array
     return profile_data(current_user() ?? $user);
 }
 
-function hall_of_fame_data(): array
+function hall_of_fame_data(?int $viewerId = null): array
 {
-    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY p.updated_at DESC, u.id DESC LIMIT 100")->fetchAll();
+    // Rank everyone who opted in (bounded), not the most recently edited profiles:
+    // a top scorer who last edited their profile long ago must still be ranked.
+    $rows = db()->query("SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version, COALESCE(p.avatar_data, '') AS avatar_data FROM users u INNER JOIN user_profiles p ON p.user_id = u.id WHERE p.hall_of_fame_opt_in = 1 ORDER BY u.id ASC LIMIT 1000")->fetchAll();
     $candidates = [];
     foreach ($rows as $row) {
         $user = present_authenticated_user($row);
@@ -2343,6 +2472,7 @@ function hall_of_fame_data(): array
         $entries[] = [
             'userId' => $user['id'],
             'name' => $user['full_name'],
+            'avatar' => (string) ($user['avatar'] ?? ''),
             'level' => $learning['level'],
             'points' => $learning['points'],
             'completedModules' => $learning['completedModules'],
@@ -2352,12 +2482,26 @@ function hall_of_fame_data(): array
     usort($entries, static function (array $left, array $right): int {
         return [$right['points'], $right['certificateCount'], $right['completedModules'], $left['name']] <=> [$left['points'], $left['certificateCount'], $left['completedModules'], $right['name']];
     });
+    $viewerRank = null;
     foreach ($entries as $index => &$entry) {
         $entry['rank'] = $index + 1;
+        if ($viewerId !== null && (int) $entry['userId'] === $viewerId) {
+            $viewerRank = $entry['rank'];
+        }
+    }
+    unset($entry);
+    $top = array_slice($entries, 0, 10);
+    // Photos are inline data URLs: send them only for the five entries the page shows.
+    foreach ($top as $index => &$entry) {
+        if ($index >= 5) {
+            $entry['avatar'] = '';
+        }
     }
     unset($entry);
     return [
-        'entries' => array_slice($entries, 0, 10),
+        'entries' => $top,
+        'viewerRank' => $viewerRank,
+        'total' => count($entries),
         'criteria' => 'Peringkat menggunakan poin pembelajaran: modul selesai, praktik, sertifikat, nilai kuis, catatan KPI, dan waktu belajar. Hanya peserta yang opt-in yang ditampilkan.',
     ];
 }
