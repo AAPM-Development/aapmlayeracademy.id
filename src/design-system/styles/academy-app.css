@@ -840,4 +840,4 @@ input.input { display: block; }
 
 /* Admin "Menu" navigation sheet: a left drawer as wide as its navigation (not the full screen).
    The generic live sheet pins both edges, so the nav drawer needs its own width and no right edge. */
-.sheet.sheet-live.aapm-nav-sheet { right: auto; width: min(300px, 86vw); border-right: 1px solid var(--border); }
+.sheet.sheet-live.aapm-nav-sheet { top: 0; bottom: 0; left: 0; right: auto; width: min(300px, 86vw); max-height: none; border-radius: 0 var(--r-surface) var(--r-surface) 0; border-right: 1px solid var(--border); }
