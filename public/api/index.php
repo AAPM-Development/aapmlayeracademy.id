@@ -344,8 +344,8 @@ try {
     }
 
     if ($path === 'hall-of-fame' && $method === 'GET') {
-        require_user();
-        json_response(hall_of_fame_data());
+        $viewer = require_user();
+        json_response(hall_of_fame_data((int) $viewer['id']));
     }
 
     if ($path === 'ai-settings' && $method === 'GET') {
