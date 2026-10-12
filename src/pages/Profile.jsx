@@ -330,11 +330,11 @@ function HallOfFame({ hall, userId, me, profileUser }) {
       {entries.length ? (
         <ol className="list" aria-label="Lima teratas">
           {entries.slice(0, 5).map((entry, index) => (
-            <li key={entry.userId} className="li">
+            <li key={entry.userId} className="li" style={String(entry.userId) === String(userId) ? { background: "var(--primary-soft)" } : undefined} aria-current={String(entry.userId) === String(userId) ? "true" : undefined}>
               <RankMarker rank={entry.rank} />
               <ProfileAvatar user={{ avatar: entry.avatar }} name={entry.name} hue={AVATAR_HUES[index % AVATAR_HUES.length]} className="avatar-sm" alt="" />
               <div className="stack grow" style={{ minWidth: 0 }}>
-                <span className="li-title t-clamp-1"><span className="sr-only">Peringkat {entry.rank}, </span>{entry.name}</span>
+                <span className="li-title t-clamp-1"><span className="sr-only">Peringkat {entry.rank}, </span>{entry.name}{String(entry.userId) === String(userId) ? <span className="chip chip-success" style={{ marginLeft: 8 }}>Anda</span> : null}</span>
                 <span className="li-meta">{entry.level}</span>
               </div>
               <span className="t-support t-strong t-num t-nowrap">{formatPoints(entry.points)} poin</span>
@@ -344,17 +344,18 @@ function HallOfFame({ hall, userId, me, profileUser }) {
       ) : (
         <p className="card-pad t-support t-muted" style={{ paddingTop: 0 }}>Belum ada peserta yang memilih tampil di Hall of Fame.</p>
       )}
-      <div className="card-sect list" aria-label="Posisi Anda">
+      {/* Your own row only when the list above does not already show you. */}
+      {!entries.slice(0, 5).some((entry) => String(entry.userId) === String(userId)) ? <div className="card-sect list" aria-label="Posisi Anda">
         <div className="li" style={{ background: "var(--primary-soft)" }}>
           <span className="row justify-center t-support t-strong t-num none" style={{ width: 36 }}>{myRank ? `#${myRank}` : "—"}</span>
           <ProfileAvatar user={profileUser} name={profileUser?.full_name} className="avatar-sm" alt="" />
           <div className="stack grow">
             <span className="li-title t-strong">Anda</span>
-            <span className="li-meta">{me.isAdmin ? `${me.level} · akun admin tidak masuk peringkat` : me.optIn ? me.level : `${me.level} · belum tampil`}</span>
+            <span className="li-meta">{me.optIn ? me.level : `${me.level} · belum tampil${me.isAdmin ? " (admin bisa memilih tampil di Atur privasi)" : ""}`}</span>
           </div>
           <span className="t-support t-strong t-num t-nowrap">{formatPoints(me.points)} poin</span>
         </div>
-      </div>
+      </div> : null}
       <div className="card-foot mt-auto">
         <Ic name="shield" size="sm" className="t-muted" />
         <span className="t-caption t-muted grow">Email tidak pernah ditampilkan.</span>
