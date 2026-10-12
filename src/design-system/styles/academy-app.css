@@ -824,3 +824,7 @@ input.input { display: block; }
   .composer-foot .composer-sep { margin: 4px 2px !important; }
   .composer .send { width: 34px; height: 34px; }
 }
+
+/* Calculator chip strip: still swipeable, without the native scrollbar on phones. */
+.calc-pills { scrollbar-width: none; -ms-overflow-style: none; }
+.calc-pills::-webkit-scrollbar { display: none; }
