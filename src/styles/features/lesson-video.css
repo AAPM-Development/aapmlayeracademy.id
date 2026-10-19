@@ -1,9 +1,31 @@
-/* Essential lesson controls use the Academy's current tokens and actions. */
-.aapm-video-player { min-width: 0; }
+/* Lesson video player — Redesign v2 canvas (Lesson artboard, "Video materi"):
+ * one card, a dark 16:9 stage with the round play button, then a hue seek
+ * bar over a row of ghost controls. Canvas tokens; touch targets stay 44px.
+ * academy.css loads after this file, so canvas classes are matched with two. */
+
+/* Player-only glyphs in the canvas mask-icon format (.ic). */
+.ic-volume-off{--i:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5'/></svg>")}
+.ic-shrink{--i:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5'/></svg>")}
+.ic-rewind{--i:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M9.2 10.1l1.4-1.1v6.4'/><rect x='13' y='9' width='3.6' height='6.4' rx='1.8'/></svg>")}
+.ic-forward{--i:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5M8.2 10.1l1.4-1.1v6.4'/><rect x='12' y='9' width='3.6' height='6.4' rx='1.8'/></svg>")}
+
+.aapm-video-player { position: relative; min-width: 0; outline: none; }
+.aapm-video-player.card { overflow: visible; }
+/* The card takes focus only so shortcuts keep working after a click on the
+ * picture; each control draws its own focus ring. */
+.aapm-video-player:focus-visible { outline: none; }
+
+/* ------------------------------------------------------------------ Stage */
 /* Keep the width tied to the lesson column. Otherwise a 200px minimum
  * height and the preferred 16:9 ratio can widen YouTube beyond a phone. */
 .aapm-video-player__viewport { width: 100%; }
 .aapm-video-player__viewport--youtube { min-height: 200px; }
+.aapm-video-player .aapm-video-player__viewport {
+  isolation: isolate;
+  border-radius: calc(var(--r-panel) - var(--bw)) calc(var(--r-panel) - var(--bw)) 0 0;
+  background: var(--media-bg);
+  color: #fff;
+}
 .aapm-video-player__viewport video,
 .aapm-video-player__embed,
 .aapm-video-player__embed iframe { display: block; width: 100%; height: 100%; }
@@ -11,67 +33,270 @@
 .aapm-video-player__embed { position: absolute; inset: 0; }
 .aapm-video-player__viewport video { object-fit: contain; }
 .aapm-video-player__embed iframe { border: 0; }
-.aapm-video-player__controls {
+.aapm-video-player__surface { position: absolute; inset: 0; z-index: 1; cursor: pointer; }
+.aapm-video-player[data-state="error"] .aapm-video-player__surface { cursor: default; }
+
+.aapm-video-player__poster {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--aapm-primitive-space-2);
-  padding: 6px 14px 4px;
+  align-items: flex-end;
+  padding: var(--s-4);
+  background: linear-gradient(to top, rgba(10, 12, 11, .72), rgba(10, 12, 11, 0) 58%);
+  pointer-events: none;
 }
-/* Redesign v2: the player is a card over the dark media frame. */
-.aapm-video-player.card { overflow: hidden; }
-.aapm-video-player.card .aapm-lesson-media { border-radius: 0; }
-.aapm-video-player.card .aapm-video-player__feedback:not(:empty) { padding: 0 14px 8px; }
-.aapm-video-player.card .aapm-lesson-media__fallback { margin: 0; padding: 0 14px 12px; }
+.aapm-video-player__poster-title { max-width: min(36rem, 72%); font-size: var(--fs-md); line-height: 20px; font-weight: 800; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.aapm-video-player__badge {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-pill);
+  background: rgba(10, 12, 11, .62);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+}
+
+/* Canvas play button: a 64px white disc on the dark frame. */
+.aapm-video-player__bigplay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .94);
+  color: #131614;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .55), 0 0 0 6px rgba(255, 255, 255, .14);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur) var(--ease), background var(--dur-fast) var(--ease);
+}
+.aapm-video-player__bigplay .ic-play { margin-left: 3px; }
+.aapm-video-player__bigplay:hover { background: #fff; transform: translate(-50%, -50%) scale(1.07); box-shadow: 0 12px 34px -8px rgba(0, 0, 0, .6), 0 0 0 9px rgba(255, 255, 255, .16); }
+.aapm-video-player__bigplay:active { transform: translate(-50%, -50%) scale(.96); }
+.aapm-video-player__bigplay:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.aapm-video-player[data-state="idle"] .aapm-video-player__bigplay::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .5);
+  animation: halo 2.4s var(--ease) infinite;
+  pointer-events: none;
+}
+
+.aapm-video-player__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 3px solid rgba(255, 255, 255, .2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  pointer-events: none;
+}
+
+.aapm-video-player__flash {
+  position: absolute;
+  top: var(--s-3);
+  left: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: rgba(10, 12, 11, .74);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  backdrop-filter: blur(6px);
+  animation: aapm-video-flash .9s var(--ease) both;
+  pointer-events: none;
+}
+@keyframes aapm-video-flash {
+  0% { opacity: 0; transform: translate(-50%, -4px) scale(.96); }
+  15%, 70% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 0) scale(1); }
+}
+
+.aapm-video-player__error {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  background: rgba(19, 22, 20, .94);
+  text-align: center;
+}
+.aapm-video-player__error p { max-width: 30rem; margin: 0; color: rgba(242, 244, 242, .86); }
+.aapm-video-player__error-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: rgba(255, 138, 150, .14); color: #ff8a96; }
+.aapm-video-player .aapm-video-player__retry { background: #fff; color: #131614; }
+.aapm-video-player .aapm-video-player__retry:hover { background: #eef0ed; }
+.aapm-video-player .aapm-video-player__open { color: #f2f4f2; }
+.aapm-video-player .aapm-video-player__open:hover { background: rgba(255, 255, 255, .12); }
+
+/* --------------------------------------------------------------- Controls */
+.aapm-video-player__controls { position: relative; padding: 2px var(--s-2) var(--s-1); }
+.aapm-video-player__row { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .aapm-video-player__controls .btn {
   min-width: 44px;
   min-height: 44px;
   flex-shrink: 0;
 }
+.aapm-video-player__controls .btn-icon { color: var(--fg); }
+.aapm-video-player__controls .btn[disabled] { background: transparent; box-shadow: none; color: var(--subtle); }
+.aapm-video-player__controls .aapm-video-player__play { color: var(--h-ink, var(--primary-ink)); }
+.aapm-video-player__time { padding: 0 var(--s-1-5, 6px); color: var(--muted); font-size: var(--fs-xs); line-height: 16px; white-space: nowrap; }
+.aapm-video-player__now { color: var(--fg); font-weight: 800; }
+
+/* Seek and volume: a canvas .bar-sm track (hue fill, buffered tint) inside the
+ * 44px target; the thumb appears on hover/focus where a pointer can hover. */
 .aapm-video-player input[type="range"] {
+  --fill: var(--h, var(--primary));
+  --load: color-mix(in srgb, var(--fg) 18%, transparent);
+  --rail: var(--track);
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
   min-height: 44px;
   margin: 0;
-  accent-color: var(--primary, var(--aapm-semantic-primary));
+  background: transparent;
   cursor: pointer;
+  touch-action: none;
 }
-.aapm-video-player input[type="range"]:focus-visible {
-  outline: 2px solid var(--aapm-semantic-primary);
-  outline-offset: 3px;
-  border-radius: var(--aapm-primitive-radius-sm);
+.aapm-video-player input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(to right, var(--fill) calc(var(--p, 0) * 1%), transparent 0), linear-gradient(to right, var(--load) calc(var(--b, 0) * 1%), var(--rail) 0);
 }
+.aapm-video-player input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(to right, var(--fill) calc(var(--p, 0) * 1%), transparent 0), linear-gradient(to right, var(--load) calc(var(--b, 0) * 1%), var(--rail) 0);
+}
+.aapm-video-player input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--fill);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.aapm-video-player input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--fill);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
+  transition: transform var(--dur-fast) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .aapm-video-player input[type="range"]:not(:hover):not(:focus-visible)::-webkit-slider-thumb { transform: scale(0); }
+  .aapm-video-player input[type="range"]:not(:hover):not(:focus-visible)::-moz-range-thumb { transform: scale(0); }
+}
+.aapm-video-player input[type="range"]:focus-visible { outline: 2px solid var(--focus); outline-offset: -6px; border-radius: var(--r-sm); }
 .aapm-video-player input[type="range"]:disabled { cursor: default; opacity: .55; }
-.aapm-video-player__timeline { width: 100%; flex: 1 0 100%; }
-.aapm-video-player__volume { width: 88px; min-width: 60px; flex: 0 1 88px; }
-.aapm-video-player__time {
-  color: var(--aapm-semantic-muted);
-  font-size: var(--aapm-component-type-caption-size);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.aapm-video-player__seek { position: relative; margin: 0 var(--s-1-5, 6px) -10px; }
+.aapm-video-player__scrub { position: absolute; bottom: calc(100% - 6px); z-index: 2; transform: translateX(-50%); pointer-events: none; }
+.aapm-video-player__timeline { width: 100%; }
+
+.aapm-video-player__sound { display: inline-flex; align-items: center; }
+.aapm-video-player .aapm-video-player__sound input[type="range"] { width: 84px; min-width: 60px; flex: 0 1 84px; margin-inline-end: var(--s-2); }
+
+.aapm-video-player__speed { position: relative; }
+.aapm-video-player__controls .aapm-video-player__rate { padding: 0 10px; font-size: var(--fs-sm); }
+.aapm-video-player .aapm-video-player__menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 156px;
+  animation: menu-in var(--dur-fast) var(--ease);
 }
-.aapm-video-player__fullscreen { margin-inline-start: auto; }
-.aapm-video-player__feedback {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--aapm-primitive-space-2);
-  color: var(--aapm-semantic-muted);
-  font-size: var(--aapm-component-type-caption-size);
+.aapm-video-player__menu .menu-item { cursor: pointer; }
+.aapm-video-player__menu .menu-item[aria-checked="true"] { font-weight: 800; }
+
+.aapm-video-player__notice { margin: 0; padding: 0 var(--s-4) var(--s-2); color: var(--warning-text); }
+.aapm-video-player.card .aapm-lesson-media__fallback { margin: 0; padding: 0 var(--s-4) var(--s-3); }
+.aapm-video-player .aapm-lesson-media__fallback a { color: var(--muted); font-weight: 700; text-decoration: none; }
+.aapm-video-player .aapm-lesson-media__fallback a:hover { color: var(--fg); text-decoration: underline; }
+/* The error panel already offers the provider link. */
+.aapm-video-player[data-state="error"] .aapm-lesson-media__fallback { display: none; }
+
+/* Provider embeds (Vimeo, Drive, Loom, Dailymotion) keep their own controls;
+ * the card, stage and footer match the player. */
+.aapm-video-player--embed .aapm-video-player__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2); padding: var(--s-3) var(--s-4); }
+
+/* ------------------------------------------------------------ Full screen */
+.aapm-video-player[data-fullscreen] {
+  --fg: #f2f4f2; --muted: rgba(242, 244, 242, .74); --subtle: rgba(242, 244, 242, .4);
+  --surface: #131614; --surface-2: rgba(255, 255, 255, .14); --track: rgba(255, 255, 255, .24);
+  --h-ink: #fff;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: #000;
 }
-.aapm-video-player__feedback:empty { display: none; }
-.aapm-video-player__feedback:not(:empty) { padding-top: var(--aapm-primitive-space-2); }
-.aapm-video-player__feedback .btn { min-height: 44px; }
-.aapm-video-player:fullscreen {
-  display: flex;
-  flex-direction: column;
-  padding: var(--aapm-primitive-space-3);
-  background: var(--aapm-semantic-surface);
-  overflow: auto;
+.aapm-video-player[data-fullscreen] .aapm-video-player__viewport { position: absolute; inset: 0; min-height: 0; aspect-ratio: auto; border-radius: 0; background: #000; }
+.aapm-video-player[data-fullscreen] .aapm-video-player__controls {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 6;
+  padding: var(--s-10, 40px) var(--s-6) var(--s-4);
+  background: linear-gradient(to top, rgba(0, 0, 0, .8), rgba(0, 0, 0, 0));
+  transition: opacity var(--dur) var(--ease);
 }
-.aapm-video-player:fullscreen .aapm-video-player__viewport {
-  flex: 1 1 auto;
-  min-height: 200px;
-  aspect-ratio: auto;
+.aapm-video-player[data-fullscreen] .aapm-lesson-media__fallback { display: none; }
+.aapm-video-player[data-fullscreen] .aapm-video-player__poster { padding: var(--s-6) var(--s-6) 112px; }
+.aapm-video-player[data-fullscreen] .aapm-video-player__poster-title { font-size: var(--fs-2xl); line-height: 28px; }
+.aapm-video-player[data-fullscreen] .aapm-video-player__badge { top: var(--s-6); right: var(--s-6); }
+.aapm-video-player[data-fullscreen] .aapm-video-player__notice { position: absolute; top: var(--s-4); left: var(--s-4); z-index: 6; }
+.aapm-video-player[data-idle] { cursor: none; }
+.aapm-video-player[data-idle] .aapm-video-player__controls { opacity: 0; pointer-events: none; }
+
+/* ----------------------------------------------------------------- Phones */
+@media (max-width: 640px) {
+  /* Phones use the hardware volume; the mute button stays. */
+  .aapm-video-player .aapm-video-player__sound input[type="range"] { display: none; }
+  .aapm-video-player__poster-title { max-width: 100%; font-size: var(--fs-sm); line-height: 18px; }
+  .aapm-video-player__poster { padding: var(--s-3); }
 }
-@media (max-width: 479px) {
-  .aapm-video-player__volume { flex-basis: 60px; width: 60px; }
+@media (max-width: 420px) {
+  .aapm-video-player__total { display: none; }
+}
+@media (max-width: 359px) {
+  .aapm-video-player__skip { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aapm-video-player[data-state="idle"] .aapm-video-player__bigplay::after,
+  .aapm-video-player__flash { animation: none; }
+  .aapm-video-player__bigplay { transition: none; }
 }

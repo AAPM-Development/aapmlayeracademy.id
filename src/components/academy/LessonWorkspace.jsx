@@ -50,9 +50,9 @@ export function LessonMedia({ module = null } = {}) {
       return <LessonVideoPlayer key={source.src} src={source.src} videoId={youtubeId} title={`Video ${module.title || "materi"}`} fallbackUrl={mediaUrl} />;
     }
     return (
-      <div className="card" style={{ overflow: "hidden" }}>
-        <div className="aapm-lesson-media">
-          {loadedEmbedSource !== source.src && <div className="aapm-lesson-media__loading" aria-live="polite"><span className="typing" aria-hidden="true"><i /><i /><i /></span>Memuat video…</div>}
+      <div className="aapm-video-player aapm-video-player--embed card">
+        <div className="aapm-lesson-media aapm-video-player__viewport">
+          {loadedEmbedSource !== source.src && <div className="aapm-lesson-media__loading" aria-live="polite"><span className="aapm-video-player__spinner" aria-hidden="true" /><span className="sr-only">Memuat video…</span></div>}
           <iframe
             className="absolute inset-0 h-full w-full"
             src={source.src}
@@ -64,14 +64,15 @@ export function LessonMedia({ module = null } = {}) {
             onLoad={() => setLoadedEmbedSource(source.src)}
           />
         </div>
-        {source.kind === "embed" ? (
-          <p className="t-caption t-muted" style={{ padding: "10px 14px 12px" }}>
+        <div className="aapm-video-player__footer">
+          <span className="chip"><Ic name="video" />{provider}</span>
+          <span className="t-caption t-muted">
             Video tidak muncul?{" "}
             <a className="btn-link" href={mediaUrl} target="_blank" rel="noopener noreferrer">
               Buka di {provider}<Ic name="external" size="xs" /><span className="sr-only"> (tab baru)</span>
             </a>
-          </p>
-        ) : null}
+          </span>
+        </div>
       </div>
     );
   }
