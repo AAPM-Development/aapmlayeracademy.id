@@ -5,8 +5,10 @@ declare(strict_types=1);
  * Q02 identity and authorization primitives, loaded by bootstrap.php.
  *
  * Authority rules, enforced here and in bootstrap.php:
- * - Administrator capability comes only from the stored role plus a verified
- *   identity. Configuration, email matching, and request data never grant it.
+ * - Administrator capability comes only from the stored role, which only a
+ *   Super Admin or the CLI can assign. Configuration, email matching, and
+ *   request data never grant it. Email verification no longer gates sign-in or
+ *   administration; it is still required to claim a certificate.
  * - Verification tokens are random, stored as SHA-256 hashes, single use, and
  *   expire after 24 hours. A newer token supersedes older ones.
  * - Every role or password change bumps auth_version, which invalidates older
@@ -30,7 +32,7 @@ function aapm_utc_later(int $seconds): string
 /**
  * Three states. `verified` needs a trusted event. `pending` is a new password
  * account awaiting verification. `legacy_pending` predates Q02 and has no
- * recorded evidence; it keeps learner access but never administration.
+ * recorded evidence. Both unverified states keep full sign-in access.
  *
  * @param array<string,mixed> $row
  */
@@ -105,9 +107,9 @@ function aapm_lock_admin_rows(PDO $pdo): void
     $pdo->query("SELECT id FROM users WHERE role IN ('admin', 'super_admin') FOR UPDATE")->fetchAll();
 }
 
-function aapm_verified_admin_count(PDO $pdo): int
+function aapm_admin_count(PDO $pdo): int
 {
-    $statement = $pdo->query("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'super_admin') AND email_verified_at IS NOT NULL");
+    $statement = $pdo->query("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'super_admin')");
 
     return (int) $statement->fetchColumn();
 }
@@ -218,6 +220,18 @@ function aapm_consume_verification_token(string $token): ?int
         aapm_tx_rollback($pdo);
         throw $exception;
     }
+}
+
+/** Records verification on the account and retires its outstanding tokens. Returns false when it was already verified. Call inside a transaction. */
+function aapm_mark_email_verified(PDO $pdo, int $userId): bool
+{
+    $now = aapm_utc_now();
+    $update = $pdo->prepare('UPDATE users SET email_verified_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND email_verified_at IS NULL');
+    $update->execute([$now, $userId]);
+    $pdo->prepare('UPDATE email_verification_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL')
+        ->execute([$now, $userId]);
+
+    return $update->rowCount() === 1;
 }
 
 function aapm_bump_auth_version(PDO $pdo, int $userId): void
