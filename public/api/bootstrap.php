@@ -1241,12 +1241,6 @@ function current_user(): ?array
         return null;
     }
 
-    // A pending new account never holds an application session.
-    if (aapm_verification_status($user) === 'pending') {
-        unset($_SESSION['user_id']);
-        return null;
-    }
-
     return present_authenticated_user($user);
 }
 
@@ -1279,13 +1273,13 @@ function legacy_config_admin_emails(): array
 }
 
 /**
- * Administrator capability requires the stored admin role AND a verified
- * identity. Configuration, email matching, and request data never grant it.
+ * Administrator capability comes from the stored role, which only a Super Admin
+ * or the CLI assigns. Configuration, email matching, and request data never grant it.
  */
 function effective_user_role(array $user): string
 {
     $storedRole = strtolower(trim((string) ($user['role'] ?? '')));
-    if (in_array($storedRole, ['admin', 'super_admin'], true) && aapm_verification_status($user) === 'verified') {
+    if (in_array($storedRole, ['admin', 'super_admin'], true)) {
         return $storedRole;
     }
 
@@ -2524,7 +2518,7 @@ function admin_user_list(string $search = ''): array
 
 function admin_effective_admin_count(): int
 {
-    return aapm_verified_admin_count(db());
+    return aapm_admin_count(db());
 }
 
 function admin_create_user(array $actor, array $input): array
@@ -2555,16 +2549,18 @@ function admin_create_user(array $actor, array $input): array
         error_response('Email tersebut sudah terdaftar.', 409, 'email_exists');
     }
 
-    // An admin role on a new account stays inert until identity verification completes.
+    // The Super Admin vouches for the address, so the account is verified from the start
+    // and no verification email is needed.
     $pdo = db();
     aapm_tx_begin($pdo);
     try {
-        $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, 1)')
-            ->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user', aapm_utc_now()]);
+        $now = aapm_utc_now();
+        $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role, email_verified_at, verification_required_at, auth_version) VALUES (?, ?, ?, ?, ?, ?, 1)')
+            ->execute([$email, app_password_hash($password), $fullName, $requestedRole === 'admin' ? 'admin' : 'user', $now, $now]);
         $id = (int) $pdo->lastInsertId();
         aapm_assign_new_learner_policy($pdo, $id, 'admin_create');
-        $token = aapm_issue_verification_token($pdo, $id);
         aapm_audit('admin.user_created', 'ok', (int) $actor['id'], $id, ['role_to' => $requestedRole === 'admin' ? 'admin' : 'learner']);
+        aapm_audit('auth.email_verified', 'ok', (int) $actor['id'], $id, ['channel' => 'admin_create']);
         aapm_tx_commit($pdo);
     } catch (PDOException $exception) {
         aapm_tx_rollback($pdo);
@@ -2573,7 +2569,6 @@ function admin_create_user(array $actor, array $input): array
         }
         throw $exception;
     }
-    aapm_audit('auth.verification_sent', aapm_send_verification_email($email, $token) ? 'sent' : 'delivery_failed', null, $id, ['channel' => 'email']);
 
     $created = $pdo->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
     $created->execute([$id]);
@@ -2621,9 +2616,9 @@ function admin_update_user(array $actor, int $userId, array $input): array
                 aapm_tx_rollback($pdo);
                 error_response('Anda tidak dapat menurunkan role admin pada akun sendiri.', 422, 'self_demotion');
             }
-            if (effective_user_role($target) === 'admin' && $storedAfter !== 'admin' && aapm_verified_admin_count($pdo) <= 1) {
+            if (effective_user_role($target) === 'admin' && $storedAfter !== 'admin' && aapm_admin_count($pdo) <= 1) {
                 aapm_tx_rollback($pdo);
-                error_response('Minimal satu admin terverifikasi harus tetap tersedia.', 422, 'last_admin');
+                error_response('Minimal satu admin harus tetap tersedia.', 422, 'last_admin');
             }
         }
 
@@ -2657,6 +2652,61 @@ function admin_require_manageable_account(array $actor, int $userId): void
     if ($statement->fetchColumn() === 'super_admin') {
         error_response('Akun Super Admin dilindungi dari perubahan melalui formulir ini.', 403, 'protected_super_admin');
     }
+}
+
+function admin_user_row(int $userId): array
+{
+    $statement = db()->prepare('SELECT id, email, full_name, role, created_at, email_verified_at, verification_required_at, auth_version FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    $row = $statement->fetch();
+    if (!$row) {
+        error_response('Pengguna tidak ditemukan.', 404, 'not_found');
+    }
+    return $row;
+}
+
+/**
+ * Super Admin sets the verification status by hand: verified for a user who cannot
+ * receive the email, or back to unverified when the address turns out to be wrong.
+ */
+function admin_set_user_verification(array $actor, int $userId, bool $verified): array
+{
+    admin_require_manageable_account($actor, $userId);
+    admin_user_row($userId);
+    $pdo = db();
+    aapm_tx_begin($pdo);
+    try {
+        if ($verified && aapm_mark_email_verified($pdo, $userId)) {
+            aapm_audit('auth.email_verified', 'ok', (int) $actor['id'], $userId, ['channel' => 'admin_manual']);
+        }
+        if (!$verified) {
+            $clear = $pdo->prepare('UPDATE users SET email_verified_at = NULL, verification_required_at = COALESCE(verification_required_at, ?), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND email_verified_at IS NOT NULL');
+            $clear->execute([aapm_utc_now(), $userId]);
+            if ($clear->rowCount() === 1) {
+                aapm_audit('auth.email_unverified', 'ok', (int) $actor['id'], $userId, ['channel' => 'admin_manual']);
+            }
+        }
+        aapm_tx_commit($pdo);
+    } catch (Throwable $exception) {
+        aapm_tx_rollback($pdo);
+        throw $exception;
+    }
+    return present_authenticated_user(admin_user_row($userId));
+}
+
+/** Super Admin sends a fresh verification email; delivery failure is reported, not hidden. */
+function admin_resend_user_verification(array $actor, int $userId): array
+{
+    admin_require_manageable_account($actor, $userId);
+    $row = admin_user_row($userId);
+    if (aapm_verification_status($row) === 'verified') {
+        error_response('Email pengguna ini sudah terverifikasi.', 409, 'already_verified');
+    }
+    $fresh = aapm_send_fresh_verification($userId, (string) $row['email'], 'auth.verification_resend');
+    if (!$fresh['sent'] && aapm_dev_token_payload($fresh['token']) === []) {
+        error_response('Email verifikasi belum dapat dikirim dari server. Gunakan "Tandai terverifikasi" atau periksa pengaturan email server.', 503, 'verification_delivery_failed');
+    }
+    return array_merge(['sent' => $fresh['sent']], aapm_dev_token_payload($fresh['token']));
 }
 
 function admin_reset_user_password(array $actor, int $userId, string $password): void

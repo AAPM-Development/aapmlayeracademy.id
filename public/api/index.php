@@ -141,12 +141,6 @@ try {
             db()->prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([app_password_hash($password), (int) $user['id']]);
         }
 
-        // A new account gets no application session until its email is verified.
-        if (aapm_verification_status($user) === 'pending') {
-            aapm_audit('auth.login_failure', 'verification_required', null, (int) $user['id'], ['identity' => aapm_identity_digest($email)]);
-            error_response('Verifikasi email Anda terlebih dahulu. Periksa kotak masuk email Anda.', 403, 'email_verification_required');
-        }
-
         aapm_establish_session($user);
         aapm_audit('auth.login_success', 'ok', (int) $user['id'], (int) $user['id'], ['source' => 'password']);
         json_response(['user' => current_user() ?? present_authenticated_user($user), 'csrfToken' => csrf_token()]);
@@ -172,7 +166,7 @@ try {
         $fullName = substr(preg_replace('/[\x00-\x1F\x7F]/', '', $fullName), 0, 160);
 
         // Existing and new addresses get the same acknowledgment. Only a new
-        // address creates a pending account, and it never receives a session.
+        // address creates a pending account; it can sign in, and verifies later.
         $existing = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
         $existing->execute([$email]);
         $devPayload = [];
@@ -209,9 +203,13 @@ try {
         require_csrf();
         rate_limit_guard('resend-ip', '', 20, 3600, 3600);
         $signedIn = current_user();
-        if ($signedIn && ($signedIn['emailVerificationStatus'] ?? '') === 'legacy_pending') {
+        if ($signedIn && ($signedIn['emailVerificationStatus'] ?? '') !== 'verified') {
             rate_limit_guard('resend-user', (string) $signedIn['id'], 3, 3600, 3600);
             $fresh = aapm_send_fresh_verification((int) $signedIn['id'], (string) $signedIn['email'], 'auth.verification_resend');
+            // The signed-in owner may learn that delivery failed; nothing about other accounts is revealed.
+            if (!$fresh['sent'] && aapm_dev_token_payload($fresh['token']) === []) {
+                error_response('Email verifikasi belum dapat dikirim dari server. Hubungi admin Academy.', 503, 'verification_delivery_failed');
+            }
             json_response(array_merge(['message' => 'Jika akun ini belum terverifikasi, instruksi verifikasi baru telah dikirim.', 'status' => 'accepted'], aapm_dev_token_payload($fresh['token'])), 202);
         }
 
@@ -472,6 +470,19 @@ try {
         $input = request_json();
         admin_reset_user_password($actor, (int) $matches[1], (string) ($input['password'] ?? ''));
         json_response(['ok' => true]);
+    }
+
+    if (preg_match('#^admin/users/(\\d+)/verify-email$#', $path, $matches) && $method === 'POST') {
+        $actor = require_super_admin();
+        require_csrf();
+        $input = request_json();
+        json_response(['user' => admin_set_user_verification($actor, (int) $matches[1], ($input['verified'] ?? true) !== false)]);
+    }
+
+    if (preg_match('#^admin/users/(\\d+)/verification-email$#', $path, $matches) && $method === 'POST') {
+        $actor = require_super_admin();
+        require_csrf();
+        json_response(admin_resend_user_verification($actor, (int) $matches[1]), 202);
     }
 
     if (preg_match('#^admin/users/(\\d+)/progress$#', $path, $matches) && $method === 'DELETE') {
