@@ -268,19 +268,20 @@ test("registration is generic, creates no session, and never overwrites an exist
     assert.equal(second.status, 202);
     assert.equal(second.json.data.message, first.json.data.message, "same acknowledgment for an existing address");
     assert.equal(second.json.data.devVerificationToken, undefined, "an existing address yields no token");
-    assert.equal((await login(api, "peserta@example.test", PASSWORD)).json.error.code, "email_verification_required", "original password still identifies the account");
     assert.equal((await login(api, "peserta@example.test", "Other-pass2")).json.error.code, "invalid_credentials", "the second signup changed nothing");
+    assert.equal((await login(api, "peserta@example.test", PASSWORD)).status, 200, "original password still identifies the account");
   });
 });
 
-test("a pending account gets no session until its token is consumed, and the token works exactly once", async () => {
+test("a pending account signs in as a learner before verifying, and the token works exactly once", async () => {
   const site = makeSite("verify-once");
   await withSite(site, async (api) => {
     const token = await registerAndGetToken(api, "baru@example.test");
-    const refused = await login(api, "baru@example.test", PASSWORD);
-    assert.equal(refused.status, 403);
-    assert.equal(refused.json.error.code, "email_verification_required");
-    assert.equal((await api.get("/api/auth/me")).status, 401);
+    const pending = await login(api, "baru@example.test", PASSWORD);
+    assert.equal(pending.status, 200, "verification no longer blocks sign-in");
+    assert.equal(pending.json.data.user.emailVerificationStatus, "pending");
+    assert.equal(pending.json.data.user.role, "learner");
+    assert.equal((await api.get("/api/auth/me")).status, 200);
 
     const verified = await api.mutate("POST", "/api/auth/verify-email", { token });
     assert.equal(verified.status, 200);
@@ -336,21 +337,70 @@ test("a configured administrator email never grants administration", async () =>
   }, {});
 });
 
-test("legacy learners keep access, and a legacy administrator without verification is refused admin APIs", async () => {
+test("unverified accounts keep their stored role: legacy and pending admins reach the admin APIs", async () => {
   const site = makeSite("legacy");
   seedAccount(site, { email: "lama-belajar@example.test" });
   seedAccount(site, { email: "lama-admin@example.test", role: "admin" });
+  seedAccount(site, { email: "baru-admin@example.test", role: "admin", pending: true });
   await withSite(site, async (api) => {
     const learner = await login(api, "lama-belajar@example.test", PASSWORD);
     assert.equal(learner.status, 200);
     assert.equal(learner.json.data.user.emailVerificationStatus, "legacy_pending");
     assert.equal((await api.get("/api/auth/me")).status, 200);
+    assert.equal((await api.get("/api/admin/users")).status, 403, "a learner is still refused");
 
-    const legacyAdmin = new Api(api.port);
-    const signedIn = await login(legacyAdmin, "lama-admin@example.test", PASSWORD);
-    assert.equal(signedIn.status, 200);
-    assert.equal(signedIn.json.data.user.role, "learner", "stored admin without verification is not an administrator");
-    assert.equal((await legacyAdmin.get("/api/admin/users")).status, 403);
+    for (const email of ["lama-admin@example.test", "baru-admin@example.test"]) {
+      const admin = new Api(api.port);
+      const signedIn = await login(admin, email, PASSWORD);
+      assert.equal(signedIn.status, 200);
+      assert.equal(signedIn.json.data.user.role, "admin", `${email} keeps the stored admin role`);
+      assert.equal(signedIn.json.data.user.emailVerified, false);
+      assert.equal((await admin.get("/api/admin/users")).status, 200);
+
+      // A signed-in unverified account can still request its verification email.
+      const resent = await admin.mutate("POST", "/api/auth/resend-verification", {});
+      assert.equal(resent.status, 202);
+      assert.ok(resent.json.data.devVerificationToken);
+    }
+  });
+});
+
+test("Super Admin can resend verification or mark an address verified, and ordinary admins cannot", async () => {
+  const site = makeSite("admin-verify");
+  seedAccount(site, { email: "pemilik@example.test", role: "super_admin", verified: true });
+  seedAccount(site, { email: "biasa@example.test", role: "admin", verified: true });
+  const targetId = seedAccount(site, { email: "belum@example.test", pending: true });
+  await withSite(site, async (api) => {
+    const admin = new Api(api.port);
+    await login(admin, "biasa@example.test", PASSWORD);
+    assert.equal((await admin.mutate("POST", `/api/admin/users/${targetId}/verify-email`, {})).status, 403);
+    assert.equal((await admin.mutate("POST", `/api/admin/users/${targetId}/verification-email`, {})).status, 403);
+
+    const owner = new Api(api.port);
+    await login(owner, "pemilik@example.test", PASSWORD);
+    const resent = await owner.mutate("POST", `/api/admin/users/${targetId}/verification-email`, {});
+    assert.equal(resent.status, 202, resent.text);
+    assert.ok(resent.json.data.devVerificationToken);
+
+    const marked = await owner.mutate("POST", `/api/admin/users/${targetId}/verify-email`, {});
+    assert.equal(marked.status, 200, marked.text);
+    assert.equal(marked.json.data.user.emailVerificationStatus, "verified");
+    assert.equal((await owner.mutate("POST", "/api/auth/verify-email", { token: resent.json.data.devVerificationToken })).status, 400, "outstanding tokens are retired");
+    assert.equal((await owner.mutate("POST", `/api/admin/users/${targetId}/verification-email`, {})).json.error.code, "already_verified");
+    const audit = rows(site, "SELECT metadata_json FROM security_audit_events WHERE event_type = 'auth.email_verified' AND target_user_id = ?", [targetId]);
+    assert.ok(audit.some((row) => row.metadata_json.includes("admin_manual")));
+
+    const revoked = await owner.mutate("POST", `/api/admin/users/${targetId}/verify-email`, { verified: false });
+    assert.equal(revoked.status, 200, revoked.text);
+    assert.equal(revoked.json.data.user.emailVerificationStatus, "pending", "Super Admin can set the status back");
+    const target = new Api(api.port);
+    assert.equal((await login(target, "belum@example.test", PASSWORD)).status, 200, "an unverified member still signs in");
+    assert.equal((await owner.mutate("POST", `/api/admin/users/${targetId}/verify-email`, { verified: true })).json.data.user.emailVerificationStatus, "verified");
+
+    const created = await owner.mutate("POST", "/api/admin/users", { email: "dibuat@example.test", password: PASSWORD, fullName: "Dibuat", role: "admin" });
+    assert.equal(created.status, 201, created.text);
+    assert.equal(created.json.data.user.emailVerificationStatus, "verified", "accounts a Super Admin creates are verified");
+    assert.equal(created.json.data.user.role, "admin");
   });
 });
 
@@ -504,7 +554,7 @@ test("password recovery revokes old sessions and proves control of the email add
   seedAccount(site, { email: "pemulihan@example.test", pending: true });
   await withSite(site, async (api) => {
     const pending = await login(new Api(api.port), "pemulihan@example.test", PASSWORD);
-    assert.equal(pending.json.error.code, "email_verification_required");
+    assert.equal(pending.json.data.user.emailVerificationStatus, "pending");
 
     const legacy = makeSite("recovery-legacy");
     seedAccount(legacy, { email: "pemulihan-lama@example.test" });
@@ -543,7 +593,7 @@ test("the last verified administrator cannot be demoted, even by a direct call",
   assert.equal(rows(site, "SELECT role FROM users WHERE id = ?", [id])[0].role, "admin");
 });
 
-test("two concurrent demotions cannot leave zero verified administrators", async () => {
+test("two concurrent demotions cannot leave zero administrators", async () => {
   const site = makeSite("race-demote");
   const xId = seedAccount(site, { email: "x@example.test", role: "admin", verified: true });
   const yId = seedAccount(site, { email: "y@example.test", role: "admin", verified: true });
@@ -606,7 +656,7 @@ test("a failed verification email leaves the account pending and retryable", asy
   await withSite(site, async (api) => {
     const token = await registerAndGetToken(api, "gagal-kirim@example.test");
     assert.ok(token, "mail_from is empty, so delivery fails and dev exposure carries the token");
-    assert.equal((await login(new Api(api.port), "gagal-kirim@example.test", PASSWORD)).json.error.code, "email_verification_required");
+    assert.equal((await login(new Api(api.port), "gagal-kirim@example.test", PASSWORD)).json.data.user.emailVerificationStatus, "pending");
     const failed = rows(site, "SELECT result FROM security_audit_events WHERE event_type = ?", ["auth.verification_sent"]);
     assert.ok(failed.some((row) => row.result === "delivery_failed"));
     const retry = await api.mutate("POST", "/api/auth/resend-verification", { email: "gagal-kirim@example.test", password: PASSWORD });

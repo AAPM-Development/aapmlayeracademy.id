@@ -115,8 +115,8 @@ test('policy admin reads and every mutation enforce admin/verification/CSRF; cli
     assert.equal((await api.get(route)).status, 401);
     await save(admin, policy, { learnerAssignments: [{ userId: 1, policyVersion: 'academy-v2' }] });
     assert.deepEqual(rows(site, 'SELECT * FROM learner_curriculum_assignments ORDER BY user_id'), assignments);
-    sql(site, "UPDATE users SET email_verified_at = NULL, verification_required_at = CURRENT_TIMESTAMP WHERE email = 'pengelola@example.test'");
-    assert.equal((await admin.get(route)).status, 401);
+    sql(site, "UPDATE users SET role = 'user' WHERE email = 'pengelola@example.test'");
+    assert.equal((await admin.get(route)).status, 403, "authority is re-read on every request");
   });
 });
 

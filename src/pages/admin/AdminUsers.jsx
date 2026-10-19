@@ -34,8 +34,10 @@ import {
 import {
   useAdminUsers,
   useCreateAdminUser,
+  useResendAdminUserVerification,
   useResetAdminUserPassword,
   useResetAdminUserProgress,
+  useSetAdminUserVerification,
   useUpdateAdminUser,
 } from "@/lib/useAdminData";
 import {
@@ -54,7 +56,11 @@ function UserSheet({ user, open, onOpenChange }) {
   const updateUser = useUpdateAdminUser();
   const resetPassword = useResetAdminUserPassword();
   const resetProgress = useResetAdminUserProgress();
+  const setVerification = useSetAdminUserVerification();
+  const resendVerification = useResendAdminUserVerification();
   const { toast } = useToast();
+  // Local echo of a manual change until the refreshed list arrives.
+  const [verifiedOverride, setVerifiedOverride] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("learner");
@@ -73,7 +79,33 @@ function UserSheet({ user, open, onOpenChange }) {
     setPasswordConfirmationOpen(false);
     setProgressConfirmationOpen(false);
     setRoleConfirmationOpen(false);
+    setVerifiedOverride(null);
   }, [user, open]);
+
+  const emailVerified = verifiedOverride ?? user?.emailVerificationStatus === "verified";
+
+  const changeVerification = async (verified) => {
+    if (!user) return;
+    try {
+      await setVerification.mutateAsync({ userId: user.id, verified });
+      setVerifiedOverride(verified);
+      toast(verified
+        ? { title: "Email ditandai terverifikasi", description: "Pengguna dapat mengklaim sertifikat tanpa email verifikasi." }
+        : { title: "Status verifikasi dicabut", description: "Pengguna perlu memverifikasi email lagi sebelum klaim sertifikat." });
+    } catch (verifyError) {
+      toast({ variant: "destructive", title: "Status verifikasi belum diubah", description: verifyError.message });
+    }
+  };
+
+  const sendVerification = async () => {
+    if (!user) return;
+    try {
+      await resendVerification.mutateAsync({ userId: user.id });
+      toast({ title: "Email verifikasi dikirim", description: `Tautan baru dikirim ke ${user.email}. Berlaku 24 jam.` });
+    } catch (sendError) {
+      toast({ variant: "destructive", title: "Email belum terkirim", description: sendError.message });
+    }
+  };
 
   const isSaving = createUser.isPending || updateUser.isPending;
 
@@ -194,7 +226,7 @@ function UserSheet({ user, open, onOpenChange }) {
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="hint">{role === "admin" ? "Admin mengelola materi dan operasional Academy. Pengelolaan akses akun hanya untuk Super Admin. Akses admin aktif setelah email terverifikasi." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
+                  <p className="hint">{role === "admin" ? "Admin mengelola materi dan operasional Academy. Pengelolaan akses akun hanya untuk Super Admin." : "Learner belajar di Academy dan melihat progresnya sendiri."}</p>
                 </div>
               </FormGrid>
             </FormSection>
@@ -207,6 +239,36 @@ function UserSheet({ user, open, onOpenChange }) {
               </FormSection>
             ) : (
               <Accordion type="multiple" className="aapm-manage-accordion">
+                <AccordionItem value="verification">
+                  <AccordionTrigger>
+                    <span>Verifikasi email</span>
+                    <VerificationCell user={emailVerified ? { emailVerificationStatus: "verified" } : user} />
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    {emailVerified ? (
+                      <>
+                        <p className="t-support t-muted">Email sudah terverifikasi. Pengguna dapat mengklaim sertifikat. Cabut status ini jika alamat email ternyata salah.</p>
+                        <div className="row wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => changeVerification(false)} disabled={setVerification.isPending}>
+                            <Ic name="x" />{setVerification.isPending ? "Menyimpan…" : "Jadikan belum terverifikasi"}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="t-support t-muted">Pengguna tetap bisa masuk dan belajar. Verifikasi hanya diperlukan untuk klaim sertifikat. Jika email tidak sampai, tandai terverifikasi secara manual.</p>
+                        <div className="row wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={sendVerification} disabled={resendVerification.isPending}>
+                            <Ic name="mail" />{resendVerification.isPending ? "Mengirim…" : "Kirim email verifikasi"}
+                          </Button>
+                          <Button type="button" variant="secondary" size="sm" onClick={() => changeVerification(true)} disabled={setVerification.isPending}>
+                            <Ic name="check" />{setVerification.isPending ? "Menyimpan…" : "Tandai terverifikasi"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
                 <AccordionItem value="security">
                   <AccordionTrigger>
                     <span>Keamanan & password</span>
@@ -253,7 +315,7 @@ function UserSheet({ user, open, onOpenChange }) {
         open={roleConfirmationOpen}
         onOpenChange={setRoleConfirmationOpen}
         title={role === "admin" ? "Berikan akses Admin?" : "Cabut akses Admin?"}
-        description={role === "admin" ? `${displayName} dapat mengelola materi dan operasional Academy setelah email terverifikasi. Pengelolaan akses akun tetap untuk Super Admin.` : `${displayName} kembali menjadi Learner. Sesi lama akan dibatalkan; riwayat belajarnya tetap tersimpan.`}
+        description={role === "admin" ? `${displayName} dapat langsung mengelola materi dan operasional Academy. Pengelolaan akses akun tetap untuk Super Admin.` : `${displayName} kembali menjadi Learner. Sesi lama akan dibatalkan; riwayat belajarnya tetap tersimpan.`}
         confirmLabel={role === "admin" ? "Berikan akses Admin" : "Jadikan Learner"}
         onConfirm={() => save(null, true)}
       />
@@ -303,10 +365,9 @@ function RoleCell({ user }) {
 }
 
 function VerificationCell({ user }) {
-  // Server-computed state. Admin access needs verified identity; legacy accounts keep learner access.
+  // Server-computed state. Verification only gates certificate claims; every account can sign in.
   if (user.emailVerificationStatus === "verified") return <span className="chip chip-success"><Ic name="check" />Terverifikasi</span>;
-  if (user.emailVerificationStatus === "pending") return <span className="chip chip-warning"><Ic name="clock" />Menunggu verifikasi</span>;
-  return <span className="chip chip-outline"><Ic name="history" />Verifikasi lama</span>;
+  return <span className="chip chip-outline"><Ic name="clock" />Belum terverifikasi</span>;
 }
 
 export default function AdminUsers() {
@@ -330,7 +391,7 @@ export default function AdminUsers() {
   return (
     <AdminPageFrame
       title="Pengguna"
-      description={canManage ? "Kelola akun dan akses admin. Akun Super Admin dilindungi; admin baru perlu memverifikasi email." : "Lihat akun dan status verifikasi. Perubahan akses dikelola oleh Super Admin."}
+      description={canManage ? "Kelola akun, akses admin, dan verifikasi email. Akun Super Admin dilindungi." : "Lihat akun dan status verifikasi. Perubahan akses dikelola oleh Super Admin."}
       actions={canManage ? <button type="button" className="btn btn-primary" onClick={() => setSheetUser(null)}><Ic name="plus" />Buat akun</button> : null}
     >
       {error ? <AdminError error={error} onRetry={refetch} /> : (
