@@ -15,9 +15,6 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState({});
   // A refused sign-in marks both fields: the API cannot say which one is wrong.
   const [credentialsRejected, setCredentialsRejected] = useState(false);
-  // A correct password on a pending account: no session, offer a fresh verification email.
-  const [verificationPending, setVerificationPending] = useState(false);
-  const [resendNote, setResendNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(false);
   const returnTo = safeReturnTo();
@@ -32,8 +29,6 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setCredentialsRejected(false);
-    setVerificationPending(false);
-    setResendNote("");
     const errors = collectErrors({ email: emailError(email), password: passwordError(password) });
     setFieldErrors(errors || {});
     if (errors) {
@@ -46,9 +41,6 @@ export default function Login() {
       window.location.href = returnTo;
     } catch (err) {
       setError(err.message || "Email atau kata sandi tidak sesuai.");
-      if (err.code === "email_verification_required") {
-        setVerificationPending(true);
-      }
       if (err.code === "invalid_credentials") {
         setCredentialsRejected(true);
         setPassword("");
@@ -56,16 +48,6 @@ export default function Login() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setResendNote("");
-    try {
-      await nativeApi.auth.resendVerification({ email: email.trim(), password });
-      setResendNote("Jika akun tersebut menunggu verifikasi, instruksi baru akan dikirim.");
-    } catch {
-      setResendNote("Instruksi belum dapat dikirim. Coba lagi.");
     }
   };
 
@@ -89,15 +71,6 @@ export default function Login() {
       }
     >
       {error && <Alert tone="danger" description={error} />}
-      {verificationPending && (
-        <div className="stack gap-3">
-          <Alert tone="info" description="Verifikasi alamat email Anda untuk masuk. Periksa kotak masuk atau minta instruksi baru." />
-          <Button type="button" variant="secondary" size="lg" block onClick={handleResend}>
-            Kirim ulang instruksi verifikasi
-          </Button>
-          {resendNote && <p className="t-caption t-muted" aria-live="polite">{resendNote}</p>}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} noValidate>
         <Field id="email" label="Alamat email" error={fieldErrors.email}>

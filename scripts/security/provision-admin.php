@@ -64,7 +64,7 @@ function provision_report(PDO $pdo, array $row, array $config): array
         'storedRole' => in_array($row['role'] ?? '', ['admin', 'super_admin'], true) ? $row['role'] : 'learner',
         'verificationStatus' => aapm_verification_status($row),
         'effectiveRole' => effective_user_role($row),
-        'verifiedAdminCount' => aapm_verified_admin_count($pdo),
+        'adminCount' => aapm_admin_count($pdo),
         'unverifiedStoredAdminCount' => (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin' AND email_verified_at IS NULL")->fetchColumn(),
         'configuredEmailCandidates' => $candidates,
     ];

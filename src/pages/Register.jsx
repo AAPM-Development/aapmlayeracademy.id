@@ -86,10 +86,13 @@ export default function Register() {
       <AuthLayout
         icon="check-circle"
         tone="success"
-        title="Periksa email Anda"
-        subtitle="Jika alamat email dapat digunakan, instruksi verifikasi akan dikirim."
+        title="Akun siap dipakai"
+        subtitle="Anda sudah bisa masuk dan mulai belajar. Kami juga mengirim tautan verifikasi ke email Anda."
         back={{ to: "/login", label: "Kembali ke masuk" }}
       >
+        <Link className="btn btn-primary btn-lg btn-block" to={"/login" + (safeReturnTo() !== "/" ? "?returnTo=" + encodeURIComponent(safeReturnTo()) : "")}>
+          Masuk sekarang<Ic name="arrow-right" />
+        </Link>
         {email.trim() ? (
           <div className="inset row gap-3" style={{ padding: "var(--s-2) var(--s-2) var(--s-2) var(--s-4)" }}>
             <Ic name="mail" className="t-muted" />
@@ -97,14 +100,14 @@ export default function Register() {
             <button type="button" className="btn btn-ghost btn-sm" aria-label="Ubah alamat email" onClick={() => setSubmitted(false)}>Ubah</button>
           </div>
         ) : null}
-        <div className="alert alert-info" role="note"><Ic name="clock" /><div>Buka tautan di email untuk mengaktifkan akun. Tautan berlaku 24 jam dan hanya dapat dipakai sekali.</div></div>
+        <div className="alert alert-info" role="note"><Ic name="clock" /><div>Verifikasi email diperlukan untuk klaim sertifikat. Tautan berlaku 24 jam; kirim ulang kapan saja dari Pengaturan profil.</div></div>
         {devLink && (
           <p className="aapm-text-caption">
             Mode pengembangan: <a className="btn btn-link t-caption" href={devLink}>buka tautan verifikasi</a>
           </p>
         )}
         {resendNote && <p className="t-caption t-muted" aria-live="polite">{resendNote}</p>}
-        <Button type="button" variant="secondary" size="lg" block onClick={handleResend}>
+        <Button type="button" variant="ghost" size="lg" block onClick={handleResend}>
           <Ic name="refresh" />Kirim ulang instruksi
         </Button>
       </AuthLayout>
