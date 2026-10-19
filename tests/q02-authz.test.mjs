@@ -439,7 +439,7 @@ test("Super Admin manages admin access while ordinary admins cannot escalate or 
 
 test("CLI provisioning: dry-run is inert, apply grants verified administration, and repeated apply is idempotent", async () => {
   const site = makeSite("provision");
-  const id = seedAccount(site, { email: "operator@example.test", role: "admin" });
+  const id = seedAccount(site, { email: "operator@example.test" });
   const dry = cli(site, "scripts/security/provision-admin.php", ["--expect-environment=local", `--user-id=${id}`, "--actor=op-one", "--evidence-ref=SEC-APPROVAL-001", "--dry-run"]);
   assert.equal(dry.status, 0, dry.stderr);
   assert.match(dry.stdout, /wouldChange: yes/);
