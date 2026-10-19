@@ -53,8 +53,21 @@ export function mediaTime(value) {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export const initialMediaState = () => ({ ready: false, playing: false, loading: true, ended: false, current: 0, duration: 0, muted: false, volume: 1 });
+export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
+export const initialMediaState = () => ({ ready: false, playing: false, loading: true, ended: false, current: 0, duration: 0, buffered: 0, muted: false, volume: 1, rate: 1, rates: PLAYBACK_RATES });
 const finiteTime = (value) => Number.isFinite(value) && value > 0 ? value : 0;
+const fraction = (value) => Number.isFinite(value) ? Math.max(0, Math.min(value, 1)) : 0;
+
+/** Share of the file buffered ahead of the playhead (0–1). */
+function bufferedFraction(video) {
+  const duration = finiteTime(video.duration);
+  const ranges = video.buffered;
+  if (!duration || !ranges?.length) return 0;
+  for (let index = 0; index < ranges.length; index++) {
+    if (ranges.start(index) <= video.currentTime && video.currentTime <= ranges.end(index)) return fraction(ranges.end(index) / duration);
+  }
+  return fraction(ranges.end(ranges.length - 1) / duration);
+}
 
 export function bindNativeVideo(video, onUpdate, onError, win = window, timeoutMs = 15000) {
   let disposed = false;
@@ -64,7 +77,7 @@ export function bindNativeVideo(video, onUpdate, onError, win = window, timeoutM
     if (disposed) return;
     const ready = video.readyState >= 1;
     if (ready) win.clearTimeout(timer);
-    onUpdate({ ready, playing: !video.paused && !video.ended, loading, ended: video.ended, current: finiteTime(video.currentTime), duration: finiteTime(video.duration), muted: video.muted, volume: video.volume });
+    onUpdate({ ready, playing: !video.paused && !video.ended, loading, ended: video.ended, current: finiteTime(video.currentTime), duration: finiteTime(video.duration), buffered: bufferedFraction(video), muted: video.muted, volume: video.volume, rate: video.playbackRate || 1, rates: PLAYBACK_RATES });
   };
   const failed = () => {
     if (!disposed) {
@@ -77,7 +90,7 @@ export function bindNativeVideo(video, onUpdate, onError, win = window, timeoutM
     canplay: () => { loading = false; sync(); },
     playing: () => { loading = false; sync(); },
     waiting: () => { loading = true; sync(); },
-    pause: sync, timeupdate: sync, durationchange: sync, volumechange: sync,
+    pause: sync, timeupdate: sync, durationchange: sync, volumechange: sync, ratechange: sync, progress: sync,
     ended: () => { loading = false; sync(); }, error: failed,
   };
   for (const [event, handler] of Object.entries(handlers)) video.addEventListener(event, handler);
@@ -89,6 +102,7 @@ export function bindNativeVideo(video, onUpdate, onError, win = window, timeoutM
     seek: (time) => { if (finiteTime(video.duration)) video.currentTime = Math.max(0, Math.min(time, video.duration)); },
     mute: () => { video.muted = !video.muted; },
     volume: (value) => { video.volume = Math.max(0, Math.min(value, 1)); video.muted = value === 0; },
+    speed: (rate) => { if (PLAYBACK_RATES.includes(rate)) video.playbackRate = rate; },
     destroy: () => {
       disposed = true;
       win.clearTimeout(timer);
@@ -108,7 +122,9 @@ export function createYouTubeSession({ mount, videoId, title, onUpdate, onError,
   const sync = () => {
     if (disposed || failedSession || !ready) return;
     const state = player.getPlayerState();
-    onUpdate({ ready: true, playing: state === 1, loading: state === 3, ended: state === 0, current: finiteTime(player.getCurrentTime()), duration: finiteTime(player.getDuration()), muted: player.isMuted(), volume: player.getVolume() / 100 });
+    // Rates and buffering are optional in the IFrame API; older embeds omit them.
+    const offered = player.getAvailablePlaybackRates?.()?.filter((rate) => PLAYBACK_RATES.includes(rate));
+    onUpdate({ ready: true, playing: state === 1, loading: state === 3, ended: state === 0, current: finiteTime(player.getCurrentTime()), duration: finiteTime(player.getDuration()), buffered: fraction(player.getVideoLoadedFraction?.() ?? 0), muted: player.isMuted(), volume: player.getVolume() / 100, rate: player.getPlaybackRate?.() || 1, rates: offered?.length ? offered : PLAYBACK_RATES });
   };
   const failed = (message) => {
     if (disposed) return;
@@ -152,6 +168,7 @@ export function createYouTubeSession({ mount, videoId, title, onUpdate, onError,
     seek: (time) => { if (ready) player.seekTo(Math.max(0, Math.min(time, player.getDuration())), true); },
     mute: () => { if (ready) { if (player.isMuted()) player.unMute(); else player.mute(); sync(); } },
     volume: (value) => { if (ready) { player.setVolume(Math.max(0, Math.min(value, 1)) * 100); if (value > 0) player.unMute(); else player.mute(); sync(); } },
+    speed: (rate) => { if (ready && PLAYBACK_RATES.includes(rate)) { player.setPlaybackRate?.(rate); sync(); } },
     destroy: () => {
       disposed = true;
       win.clearTimeout(readyTimer);
