@@ -721,19 +721,19 @@ function DevicePanel() {
   );
 }
 
-/** Quiet, dismissible reminder for legacy accounts. It never blocks learning. */
+/** Quiet, dismissible reminder for unverified accounts. It never blocks learning. */
 function VerificationReminder() {
   const { user } = useAuth();
   const [hidden, setHidden] = useState(false);
   const [note, setNote] = useState("");
-  if (user?.emailVerificationStatus !== "legacy_pending" || hidden) return null;
+  if (!user || user.emailVerified || hidden) return null;
   const send = async () => {
     setNote("");
     try {
       await nativeApi.auth.resendVerification({});
-      setNote("Jika akun ini belum terverifikasi, instruksi baru telah dikirim ke email Anda.");
-    } catch {
-      setNote("Instruksi belum dapat dikirim. Coba lagi nanti.");
+      setNote(`Tautan verifikasi dikirim ke ${user.email}. Periksa juga folder spam.`);
+    } catch (error) {
+      setNote(error?.message || "Instruksi belum dapat dikirim. Coba lagi nanti.");
     }
   };
   return (
@@ -741,7 +741,7 @@ function VerificationReminder() {
       <Ic name="mail" />
       <div className="stack gap-2 grow">
         <div className="row wrap between gap-3">
-          <p style={{ flex: "1 1 320px" }}><span className="alert-title">Verifikasi alamat email Anda untuk melindungi akun.</span> Akses belajar Anda tetap tersedia.</p>
+          <p style={{ flex: "1 1 320px" }}><span className="alert-title">Verifikasi alamat email Anda.</span> Diperlukan untuk klaim sertifikat; akses belajar tetap tersedia.</p>
           <div className="row wrap gap-2">
             <button type="button" className="btn btn-secondary btn-sm" onClick={send}>Kirim instruksi verifikasi</button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHidden(true)}>Nanti saja</button>

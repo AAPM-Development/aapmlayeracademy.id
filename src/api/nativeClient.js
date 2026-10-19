@@ -489,6 +489,10 @@ export const nativeApi = {
           method: "DELETE",
           body: JSON.stringify({ confirm: true }),
         }),
+      setVerification: (userId, verified) =>
+        request(`/admin/users/${encodeURIComponent(userId)}/verify-email`, json({ verified })),
+      resendVerification: (userId) =>
+        request(`/admin/users/${encodeURIComponent(userId)}/verification-email`, json({})),
     },
     curriculum: {
       policies: {

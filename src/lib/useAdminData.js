@@ -76,6 +76,23 @@ export function useResetAdminUserPassword() {
   });
 }
 
+export function useSetAdminUserVerification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, verified }) => nativeApi.admin.users.setVerification(userId, verified),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "learners"] });
+    },
+  });
+}
+
+export function useResendAdminUserVerification() {
+  return useMutation({
+    mutationFn: ({ userId }) => nativeApi.admin.users.resendVerification(userId),
+  });
+}
+
 export function useResetAdminUserProgress() {
   const queryClient = useQueryClient();
   return useMutation({
