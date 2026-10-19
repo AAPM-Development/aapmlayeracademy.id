@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bindNativeVideo, createYouTubeSession, loadYouTubeApi, mediaTime, YOUTUBE_API_URL } from "../src/lib/lessonVideo.js";
+import { bindNativeVideo, createYouTubeSession, loadYouTubeApi, mediaTime, PLAYBACK_RATES, YOUTUBE_API_URL } from "../src/lib/lessonVideo.js";
 import { trustedVideoSource } from "../src/lib/lessonVideoSource.js";
 
 test("lesson URLs preserve privacy hashes and provider IDs without trusting arbitrary embed hosts", () => {
@@ -299,4 +299,46 @@ test("timestamps normalize missing metadata, and phone video viewport respects Y
   assert.equal(declarations(".aapm-video-player__controls .btn")["min-height"], "44px");
   assert.equal(declarations(".aapm-video-player__controls .btn")["min-width"], "44px");
   assert.equal(declarations('.aapm-video-player input[type="range"]')["min-height"], "44px");
+});
+
+test("playback speed and buffering come from the media on both adapters", async () => {
+  const env = environment();
+  const video = env.element();
+  Object.assign(video, { readyState: 1, paused: true, ended: false, currentTime: 30, duration: 120, muted: false, volume: 1, playbackRate: 1, buffered: { length: 2, start: (i) => [0, 60][i], end: (i) => [45, 90][i] }, play() { return Promise.resolve(); }, pause() {} });
+  const updates = [];
+  const adapter = bindNativeVideo(video, (state) => updates.push(state), assert.fail, env.win);
+  assert.equal(updates.at(-1).rate, 1);
+  assert.equal(updates.at(-1).buffered, 45 / 120, "buffered ahead of the playhead, not the last range");
+  adapter.speed(1.5);
+  video.dispatchEvent(new Event("ratechange"));
+  assert.equal(updates.at(-1).rate, 1.5);
+  adapter.speed(16);
+  assert.equal(video.playbackRate, 1.5, "unsupported rates are ignored");
+  adapter.destroy();
+
+  const fixture = youtubeFixture(env);
+  const ytUpdates = [];
+  const session = createYouTubeSession({ ...env, mount: env.element(), videoId: "M7lc1UVf-VE", title: "Materi", loadApi: async () => fixture.api, onUpdate: (state) => ytUpdates.push(state), onError: assert.fail });
+  await flush();
+  const player = fixture.players[0];
+  session.speed(2);
+  assert.equal(player.rate, undefined, "speed waits for readiness");
+  Object.assign(player, { rate: 1, getPlaybackRate() { return this.rate; }, setPlaybackRate(rate) { this.rate = rate; }, getAvailablePlaybackRates: () => [0.25, 0.5, 1, 1.5, 2], getVideoLoadedFraction: () => .4 });
+  player.ready();
+  assert.deepEqual(ytUpdates.at(-1).rates, [0.5, 1, 1.5, 2], "only rates the menu offers and YouTube allows");
+  assert.equal(ytUpdates.at(-1).buffered, .4);
+  session.speed(1.5);
+  assert.equal(ytUpdates.at(-1).rate, 1.5);
+  session.destroy();
+  assert.deepEqual(PLAYBACK_RATES, [0.5, 0.75, 1, 1.25, 1.5, 2]);
+});
+
+test("player stays one canvas card: keyboard shortcuts, 44px targets and no legacy control styles", () => {
+  const source = readFileSync(new URL("../src/components/academy/LessonVideoPlayer.jsx", import.meta.url), "utf8");
+  for (const label of ["Putar video", "Jeda video", "Mundur ${SKIP_SECONDS} detik", "Maju ${SKIP_SECONDS} detik", "Kecepatan putar", "Layar penuh", "Coba lagi"]) assert.ok(source.includes(label), label);
+  assert.match(source, /role="menuitemradio"/);
+  assert.match(source, /aria-describedby=\{`\$\{uid\}-keys`\}/);
+  assert.doesNotMatch(source, /@\/design-system"|AapmIcon/, "canvas markup and Ic icons only");
+  const sweep = readFileSync(new URL("../src/styles/features/sweep.css", import.meta.url), "utf8");
+  assert.doesNotMatch(sweep, /aapm-video-player/, "player styles live in lesson-video.css only");
 });
