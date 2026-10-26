@@ -32,6 +32,7 @@ function AcademyBrandPanel() {
   const isDesktop = useMedia("(min-width: 1025px)");
   const reducedMotion = useMedia("(prefers-reduced-motion: reduce)");
   const [loadVideo, setLoadVideo] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -61,7 +62,7 @@ function AcademyBrandPanel() {
   return (
     <aside className="hide-md auth-brand" aria-label="Tentang AAPM Layer Academy">
       <div className="aapm auth-brand-frame" data-theme="dark">
-        <video
+        {videoFailed ? <img className="auth-brand-video" src="/assets/Video-Web_3-poster.webp" alt="" /> : <video
           ref={videoRef}
           className="auth-brand-video"
           src={loadVideo ? "/assets/Video-Web_3.mp4" : undefined}
@@ -72,7 +73,8 @@ function AcademyBrandPanel() {
           playsInline
           preload={loadVideo ? "metadata" : "none"}
           aria-hidden="true"
-        />
+          onError={() => setVideoFailed(true)}
+        />}
         <div className="stack gap-3 auth-brand-foot">
           <div className="appi-stage" style={{ alignSelf: "flex-start", marginLeft: "var(--s-4)" }}>
             <AppiMascot mood="happy" size="xl" enter="pop" />
