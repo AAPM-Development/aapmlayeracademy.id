@@ -425,11 +425,21 @@ input.input { display: block; }
 .auth-col { max-width: 400px; margin-inline: auto; }
 .auth-body > form { display: flex; flex-direction: column; gap: var(--s-5); }
 .auth-body .input { height: 48px; }
-.auth-brand { flex: 1.05 1 0; min-width: 0; display: flex; padding: var(--s-4); }
-.auth-brand-frame { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--s-4); padding: var(--s-8); border-radius: var(--r-feature); overflow: hidden; background: var(--media-bg); }
-.auth-brand-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.auth-brand { position: sticky; top: 0; align-self: flex-start; height: 100dvh; flex: 1.05 1 0; min-width: 0; display: flex; padding: var(--s-4); }
+/* Keep the full-bleed video tied to the viewport-sized panel even when
+ * registration or validation makes the form taller than the screen. */
+.auth-brand-frame { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--s-4); padding: clamp(16px, 2vw, 32px); border-radius: var(--r-feature); overflow: hidden; background: var(--media-bg); }
+.auth-brand-video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .auth-brand-frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, .55)); pointer-events: none; }
 .auth-brand-foot { position: relative; z-index: 1; }
+.auth-brand-foot figcaption { flex-wrap: wrap; }
+.auth-brand-foot figcaption > span:last-child { margin-left: auto; }
+@media (max-height: 700px) {
+  .auth-main { padding-top: var(--s-6); }
+  .auth-main > .auth-col:first-child { gap: var(--s-5); }
+  .auth-brand-foot > .appi-stage { display: none; }
+  .auth-brand-foot figure { padding: var(--s-4); gap: var(--s-3); }
+}
 
 /* Canvas system pages: one card, centred on the page or in the shell. */
 .status-card { width: min(420px, 100%); min-height: 420px; }
