@@ -35,7 +35,9 @@
     inset-inline: var(--aapm-component-page-inset-compact);
     bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-2));
   }
-  .aapm-curriculum-actionbar__desktop { display: none; }
+  /* Two classes: the shared .row utility would otherwise keep the desktop set visible beside the mobile one. */
+  .aapm-curriculum-actionbar .aapm-curriculum-actionbar__desktop { display: none; }
+  .aapm-curriculum-actionbar .row.grow { display: none; }
   .aapm-curriculum-actionbar__mobile { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); }
   .aapm-curriculum-actionbar__mobile :is(.aapm-button, .aapm-icon-button) { min-height: 44px; min-width: 44px; }
   .aapm-curriculum-actionbar__primary { flex: 1; min-width: 0; }

@@ -56,7 +56,7 @@ function HomeHero({ user, nextModule, nextProgress, summary, completedSet }) {
                 <span className="t-heading">{nextModule.title}</span>
                 <span className="t-support t-muted">{moduleMeta(nextModule)}</span>
               </div>
-              <FlowSteps steps={steps} className="hide-sm" />
+              <FlowSteps steps={steps} className="hide-md" />
             </div>
           </Link>
         ) : (

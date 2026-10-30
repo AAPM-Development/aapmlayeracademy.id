@@ -153,7 +153,7 @@
 :where(.aapm) :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 :where(.aapm) ::placeholder { color: var(--subtle); opacity: 1; }
 :where(.aapm) table { border-collapse: collapse; }
-.logo { display: block; height: 32px; width: auto; max-width: none; align-self: flex-start; flex: none; }
+.logo { display: block; height: 32px; width: auto; max-width: none; align-self: flex-start; flex: none; object-fit: contain; }
 .logo-lg { height: 36px; }
 .only-dark { display: none !important; }
 :is(.dark .aapm, .aapm[data-theme="dark"]) .only-light { display: none !important; }
@@ -643,7 +643,7 @@
 .appi-says { display: flex; align-items: flex-end; gap: 10px; }
 .launcher { position: absolute; right: 24px; bottom: 24px; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%;
   background: var(--surface); border: 2px solid var(--border); box-shadow: 0 var(--ledge) 0 var(--border-strong), var(--shadow-raised); }
-.launcher img { width: 46px; height: 46px; animation: bob 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.launcher img { width: 46px; height: 46px; object-fit: contain; animation: bob 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
 .composer { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 10px 16px; border: 1px solid var(--border-strong); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow-card); }
 .composer textarea { width: 100%; min-height: 48px; border: 0; outline: 0; resize: none; background: transparent; font-size: var(--fs-ui); line-height: 24px; padding: 0; }
 .composer-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

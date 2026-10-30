@@ -258,7 +258,7 @@ function Achievements({ achievements, userId = "" }) {
           <div className="stack grow gap-1-5" style={{ minWidth: 0 }}>
             <span className="t-heading">{unlocked === total ? "Semua pencapaian terbuka!" : unlocked ? `${unlocked} pencapaian sudah jadi milikmu` : "Buka pencapaian pertamamu"}</span>
             <Bar value={percentAll} size="sm" animate label={`Pencapaian terbuka ${percentAll}%`} />
-            {next ? <span className="t-caption t-muted">Berikutnya: <span className="t-strong t-ink">{next.title}</span> · {remainingText(next, Math.min(next.current, next.target))}</span> : <span className="t-caption t-muted">Kamu luar biasa. Pertahankan kebiasaan belajarmu.</span>}
+            {next ? <span className="t-caption t-ink">Berikutnya: <span className="t-strong t-ink">{next.title}</span> · {remainingText(next, Math.min(next.current, next.target))}</span> : <span className="t-caption t-muted">Kamu luar biasa. Pertahankan kebiasaan belajarmu.</span>}
           </div>
         </div>
       ) : null}
