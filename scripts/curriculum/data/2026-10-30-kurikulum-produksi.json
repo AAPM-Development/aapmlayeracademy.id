@@ -177,8 +177,8 @@
         {
           "question": "Farm A memiliki HDP 92% dengan FCR 2,10. Farm B memiliki HDP 89% dengan FCR 1,90. Apa kesimpulan yang tepat?",
           "options": [
-            "Farm A pasti lebih profitable",
-            "Farm B pasti lebih profitable",
+            "Farm A lebih profitable karena HDP-nya lebih tinggi 3 poin",
+            "Farm B lebih profitable karena FCR-nya lebih rendah",
             "HDP saja tidak cukup untuk menentukan profitabilitas",
             "FCR tidak berhubungan dengan profitabilitas"
           ],
@@ -335,7 +335,7 @@
             "50%",
             "85% atau lebih",
             "65%",
-            "Uniformity tidak perlu diukur"
+            "75% atau lebih"
           ],
           "correctIndex": 1,
           "explanation": "Pullet yang seragam (≥85% dalam ±10% rata-rata) merespons program cahaya dan pakan secara lebih serempak.",
@@ -348,8 +348,8 @@
           "options": [
             "Waktu menuju produksi lebih singkat dan risiko fase brooding sudah terlewati",
             "Modal per ekor jauh lebih rendah",
-            "Catatan vaksinasi tidak perlu diperiksa",
-            "Ayam tidak memerlukan adaptasi kandang dan pakan"
+            "Risiko penyakit saat penerimaan menjadi hilang",
+            "Ayam langsung beradaptasi pada kandang dan pakan baru tanpa penurunan konsumsi sama sekali"
           ],
           "correctIndex": 0,
           "explanation": "Pullet lebih cepat menghasilkan pemasukan dan sudah melewati fase brooding, tetapi harga per ekornya lebih tinggi.",
@@ -518,7 +518,7 @@
             "Agar biaya cat dinding lebih murah",
             "Karena kandang lebar menurunkan berat telur secara langsung",
             "Agar udara di bagian tengah kandang tidak stagnan dan amonia tidak menumpuk",
-            "Hanya untuk alasan estetika"
+            "Untuk menyamakan lebar kandang dengan bentang atap standar"
           ],
           "correctIndex": 2,
           "explanation": "Ventilasi alami bergantung pada aliran silang; pada kandang yang terlalu lebar aliran udara melemah di bagian tengah.",
@@ -546,7 +546,7 @@
             "Agar udara segar masuk dari atas tanpa langsung menerpa badan ayam",
             "Agar tirai mudah dikerek dan katrol tidak cepat aus karena beban tirai menjadi lebih ringan",
             "Agar sinar matahari langsung mengenai ayam",
-            "Agar katrol tidak perlu dirawat"
+            "Agar tirai lebih tahan terhadap hujan"
           ],
           "correctIndex": 0,
           "explanation": "Bukaan atas memberi pertukaran udara sambil melindungi ayam dari terpaan angin langsung.",
@@ -558,7 +558,7 @@
           "question": "Jarak minimal antarbangunan kandang open house yang dianjurkan adalah...",
           "options": [
             "1 meter",
-            "Kandang dibuat menempel agar hemat lahan",
+            "Kandang dibuat menempel agar hemat lahan dan jalur pipa air lebih pendek",
             "0,5 × lebar kandang",
             "1 × lebar kandang (ideal 1,5–2 × lebar kandang)"
           ],
@@ -685,7 +685,7 @@
           "options": [
             "Keseragaman bobot badan dalam flock",
             "Jumlah telur retak",
-            "Konsumsi listrik kandang",
+            "Perbedaan umur antarkelompok ayam dalam satu flock",
             "Harga pakan"
           ],
           "correctIndex": 0,
@@ -725,7 +725,7 @@
         {
           "question": "Pergantian jenis pakan pada fase rearing sebaiknya didasarkan pada...",
           "options": [
-            "Umur saja",
+            "Umur kalender ayam",
             "Pencapaian bobot badan sesuai standar strain",
             "Harga pakan minggu itu",
             "Kebiasaan farm sebelumnya"
@@ -877,7 +877,7 @@
           "options": [
             "Setelah telur pertama muncul, agar ayam sudah terbukti mulai berproduksi",
             "Pada umur 25 minggu",
-            "Kapan saja tanpa jadwal",
+            "Mengikuti jadwal truk pengangkut",
             "Sebelum telur pertama, umumnya sekitar 15–17 minggu"
           ],
           "correctIndex": 3,
@@ -889,7 +889,7 @@
         {
           "question": "Prioritas pertama setelah pullet tiba di kandang produksi adalah...",
           "options": [
-            "Langsung melakukan semua vaksinasi",
+            "Melakukan vaksinasi ulang pada hari kedatangan",
             "Mematikan lampu selama 24 jam",
             "Memastikan ayam menemukan air minum dan pakan",
             "Membatasi air minum"
@@ -905,7 +905,7 @@
           "options": [
             "Menurunkan bobot badan pullet agar tidak terlalu berat saat memasuki masa produksi",
             "Menyiapkan cadangan kalsium (tulang meduler) sebelum produksi",
-            "Menggantikan program vaksinasi",
+            "Menggantikan program vaksinasi saat pullet dipindahkan ke kandang produksi",
             "Membuat kerabang berwarna putih"
           ],
           "correctIndex": 1,
@@ -1057,7 +1057,7 @@
           "question": "HDP naik 1 poin, tetapi egg weight turun 3 g. Bagaimana sebaiknya hal ini dibaca?",
           "options": [
             "Egg mass bisa turun, sehingga kenaikan HDP belum tentu perbaikan",
-            "Pasti ada perbaikan karena HDP naik",
+            "Ada perbaikan karena HDP adalah KPI utama layer",
             "Egg weight tidak relevan",
             "Data harus dihapus"
           ],
@@ -1070,9 +1070,9 @@
         {
           "question": "Tindakan koreksi yang dihasilkan rapat produksi sebaiknya memiliki...",
           "options": [
-            "Hanya nama kandang",
+            "Nama kandang dan tanggal rapat",
             "Banyak perubahan sekaligus tanpa baseline",
-            "Tidak perlu dicatat",
+            "Catatan lisan saat rapat",
             "PIC, tenggat, dan indikator hasil"
           ],
           "correctIndex": 3,
@@ -1087,7 +1087,7 @@
             "Langsung mengganti strain ayam",
             "Menaikkan harga jual telur",
             "Memverifikasi data, lalu memeriksa air, pakan, lingkungan, dan kesehatan",
-            "Mengabaikan karena akan pulih sendiri"
+            "Menunggu satu minggu penuh agar penurunannya terbaca sebagai tren, baru bertindak"
           ],
           "correctIndex": 2,
           "explanation": "Penurunan mendadak perlu diverifikasi dan ditelusuri ke faktor yang paling cepat berubah.",
@@ -1269,7 +1269,7 @@
             "Diturunkan",
             "Dinaikkan",
             "Dibiarkan sama",
-            "Diganti dengan air minum saja"
+            "Diencerkan dengan bahan berserat"
           ],
           "correctIndex": 1,
           "explanation": "Kebutuhan per hari tetap, sehingga bila konsumsi turun, persentase nutrisi dalam ransum harus naik.",
@@ -1281,9 +1281,9 @@
           "question": "Prinsip FIFO di gudang pakan berarti...",
           "options": [
             "Pakan atau bahan yang masuk lebih dulu digunakan lebih dulu",
-            "Pakan terbaru selalu dipakai lebih dulu",
+            "Pakan terbaru dipakai lebih dulu agar kandungan nutrisinya masih segar",
             "Pakan disimpan tanpa label tanggal",
-            "Pakan hanya dicek setahun sekali"
+            "Pakan diurutkan menurut harga belinya"
           ],
           "correctIndex": 0,
           "explanation": "FIFO mengurangi risiko pakan kedaluwarsa, berjamur, atau turun kualitasnya.",
@@ -1294,7 +1294,7 @@
         {
           "question": "FCR membaik, tetapi egg mass turun tajam. Kesimpulan yang tepat adalah...",
           "options": [
-            "Pasti lebih efisien dan menguntungkan",
+            "Kinerja membaik karena pakan per kg telur turun",
             "Egg mass tidak berhubungan dengan FCR",
             "Konsumsi pakan harus dikurangi lagi",
             "Belum tentu baik; FCR harus dianalisis bersama egg mass dan feed intake"
@@ -1421,7 +1421,7 @@
           "question": "Penurunan konsumsi air yang mendadak paling tepat dianggap sebagai...",
           "options": [
             "Tanda produksi akan naik",
-            "Hal normal yang tidak perlu dicatat",
+            "Variasi harian yang wajar pada layer dan cukup dipantau pada rekap mingguan berikutnya",
             "Sinyal awal masalah kesehatan atau sistem air yang perlu segera diperiksa",
             "Alasan untuk mengurangi pakan"
           ],
@@ -1437,7 +1437,7 @@
             "Telur menjadi lebih besar",
             "Kotoran lebih basah, amonia naik, dan data konsumsi air tidak akurat",
             "Konsumsi air tercatat lebih rendah dari aktual sehingga ayam tampak kekurangan minum",
-            "Tidak ada dampak"
+            "FCR langsung membaik"
           ],
           "correctIndex": 1,
           "explanation": "Kebocoran menambah kelembapan dan amonia, serta membuat meter air mencatat konsumsi semu.",
@@ -1449,8 +1449,8 @@
           "question": "Titik pengambilan sampel kualitas air yang paling mewakili air yang diminum ayam adalah...",
           "options": [
             "Ujung jalur nipple (end-line), selain di sumber",
-            "Hanya di sumur",
-            "Hanya di tandon utama",
+            "Di sumur atau sumber air",
+            "Di tandon utama",
             "Air kemasan di kantor"
           ],
           "correctIndex": 0,
@@ -1638,9 +1638,9 @@
         {
           "question": "Pengukuran mikroklimat yang paling relevan dilakukan...",
           "options": [
-            "Hanya di kantor",
+            "Di ruang kontrol",
             "Di level ayam pada beberapa titik kandang",
-            "Hanya di luar farm",
+            "Di stasiun cuaca terdekat",
             "Setahun sekali"
           ],
           "correctIndex": 1,
@@ -1666,7 +1666,7 @@
         {
           "question": "Cooling pad paling efektif menurunkan suhu udara masuk ketika...",
           "options": [
-            "Kelembapan udara sangat tinggi",
+            "Kelembapan udara sangat tinggi sehingga pad tetap basah sepanjang hari",
             "Malam hari yang dingin",
             "Tidak ada aliran udara melalui pad",
             "Suhu tinggi dan kelembapan udara rendah"
@@ -1929,7 +1929,7 @@
         {
           "question": "Fungsi ATS (Automatic Transfer Switch) pada closed house adalah...",
           "options": [
-            "Mengatur intensitas lampu",
+            "Menurunkan beban listrik kandang dengan mematikan kipas secara bergantian saat beban puncak",
             "Menimbang telur",
             "Mengukur konsumsi air",
             "Memindahkan suplai listrik dari PLN ke genset secara otomatis tanpa menunggu operator"
@@ -2067,7 +2067,7 @@
           "options": [
             "Menebak dosis obat sendiri",
             "Menghapus catatan kesehatan",
-            "Menghentikan air minum",
+            "Memberikan antibiotik spektrum luas lebih dulu sambil menunggu hasil pemeriksaan laboratorium",
             "Mengikuti alur eskalasi dan melibatkan dokter hewan"
           ],
           "correctIndex": 3,
@@ -2109,7 +2109,7 @@
           "options": [
             "Mengevaluasi respons vaksinasi dan tingkat perlindungan flock",
             "Menghitung FCR",
-            "Menentukan diagnosis pasti penyakit tanpa perlu pemeriksaan dokter hewan di lapangan",
+            "Menggantikan pemeriksaan dokter hewan dalam menetapkan diagnosis penyakit di lapangan",
             "Mengukur intensitas cahaya"
           ],
           "correctIndex": 0,
@@ -2121,9 +2121,9 @@
         {
           "question": "Catatan vaksinasi yang baik minimal memuat...",
           "options": [
-            "Hanya nama farm",
-            "Hanya harga vaksin",
-            "Catatan tidak diperlukan bila vaksin sudah diberikan",
+            "Nama farm dan nama vaksin",
+            "Harga dan pemasok vaksin",
+            "Tanggal vaksinasi dan nama petugas",
             "Tanggal, umur, jenis/strain vaksin, nomor batch, rute, dosis, dan petugas"
           ],
           "correctIndex": 3,
@@ -2272,7 +2272,7 @@
           "question": "Zona hijau dalam pembagian zona biosecurity adalah...",
           "options": [
             "Area di luar lokasi peternakan",
-            "Kantor dan bengkel",
+            "Kantor, bengkel, dan gudang pakan yang berada dalam pagar farm",
             "Jalan raya menuju farm",
             "Area kandang (zona steril)"
           ],
@@ -2286,7 +2286,7 @@
           "question": "Urutan kunjungan antarkandang dalam satu hari yang benar adalah...",
           "options": [
             "Dari flock sakit ke flock muda",
-            "Acak sesuai jarak terdekat",
+            "Dari kandang terdekat ke terjauh agar jarak berjalan petugas lebih hemat",
             "Dari flock muda/sehat ke flock tua atau yang sedang sakit",
             "Urutan tidak berpengaruh"
           ],
@@ -2441,7 +2441,7 @@
           "options": [
             "Mengurangi pencatatan",
             "Memperbaiki handling dan penyetelan titik collection/transfer",
-            "Menaikkan suhu kandang",
+            "Menambah tumpukan tray per palet agar telur tidak bergeser selama diangkut",
             "Mengabaikan telur reject"
           ],
           "correctIndex": 1,
@@ -2495,7 +2495,7 @@
         {
           "question": "Analisis Pareto cacat telur membantu tim untuk...",
           "options": [
-            "Mencatat semua cacat tanpa prioritas",
+            "Mencatat cacat menurut urutan waktu temuan",
             "Fokus pada sedikit penyebab yang menyumbang sebagian besar cacat",
             "Menghapus data reject",
             "Mengganti egg grader setiap minggu"
@@ -2669,7 +2669,7 @@
           "question": "Dashboard menampilkan HDP 120% untuk satu kandang. Tindakan yang tepat adalah...",
           "options": [
             "Menghapus data diam-diam",
-            "Membiarkannya karena terlihat bagus",
+            "Membiarkannya karena angka di atas 100% menandakan produksi sedang sangat baik",
             "Merata-ratakan dengan kandang lain",
             "Menandai data tersebut dan memverifikasinya ke catatan lapangan"
           ],
@@ -2912,9 +2912,9 @@
           "question": "Perbandingan FCR antarkandang dianggap valid apabila...",
           "options": [
             "Periode, umur, strain, definisi, dan satuan data sebanding",
-            "Tipe kandang dan merek peralatan sama",
+            "Tipe kandang, merek peralatan, dan jumlah petugas di kedua kandang tidak berbeda",
             "Jumlah supervisor sama",
-            "Semua angka dibulatkan"
+            "Angka dibulatkan ke satu desimal"
           ],
           "correctIndex": 0,
           "explanation": "Benchmark hanya bermakna jika basis perbandingannya setara.",
@@ -3060,7 +3060,7 @@
           "options": [
             "Karena menambah populasi ayam",
             "Dijual dengan harga lebih rendah padahal biaya produksinya sama",
-            "Karena menurunkan konsumsi pakan",
+            "Karena telur retak dan kotor menurunkan konsumsi pakan flock pada minggu berikutnya",
             "Tidak berpengaruh pada margin"
           ],
           "correctIndex": 1,
@@ -3143,7 +3143,7 @@
             "Jumlah vaksin",
             "Waktu saat investasi tertutup oleh margin (waktu balik modal)",
             "Uniformity",
-            "Kelembapan kandang"
+            "Jumlah telur minimum yang harus dijual per hari agar biaya bulanan tertutup"
           ],
           "correctIndex": 1,
           "explanation": "BEP pada kalkulator = CAPEX ÷ margin tahunan, yaitu waktu balik modal sederhana.",
@@ -3182,7 +3182,7 @@
         {
           "question": "Mengapa farm yang profit bisa tetap kekurangan kas?",
           "options": [
-            "Karena profit selalu sama dengan kas, sehingga selisihnya berarti ada kesalahan pencatatan",
+            "Karena profit dan kas dibukukan pada periode yang sama, sehingga selisihnya berarti salah catat",
             "Karena ROI terlalu tinggi",
             "Karena ada piutang, cicilan, atau pembelian pullet yang menyerap kas",
             "Karena FCR terlalu baik"
@@ -3285,8 +3285,8 @@
         {
           "question": "SOP yang baik menjelaskan...",
           "options": [
-            "Hanya nama pemilik farm",
-            "Hanya harga telur",
+            "Nama pemilik dan struktur organisasi farm",
+            "Target harga jual telur",
             "Siapa, apa, kapan, standar, dan tindakan koreksi",
             "Uraian sejarah farm dan latar belakang teori tanpa langkah kerja yang perlu dilakukan"
           ],
@@ -3314,9 +3314,9 @@
           "question": "Cara audit SOP yang paling efektif adalah...",
           "options": [
             "Observasi langsung pelaksanaan di lapangan",
-            "Memeriksa tanda tangan saja",
+            "Memeriksa kelengkapan tanda tangan",
             "Bertanya kepada pemilik farm",
-            "Tidak perlu diaudit bila SOP sudah ditandatangani"
+            "Meminta petugas mengisi kuesioner tahunan"
           ],
           "correctIndex": 0,
           "explanation": "Observasi menunjukkan apakah SOP benar-benar dijalankan sesuai standar.",
@@ -3329,7 +3329,7 @@
           "options": [
             "Segera setelah temuan dicatat",
             "Setelah satu bulan berlalu",
-            "Bila tidak ada yang menanyakan lagi",
+            "Setelah rencana perbaikan disetujui manajer dan dibagikan kepada tim kandang",
             "Setelah tindakan perbaikan dilakukan dan diverifikasi"
           ],
           "correctIndex": 3,
@@ -3403,6 +3403,19 @@
           "density": "comfortable",
           "width": "standard",
           "align": "left"
+        },
+        {
+          "id": "aud26-m19-4",
+          "type": "link",
+          "label": "Hy-Line Brown Commercial Layers: Performance Standards Guide (Desember 2025)",
+          "url": "https://www.hyline.com/filesimages/Hy-Line-Products/Hy-Line-Product-PDFs/Brown/BRN%20STD%20ENG.pdf",
+          "description": "Standar produksi, berat telur, livability, dan konsumsi menurut umur untuk mengukur gap pada contoh kasus. Pakai panduan strain yang sama dengan flock Anda.",
+          "variant": "card",
+          "tone": "neutral",
+          "icon": "link",
+          "width": "standard",
+          "target": "new",
+          "align": "left"
         }
       ],
       "questions": [
@@ -3423,10 +3436,10 @@
         {
           "question": "Mengapa sebaiknya tidak mengubah banyak variabel sekaligus?",
           "options": [
-            "Karena biaya selalu lebih murah",
-            "Karena data tidak perlu dicatat",
+            "Karena biaya perubahan menjadi lebih mahal",
+            "Karena pencatatan harian menjadi lebih panjang",
             "Karena penyebab perbaikan atau penurunan menjadi sulit dibaca",
-            "Karena semua variabel tidak berpengaruh"
+            "Karena SOP melarang perubahan lebih dari satu variabel pada kandang yang sama"
           ],
           "correctIndex": 2,
           "explanation": "Perubahan bertahap memungkinkan evaluasi dampak setiap tindakan.",
@@ -3467,7 +3480,7 @@
           "options": [
             "Harga pakan naik",
             "Kekurangan nutrisi karena kualitas pakan turun, tanpa kaitan dengan kerusakan kipas",
-            "Wabah penyakit menular yang belum terdeteksi",
+            "Wabah penyakit menular yang belum terdeteksi dan menyebar cepat antarkandang",
             "Heat stress akibat kapasitas ventilasi berkurang"
           ],
           "correctIndex": 3,
@@ -3476,6 +3489,9 @@
           "type": "mcq",
           "learningObjective": "Menyusun hipotesis berbasis data dan timeline"
         }
+      ],
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=x0xbE03LZxk"
       ]
     },
     {
@@ -3576,9 +3592,9 @@
         {
           "question": "Manakah target perbaikan yang paling baik?",
           "options": [
-            "Mengurangi telur retak secepatnya",
+            "Mengurangi telur retak secepat mungkin dengan melibatkan seluruh petugas kandang",
             "Telur retak harus lebih baik",
-            "Semua kandang harus sempurna",
+            "Kandang harus mencapai kualitas terbaik",
             "Menurunkan telur retak dari 3,0% menjadi 2,0% dalam 8 minggu"
           ],
           "correctIndex": 3,
@@ -3590,10 +3606,10 @@
         {
           "question": "Isi minimal sebuah A3 improvement plan adalah...",
           "options": [
-            "Hanya judul masalah",
-            "Hanya daftar pembelian",
+            "Judul masalah dan nama tim",
+            "Daftar pembelian dan anggaran",
             "Masalah, baseline, akar masalah, tindakan, target, PIC, tenggat, dan verifikasi",
-            "Hanya tanda tangan manajer"
+            "Ringkasan dan tanda tangan manajer"
           ],
           "correctIndex": 2,
           "explanation": "Struktur A3 memastikan rencana dapat dijalankan dan diukur.",
@@ -3606,7 +3622,7 @@
           "options": [
             "Dihentikan karena masalah sudah selesai",
             "Distandardisasi ke dalam SOP",
-            "Tidak perlu dicatat",
+            "Dilaporkan lisan kepada manajer",
             "Dipindahkan ke kandang lain tanpa evaluasi"
           ],
           "correctIndex": 1,
@@ -3709,7 +3725,7 @@
           "options": [
             "Target tanpa PIC",
             "Prioritas, indikator, owner, dan mitigasi risiko",
-            "Satu angka tanpa konteks",
+            "Satu target laba tahunan yang diumumkan ke seluruh tim tanpa rincian KPI",
             "Daftar seluruh keinginan pemilik yang dikerjakan serentak tanpa urutan prioritas"
           ],
           "correctIndex": 1,
@@ -3722,8 +3738,8 @@
           "question": "Rencana 90 hari yang efektif berisi...",
           "options": [
             "Tiga sasaran prioritas dengan KPI, PIC, dan risiko",
-            "Daftar semua masalah farm yang dikerjakan sekaligus tanpa memilih prioritas lebih dulu",
-            "Hanya anggaran pembelian",
+            "Daftar panjang masalah farm yang dikerjakan serentak tanpa memilih prioritas lebih dulu",
+            "Anggaran pembelian peralatan",
             "Target tanpa tenggat"
           ],
           "correctIndex": 0,
@@ -3749,8 +3765,8 @@
         {
           "question": "Farm ingin menambah populasi 20% tanpa menambah kapasitas ventilasi dan tenaga kerja. Risiko utama dari trade-off ini adalah...",
           "options": [
-            "Harga telur pasti naik",
-            "FCR pasti membaik",
+            "Harga jual telur naik karena pasokan farm bertambah dan pelanggan semakin bergantung",
+            "FCR membaik karena skala naik",
             "Performa dan kesejahteraan ayam turun akibat kapasitas sistem terlampaui",
             "Tidak ada risiko"
           ],
@@ -3765,7 +3781,7 @@
           "options": [
             "Agar ada orang yang dapat disalahkan dan diberi sanksi ketika risiko tersebut terjadi",
             "Agar ada orang yang memantau dan menjalankan mitigasinya",
-            "Karena risiko tidak perlu dicatat",
+            "Karena auditor mewajibkan nama di setiap baris",
             "Agar laporan terlihat lebih panjang"
           ],
           "correctIndex": 1,
@@ -3825,7 +3841,7 @@
         {
           "question": "Ciri capstone yang kuat adalah...",
           "options": [
-            "Hanya berisi opini tanpa data",
+            "Berisi pendapat pakar tanpa data farm",
             "Tidak memiliki target",
             "Memiliki baseline, solusi, dampak, dan rencana kontrol",
             "Mengabaikan biaya"
@@ -3882,7 +3898,7 @@
           "question": "Masalah yang tepat dipilih sebagai capstone adalah masalah yang...",
           "options": [
             "Paling mudah tanpa dampak",
-            "Di luar kendali farm, seperti harga pasar global",
+            "Di luar kendali farm tetapi paling sering dikeluhkan, seperti harga pasar global",
             "Berdampak besar, dapat diukur, dan berada dalam kendali tim",
             "Tidak memiliki data"
           ],
@@ -3901,9 +3917,9 @@
         "question": "Dalam membaca performa layer, kombinasi indikator yang paling informatif adalah...",
         "options": [
           "HDP, egg weight, egg mass, feed intake, dan FCR",
-          "Jumlah telur harian saja, karena produksi sudah mewakili seluruh kinerja kandang",
-          "Populasi ayam hidup saja",
-          "Harga satu bahan pakan saja"
+          "Jumlah telur harian, karena produksi sudah mewakili seluruh kinerja kandang",
+          "Populasi ayam hidup harian",
+          "Harga bahan pakan utama"
         ],
         "correctIndex": 0,
         "explanation": "Kombinasi output, input, dan efisiensi memberi gambaran kinerja yang utuh.",
@@ -3931,7 +3947,7 @@
           "Pusar basah dan kaki kering keriput",
           "Bulu kusam dan lambat bereaksi",
           "Pusar tertutup dan kering, serta kembali berdiri kurang dari 3 detik saat ditelentangkan",
-          "Bobot sangat bervariasi dalam satu box, tetapi semua DOC tetap aktif berdiri sehingga tetap layak diterima"
+          "Bobot sangat bervariasi dalam satu box, tetapi DOC tetap aktif berdiri sehingga tetap layak diterima"
         ],
         "correctIndex": 2,
         "explanation": "Pusar yang baik dan refleks cepat menandakan DOC sehat dan aktif.",
@@ -3970,7 +3986,7 @@
       {
         "question": "Stimulasi cahaya menjelang produksi sebaiknya dimulai ketika...",
         "options": [
-          "Ayam berumur 10 minggu, berapa pun bobotnya",
+          "Ayam mencapai umur 10 minggu, berapa pun bobot badan dan keseragaman flock",
           "Harga telur naik",
           "Kandang tetangga mulai bertelur",
           "Bobot badan dan uniformity mencapai target strain"
@@ -4015,7 +4031,7 @@
           "Cek suhu, kebocoran, kualitas air, dan kondisi flock",
           "Menghapus data produksi",
           "Mengurangi akses air",
-          "Mengubah semua formula pakan tanpa verifikasi karena konsumsi air selalu mengikuti kadar garam"
+          "Mengubah formula pakan tanpa verifikasi karena konsumsi air biasanya mengikuti kadar garam"
         ],
         "correctIndex": 0,
         "explanation": "Perubahan air dan produksi dibaca bersama faktor lingkungan dan kesehatan.",
@@ -4026,7 +4042,7 @@
       {
         "question": "Water-to-feed ratio sebuah flock 2,6. Bagaimana membacanya?",
         "options": [
-          "Normal — rasio di atas 2 menandakan flock minum cukup sehingga tidak perlu tindakan",
+          "Normal — rasio di atas 2 menandakan flock minum cukup sehingga kandang dalam kondisi aman",
           "Rendah — tambah pakan",
           "Tidak dapat dibaca tanpa harga telur",
           "Tinggi — periksa heat stress, kebocoran, dan akurasi meter air"
@@ -4096,7 +4112,7 @@
       {
         "question": "Untuk diagnosis penyakit dan dosis obat, langkah yang benar adalah...",
         "options": [
-          "Memberi dosis pasti tanpa data",
+          "Memberi dosis dari pengalaman kasus sebelumnya agar pengobatan tidak tertunda",
           "Mengabaikan withdrawal period",
           "Melibatkan dokter hewan penanggung jawab",
           "Menghapus catatan kesehatan"
@@ -4126,7 +4142,7 @@
         "options": [
           "Dari flock muda/sehat ke flock tua atau sakit",
           "Dari flock sakit ke flock muda",
-          "Acak sesuai jarak",
+          "Dari kandang terdekat ke terjauh agar jarak berjalan petugas lebih hemat",
           "Tidak berpengaruh"
         ],
         "correctIndex": 0,
@@ -4196,7 +4212,7 @@
         "options": [
           "Tipe kandang sama",
           "Jumlah supervisor sama",
-          "Semua data dibulatkan ke dua desimal dan dirata-ratakan per farm sebelum dibandingkan",
+          "Data dibulatkan ke dua desimal dan dirata-ratakan per farm sebelum dibandingkan",
           "Periode, satuan, umur, dan definisi data sebanding"
         ],
         "correctIndex": 3,
@@ -4250,9 +4266,9 @@
       {
         "question": "Tercatat 120 ayam mati dari populasi dasar 8.000 ekor. Pernyataan yang paling tepat adalah...",
         "options": [
-          "Mortality 1,5% selalu berarti flock sehat",
+          "Mortality 1,5% berarti flock sehat sehingga periodenya boleh diabaikan dalam laporan",
           "Mortality 15% (Tinggi)",
-          "Mortality tidak perlu periode",
+          "Mortality 1,5% (Baik) pada periode apa pun",
           "Mortality 1,5% (Pantau) dan harus disertai periode pencatatannya"
         ],
         "correctIndex": 3,
@@ -4265,7 +4281,7 @@
         "question": "Tindakan koreksi yang efektif seharusnya memiliki...",
         "options": [
           "Nama tanpa tanggal",
-          "Banyak perubahan tanpa baseline",
+          "Banyak perubahan sekaligus agar hasilnya cepat terlihat dalam laporan",
           "PIC, target, tenggat, dan indikator hasil",
           "Tidak ada dokumentasi"
         ],
@@ -4293,8 +4309,8 @@
         "question": "Tujuan akhir continuous improvement adalah...",
         "options": [
           "Perbaikan terukur yang dipertahankan melalui standar",
-          "Program besar tanpa evaluasi",
-          "Mengganti semua orang",
+          "Program perbaikan besar yang selesai dalam satu periode anggaran",
+          "Mengganti tim yang berkinerja rendah",
           "Menghindari pencatatan"
         ],
         "correctIndex": 0,
@@ -4306,7 +4322,7 @@
       {
         "question": "Farm ingin menambah populasi tanpa menambah kapasitas ventilasi dan tenaga kerja. Keputusan strategis yang tepat adalah...",
         "options": [
-          "Langsung menambah populasi karena revenue pasti naik, lalu memperbaiki ventilasi setelah masalah muncul di kandang",
+          "Langsung menambah populasi karena revenue akan naik, lalu memperbaiki ventilasi setelah masalah muncul di kandang",
           "Mengabaikan risiko karena FCR akan membaik",
           "Menunda pencatatan sampai populasi stabil",
           "Menilai kapasitas sistem dan risikonya terlebih dahulu, lalu menetapkan rencana dengan KPI, PIC, dan mitigasi"

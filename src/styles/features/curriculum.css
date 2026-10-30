@@ -7,7 +7,7 @@
   gap: var(--aapm-primitive-space-1);
   padding: var(--aapm-primitive-space-3);
 }
-.aapm-curriculum-actionbar__desktop { display: flex; flex-wrap: wrap; gap: var(--aapm-primitive-space-2); }
+.aapm-curriculum-actionbar__desktop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aapm-primitive-space-2); }
 .aapm-curriculum-actionbar__mobile { display: none; }
 .aapm-curriculum-policy-controls { display: flex; align-items: end; gap: var(--aapm-primitive-space-3); }
 .aapm-curriculum-policy-controls > :first-child { flex: 1; min-width: 0; }
@@ -36,6 +36,7 @@
     bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-2));
   }
   .aapm-curriculum-actionbar__desktop { display: none; }
+  .aapm-curriculum-actionbar .row.grow { display: none; }
   .aapm-curriculum-actionbar__mobile { display: flex; align-items: center; gap: var(--aapm-primitive-space-2); }
   .aapm-curriculum-actionbar__mobile :is(.aapm-button, .aapm-icon-button) { min-height: 44px; min-width: 44px; }
   .aapm-curriculum-actionbar__primary { flex: 1; min-width: 0; }

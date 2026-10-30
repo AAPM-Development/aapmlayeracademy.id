@@ -7,7 +7,7 @@ import CountUp from "@/components/motion/CountUp";
 import { askAppi } from "@/lib/askAppi";
 import { useFarmData, useModules } from "@/lib/useCourseData";
 import { getLevelForModule, sortModules } from "@/lib/academyData";
-import { formatNumber, sortByWeek, toNumber } from "@/lib/kpiReading";
+import { FCR_ZONES, formatNumber, sortByWeek, toNumber } from "@/lib/kpiReading";
 import { cn } from "@/lib/utils";
 import { moduleNo } from "@/lib/moduleNumber";
 
@@ -58,11 +58,7 @@ const tools = [
     scale: {
       min: 1.6,
       max: 3.2,
-      zones: [
-        { upTo: 2.2, tone: "good", label: "Sangat baik", note: "Pakan terkonversi efisien menjadi telur." },
-        { upTo: 2.6, tone: "watch", label: "Wajar", note: "Masih wajar; pantau pakan tercecer dan berat telur." },
-        { upTo: Infinity, tone: "act", label: "Evaluasi", note: "Cek pakan tercecer, kualitas ransum, dan produksi." },
-      ],
+      zones: FCR_ZONES,
     },
   },
   {
@@ -89,8 +85,8 @@ const tools = [
       max: 66,
       zones: [
         { upTo: 50, tone: "act", label: "Di bawah target", note: "Evaluasi produksi dan berat telur bersama." },
-        { upTo: 57, tone: "watch", label: "Wajar", note: "Mendekati standar layer komersial." },
-        { upTo: Infinity, tone: "good", label: "Excellent", note: "Di atas standar layer komersial." },
+        { upTo: 57, tone: "watch", label: "Wajar", note: "Bandingkan dengan target umur strain." },
+        { upTo: Infinity, tone: "good", label: "Excellent", note: "Mendekati target puncak strain; pastikan berat telur sesuai umur." },
       ],
     },
   },

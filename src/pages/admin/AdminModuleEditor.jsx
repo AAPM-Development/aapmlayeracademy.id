@@ -1392,7 +1392,7 @@ export default function AdminModuleEditor() {
           <TabsTrigger value="preview" disabled={isNew}><Ic name="eye" />Pratinjau</TabsTrigger>
           <TabsTrigger value="assessment" disabled={isNew}><Ic name="exam" />Bank soal</TabsTrigger>
         </TabsList>
-        <div className="row gap-3 justify-end" style={{ flex: "1 1 0", minWidth: 0 }}>
+        <div className="row gap-3 justify-end" style={{ flex: "none" }}>
           <span className={`chip chip-dot hide-md ${isSaving ? "chip-ai" : saveError ? "chip-danger" : isDirty || questionDirty ? "chip-warning" : "chip-success"}`} aria-hidden="true">
             {isSaving ? "Menyimpan…" : saveError ? "Gagal disimpan" : isDirty || questionDirty ? "Belum disimpan" : "Tersimpan"}
           </span>

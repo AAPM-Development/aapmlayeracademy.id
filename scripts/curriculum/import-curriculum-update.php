@@ -10,8 +10,10 @@ declare(strict_types=1);
  *
  * Existing slide, video, and image blocks in a module's published material are kept
  * (ahead of the package's text blocks); every other field the package names replaces
- * the published value. A module with unpublished editor changes stops the whole run,
- * so an editor's work in progress is never published by accident.
+ * the published value. A module's removeMediaUrls retires those videos only where they
+ * are still published, so a video an editor has since chosen is left alone. A module
+ * with unpublished editor changes stops the whole run, so an editor's work in progress
+ * is never published by accident.
  *
  *   php scripts/curriculum/import-curriculum-update.php --file=scripts/curriculum/data/PACKAGE.json --expect-environment=production --actor-email=ADMIN --dry-run
  *   php scripts/curriculum/import-curriculum-update.php --file=... --expect-environment=production --actor-email=ADMIN --apply --operator=NAME --evidence-ref=REF
@@ -131,19 +133,28 @@ $actorId = (int) $actor['id'];
 const IMPORT_TEXT_FIELDS = ['title', 'summary', 'content', 'videoScript', 'practicalAssignment'];
 const IMPORT_LIST_FIELDS = ['learningObjectives', 'keyTakeaways', 'checklist'];
 
-/** Keeps the module's own media blocks, then appends the package's material. */
-function import_editorial(string $existing, array $blocks, array $preserveTypes): array
+/** @return list<string> Retired video URLs in stored form. */
+function import_retired_urls(array $entry): array
+{
+    return array_values(array_filter(array_map('normalise_lesson_video_url', (array) ($entry['removeMediaUrls'] ?? []))));
+}
+
+/** Keeps the module's own media blocks except retired videos, then appends the package's material. */
+function import_editorial(string $existing, array $blocks, array $preserveTypes, array $retiredUrls = []): array
 {
     $document = $existing === '' ? [] : json_decode($existing, true);
     $document = is_array($document) ? $document : [];
-    $kept = array_values(array_filter((array) ($document['blocks'] ?? []), static function ($block) use ($preserveTypes): bool {
+    $media = array_values(array_filter((array) ($document['blocks'] ?? []), static function ($block) use ($preserveTypes): bool {
         return is_array($block) && in_array((string) ($block['type'] ?? ''), $preserveTypes, true);
+    }));
+    $kept = array_values(array_filter($media, static function (array $block) use ($retiredUrls): bool {
+        return ($block['type'] ?? '') !== 'video' || !in_array(normalise_lesson_video_url($block['url'] ?? ''), $retiredUrls, true);
     }));
     $merged = ['version' => 1, 'blocks' => array_merge($kept, array_values($blocks))];
     if (array_key_exists('presentation', $document)) {
         $merged['presentation'] = $document['presentation'];
     }
-    return [$merged, array_map(static fn (array $block): string => (string) $block['type'], $kept)];
+    return [$merged, array_map(static fn (array $block): string => (string) $block['type'], $kept), count($media) - count($kept)];
 }
 
 /** Unpublished editor work, read without creating a draft row (the plan never writes). */
@@ -221,9 +232,14 @@ foreach ($package['modules'] as $entry) {
             $input[$key] = array_values((array) $fields[$key]);
         }
     }
+    $retiredUrls = import_retired_urls($entry);
+    if (in_array(normalise_lesson_video_url($published['videoUrl'] ?? ''), $retiredUrls, true)) {
+        $input['videoUrl'] = '';
+    }
     $kept = [];
+    $removedMedia = 0;
     if (isset($entry['editorialBlocks']) && is_array($entry['editorialBlocks'])) {
-        [$input['editorialContent'], $kept] = import_editorial((string) $published['editorialContent'], $entry['editorialBlocks'], $preserveTypes);
+        [$input['editorialContent'], $kept, $removedMedia] = import_editorial((string) $published['editorialContent'], $entry['editorialBlocks'], $preserveTypes, $retiredUrls);
     }
     $target = aapm_cur_normalise_content($input, $published, $curriculumId);
     $target['moduleNumber'] = $number;
@@ -252,6 +268,7 @@ foreach ($package['modules'] as $entry) {
         'title' => ['current' => (string) $row['title'], 'target' => $target['title']],
         'changedFields' => $changed,
         'keptMediaBlocks' => $kept,
+        'removedMediaBlocks' => $removedMedia,
         'questionCount' => ['current' => count($liveQuestions), 'target' => count($targetQuestions)],
         '_published' => aapm_cur_checksum($published),
         '_payload' => $target,

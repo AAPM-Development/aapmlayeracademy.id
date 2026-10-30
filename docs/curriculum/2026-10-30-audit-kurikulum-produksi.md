@@ -82,7 +82,7 @@ Kedua belas contoh perhitungan diverifikasi dan hasilnya benar. Catatan yang per
 ## E. Yang tidak diubah
 
 - **Slide, video, dan gambar yang sudah terbit** (misalnya 13 slide dan gambar "Memantau Farm" di Modul 1) dipertahankan oleh skrip dan ditempatkan sebelum materi teks paket.
-- **Nama chapter, urutan modul, URL video, dan sampul modul** tidak diubah.
+- **Nama chapter, urutan modul, URL video, dan sampul modul** tidak diubah, kecuali video Modul 19 yang dicabut lewat `removeMediaUrls` (lihat `2026-10-31-tinjauan-media-dan-bank-soal.md`).
 - **Kebijakan kurikulum, nilai, sertifikat, dan percobaan kuis yang sedang berjalan** tidak disentuh. Percobaan yang sedang berjalan tetap memakai snapshot soal lamanya.
 
 ## Cara menerbitkan ke Production

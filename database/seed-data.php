@@ -21,7 +21,7 @@ function native_seed_video_url(int $moduleNumber): string
         16 => 'https://www.youtube.com/watch?v=v8TZ3Gx5edk',
         17 => 'https://www.youtube.com/watch?v=Urx09wfnosE',
         18 => 'https://www.youtube.com/watch?v=2aNSaA4RTec',
-        19 => 'https://www.youtube.com/watch?v=x0xbE03LZxk',
+        19 => '',
         20 => 'https://www.youtube.com/watch?v=5QkDT-aCwVk',
         21 => 'https://www.youtube.com/watch?v=NyoRSGe7SBE',
         22 => 'https://www.youtube.com/watch?v=I-2NsGXXDnM',
