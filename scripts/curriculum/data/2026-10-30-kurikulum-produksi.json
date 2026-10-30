@@ -3403,6 +3403,19 @@
           "density": "comfortable",
           "width": "standard",
           "align": "left"
+        },
+        {
+          "id": "aud26-m19-4",
+          "type": "link",
+          "label": "Hy-Line Brown Commercial Layers Performance Guide (Desember 2025)",
+          "url": "https://www.hyline.com/filesimages/Hy-Line-Products/Hy-Line-Product-PDFs/Brown/BRN%20STD%20ENG.pdf",
+          "description": "Acuan target HDP, egg weight, egg mass, dan mortalitas untuk membandingkan gap pada contoh kasus. Gunakan strain dan edisi panduan yang sama dengan farm.",
+          "variant": "card",
+          "tone": "neutral",
+          "icon": "link",
+          "width": "standard",
+          "target": "new",
+          "align": "left"
         }
       ],
       "questions": [
