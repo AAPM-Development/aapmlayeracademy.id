@@ -78,6 +78,8 @@ export default function Login() {
             leadingIcon="mail"
             type="email"
             autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
             autoFocus
             placeholder="nama@perusahaan.com"
             value={email}

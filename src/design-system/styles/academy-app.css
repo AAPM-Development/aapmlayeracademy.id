@@ -9,7 +9,7 @@ body.aapm { margin: 0; min-height: 100vh; min-height: 100dvh; }
 /* The sidebar stays put; the main column owns the only page scroll. */
 .app { height: 100vh; height: 100dvh; min-height: 0; flex-wrap: nowrap; overflow: hidden; }
 .app > .side { min-height: 0; transition: flex-basis var(--dur) var(--ease), max-width var(--dur) var(--ease); }
-.side-brand > a { display: flex; align-items: center; min-width: 0; border-radius: var(--r-sm); }
+.side-brand > a { display: flex; align-items: center; min-width: 0; min-height: var(--h-sm); border-radius: var(--r-sm); }
 .side-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .main { position: relative; min-height: 0; }
 .main-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: var(--s-4); }
@@ -41,6 +41,27 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
 .side[data-collapsed="true"] .journey { padding: var(--s-1-5); align-items: center; }
 .side[data-collapsed="true"] .ctx-switch { grid-template-columns: 1fr; }
 
+/* A collapsed rail never scrolls sideways: the journey ring is wider than its padded column. */
+.side[data-collapsed="true"] .side-body { overflow-x: hidden; }
+
+/* The search gives way in a narrow topbar so the account control stays on screen. */
+.topbar > .cmd { flex: 0 1 440px; width: auto; min-width: 0; }
+.topbar:has(> .cmd) > .ml-auto { flex: none; }
+.topbar-account .t-clamp-1 { max-width: 11rem; }
+@media (max-width: 1023px) {
+  .topbar > .cmd .kbd { display: none; }
+  .topbar-account > :not(.avatar) { display: none; }
+}
+
+/* The navigation sheet: one column the sheet's height, with .side-body as its scroll owner. */
+.aapm-nav-sheet { display: flex; flex-direction: column; }
+.aapm-nav-sheet .side { flex: 1 1 auto; max-width: none; min-height: 0; border-right: 0; }
+.aapm-nav-sheet .side-brand { padding-right: calc(var(--s-4) + var(--h-md)); }
+
+/* Titles carry learner and module names: a long unbroken one wraps instead of widening the page. */
+:is(h1, h2, h3, h4), .ph-title, .ph-desc, .sh-title { overflow-wrap: anywhere; }
+.m-top > .grow { min-width: 0; }
+
 /* Route progress sits on the topbar edge while a lazy route loads. */
 .main > .aapm-route-progress { z-index: var(--z-sticky); }
 
@@ -69,6 +90,18 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
   .app { flex-direction: column; }
   .app .m-nav { bottom: calc(8px + env(safe-area-inset-bottom)); }
   .app .main-scroll { padding-bottom: env(safe-area-inset-bottom); }
+}
+/* Phone chrome: bars keep their height, their controls reach a 40px target. */
+@media (max-width: 860px), (pointer: coarse) {
+  .m-top > a:first-child { width: var(--h-md); height: var(--h-md); justify-content: center; margin-inline: -5px; }
+  .m-top .xp { height: var(--h-md); }
+  .focus-bar .btn-sm, .focus-foot .btn-sm { height: var(--h-md); min-height: var(--h-md); }
+  .focus-bar .btn-sm.btn-icon { width: var(--h-md); }
+  .focus-bar [role="tab"] { min-height: var(--h-md); }
+}
+/* The fixed curriculum bar sits above the bottom nav, so the launcher's rest does too. */
+@media (max-width: 859px) and (min-height: 501px) {
+  .app[data-tone="calm"]:has(.aapm-curriculum-actionbar) .launcher { bottom: calc(188px + env(safe-area-inset-bottom)); }
 }
 
 /* --------------------------------------------------------------- APPI rig */
