@@ -1,6 +1,7 @@
 // Operator curriculum import: plan-only dry run, refusal on unpublished editor work,
 // publication through the draft/publish path, kept media blocks, idempotent replay,
-// and environment/actor guards. Real CLI under disposable SQLite.
+// and environment/actor guards. Real CLI under disposable SQLite, or a task-owned
+// MariaDB when AAPM_TEST_MYSQL_CONFIG is set.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -37,6 +38,18 @@ test("package: every module has a full bank and answer keys are spread across al
   for (const letter of [0, 1, 2, 3]) {
     assert.equal(keys.filter((key) => key === letter).length, keys.length / 4);
   }
+});
+
+test("package: always picking the longest option cannot pass a module quiz or the final exam", () => {
+  const isUniqueLongest = (question) => {
+    const lengths = question.options.map((option) => option.length);
+    const longest = Math.max(...lengths);
+    return lengths[question.correctIndex] === longest && lengths.filter((length) => length === longest).length === 1;
+  };
+  for (const module of pack.modules) {
+    assert.ok(module.questions.filter(isUniqueLongest).length <= 2, `module ${module.moduleNumber}`);
+  }
+  assert.ok(pack.finalExam.questions.filter(isUniqueLongest).length <= 10, "final exam");
 });
 
 test("dry run reports the plan and writes nothing", async () => {
