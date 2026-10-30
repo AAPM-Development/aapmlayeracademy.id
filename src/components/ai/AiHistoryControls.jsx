@@ -573,7 +573,7 @@ export function AiConversationHistoryResults({
   filtered = false,
 }) {
   if (loading) {
-    return <p className="px-2 py-4 text-xs text-muted-foreground">Memuat riwayat...</p>;
+    return <p className="px-2 py-4 text-xs text-muted-foreground">Memuat riwayat…</p>;
   }
 
   if (error && !conversations.length) {

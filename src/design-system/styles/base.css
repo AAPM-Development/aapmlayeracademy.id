@@ -70,6 +70,9 @@ body {
   border-color: var(--aapm-semantic-border);
 }
 
+/* No double-tap zoom delay on controls; pinch zoom on the page stays available. */
+a, button, input, select, textarea, label, summary, [role="button"], [role="tab"] { touch-action: manipulation; }
+
 ::selection {
   background: color-mix(in srgb, var(--aapm-semantic-primary) 22%, transparent);
   color: inherit;
