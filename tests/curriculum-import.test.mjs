@@ -40,16 +40,40 @@ test("package: every module has a full bank and answer keys are spread across al
   }
 });
 
-test("package: always picking the longest option cannot pass a module quiz or the final exam", () => {
-  const isUniqueLongest = (question) => {
-    const lengths = question.options.map((option) => option.length);
-    const longest = Math.max(...lengths);
-    return lengths[question.correctIndex] === longest && lengths.filter((length) => length === longest).length === 1;
-  };
-  for (const module of pack.modules) {
-    assert.ok(module.questions.filter(isUniqueLongest).length <= 2, `module ${module.moduleNumber}`);
+const banks = () => [...pack.modules.map((module) => [`module ${module.moduleNumber}`, module.questions]), ["final exam", pack.finalExam.questions]];
+
+// Option `rank` by length, 0 = shortest. Ties are not a strategy: a tied rank never counts.
+function correctAtLengthRank(question, rank) {
+  const lengths = question.options.map((option) => option.length);
+  const target = [...lengths].sort((a, b) => a - b)[rank];
+  return lengths[question.correctIndex] === target && lengths.filter((length) => length === target).length === 1;
+}
+
+test("package: picking options by length cannot pass, and the longest option is no better than chance", () => {
+  for (const [name, questions] of banks()) {
+    const passMark = name === "final exam" ? 24 : 4;
+    for (const rank of [0, 1, 2, 3]) {
+      assert.ok(questions.filter((question) => correctAtLengthRank(question, rank)).length < passMark, `${name}, length rank ${rank}`);
+    }
   }
-  assert.ok(pack.finalExam.questions.filter(isUniqueLongest).length <= 10, "final exam");
+  const all = banks().flatMap(([, questions]) => questions);
+  assert.ok(all.filter((question) => correctAtLengthRank(question, 3)).length <= all.length / 4, "longest option above chance");
+});
+
+test("package: absolute wording does not point at the wrong options", () => {
+  const absolute = /\b(pasti|selalu|tidak perlu|tidak pernah|semua|hanya|saja)\b/i;
+  for (const [name, questions] of banks()) {
+    const flagged = questions.flatMap((question) => question.options.filter((option, index) => index !== question.correctIndex && absolute.test(option)));
+    assert.ok(flagged.length <= (name === "final exam" ? 3 : 1), `${name}: ${flagged.join(" / ")}`);
+  }
+});
+
+test("package: module 19 retires the untrusted video and points to the written strain standard", () => {
+  const module = pack.modules.find((entry) => entry.moduleNumber === 19);
+  assert.deepEqual(module.removeMediaUrls, ["https://www.youtube.com/watch?v=x0xbE03LZxk"]);
+  const link = module.editorialBlocks.find((block) => block.type === "link");
+  assert.match(link.label, /Performance Standards Guide/);
+  assert.match(link.url, /^https:\/\/www\.hyline\.com\/.*BRN%20STD%20ENG\.pdf$/);
 });
 
 test("dry run reports the plan and writes nothing", async () => {
@@ -125,6 +149,38 @@ test("apply publishes every module and the final bank, keeps media blocks, and r
   assert.ok(second.modules.every((module) => module.status === "unchanged"));
   assert.equal(second.finalExam.status, "unchanged");
   assert.equal(count(site, "module_revisions"), revisions + 22);
+});
+
+test("a package retires a published video: the field and its block go, other media stay", async () => {
+  const { site } = await setup("import-video");
+  const retired = pack.modules.find((entry) => entry.moduleNumber === 19).removeMediaUrls[0];
+  const other = { id: "keep-video", type: "video", url: "https://www.youtube.com/watch?v=kvz8QQG_mXU", caption: "Tetap", align: "left" };
+  const stale = { id: "retired-video", type: "video", url: retired, caption: "", align: "left" };
+  sql(site, "UPDATE course_modules SET video_url = ?, editorial_content = ? WHERE module_number = 19", [retired, JSON.stringify({ version: 1, blocks: [stale, other] })]);
+  const scope = ["--modules=19", "--skip-final"];
+
+  const plan = jsonOut(importer(site, ["--expect-environment=local", `--actor-email=${ADMIN}`, "--dry-run", ...scope]));
+  assert.ok(plan.modules[0].changedFields.includes("videoUrl"));
+  assert.deepEqual(plan.modules[0].keptMediaBlocks, ["video"]);
+  assert.equal(plan.modules[0].removedMediaBlocks, 1);
+
+  const result = importer(site, [...apply, ...scope]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const live = rows(site, "SELECT video_url, editorial_content FROM course_modules WHERE module_number = 19")[0];
+  assert.equal(live.video_url, "");
+  const ids = JSON.parse(live.editorial_content).blocks.map((block) => block.id);
+  assert.ok(ids.includes("keep-video"), "a different video stays");
+  assert.ok(!ids.includes("retired-video"), "the retired video's block is gone");
+  assert.ok(ids.includes("aud26-m19-4"), "the written reference is published");
+});
+
+test("a video an editor has since chosen is not cleared by the retirement list", async () => {
+  const { site } = await setup("import-video-kept");
+  const chosen = "https://www.youtube.com/watch?v=kvz8QQG_mXU";
+  sql(site, "UPDATE course_modules SET video_url = ? WHERE module_number = 19", [chosen]);
+  const result = importer(site, [...apply, "--modules=19", "--skip-final"]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(rows(site, "SELECT video_url FROM course_modules WHERE module_number = 19")[0].video_url, chosen);
 });
 
 test("wrong environment, non-admin actor, and a missing evidence reference are refused", async () => {
