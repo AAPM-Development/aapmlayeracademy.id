@@ -15,9 +15,9 @@ Tidak ada slide berbahasa lain. Hanya Modul 1 yang memiliki slide; modul 2–22 
 
 ## Video referensi
 
-**Yang sudah terbukti:** judul dan kanal tiap video (oEmbed YouTube), serta bahwa video dapat disematkan.
+**Yang sudah terbukti:** judul dan kanal tiap video (oEmbed YouTube). Untuk Modul 8 dan 12, video juga tercantum di katalog resmi FAO.
 
-**Yang belum terbukti: bahasa ujaran.** Pemeriksaan trek takarir dihentikan karena YouTube menampilkan halaman verifikasi lalu lintas untuk jaringan ini, dan halaman itu tidak boleh dilewati. Kolom bahasa di bawah hanya berdasarkan judul. Seluruh judul berbahasa Inggris, tetapi setiap video perlu diputar sebentar oleh tim Produksi sebelum dinyatakan lolos. Isi video juga belum ditonton.
+**Yang belum terbukti: bahasa ujaran dan isi.** Pemeriksaan trek takarir dihentikan karena YouTube menampilkan halaman verifikasi lalu lintas untuk jaringan ini, dan halaman itu tidak boleh dilewati. Seluruh judul berbahasa Inggris, tetapi tidak ada video yang ditonton. Kolom kesesuaian topik di bawah hanya berdasarkan judul. Setiap video perlu diputar sebentar oleh tim Produksi sebelum dinyatakan lolos.
 
 | Modul | Kanal | Judul | Jenis sumber | Kesesuaian topik | Keputusan |
 |---|---|---|---|---|---|

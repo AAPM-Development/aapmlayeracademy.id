@@ -93,7 +93,7 @@ export function CurriculumActionBar({ actions, primaryKey, status, steps = null,
         </React.Fragment>)}
       </div>
     </div> : <span className="grow" />}
-    <div className="row wrap gap-2 aapm-curriculum-actionbar__desktop">{actions.map((action) => {
+    <div className="aapm-curriculum-actionbar__desktop">{actions.map((action) => {
       const quiet = action.id === 'reload' || action.id === 'preview';
       return <Button key={action.id} type={action.type} size={quiet ? 'sm' : undefined} variant={action.id === primaryKey ? 'primary' : quiet ? 'ghost' : 'secondary'} disabled={action.disabled} onClick={action.type === 'submit' ? undefined : action.onSelect}>
         {action.locked ? <Ic name="lock" /> : ACTION_ICON[action.id] ? <Ic name={ACTION_ICON[action.id]} /> : null}{action.label}

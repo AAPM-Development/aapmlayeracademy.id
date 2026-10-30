@@ -40,6 +40,8 @@ test("a lesson whose video was retired does not call its instructor notes a vide
 
 test("the curriculum action bar shows one set of actions below the desktop width", () => {
   const compact = mediaBlock(read("src/styles/features/curriculum.css"), "(max-width: 859px)");
-  assert.match(compact, /\.aapm-curriculum-actionbar \.aapm-curriculum-actionbar__desktop \{ display: none; \}/);
+  assert.match(compact, /\.aapm-curriculum-actionbar__desktop \{ display: none; \}/);
   assert.match(compact, /\.aapm-curriculum-actionbar \.row\.grow \{ display: none; \}/);
+  // The .row utility has the same specificity and would keep the desktop group visible.
+  assert.doesNotMatch(read("src/components/admin/CurriculumDraftFeedback.jsx"), /className="[^"]*\brow\b[^"]*aapm-curriculum-actionbar__desktop/);
 });
