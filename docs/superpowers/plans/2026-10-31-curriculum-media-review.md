@@ -28,8 +28,8 @@
 
 Commit `6f596c49` mengedit `dist/api/bootstrap.php` dengan tangan. Hash file tidak lagi cocok dengan `build-manifest.json` dan sumber berubah tanpa build ulang, sehingga `cpanel-deploy.php` menolak artefak.
 
-- [ ] Build ulang dengan `npm run build:staging` dari sumber yang sudah di-commit.
-- [ ] Verifikasi dengan `verifyArtifact` kanal staging.
+- [x] Build ulang dengan `npm run build:staging` dari `3b11cfd1`; artefak `75947dd9`.
+- [x] Lolos pemeriksa Node dan PHP, juga pada checkout LF bersih. Deploy 278 berhasil: 218 file, 8 unggahan utuh.
 
 ### Task 2: Media
 
@@ -51,8 +51,10 @@ Commit `6f596c49` mengedit `dist/api/bootstrap.php` dengan tangan. Hash file tid
 
 ### Task 5: UI
 
-- [ ] Audit layout bertanda tangan di 14 halaman peserta dan admin, lalu perbaiki cacat yang terkonfirmasi.
+- [x] Audit 14 halaman dalam kondisi login; cacat terkonfirmasi diperbaiki (lihat dokumen tinjauan).
 
 ### Task 6: Rilis
 
-- [ ] `npm test`, `npm run lint`, `npm run build:staging`, push, deploy Staging, verifikasi.
+- [x] `npm test` 306 lolos, 0 gagal, 5 dilewati; lint lolos; deploy Staging terverifikasi lewat `/api/health`.
+- [ ] Impor paket di Staging: menunggu akun Admin dan operator.
+- [ ] Production: menunggu rehearsal Staging dan persetujuan tim Produksi.
