@@ -12,7 +12,7 @@
 | 2 | Kunci jawaban bias ke **A**: ujian akhir 6/6 = A; modul 3–22 18 dari 20 = A | Peserta bisa lulus tanpa membaca | Diperbaiki: 140 soal, kunci A/B/C/D masing-masing 35 |
 | 3 | Modul 3: materi tentang kandang open house, tetapi tujuan, poin utama, checklist, tugas, naskah video, dan soal tentang **brooding** | Isi modul tidak konsisten | Diperbaiki: seluruh bagian diselaraskan ke open house |
 | 4 | Modul 9: perhitungan kipas **sirkular** (jumlah kipas → kecepatan → jumlah kipas), menghasilkan 4,08 m/detik | Tidak bisa dipakai merancang kandang | Diperbaiki: dihitung dari target kecepatan → 12 kipas, dengan cek silang bobot ayam |
-| 5 | 14 gambar di modul 9–15 adalah **tangkapan layar penuh**: WhatsApp Web dengan nama kontak, path file lokal, taskbar, halaman panduan Lohmann berhak cipta, dan jadwal vaksin internal berisi nama petugas | Privasi, hak cipta, dan program vaksin yang belum disetujui dokter hewan ikut terbit | Tidak diunggah; data kunci diketik ulang sebagai tabel dengan sitasi |
+| 5 | 13 gambar di modul 9–15 adalah **tangkapan layar penuh**: WhatsApp Web dengan nama kontak, path file lokal, taskbar, halaman panduan Lohmann berhak cipta, dan jadwal vaksin internal berisi nama petugas | Privasi, hak cipta, dan program vaksin yang belum disetujui dokter hewan ikut terbit | Tidak diunggah; data kunci diketik ulang sebagai tabel dengan sitasi |
 | 6 | Modul 10: "pemberian pakan diperhitungkan dengan FCR harian" | Konsep keliru: jatah pakan ditentukan target konsumsi g/ekor/hari, FCR adalah hasil | Diperbaiki |
 | 7 | Tidak ada modul **Brooding (0–6 minggu)** | Celah antara seleksi DOC (M2) dan rearing 7–17 minggu (M4) | Rekomendasi (perlu kebijakan kurikulum baru) |
 
@@ -58,10 +58,16 @@ Seluruh 22 modul sebelumnya memakai naskah video template "Pada lesson ini kita 
 | Soal modul | M1: 5; M2–M22: 1 per modul (26 total) | 5 per modul (110 total) |
 | Ujian akhir | 6 soal, semua kunci A | 30 soal mencakup 14 chapter |
 | Sebaran kunci | Didominasi A | A 35, B 35, C 35, D 35; tiap modul memakai keempat huruf |
-| Distraktor | Banyak yang tidak masuk akal ("Warna kandang saja") | Distraktor masuk akal, termasuk salah hitung yang umum |
+| Distraktor | Banyak yang tidak masuk akal ("Warna kandang saja") | Contoh paling tidak masuk akal diganti dengan miskonsepsi atau salah hitung yang umum; sebagian opsi lemah masih ada (lihat catatan) |
+| Jawaban benar = opsi terpanjang | Belum diukur | 53 dari 140 soal (38%); maksimal 2 dari 5 per modul dan 9 dari 30 di ujian akhir, sehingga selalu memilih opsi terpanjang tidak meluluskan kuis mana pun |
 | Kelulusan | 70% dari 1 soal | Modul: minimal 4 dari 5; ujian akhir (80%): minimal 24 dari 30 |
 
 Setiap soal memiliki pembahasan, tingkat kesulitan, dan tujuan pembelajaran. Semua soal hitungan sudah diverifikasi ulang. Aplikasi tidak mengacak urutan opsi, sehingga posisi kunci diatur dalam paket.
+
+**Catatan untuk reviu tim Produksi:**
+
+- Angka 38% masih di atas peluang acak (25%), dan opsi yang memakai kata mutlak seperti "pasti", "selalu", atau "tidak perlu" masih cenderung salah. Bank soal ini layak terbit sebagai perbaikan, tetapi belum melalui reviu ahli materi.
+- Tabel nutrisi M7, program cahaya M10, kelas berat M13, serta target performa dan bobot badan M15 sudah dicocokkan baris demi baris dengan tangkapan layar di docx yang diaudit, dan semuanya sama. Ini mencocokkan salinan, bukan menilai kebenaran materi; kesesuaian acuan strain untuk tiap farm tetap keputusan tim Produksi.
 
 ## D. Panduan kalkulator
 
@@ -83,8 +89,10 @@ Kedua belas contoh perhitungan diverifikasi dan hasilnya benar. Catatan yang per
 
 Konten kurikulum tersimpan di database Production, bukan di kode. Merge ke `main` hanya mengirim skrip dan paket; konten berubah setelah operator menjalankan skrip di server.
 
+**Latihan di Staging lebih dulu.** Jalankan seluruh langkah di bawah terhadap Staging: merge ke `develop`, pakai `/home/aapp8359/aapmlayeracademy-staging-config.php` dan `--expect-environment=staging`. Lanjutkan ke Production hanya setelah pemeriksaan langkah 6 lulus di Staging dan tim Produksi menyetujui isinya; persetujuan itu menjadi nilai `--evidence-ref`.
+
 1. Merge PR ke `main` dan jalankan **Update from Remote** di cPanel Git Version Control. Artefak `dist/` tidak berubah.
-2. Ambil backup database Production (phpMyAdmin/cPanel).
+2. Ambil backup database Production (phpMyAdmin/cPanel). Backup ini satu-satunya jalur pemulihan cepat untuk bank ujian akhir.
 3. Di Admin → Kurikulum, pastikan tidak ada modul atau bank ujian akhir dengan draf yang belum terbit. Skrip menolak berjalan bila ada.
 4. Dari folder repository di server, jalankan rencana (hanya membaca):
 
@@ -106,4 +114,6 @@ Konten kurikulum tersimpan di database Production, bukan di kode. Merge ke `main
 
 Opsi `--modules=1,2,3` membatasi modul yang diproses dan `--skip-final` melewati bank ujian akhir.
 
-**Rollback:** setiap modul menyimpan riwayat revisi. Di editor modul, buka Riwayat revisi, salin revisi sebelumnya ke draf, lalu terbitkan. Snapshot bank ujian akhir sebelumnya tersimpan di `question_bank_revision_items`.
+**Bila apply berhenti di tengah:** modul yang sudah terbit tetap terbit. Modul yang sedang diproses bisa tertinggal sebagai draf, sehingga dry-run berikutnya menandainya `pending_draft`. Terbitkan atau buang draf itu di Admin, lalu jalankan ulang; modul yang sudah sama dilewati.
+
+**Rollback:** setiap modul menyimpan riwayat revisi. Di editor modul, buka Riwayat revisi, salin revisi sebelumnya ke draf, lalu terbitkan. Bank ujian akhir tidak punya tombol pemulihan: snapshot sebelumnya hanya tersimpan sebagai arsip di `question_bank_revision_items`, jadi pulihkan dari backup database atau tulis ulang soalnya melalui editor bank ujian akhir.
