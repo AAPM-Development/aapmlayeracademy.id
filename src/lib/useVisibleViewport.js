@@ -35,12 +35,18 @@ export default function useVisibleViewport() {
       if (panel) {
         const bounds = panel.getBoundingClientRect();
         const rect = field.getBoundingClientRect();
-        const top = Math.max(bounds.top, viewport.offsetTop);
+        let top = Math.max(bounds.top, viewport.offsetTop);
         let bottom = Math.min(bounds.bottom, viewport.offsetTop + viewport.height);
         const actions = document.querySelector('.aapm-editor-actionbar, .aapm-curriculum-actionbar');
         if (actions) {
           const actionBounds = actions.getBoundingClientRect();
-          if (actionBounds.bottom > top && actionBounds.top < bottom) bottom = Math.max(top, actionBounds.top);
+          if (actionBounds.bottom > top && actionBounds.top < bottom) {
+            // From 860px the draft bar sticks under the page header, ahead of its
+            // fields, so it covers the top of the visible area and not the bottom.
+            const { position, top: stickTop } = window.getComputedStyle(actions);
+            if (position === 'sticky' && stickTop !== 'auto') top = Math.min(bottom, actionBounds.bottom);
+            else bottom = Math.max(top, actionBounds.top);
+          }
         }
         const launcher = document.querySelector('[data-appi-launcher]');
         if (launcher) {
