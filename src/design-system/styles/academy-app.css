@@ -240,7 +240,8 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .msg-text li + li { margin-top: 6px; }
 .msg-body .msg-text li + li { margin-top: 0; }
 .aapm-ai-sources { display: flex; flex-direction: column; gap: var(--s-1); }
-.aapm-ai-sources__list { display: flex; flex-wrap: wrap; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.msg-body .aapm-ai-sources__list, .aapm-ai-sources__list { display: flex; flex-flow: row wrap; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.aapm-ai-status-line .btn-link { min-height: 0; height: auto; font-size: inherit; }
 .aapm-ai-sources__list > li { min-width: 0; max-width: 100%; }
 .aapm-ai-sources__list a { display: inline-flex; align-items: center; gap: var(--s-1); max-width: 260px; min-height: var(--h-sm); padding: 0 var(--s-2); border: var(--bw) solid var(--border); border-radius: var(--r-pill); color: var(--fg); font-size: var(--fs-xs); text-decoration: none; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
 .aapm-ai-sources__list a:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
