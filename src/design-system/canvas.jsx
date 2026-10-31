@@ -19,9 +19,9 @@ export function Ic({ name, size = undefined, label = undefined, className = unde
 }
 
 const logoSources = {
-  long: brandAssets.aapm.logo,
-  main: brandAssets.aapm.main,
-  icon: brandAssets.aapm.icon,
+  long: { ...brandAssets.aapm.logo, width: 369, height: 44 },
+  main: { ...brandAssets.aapm.main, width: 103, height: 85 },
+  icon: { ...brandAssets.aapm.icon, width: 82, height: 91 },
 };
 
 /** AAPM .academy mark as the light/dark pair the canvas uses. */
@@ -29,8 +29,8 @@ export function Logo({ variant = "long", className = undefined, style = undefine
   const source = logoSources[variant] || logoSources.long;
   return (
     <>
-      <img className={cn("logo only-light", className)} src={source.light} alt={alt} style={style} />
-      <img className={cn("logo only-dark", className)} src={source.dark} alt="" aria-hidden={alt ? true : undefined} style={style} />
+      <img className={cn("logo only-light", className)} src={source.light} width={source.width} height={source.height} alt={alt} style={style} />
+      <img className={cn("logo only-dark", className)} src={source.dark} width={source.width} height={source.height} alt="" aria-hidden={alt ? true : undefined} style={style} />
     </>
   );
 }

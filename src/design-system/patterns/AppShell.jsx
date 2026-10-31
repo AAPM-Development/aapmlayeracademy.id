@@ -229,9 +229,9 @@ export function SidebarNav({ groups = [], collapsed = false, onNavigate, onPrelo
 export function Sidebar({ brandTo = "/", brandLabel = "Beranda", collapsed = false, onToggle, context, children, footer, label = "Navigasi utama" }) {
   return (
     <aside className="side" data-collapsed={collapsed ? "true" : undefined} aria-label={label}>
-      <div className="side-brand">
+      <div className="side-brand" data-rail={collapsed && !onToggle ? "true" : undefined}>
         <Link to={brandTo} aria-label={brandLabel}>
-          <Logo variant="long" />
+          <Logo variant={collapsed && !onToggle ? "icon" : "long"} />
         </Link>
         {onToggle ? (
           <Tooltip content={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"} side="right">
@@ -377,7 +377,7 @@ export function MobileTop({ title, brandTo = "/", actions }) {
       <Link to={brandTo} aria-label="Beranda" className="row" style={{ flex: "none" }}>
         <Logo variant="icon" style={{ width: 30, height: 30 }} />
       </Link>
-      <span className="t-heading grow t-clamp-1">{title}</span>
+      <span className="t-heading grow t-clamp-1" title={title}>{title}</span>
       {actions}
     </header>
   );

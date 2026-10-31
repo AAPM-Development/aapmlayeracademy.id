@@ -235,7 +235,7 @@ export function ContinueCard({ module, summary, levelsDone = 0, levelTotal = 14 
     <section className="card cover-row anim-rise" data-hue={visual.hue} aria-labelledby="cont-title">
       <ModuleCover module={module} style={{ minHeight: 112 }} />
       <div className="row wrap gap-5" style={{ padding: "var(--s-4) var(--s-5)", minWidth: 0 }}>
-        <div className="stack grow gap-1" style={{ minWidth: 220 }}>
+        <div className="stack grow gap-1" style={{ minWidth: "min(220px, 100%)" }}>
           <span className="t-overline t-ink">Modul {moduleNo(module)} · {module.levelName}</span>
           <h2 className="t-heading t-clamp-2" id="cont-title">{module.title}</h2>
           <span className="t-support t-muted">{moduleMeta(module)}</span>

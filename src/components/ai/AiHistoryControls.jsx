@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { isConversationArchived } from "@/lib/aiHistoryState";
 import { useAiChat } from "@/components/ai/AiChatProvider";
@@ -672,6 +672,7 @@ export function AiConversationRenameDialog({
   saving = false,
 }) {
   const [title, setTitle] = useState("");
+  const titleRef = useRef(null);
   const open = Boolean(conversation);
 
   useEffect(() => {
@@ -687,7 +688,13 @@ export function AiConversationRenameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-[28rem] gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="w-[calc(100%-2rem)] max-w-[28rem] gap-0 overflow-hidden p-0"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus();
+        }}
+      >
         <form onSubmit={submit}>
           <DialogHeader className="border-b border-border/60 px-5 py-4">
             <div className="flex items-start gap-3">
@@ -714,7 +721,7 @@ export function AiConversationRenameDialog({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={180}
-              autoFocus
+              ref={titleRef}
               className="h-10"
               placeholder="Judul percakapan"
             />

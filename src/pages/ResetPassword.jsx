@@ -10,6 +10,7 @@ import {
   focusFirstError,
   newPasswordError,
 } from "@/lib/authValidation";
+import { hasFinePointer } from "@/lib/utils";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -89,7 +90,7 @@ export default function ResetPassword() {
           id="password"
           label="Kata sandi baru"
           autoComplete="new-password"
-          autoFocus
+          autoFocus={hasFinePointer()}
           requirements
           error={fieldErrors.password}
           value={newPassword}

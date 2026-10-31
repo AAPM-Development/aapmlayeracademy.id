@@ -423,14 +423,14 @@ export default function AdminAiSettings() {
           <span className="tile" data-hue="ai"><Ic name="sparkle" /></span>
           <div className="stack gap-0-5 grow" style={{ minWidth: 0 }}>
             <div className="row gap-2 between"><h2 className="t-heading">APPI aktif</h2>{settings?.apiKeyConfigured ? <span className="chip chip-success"><Ic name="check" />Siap</span> : <span className="chip chip-warning"><Ic name="alert" />Belum siap</span>}</div>
-            <p className="t-support t-muted">{settings?.providerLabel || activeProvider?.label || "—"}<br /><span className="t-mono t-clamp-1">{settings?.model || activeProvider?.model || "—"}</span></p>
+            <p className="t-support t-muted">{settings?.providerLabel || activeProvider?.label || "—"}<br /><span className="t-mono t-break">{settings?.model || activeProvider?.model || "—"}</span></p>
           </div>
         </div>
         <div className="card card-pad row-start gap-3 anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 1 })}>
           <span className="tile" data-hue={keyStorageReady ? "green" : "amber"}><Ic name="lock" /></span>
           <div className="stack gap-0-5 grow">
             <h2 className="t-heading">{keyStorageReady ? "Kunci tersimpan aman" : "Penyimpanan kunci belum siap"}</h2>
-            <p className="t-support t-muted">{keyStorageReady ? storageLabel : "Isi ai_settings_encryption_key di konfigurasi privat server."}</p>
+            <p className="t-support t-muted t-break">{keyStorageReady ? storageLabel : "Isi ai_settings_encryption_key di konfigurasi privat server."}</p>
           </div>
         </div>
         <div className="card card-pad row-start gap-3 anim-rise" style={/** @type {React.CSSProperties} */ ({ "--i": 2 })}>

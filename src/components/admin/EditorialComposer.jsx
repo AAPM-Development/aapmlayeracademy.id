@@ -630,7 +630,7 @@ function BlockContentFields({ block, onChange }) {
       return (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id={fieldId("link-label")} label="Label tautan"><Input id={fieldId("link-label")} value={block.label || ""} maxLength={160} onChange={(event) => set("label", event.target.value)} /></Field>
-          <Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field>
+          <Field id={fieldId("link-url")} label="URL HTTPS / internal"><Input id={fieldId("link-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://…" onChange={(event) => set("url", event.target.value)} /></Field>
           <div className="sm:col-span-2"><Field id={fieldId("link-description")} label="Konteks (opsional)"><Textarea id={fieldId("link-description")} rows={2} maxLength={600} value={block.description || ""} onChange={(event) => set("description", event.target.value)} /></Field></div>
         </div>
       );
@@ -640,7 +640,7 @@ function BlockContentFields({ block, onChange }) {
         <div className="grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id={fieldId("cta-label")} label="Label tombol"><Input id={fieldId("cta-label")} value={block.label || ""} maxLength={120} onChange={(event) => set("label", event.target.value)} /></Field>
-            <Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://..." onChange={(event) => set("url", event.target.value)} /></Field>
+            <Field id={fieldId("cta-url")} label="URL HTTPS / internal"><Input id={fieldId("cta-url")} value={block.url || ""} inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://…" onChange={(event) => set("url", event.target.value)} /></Field>
           </div>
           <div className={cn("aapm-block__cta-preview", ctaAlignmentClass[block.align || "left"] || ctaAlignmentClass.left)} aria-label="Pratinjau tombol aksi">
             <Button type="button" variant={buttonVariant} size={block.size || "md"} data-editorial-cta-tone={block.tone || "green"} data-editorial-cta-variant={block.variant || "primary"} data-editorial-cta-radius={block.radius || "md"} className={cn("max-w-full whitespace-normal", block.width === "full" && "w-full")}>

@@ -20,7 +20,7 @@ function formatIssued(value) {
 function PublicHeader() {
   const { user } = useAuth();
   return (
-    <header className="topbar">
+    <header className="topbar verify-topbar">
       <Link to="/" aria-label="AAPM Layer Academy"><Logo alt="AAPM .academy" style={{ height: 24 }} /></Link>
       <Link className="btn btn-ghost ml-auto" to={user ? "/" : "/login"}>{user ? "Buka Academy" : "Masuk"}</Link>
     </header>

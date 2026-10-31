@@ -25,7 +25,14 @@ export function useCommandShortcut(onOpen) {
  */
 export default function SearchPalette({ open, onOpenChange, title, description, placeholder, query, onQueryChange, groups = [], status }) {
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const visible = groups.filter((group) => group.items.length);
+
+  // Through the open hook, not autoFocus, so the overlay can record what opened it.
+  const focusInput = (event) => {
+    event.preventDefault();
+    inputRef.current?.focus();
+  };
 
   const moveFocus = (event) => {
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -39,12 +46,12 @@ export default function SearchPalette({ open, onOpenChange, title, description, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" className="palette" onKeyDown={moveFocus}>
+      <DialogContent size="lg" className="palette" onKeyDown={moveFocus} onOpenAutoFocus={focusInput}>
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{description}</DialogDescription>
         <label className="search search-lg">
           <Ic name="search" />
-          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={placeholder} aria-label={title} autoFocus />
+          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={placeholder} aria-label={title} ref={inputRef} />
           <span className="kbd" aria-hidden="true">Esc</span>
         </label>
         <div ref={listRef} className="palette-results">

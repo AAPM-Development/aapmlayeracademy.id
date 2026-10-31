@@ -19,6 +19,7 @@ const toneByLegacyVariant = {
 const iconByTone = { success: "success", danger: "danger", warning: "warning", info: "info", neutral: "info" };
 const DEFAULT_DURATION = 5200;
 const MAX_VISIBLE = 4;
+const RESUME_DURATION = 2400;
 
 function normalizeDuration(value) {
   const requested = Number(value);
@@ -57,6 +58,15 @@ function ToastProvider({ children }) {
     timers.current.set(id, window.setTimeout(() => dismiss(id), duration));
   }, [dismiss]);
 
+  // Reading or tabbing into a toast holds it; leaving gives a moment to finish.
+  const hold = React.useCallback((id) => {
+    const timer = timers.current.get(id);
+    if (timer) window.clearTimeout(timer);
+  }, []);
+  const release = React.useCallback((item) => {
+    if (item.duration !== Infinity) schedule(item.id, RESUME_DURATION);
+  }, [schedule]);
+
   const emit = React.useCallback((input = {}) => {
     const id = input.id || `toast-${Date.now()}-${(sequence += 1)}`;
     const item = {
@@ -83,9 +93,9 @@ function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast-region" aria-live="polite" aria-relevant="additions">
+      <div className="toast-region" role="region" aria-label="Notifikasi">
         {toasts.map((item) => (
-          <div key={item.id} className="toast toast-live" data-tone={item.tone} data-leaving={item.leaving ? "true" : undefined} role={item.tone === "danger" ? "alert" : "status"}>
+          <div key={item.id} className="toast toast-live" data-tone={item.tone} data-leaving={item.leaving ? "true" : undefined} onMouseEnter={() => hold(item.id)} onMouseLeave={() => release(item)} onFocus={() => hold(item.id)} onBlur={() => release(item)} role={item.tone === "danger" ? "alert" : "status"}>
             <AapmIcon name={iconByTone[item.tone] || "info"} />
             <div className="stack gap-0-5 grow">
               <p className="t-strong">{item.title}</p>

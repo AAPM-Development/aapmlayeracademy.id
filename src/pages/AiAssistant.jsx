@@ -20,7 +20,7 @@ import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
 import AiMarkdown from "@/components/ai/AiMarkdown";
 import AiCopyButton from "@/components/ai/AiCopyButton";
-import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
+import AppiMascot from "@/components/appi/AppiMascot";
 import { Ic } from "@/design-system/canvas";
 import { firstName } from "@/lib/learnerCopy";
 import { useAuth } from "@/lib/AuthContext";
@@ -43,9 +43,6 @@ const STARTER_LOOK = {
   readiness: { hue: "gold", ic: "cert" },
   default: [{ hue: "orange", ic: "chart" }, { hue: "teal", ic: "table" }, { hue: "green", ic: "feed" }, { hue: "blue", ic: "book" }],
 };
-
-const welcomeMessage =
-  "Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.";
 
 function findLastAssistantMessageIndex(messages = []) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -724,20 +721,7 @@ export default function AiAssistant() {
   const firstPrompt = messages.find((item) => item.role === "user")?.content?.trim() || "";
   const firstPromptTitle = firstPrompt.length > 60 ? `${firstPrompt.slice(0, 59).trimEnd()}…` : firstPrompt;
   const headerTitle = activeConversation?.title?.trim() || firstPromptTitle || "Percakapan baru";
-  // The line under the title says what the page is doing right now, so the
-  // header is no longer a fixed label that repeats on every screen.
   const greetingName = user?.full_name ? firstName(user) : "";
-  const headerStatus = isLoadingConversation
-    ? "Memuat riwayat…"
-    : !messages.length && !isStreaming
-      ? "tersimpan di akun setelah pesan pertama"
-    : isStreaming
-      ? "sedang menjawab"
-      : historySyncState === "saving"
-        ? "menyimpan percakapan…"
-        : historySyncState === "attention"
-          ? "riwayat belum tersinkron"
-          : "tersimpan di akun Anda";
   const lastAssistantMessageIndex = findLastAssistantMessageIndex(messages);
 
   const handleDeleteConversation = async (id) => {
@@ -951,13 +935,7 @@ export default function AiAssistant() {
           <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}>
             <AppiMascot mood={isStreaming ? (streamPhase === "alert" ? "concerned" : "think") : "idle"} size="sm" />
           </span>
-          <div className="stack grow" style={{ minWidth: 0 }}>
-            <h1 className="t-heading t-clamp-1" title={headerTitle}>{headerTitle}</h1>
-            <span className="row gap-1 t-caption t-muted">
-              <Ic name={messages.length ? "check-circle" : "history"} size="xs" className={messages.length ? "t-success" : undefined} />
-              <span className="t-clamp-1">APPI · {headerStatus}</span>
-            </span>
-          </div>
+          <h1 className="t-heading grow t-clamp-1" title={headerTitle}>{headerTitle}</h1>
           <button type="button" className="btn btn-ghost btn-icon btn-quiet lg:hidden" aria-label="Riwayat" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
           <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Percakapan baru" onClick={startNewConversation} disabled={isStreaming}><Ic name="edit" /></button>
         </header>
@@ -985,23 +963,15 @@ export default function AiAssistant() {
                   Memuat riwayat...
                 </p>
               ) : messages.length === 0 ? (
-                <div className="stack items-center gap-6 appi-welcome">
-                  <div className="stack items-center gap-4 t-center">
-                    <div className="halo" data-hue="ai" style={{ width: 172, height: 160 }}>
-                      <span className="glow" style={{ "--size": "150px" }} aria-hidden="true" />
-                      <div className="appi-stage"><AppiMascot mood="idle" size="hero" enter="pop" /></div>
-                      <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: 2, top: 8, width: 30 }} />
-                      <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ left: 4, top: 58, width: 18, "--i": 2 }} />
-                    </div>
-                    <div className="stack items-center gap-2">
-                      <h2 className="t-title">Halo{greetingName ? `, ${greetingName}` : ""}! Apa yang terjadi di farm hari ini?</h2>
-                      <p className="t-body t-muted t-pretty" style={{ maxWidth: "46ch" }}>{welcomeMessage}</p>
-                    </div>
+                <div className="stack items-center gap-5 appi-welcome">
+                  <div className="stack items-center gap-3 t-center">
+                    <AppiMascot mood="idle" size="xl" enter="pop" />
+                    <h2 className="t-title t-pretty">Halo{greetingName ? `, ${greetingName}` : ""}! Apa yang terjadi di farm hari ini?</h2>
                   </div>
                   <div className="w-full">{composer}</div>
-                  <section className="stack gap-3 w-full" aria-labelledby="starter-title">
-                    <h3 className="t-overline t-muted" id="starter-title">Mulai dari data Anda</h3>
-                    <div className="cols-2">
+                  <section className="w-full" aria-labelledby="starter-title">
+                    <h3 className="sr-only" id="starter-title">Mulai dari data Anda</h3>
+                    <div className="appi-suggest-grid">
                       {suggestions.map((suggestion, index) => {
                         const look = STARTER_LOOK[suggestion.id] || STARTER_LOOK.default[index % STARTER_LOOK.default.length];
                         return (
@@ -1009,16 +979,13 @@ export default function AiAssistant() {
                             key={suggestion.id}
                             type="button"
                             onClick={() => submit(suggestion.prompt)}
-                            className="card card-tactile row gap-3 anim-rise appi-starter"
+                            className="anim-rise appi-suggest"
                             data-hue={look.hue}
-                            style={{ padding: "var(--s-4)", "--i": index + 1 }}
+                            style={/** @type {React.CSSProperties} */ ({ "--i": index + 1 })}
                           >
-                            <span className="tile tile-round tile-solid"><Ic name={look.ic} /></span>
-                            <span className="stack gap-0-5 grow" style={{ minWidth: 0 }}>
-                              <span className="t-heading">{suggestion.label}</span>
-                              <span className="t-support t-muted">{suggestion.detail}</span>
-                            </span>
-                            <Ic name="arrow-right" className="t-muted" />
+                            <Ic name={look.ic} className="t-ink" />
+                            <span className="t-medium">{suggestion.label}</span>
+                            <span className="t-caption t-muted">{suggestion.detail}</span>
                           </button>
                         );
                       })}
