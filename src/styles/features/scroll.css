@@ -30,24 +30,12 @@
     scrollbar-width: thin;
   }
 
-.aapm-scroll-fade--subtle {
-    --scroll-fade-color: hsl(var(--tw-surface-subtle) / 0.78);
-  }
-
 .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-top="true"] {
     --scroll-fade-shadow-top: inset 0 var(--scroll-fade-size) var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
   }
 
 .aapm-scroll-fade:not(.aapm-scroll-fade--x)[data-scroll-bottom="true"] {
     --scroll-fade-shadow-bottom: inset 0 calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
-  }
-
-.aapm-scroll-fade--x[data-scroll-left="true"] {
-    --scroll-fade-shadow-left: inset var(--scroll-fade-size) 0 var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
-  }
-
-.aapm-scroll-fade--x[data-scroll-right="true"] {
-    --scroll-fade-shadow-right: inset calc(-1 * var(--scroll-fade-size)) 0 var(--scroll-fade-size) calc(-1 * var(--scroll-fade-size)) var(--scroll-fade-color);
   }
 
 .aapm-scroll-fade::-webkit-scrollbar,
