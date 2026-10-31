@@ -1,12 +1,12 @@
 {
   "schema": "aapm-release-manifest/1",
   "channel": "staging",
-  "sourceCommit": "284b00120e5d0ea0cc4496beabbdd63229106618",
+  "sourceCommit": "acccfee8c5e055dff6228e7bd9472d34da007ba8",
   "sourceDirty": false,
-  "sourceTreeFingerprint": "da6a50872749da706199d9ecf88be46b54474f04c8f6e0d9178f4a2825d88572",
+  "sourceTreeFingerprint": "fb36576e3ebb0116056005297717cd021a0e1a43cea5c40563181be5834eb440",
   "sourceFileCount": 293,
   "artifactId": "305afcc91102438c4bb2f9a7d48b5349f371c470b4827774ad980a23f7053850",
-  "builtAt": "2026-10-31T08:49:35.060Z",
+  "builtAt": "2026-10-31T09:24:55.704Z",
   "schemaCompatibility": {
     "migrationKey": "20260909_ai_conversation_archiving_v1",
     "environmentMarkerTable": "aapm_environment_marker"
@@ -880,7 +880,7 @@
     {
       "path": "assets/templates/module-cover-template.svg",
       "sha256": "515da0aafbb11a387924eebf24471f70cbad288cf71dec88922016f473cb247d",
-      "bytes": 1764
+      "bytes": 1741
     },
     {
       "path": "assets/time-DJiCUFG5.js",
@@ -1070,7 +1070,7 @@
     {
       "path": "fonts/Nunito-OFL.txt",
       "sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
-      "bytes": 4478
+      "bytes": 4385
     },
     {
       "path": "fonts/Nunito-Variable-latin-ext.woff2",
