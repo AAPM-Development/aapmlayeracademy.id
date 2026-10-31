@@ -238,6 +238,12 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .msg-text ol { list-style: decimal; padding-left: 22px; }
 .msg-text ul { list-style: disc; padding-left: 22px; }
 .msg-text li + li { margin-top: 6px; }
+.msg-body .msg-text li + li { margin-top: 0; }
+.aapm-ai-sources { display: flex; flex-direction: column; gap: var(--s-1); }
+.aapm-ai-sources__list { display: flex; flex-wrap: wrap; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.aapm-ai-sources__list > li { min-width: 0; max-width: 100%; }
+.aapm-ai-sources__list a { display: inline-flex; align-items: center; gap: var(--s-1); max-width: 260px; min-height: var(--h-sm); padding: 0 var(--s-2); border: var(--bw) solid var(--border); border-radius: var(--r-pill); color: var(--fg); font-size: var(--fs-xs); text-decoration: none; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.aapm-ai-sources__list a:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
 .msg-text strong { font-weight: 600; }
 .msg-text :where(h2, h3, h4) { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-lg); line-height: 24px; }
 .msg-text table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }

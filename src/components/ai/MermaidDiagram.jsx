@@ -44,6 +44,7 @@ export default function MermaidDiagram({ chart }) {
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "strict",
+          suppressErrorRendering: true,
           theme: dark ? "dark" : "base",
           themeVariables: dark
             ? {
@@ -83,9 +84,12 @@ export default function MermaidDiagram({ chart }) {
 
   if (error)
     return (
-      <pre className="aapm-ai-code-block">
-        <code>{chart}</code>
-      </pre>
+      <figure className="aapm-ai-code">
+        <figcaption className="aapm-ai-code__bar"><span>Diagram tidak dapat digambar. Ini sumbernya:</span></figcaption>
+        <pre className="aapm-ai-code-block" tabIndex={0} aria-label="Sumber diagram">
+          <code>{chart}</code>
+        </pre>
+      </figure>
     );
   if (!svg)
     return (

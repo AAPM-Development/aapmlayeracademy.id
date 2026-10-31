@@ -55,8 +55,10 @@ function CodeBlock({ node }) {
 }
 
 function AnswerLink({ href = "", children }) {
+  // The URL filter empties protocols it does not trust; the words stay, the link goes.
+  if (!href) return <>{children}</>;
   if (href.startsWith("/") && !href.startsWith("//")) return <Link to={href}>{children}</Link>;
-  const external = /^https?:\/\//i.test(href);
+  const external = /^(https?:)?\/\//i.test(href);
   return (
     <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined}>
       {children}
@@ -65,13 +67,27 @@ function AnswerLink({ href = "", children }) {
   );
 }
 
-const REMARK_PLUGINS = [remarkGfm];
+/** Models write <br> inside table cells. Raw HTML stays off, so only this one tag becomes a line break. */
+function remarkLineBreakTags() {
+  const walk = (node) => {
+    (node.children || []).forEach((child, index) => {
+      if (child.type === "html" && /^<br\s*\/?>$/i.test(child.value.trim())) node.children[index] = { type: "break" };
+      else walk(child);
+    });
+  };
+  return walk;
+}
+
+const REMARK_PLUGINS = [remarkGfm, remarkLineBreakTags];
+const TABLE_WRAP_PROPS = { tabIndex: 0, role: "region", "aria-label": "Tabel jawaban APPI, geser untuk melihat semua kolom" };
 const componentsFor = (compact) => ({
   h1: ({ children }) => (compact ? <h3>{children}</h3> : <h2>{children}</h2>),
   h2: ({ children }) => <h3>{children}</h3>,
   h3: ({ children }) => <h4>{children}</h4>,
   a: ({ href, children }) => <AnswerLink href={href}>{children}</AnswerLink>,
-  table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI">{children}</Table>,
+  table: ({ children }) => <Table className="aapm-ai-markdown-table" aria-label="Tabel dalam jawaban APPI" wrapProps={TABLE_WRAP_PROPS}>{children}</Table>,
+  // A picture in an answer would load from a URL the model chose; a link waits for the learner.
+  img: ({ src, alt }) => <AnswerLink href={/^https:\/\//i.test(src || "") ? src : ""}>{alt || "Gambar"}</AnswerLink>,
   pre: ({ node }) => <CodeBlock node={node} />,
   code: ({ children }) => <code className="aapm-ai-inline-code">{children}</code>,
 });

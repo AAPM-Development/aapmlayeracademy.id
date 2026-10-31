@@ -291,6 +291,7 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
   .aapm-ai-floating-panel,
   .aapm-chat-jump,
   .aapm-chat-turn { animation: none; }
+  .aapm-chat-jump { transform: translateX(-50%); }
 }
 
 /* One user bubble for the page and the floating panel: soft brand tint, squared sending corner. */
@@ -385,7 +386,8 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 }
 .aapm-ai-markdown h2 { font-size: 1.15em; }
 .aapm-ai-markdown h3 { font-size: 1.05em; }
-.aapm-ai-markdown h4 { font-size: 1em; }
+.aapm-ai-markdown :is(h4, h5, h6) { font-size: 1em; }
+.aapm-ai-markdown li:has(> input[type="checkbox"]) { margin-left: -1.25em; list-style: none; }
 .aapm-ai-markdown :is(ul, ol) { margin-bottom: 0; padding-inline-start: 1.35em; }
 .aapm-ai-markdown ul { list-style: disc; }
 .aapm-ai-markdown ol { list-style: decimal; }
@@ -412,7 +414,8 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
   color: var(--aapm-semantic-foreground);
 }
 .aapm-ai-markdown hr { margin: 1.4em 0 0; border: 0; border-top: 1px solid var(--aapm-semantic-border); }
-.aapm-ai-markdown .aapm-table-wrap { border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-panel); }
+.aapm-ai-markdown :is(th, td) { overflow-wrap: normal; }
+.aapm-ai-markdown .table-wrap { border: 1px solid var(--aapm-semantic-border); border-radius: var(--aapm-primitive-radius-panel); }
 .aapm-ai-markdown .aapm-ai-markdown-table { min-width: 26rem; font-size: 0.875em; }
 .aapm-ai-markdown .aapm-ai-inline-code {
   padding: 0.1em 0.35em;

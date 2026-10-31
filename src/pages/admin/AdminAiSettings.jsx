@@ -65,7 +65,7 @@ function newForm(preset, provider = null) {
     supportsVision: provider?.supportsVision ?? source.supportsVision ?? false,
     chatPath: provider?.chatPath || "/chat/completions",
     modelsPath: provider?.modelsPath || "/models",
-    maxTokens: provider?.maxTokens || 700,
+    maxTokens: provider?.maxTokens || 1600,
     temperature: provider?.temperature ?? 0.3,
     timeoutSeconds: provider?.timeoutSeconds || 35,
     apiKey: "",

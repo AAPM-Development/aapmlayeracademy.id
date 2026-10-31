@@ -20,6 +20,7 @@ import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
 import AiMarkdown from "@/components/ai/AiMarkdown";
 import AiCopyButton from "@/components/ai/AiCopyButton";
+import AiSources from "@/components/ai/AiSources";
 import AppiMascot from "@/components/appi/AppiMascot";
 import { Ic } from "@/design-system/canvas";
 import { firstName } from "@/lib/learnerCopy";
@@ -28,6 +29,7 @@ import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 import { moduleNo } from "@/lib/moduleNumber";
+import { hasFinePointer } from "@/lib/utils";
 
 // Starter cards (canvas "APPI — sambutan"): one hue and icon per prompt.
 const STARTER_LOOK = {
@@ -180,6 +182,7 @@ function personalizedSuggestions({ farm = [], progress = [], modules = [], user,
 function AssistantMessage({
   message,
   retryPrompt,
+  regeneratePrompt = "",
   onRetry,
   onRetryPersistence,
   persistenceRetrying = false,
@@ -192,7 +195,9 @@ function AssistantMessage({
   const [collapsed, setCollapsed] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
-  const finished = !message.streaming && !message.error && Boolean(message.content);
+  // A partial answer that failed is still text worth copying.
+  const hasAnswer = !message.streaming && Boolean(message.content);
+  const finished = hasAnswer && !message.error;
   return (
     <article className="aapm-ai-message stack gap-3" style={{ minWidth: 0 }} aria-label="Jawaban APPI">
       <AiThinking message={message} label={message.streamStatus} steps={message.streamSteps} />
@@ -201,9 +206,15 @@ function AssistantMessage({
           <AiMarkdown content={message.content} streaming={message.streaming} />
         </div>
       ) : null}
-      {finished ? (
+      {hasAnswer ? <AiSources sources={message.sources} /> : null}
+      {hasAnswer ? (
         <div className="row wrap gap-1 answer-actions">
           <AiCopyButton text={message.content} label="Salin jawaban" rich />
+          {regeneratePrompt ? (
+            <button type="button" className="btn btn-ghost btn-sm btn-quiet" disabled={disabled} onClick={() => onRetry(regeneratePrompt)}>
+              <Ic name="refresh" />Buat ulang
+            </button>
+          ) : null}
           {canCollapse ? (
             <button type="button" className="btn btn-ghost btn-sm btn-quiet" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
               <Ic name={collapsed ? "chev-down" : "chev-up"} />{collapsed ? "Tampilkan lengkap" : "Ringkas"}
@@ -863,19 +874,22 @@ export default function AiAssistant() {
     reader.readAsDataURL(file);
   };
 
-  const submit = async (text = promptDraft) => {
+  const submit = async (text = promptDraft, { retry = false } = {}) => {
     const content = text.trim();
     if ((!content && !imageAttachment) || isStreaming || isLoadingConversation || imageLoading) return;
-    const image = imageAttachment;
+    // The button pressed goes away with the answer, so the question field takes the focus.
+    if (hasFinePointer()) window.requestAnimationFrame(() => document.querySelector(".aapm-ai-workspace__main .composer textarea")?.focus());
+    const image = retry ? null : imageAttachment;
     const message =
       content ||
       "Tolong analisis foto farm ini. Bedakan observasi visual, hal yang belum pasti, dan data yang perlu saya cek berikutnya.";
-    const result = await send(message, { includeFarm: includeFarm && farmAvailable, allowWebSearch, image, pageContext: "ai-assistant" });
-    if (result?.ok) {
+    const result = await send(message, { retry, includeFarm: includeFarm && farmAvailable, allowWebSearch, image, pageContext: suggestionContext });
+    if (result?.ok && !retry) {
       setImageAttachment(null);
       setAttachmentError("");
     }
   };
+  const retryAnswer = (prompt) => submit(prompt, { retry: true });
 
   const docked = Boolean(messages.length || isLoadingConversation);
   const composer = (
@@ -1013,7 +1027,10 @@ export default function AiAssistant() {
                         retryPrompt={
                           message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""
                         }
-                        onRetry={submit}
+                        regeneratePrompt={
+                          index === lastAssistantMessageIndex && !message.fallback && !message.error && !message.stopped && !message.interrupted ? messages[index - 1]?.content : ""
+                        }
+                        onRetry={retryAnswer}
                         onQuickAction={submit}
                         onRetryPersistence={retryPersistAssistant}
                         persistenceRetrying={retryingMessageId === message.id}

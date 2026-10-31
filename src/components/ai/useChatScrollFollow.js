@@ -19,7 +19,10 @@ export default function useChatScrollFollow({
   const shouldFollowRef = useRef(true);
   const hasContentRef = useRef(Boolean(content?.length));
   const frameRef = useRef(null);
+  const lastTopRef = useRef(0);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const userTurns = Array.isArray(content) ? content.filter((message) => message.role === "user").length : 0;
+  const userTurnsRef = useRef(userTurns);
 
   const updateScrollState = useCallback(() => {
     const viewport = viewportElementRef.current;
@@ -28,7 +31,10 @@ export default function useChatScrollFollow({
     const maxLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
     const distanceFromBottom =
       viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-    const atBottom = distanceFromBottom <= BOTTOM_THRESHOLD;
+    // Any upward move ends the follow, even a slow drag still inside the threshold.
+    const movedUp = viewport.scrollTop < lastTopRef.current - 1;
+    lastTopRef.current = viewport.scrollTop;
+    const atBottom = distanceFromBottom <= BOTTOM_THRESHOLD && !movedUp;
     viewport.dataset.scrollTop = viewport.scrollTop > 2 ? "true" : "false";
     viewport.dataset.scrollBottom =
       viewport.scrollTop < maxTop - 2 ? "true" : "false";
@@ -88,6 +94,15 @@ export default function useChatScrollFollow({
     setShowJumpToLatest(false);
     scheduleFollow();
   }, [activeKey, scheduleFollow, viewport]);
+
+  // Sending a message always returns to the newest turn, wherever the reader had scrolled.
+  useEffect(() => {
+    if (userTurns > userTurnsRef.current) {
+      shouldFollowRef.current = true;
+      setShowJumpToLatest(false);
+    }
+    userTurnsRef.current = userTurns;
+  }, [userTurns]);
 
   useEffect(() => {
     scheduleFollow("auto");

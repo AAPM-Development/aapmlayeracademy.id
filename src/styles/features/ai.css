@@ -1527,7 +1527,8 @@
     max-width: 100% !important;
   }
 
-.aapm-ai-response--streaming::after {
+.aapm-ai-response--streaming .aapm-ai-markdown > p:last-child::after,
+.aapm-ai-response--streaming .aapm-ai-markdown > :is(ul, ol):last-child > li:last-child::after {
     display: inline-block;
     width: 0.12rem;
     height: 1em;
@@ -1637,7 +1638,8 @@
     .aapm-ai-history-sheet,
     .aapm-ai-activity,
     .aapm-ai-response,
-    .aapm-ai-response--streaming::after {
+    .aapm-ai-response--streaming .aapm-ai-markdown > p:last-child::after,
+    .aapm-ai-response--streaming .aapm-ai-markdown > :is(ul, ol):last-child > li:last-child::after {
       animation: none;
     }
 
