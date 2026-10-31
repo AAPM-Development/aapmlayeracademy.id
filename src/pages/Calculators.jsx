@@ -6,6 +6,7 @@ import AppiMascot from "@/components/appi/AppiMascot";
 import CountUp from "@/components/motion/CountUp";
 import { askAppi } from "@/lib/askAppi";
 import { useFarmData, useModules } from "@/lib/useCourseData";
+import { simulateToolValues } from "@/lib/farmSimulation";
 import { getLevelForModule, sortModules } from "@/lib/academyData";
 import { FCR_ZONES, formatNumber, sortByWeek, toNumber } from "@/lib/kpiReading";
 import { cn } from "@/lib/utils";
@@ -627,6 +628,7 @@ function ApplyLinks({ tool, farmRows, modules }) {
 export default function Calculators() {
   const [active, setActive] = useState("fcr");
   const [values, setValues] = useState({});
+  const [simulationWeeks, setSimulationWeeks] = useState({});
   const [panelVisible, setPanelVisible] = useState(true);
   const panelRef = useRef(null);
   const { data: farmRows = [] } = useFarmData();
@@ -637,8 +639,21 @@ export default function Calculators() {
   const tone = TONE[reading.ready ? reading.tone : "info"];
 
   const setField = (key, value) => setValues((current) => ({ ...current, [tool.id]: { ...(current[tool.id] || {}), [key]: value } }));
-  const fillExample = () => setValues((current) => ({ ...current, [tool.id]: Object.fromEntries(tool.fields.map((field) => [field.key, String(field.example)])) }));
-  const reset = () => setValues((current) => ({ ...current, [tool.id]: {} }));
+  const simulationWeek = simulationWeeks[tool.id] || 0;
+  const fillExample = () => {
+    setSimulationWeeks((current) => ({ ...current, [tool.id]: 0 }));
+    setValues((current) => ({ ...current, [tool.id]: Object.fromEntries(tool.fields.map((field) => [field.key, String(field.example)])) }));
+  };
+  // Each press is the next week, so the result and its verdict move without typing.
+  const simulate = () => {
+    const week = simulationWeek + 1;
+    setSimulationWeeks((current) => ({ ...current, [tool.id]: week }));
+    setValues((current) => ({ ...current, [tool.id]: simulateToolValues(tool.fields, week) }));
+  };
+  const reset = () => {
+    setSimulationWeeks((current) => ({ ...current, [tool.id]: 0 }));
+    setValues((current) => ({ ...current, [tool.id]: {} }));
+  };
   const hasInput = Object.values(toolValues).some((value) => value !== "");
 
   // Phones: when the result card scrolls out of view, the dock keeps it in sight.
@@ -714,8 +729,9 @@ export default function Calculators() {
                   <p className="card-desc">{tool.lead}</p>
                 </div>
               </div>
-              <div className="row gap-1">
+              <div className="row wrap gap-1">
                 <button type="button" className="btn btn-ghost btn-sm" onClick={fillExample}><Ic name="wand" />Isi contoh</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={simulate}><Ic name="chart" />{simulationWeek ? `Simulasi minggu ${simulationWeek}` : "Simulasi"}</button>
                 <button type="button" className="btn btn-ghost btn-sm" disabled={!hasInput} onClick={reset}><Ic name="refresh" />Reset</button>
               </div>
             </div>

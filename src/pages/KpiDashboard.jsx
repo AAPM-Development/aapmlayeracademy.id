@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ConfirmDialog, DataTable, OverflowMenu, Sheet, SheetContent, SheetDescription, SheetTitle, StateView, useToast } from "@/design-system";
+import { ConfirmDialog, DataTable, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, OverflowMenu, SegmentedControl, Sheet, SheetContent, SheetDescription, SheetTitle, StateView, useToast } from "@/design-system";
 import { Page } from "@/design-system/patterns/AppShell";
 import { Ic } from "@/design-system/canvas";
 import { Sparkline } from "@/design-system/components/data";
@@ -7,6 +7,7 @@ import AppiMascot from "@/components/appi/AppiMascot";
 import CountUp from "@/components/motion/CountUp";
 import CanvasLineChart from "@/components/learn/CanvasChart";
 import { askAppi } from "@/lib/askAppi";
+import { readSimulation, simulateFarmWeeks, SIMULATION_SCENARIOS, SIMULATION_WEEK_OPTIONS, writeSimulation } from "@/lib/farmSimulation";
 import { formatMillion, formatNumber, KPI_METRICS, kpiPrompt, readingFor, sortByWeek, toNumber, weeklyReading } from "@/lib/kpiReading";
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
 import { cn, hasFinePointer } from "@/lib/utils";
@@ -119,7 +120,13 @@ const findingClass = { negative: "alert-warning", positive: "alert-success", neu
  * finance; FCR is calculated from the week's own numbers.
  */
 export default function KpiDashboard() {
-  const { data: rows = [], isLoading, isError, refetch } = useFarmData();
+  const { data: savedRows = [], isLoading, isError, refetch } = useFarmData();
+  // A simulation replaces what this page shows and nothing else: saved rows earn
+  // points and feed APPI, so simulated ones never leave the browser.
+  const [simulation, setSimulation] = useState(readSimulation);
+  const [simulationOpen, setSimulationOpen] = useState(false);
+  const [simulationDraft, setSimulationDraft] = useState({ weeks: 8, scenario: "normal" });
+  const rows = useMemo(() => (simulation ? simulateFarmWeeks(simulation) : savedRows), [simulation, savedRows]);
   const save = useSaveFarmData();
   const del = useDeleteFarmData();
   const saveFarmData = /** @type {any} */ (save.mutateAsync);
@@ -202,6 +209,22 @@ export default function KpiDashboard() {
     setSheetOpen(true);
   };
 
+  const openSimulation = () => {
+    if (simulation) setSimulationDraft(simulation);
+    setSimulationOpen(true);
+  };
+
+  const startSimulation = () => {
+    setSimulation(simulationDraft);
+    writeSimulation(simulationDraft);
+    setSimulationOpen(false);
+  };
+
+  const endSimulation = () => {
+    setSimulation(null);
+    writeSimulation(null);
+  };
+
   const remove = async (id) => {
     try {
       await deleteFarmData(id);
@@ -241,6 +264,7 @@ export default function KpiDashboard() {
     },
   ];
 
+  const tableColumns = simulation ? columns.filter((column) => column.key !== "actions") : columns;
   const hasData = sorted.length > 0;
   const weekRow = sorted.find((row) => row.week === reading.week) || latestRow;
   const profitNow = latestRow ? toNumber(latestRow.revenue) - toNumber(latestRow.cost) : NaN;
@@ -258,16 +282,28 @@ export default function KpiDashboard() {
           <h1 className="ph-title">Farm KPI</h1>
           <p className="ph-desc">Catat indikator mingguan, baca polanya, lalu putuskan tindakan berikutnya.</p>
         </div>
-        {hasData ? (
+        {simulation || !hasData ? null : (
           <div className="ph-actions">
+            <button type="button" className="btn btn-secondary" aria-haspopup="dialog" onClick={openSimulation}><Ic name="wand" />Simulasi</button>
             <button type="button" className="btn btn-primary" aria-haspopup="dialog" aria-expanded={sheetOpen} onClick={openNewEntry}><Ic name="plus" />Catat minggu ini</button>
           </div>
-        ) : null}
+        )}
       </header>
 
-      {isLoading ? (
+      {simulation ? (
+        <div className="alert alert-warning" role="status">
+          <Ic name="info" />
+          <p><span className="alert-title">Mode simulasi.</span> {simulation.weeks} minggu data contoh, skenario {SIMULATION_SCENARIOS[simulation.scenario].label.toLowerCase()}. Tidak tersimpan, tidak menambah poin, dan tidak masuk data farm akun Anda.</p>
+          <div className="row gap-1 alert-action">
+            <button type="button" className="btn btn-ghost btn-sm" aria-haspopup="dialog" onClick={openSimulation}>Ubah</button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={endSimulation}>Keluar simulasi</button>
+          </div>
+        </div>
+      ) : null}
+
+      {isLoading && !simulation ? (
         <StateView kind="loading" title="Memuat data KPI…" description="Kami sedang menyiapkan ringkasan produksi Anda." />
-      ) : isError ? (
+      ) : isError && !simulation ? (
         <StateView kind="error" title="Data KPI belum dapat dimuat" description="Periksa koneksi lalu coba lagi." action={<button type="button" className="btn btn-secondary" onClick={() => refetch()}><Ic name="refresh" />Coba lagi</button>} />
       ) : !hasData ? (
         <section className="card card-pad-lg stack items-center t-center gap-4 peek-host anim-rise" aria-labelledby="kpi-empty-title">
@@ -275,6 +311,7 @@ export default function KpiDashboard() {
           <h2 className="t-title-c" id="kpi-empty-title">Belum ada data mingguan</h2>
           <p className="t-body t-muted measure">Catat satu minggu data flock. APPI akan membaca tren HDP, FCR, dan biaya untuk Anda.</p>
           <button type="button" className="btn btn-learn btn-lg" onClick={openNewEntry}><Ic name="plus" />Catat data pertama</button>
+          <button type="button" className="btn btn-ghost" aria-haspopup="dialog" onClick={openSimulation}><Ic name="wand" />Coba dengan data simulasi</button>
         </section>
       ) : (
         <>
@@ -286,7 +323,7 @@ export default function KpiDashboard() {
                   <span className="t-overline t-ai">Bacaan APPI · Minggu {reading.week}</span>
                   <h2 className="t-title-c" id="appi-read-title">{reading.title}</h2>
                 </div>
-                <button type="button" className="btn btn-ai-soft btn-sm" onClick={() => askAppi(kpiPrompt(sorted, reading))}><Ic name="message" />Diskusikan dengan APPI</button>
+                <button type="button" className="btn btn-ai-soft btn-sm" onClick={() => askAppi(`${simulation ? "Ini data simulasi untuk latihan, bukan data farm saya. " : ""}${kpiPrompt(sorted, reading)}`)}><Ic name="message" />Diskusikan dengan APPI</button>
               </div>
               <ul className="stack gap-2" aria-label={`Temuan minggu ${reading.week}`}>
                 {reading.findings.map((item, index) => {
@@ -448,7 +485,7 @@ export default function KpiDashboard() {
             </div>
             <DataTable
               caption="Riwayat KPI mingguan, minggu terbaru di atas"
-              columns={columns}
+              columns={tableColumns}
               rows={visibleRows}
               rowKey={(row) => String(row.id)}
               responsive="stacked"
@@ -514,6 +551,42 @@ export default function KpiDashboard() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={simulationOpen} onOpenChange={setSimulationOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Simulasi data flock</DialogTitle>
+            <DialogDescription>Isi halaman ini dengan data contoh tanpa mengetik. Data asli Anda tidak berubah.</DialogDescription>
+          </DialogHeader>
+          <div className="dialog-body stack gap-4">
+            <div className="stack gap-2">
+              <span className="t-support t-medium">Jumlah minggu</span>
+              <SegmentedControl
+                label="Jumlah minggu"
+                block
+                value={simulationDraft.weeks}
+                onChange={(weeks) => setSimulationDraft((current) => ({ ...current, weeks }))}
+                options={SIMULATION_WEEK_OPTIONS.map((weeks) => ({ value: weeks, label: `${weeks} minggu` }))}
+              />
+            </div>
+            <div className="stack gap-2">
+              <span className="t-support t-medium">Skenario</span>
+              <SegmentedControl
+                label="Skenario simulasi"
+                block
+                value={simulationDraft.scenario}
+                onChange={(scenario) => setSimulationDraft((current) => ({ ...current, scenario }))}
+                options={Object.entries(SIMULATION_SCENARIOS).map(([value, item]) => ({ value, label: item.label }))}
+              />
+              <p className="t-caption t-muted">{SIMULATION_SCENARIOS[simulationDraft.scenario].description}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <button type="button" className="btn btn-ghost" onClick={() => setSimulationOpen(false)}>Batal</button>
+            <button type="button" className="btn btn-primary" onClick={startSimulation}><Ic name="wand" />Mulai simulasi</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

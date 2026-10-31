@@ -219,6 +219,11 @@ test("the APPI room is one rail and one reading column, with the composer as the
   assert.match(read("src/pages/AiAssistant.jsx"), /className="anim-rise appi-suggest"/);
 });
 
+test("only the message of an alert stretches, so a chip or button keeps its own width", () => {
+  assert.match(app(), /\.alert > :is\(p, div\):not\(\.alert-action\) \{ flex: 1 1 0; min-width: 0; \}/);
+  assert.doesNotMatch(app(), /\.alert > :not\(/);
+});
+
 test("no rule paints a background on a mask icon, which would colour the glyph itself", () => {
   const css = `${canvas()}\n${app()}`.replace(/\/\*[\s\S]*?\*\//g, "");
   const rules = css.match(/[^{}]+\{[^{}]*\}/g) || [];
