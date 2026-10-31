@@ -553,7 +553,6 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                     onClearQuery={() => setHistoryQuery("")}
                     conversationCount={conversations.length}
                     totalConversationCount={conversationTotal}
-                    activityCount={activity.length}
                     onRefresh={refreshHistory}
                     isRefreshing={conversationsRefreshing}
                     scope={historyScope}

@@ -11,7 +11,11 @@ import { fileURLToPath } from "node:url";
 
 export const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const fixtures = join(repo, "tests", "fixtures");
-export const SQLITE = ["-d", "extension=php_pdo_sqlite.dll", "-d", "extension=php_sqlite3.dll", "-d", "extension=php_pdo_mysql.dll"];
+// Only what php.ini left out: loading a module twice writes a startup warning to stderr.
+const loadedModules = spawnSync("php", ["-m"], { encoding: "utf8" }).stdout.toLowerCase().split(/\r?\n/);
+export const SQLITE = ["pdo_sqlite", "sqlite3", "pdo_mysql"]
+  .filter((name) => !loadedModules.includes(name))
+  .flatMap((name) => ["-d", `extension=php_${name}.dll`]);
 export const PASSWORD = "Valid-pass1";
 export const created = [];
 export function cleanup() {

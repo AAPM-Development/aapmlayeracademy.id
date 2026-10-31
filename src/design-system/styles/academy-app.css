@@ -200,6 +200,8 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 /* ------------------------------------------------------------------ APPI */
 /* The chat page fills the main column: history rail, chat, composer dock. */
 .app.aapm-app--chat .main-scroll { overflow: hidden; display: flex; flex-direction: column; }
+/* The next tier's slot closes the certificate grid on its own row, whatever the column count. */
+.cert-next-slot { grid-column: 1 / -1; }
 /* A quiet room: one history rail, one reading column, and the composer as the only raised object. */
 .app.aapm-app--chat .main-scroll > .aapm-ai-workspace { flex: 1 1 auto; min-height: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--surface); }
 .appi-history { width: 272px; flex: none; gap: var(--s-3); padding: var(--s-3); background: var(--surface-subtle); border-right: 0; }
@@ -207,7 +209,7 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .appi-chat-head { gap: var(--s-2); height: 52px; padding: 0 var(--s-4); flex: none; border-bottom: 0; background: transparent; box-shadow: none; }
 .appi-chat-head h1 { min-width: 0; font-size: var(--fs-ui); }
 .appi-chat-head .tile .appi-rig { --s: 30px; }
-.appi-transcript-col { width: 100%; max-width: 816px; margin: 0 auto; padding: var(--s-5) var(--s-6) var(--s-4); display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
+.appi-transcript-col { width: 100%; max-width: 880px; margin: 0 auto; padding: var(--s-5) var(--s-6) var(--s-4); display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
 /* An empty chat sits in the middle of the room; the first message sends the composer to the floor. */
 .appi-transcript-col:has(> .appi-welcome) { min-height: 100%; justify-content: center; }
 .appi-welcome { width: 100%; max-width: 720px; margin: 0 auto; }
@@ -216,11 +218,19 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .appi-suggest { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); min-width: 0; padding: var(--s-3); border: var(--bw) solid var(--border); border-radius: var(--r-panel); background: var(--surface); color: var(--fg); font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
 .appi-suggest:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
 .appi-suggest:active { transform: translateY(1px); }
-.appi-dock { flex: none; padding: var(--s-1) var(--s-6) var(--s-4); background: var(--surface); }
-.appi-dock-col { max-width: 768px; margin: 0 auto; }
+.appi-dock { flex: none; padding: var(--s-1) var(--s-6) var(--s-2); background: var(--surface); }
+.appi-dock-col { max-width: 832px; margin: 0 auto; }
 .aapm-ai-workspace__main .composer { padding: var(--s-3) var(--s-3) var(--s-2) var(--s-5); border-color: var(--border); border-radius: var(--r-surface); box-shadow: var(--shadow-card); }
 .aapm-ai-workspace__main .msg-user { max-width: 70%; padding: 10px 16px; border: 0; border-radius: var(--r-surface); background: var(--surface-2); box-shadow: none; }
 .msg-user { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* A running chat hands the height to the transcript: one line to type, the tools beneath it. */
+.composer-docked .composer { gap: var(--s-1); padding: var(--s-2) var(--s-2) var(--s-1-5) var(--s-4); }
+.composer-docked .composer textarea { min-height: 24px; }
+.seg.aapm-history-tabs > button { min-width: 0; padding-inline: var(--s-2); }
+@media (max-width: 380px) { .aapm-ai-workspace__main .composer { padding-left: var(--s-3); } }
+/* A short landscape screen keeps the composer above the fold, so the mascot gives way. */
+@media (max-height: 520px) { .appi-welcome .appi-rig { display: none; } }
+.appi-chat-back { display: none; }
 .msg-photo { align-self: flex-end; width: 220px; max-height: 220px; object-fit: cover; padding: 0; }
 .msg-appi > .appi-rig { margin-top: 2px; }
 .msg-text { font-size: var(--fs-ui); line-height: 26px; text-wrap: pretty; overflow-wrap: anywhere; }
@@ -286,7 +296,17 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
   .appi-chat-head { padding: 0 var(--s-2) 0 var(--s-4); }
   .appi-transcript-col { padding: var(--s-4) var(--s-4) var(--s-3); }
   .aapm-ai-workspace__main .msg-user { max-width: 86%; }
-  .appi-dock { padding: var(--s-2) var(--s-3) calc(84px + env(safe-area-inset-bottom)); }
+  /* A phone conversation runs full screen on one header, like a messaging app. The bottom
+     nav returns on the empty chat and through the back button. */
+  .appi-dock { padding: var(--s-1) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom)); }
+  .app.aapm-app--chat:has(.appi-dock) .m-top, .app.aapm-app--chat:has(.appi-dock) .m-nav { display: none; }
+  .app.aapm-app--chat:has(.appi-dock) .appi-chat-back { display: inline-flex; }
+  .app.aapm-app--chat:has(.appi-dock) .appi-chat-head { padding-left: var(--s-1); }
+}
+@media (max-width: 560px) {
+  /* The avatar's gutter goes back to the text; the header keeps APPI on screen. */
+  .aapm-ai-workspace__main .msg-appi { display: block; }
+  .aapm-ai-workspace__main .msg-appi > .appi-rig { display: none; }
 }
 
 /* ------------------------------------------------------------ Page frame */
@@ -731,6 +751,7 @@ input.input { display: block; }
    is open the nav steps aside so it never floats over the composer. */
 @media (max-width: 860px) {
   .app.aapm-app--chat .main-scroll { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .app.aapm-app--chat:has(.appi-dock) .main-scroll { padding-bottom: 0; }
   html[data-keyboard="open"] .app .m-nav { display: none; }
   html[data-keyboard="open"] .app.aapm-app--chat .main-scroll { padding-bottom: 0; }
 }

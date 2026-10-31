@@ -400,9 +400,9 @@ export default function Certification() {
             />
           ))}
           {nextUnclaimed ? (
-            <div className="card card-dashed card-pad stack items-center justify-center gap-3 t-center anim-rise" data-hue={hueOf(nextUnclaimed.tierNumber)} style={/** @type {React.CSSProperties} */ ({ "--i": verifiedCertificates.length + 7, minHeight: 172 })}>
+            <div className="card card-dashed card-pad row gap-3 anim-rise cert-next-slot" data-hue={hueOf(nextUnclaimed.tierNumber)} style={/** @type {React.CSSProperties} */ ({ "--i": verifiedCertificates.length + 7 })}>
               <span className="medal medal-sm is-locked" aria-hidden="true"><span className="t-ink">{nextUnclaimed.tierNumber}</span></span>
-              <p className="t-support t-muted" style={{ maxWidth: "32ch" }}>
+              <p className="t-support t-muted">
                 {verifiedCertificates.length ? `Tingkat ${nextUnclaimed.tierNumber} akan muncul di sini setelah diklaim.` : "Belum ada sertifikat terverifikasi. Sertifikat pertama muncul di sini setelah diklaim."}
               </p>
             </div>

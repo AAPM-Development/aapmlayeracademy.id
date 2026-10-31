@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
@@ -274,7 +274,7 @@ function ConversationList({
   } = management;
 
   return (
-    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar appi-history hidden min-w-0 shrink-0 overflow-hidden lg:flex lg:flex-col">
+    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar appi-history hidden min-w-0 shrink-0 overflow-hidden xl:flex xl:flex-col">
       <div className="row gap-3 appi-history-head">
         <div className="stack grow" style={{ minWidth: 0 }}>
           <span className="t-heading">Riwayat</span>
@@ -282,7 +282,7 @@ function ConversationList({
         </div>
         <button type="button" className="btn btn-ai-soft btn-icon" aria-label="Percakapan baru" onClick={onNew} disabled={disabled}><Ic name="edit" /></button>
       </div>
-      <div className="px-3 pb-2">
+      <div>
         <AiHistoryToolbar
           view={view}
           onViewChange={setView}
@@ -293,7 +293,6 @@ function ConversationList({
           onClearQuery={() => setQuery("")}
           conversationCount={conversations.length}
           totalConversationCount={conversationTotal}
-          activityCount={activity.length}
           onRefresh={onRefresh}
           isRefreshing={refreshing}
           scope={scope}
@@ -327,7 +326,7 @@ function ConversationList({
           disabled={disabled || bulkBusy}
         />
       )}
-      <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
+      <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 pb-3">
         {view === "activity" ? (
           <div className="min-w-0 max-w-full px-2 pt-3">
             <AiActivityList activity={activity} loading={activityLoading} />
@@ -475,7 +474,7 @@ function MobileConversationSheet({
         type="button"
         aria-label="Tutup riwayat percakapan"
         onClick={onClose}
-        className="fixed inset-0 z-[84] bg-foreground/25 backdrop-blur-[1px] lg:hidden"
+        className="fixed inset-0 z-[84] bg-foreground/25 backdrop-blur-[1px] xl:hidden"
       />
       <aside
         role="dialog"
@@ -483,7 +482,7 @@ function MobileConversationSheet({
         aria-label="Riwayat percakapan APPI"
         ref={sheetRef}
         tabIndex={-1}
-        className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border lg:hidden"
+        className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border xl:hidden"
       >
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
@@ -530,7 +529,6 @@ function MobileConversationSheet({
             onClearQuery={() => setQuery("")}
             conversationCount={conversations.length}
             totalConversationCount={conversationTotal}
-            activityCount={activity.length}
             onRefresh={onRefresh}
             isRefreshing={refreshing}
             scope={scope}
@@ -879,8 +877,10 @@ export default function AiAssistant() {
     }
   };
 
+  const docked = Boolean(messages.length || isLoadingConversation);
   const composer = (
     <AiComposer
+        docked={docked}
         input={promptDraft}
         setInput={setPromptDraft}
         onSubmit={() => submit()}
@@ -932,11 +932,12 @@ export default function AiAssistant() {
       />
       <section aria-label="Ruang chat APPI" className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="focus-bar aapm-ai-workspace__header appi-chat-head">
+          <Link to="/" className="btn btn-ghost btn-icon btn-quiet appi-chat-back" aria-label="Kembali ke Beranda"><Ic name="arrow-left" /></Link>
           <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}>
             <AppiMascot mood={isStreaming ? (streamPhase === "alert" ? "concerned" : "think") : "idle"} size="sm" />
           </span>
           <h1 className="t-heading grow t-clamp-1" title={headerTitle}>{headerTitle}</h1>
-          <button type="button" className="btn btn-ghost btn-icon btn-quiet lg:hidden" aria-label="Riwayat" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet xl:hidden" aria-label="Riwayat" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
           <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Percakapan baru" onClick={startNewConversation} disabled={isStreaming}><Ic name="edit" /></button>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
@@ -1043,7 +1044,7 @@ export default function AiAssistant() {
         </div>
         {/* Once the chat has started the composer floats at the bottom of the
             centred column; an empty chat keeps it in the middle (below). */}
-        {messages.length || isLoadingConversation ? (
+        {docked ? (
           <div className="aapm-ai-composer-dock appi-dock">
             <div className="appi-dock-col">{composer}</div>
           </div>

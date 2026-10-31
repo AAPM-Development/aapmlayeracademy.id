@@ -211,30 +211,6 @@
   .aapm-chat-suggestions > :last-child:nth-child(odd) { grid-column: auto; }
 }
 
-/* ------------------------------------------------ Sidebar: scope as tabs */
-.aapm-segmented.aapm-history-scope {
-  padding: 0;
-  gap: var(--aapm-primitive-space-4);
-  border: 0;
-  border-bottom: 1px solid var(--aapm-semantic-border);
-  border-radius: 0;
-  background: transparent;
-}
-.aapm-history-scope > .aapm-tabs-trigger {
-  flex: 1 1 0;
-  justify-content: center;
-  padding: var(--aapm-primitive-space-2) 0 var(--aapm-primitive-space-2);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--aapm-semantic-muted);
-}
-.aapm-history-scope > .aapm-tabs-trigger[aria-checked="true"] {
-  background: transparent;
-  color: var(--aapm-semantic-foreground);
-  box-shadow: inset 0 -2px 0 var(--aapm-semantic-foreground);
-}
-
 /* Header: one row on phones; the title truncates instead of pushing actions down. */
 header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 .aapm-ai-workspace__header > div:first-child { flex: 1 1 auto; min-width: 0; }
@@ -371,7 +347,6 @@ header.aapm-ai-workspace__header { flex-wrap: nowrap; }
 @media (max-width: 639px) {
   .aapm-chat-jump { min-height: var(--aapm-component-action-height); padding-inline: var(--aapm-primitive-space-4); }
   .aapm-ai-search-control input { font-size: 16px; }
-  .aapm-history-scope > .aapm-tabs-trigger { min-height: var(--aapm-component-action-height); }
 }
 
 /* Compact status lines were 10px; they now sit on the caption size. */

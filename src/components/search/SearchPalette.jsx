@@ -51,7 +51,7 @@ export default function SearchPalette({ open, onOpenChange, title, description, 
         <DialogDescription className="sr-only">{description}</DialogDescription>
         <label className="search search-lg">
           <Ic name="search" />
-          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={placeholder} aria-label={title} ref={inputRef} />
+          <input name="site-search" autoComplete="off" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={placeholder} aria-label={title} ref={inputRef} />
           <span className="kbd" aria-hidden="true">Esc</span>
         </label>
         <div ref={listRef} className="palette-results">
