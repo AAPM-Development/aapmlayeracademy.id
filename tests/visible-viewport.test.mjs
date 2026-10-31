@@ -8,7 +8,7 @@ function viewportFixture() {
   const styles = new Map();
   const root = { dataset: {}, style: { setProperty: (key, value) => styles.set(key, value), removeProperty: (key) => styles.delete(key) } };
   const viewport = { height: 800, offsetTop: 0, scale: 1, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: (name) => handlers.delete(name) };
-  const window = { innerHeight: 800, innerWidth: 375, visualViewport: viewport };
+  const window = { innerHeight: 800, innerWidth: 375, visualViewport: viewport, getComputedStyle: (element) => element.computed ?? { position: 'fixed', top: '388px' } };
   const document = { documentElement: root, activeElement: null, addEventListener: (name, fn) => handlers.set(name, fn), removeEventListener: (name) => handlers.delete(name) };
   let cleanup;
   const source = readFileSync(new URL('../src/lib/useVisibleViewport.js', import.meta.url), 'utf8').replace(/import .*?;\r?\n/, '').replace('export default ', '') + '\nuseVisibleViewport();';
@@ -132,6 +132,46 @@ const openKeyboard = (state, field) => {
   state.viewport.height = 480;
   state.handlers.get('resize')();
 };
+
+const tabletBar = (computed, bounds) => ({ computed, getBoundingClientRect: () => bounds });
+const openOnTablet = (state, field, bar) => {
+  state.window.innerWidth = 900;
+  state.document.activeElement = field;
+  state.document.querySelector = (selector) => selector.includes('actionbar') ? bar : null;
+  state.viewport.height = 635;
+  state.handlers.get('resize')();
+};
+const stuckUnderHeader = { position: 'sticky', top: '12px' };
+
+test('a bar stuck under the header pushes a field below it instead of up behind it', () => {
+  const state = viewportFixture();
+  const { nodes, field } = fieldInside([{ name: 'main-scroll' }], 60);
+  openOnTablet(state, field, tabletBar(stuckUnderHeader, { top: 72, bottom: 270 }));
+  assert.equal(nodes[0].shift, -210);
+  state.handlers.get('resize')();
+  assert.equal(nodes[0].shift, -210, 'a field already clear of the bar is not scrolled again');
+});
+
+test('a field between a stuck bar and the keyboard stays where it is', () => {
+  const state = viewportFixture();
+  const { nodes, field } = fieldInside([{ name: 'main-scroll' }], 300);
+  openOnTablet(state, field, tabletBar(stuckUnderHeader, { top: 72, bottom: 270 }));
+  assert.equal(nodes[0].shift, 0);
+});
+
+test('a field past the keyboard scrolls to the visible edge, not to the top of a stuck bar', () => {
+  const state = viewportFixture();
+  const { nodes, field } = fieldInside([{ name: 'main-scroll' }], 892);
+  openOnTablet(state, field, tabletBar(stuckUnderHeader, { top: 72, bottom: 270 }));
+  assert.equal(nodes[0].shift, 353);
+});
+
+test('a sticky bar with no top offset still rests on the keyboard', () => {
+  const state = viewportFixture();
+  const { nodes, field } = fieldInside([{ name: 'aapm-editor-scroll' }], 500);
+  openOnTablet(state, field, tabletBar({ position: 'sticky', top: 'auto' }, { top: 555, bottom: 635 }));
+  assert.equal(nodes[0].shift, 41);
+});
 
 test('the keyboard scrolls the panel each screen really renders', () => {
   const shell = readFileSync(new URL('../src/design-system/patterns/AppShell.jsx', import.meta.url), 'utf8');

@@ -3,16 +3,16 @@
 // Nothing here touches a real staging or production database, host, or upload.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import http from "node:http";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { contentHash, loadContract, sourceFingerprint, verifyArtifact } from "../scripts/release/artifact-lib.mjs";
 import { writeBuildManifest } from "../scripts/write-build-manifest.mjs";
+import { freePort, startPhpServer } from "./helpers/php-server.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(repo, "tests", "fixtures", "q01");
@@ -47,7 +47,6 @@ function phpNode(args) {
   return spawnSync(process.execPath, args, { cwd: repo, encoding: "utf8", env: cleanEnv() });
 }
 
-const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 function sha256File(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -142,17 +141,6 @@ function makeArtifact(root, channel) {
   return { source, dist };
 }
 
-function freePort() {
-  return new Promise((resolvePort, reject) => {
-    const probe = createServer();
-    probe.on("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const { port } = probe.address();
-      probe.close(() => resolvePort(port));
-    });
-  });
-}
-
 function getJson(port, path, host) {
   return new Promise((resolveRequest, reject) => {
     const request = http.request(
@@ -177,25 +165,8 @@ function getJson(port, path, host) {
   });
 }
 
-async function startSite(docroot, env = {}) {
-  const port = await freePort();
-  let stderr = "";
-  const child = spawn("php", [...SQLITE_ARGS, "-S", `127.0.0.1:${port}`, "-t", docroot, join(docroot, "router.php")], {
-    env: cleanEnv(env),
-    stdio: ["ignore", "ignore", "pipe"],
-  });
-  child.stderr.on("data", (chunk) => (stderr += chunk));
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (child.exitCode !== null) throw new Error(`php server exited: ${stderr}`);
-    try {
-      await getJson(port, "/api/health");
-      return { port, stop: () => child.kill() };
-    } catch {
-      await sleep(100);
-    }
-  }
-  child.kill();
-  throw new Error("php server did not start");
+function startSite(docroot, env = {}) {
+  return startPhpServer({ args: SQLITE_ARGS, docroot, env: cleanEnv(env) });
 }
 
 async function withSite(docroot, env, run) {
@@ -768,4 +739,46 @@ test("the configuration and deploy wiring keep their Q01 guarantees", async () =
   assert.match(cpanel, /AAPM_RELEASE_CHANNEL=staging/);
   assert.match(cpanel, /scripts\/deploy\/cpanel-deploy\.php/);
   assert.doesNotMatch(cpanel, /cp -R dist/, "the deploy must never copy the whole dist blindly");
+});
+
+// The php -S start path every runtime suite shares: a failed start must be
+// diagnosable and leave nothing running, and a healthy server must not look dead.
+function routerRoot(router) {
+  const dir = scratch("harness");
+  writeFileSync(join(dir, "router.php"), router);
+  return dir;
+}
+
+test("freePort skips a port that fetch refuses before connecting", async () => {
+  const offered = [6566, await freePort()];
+  const port = await freePort(async () => offered.shift());
+  assert.notEqual(port, 6566);
+  assert.equal(offered.length, 0);
+});
+
+test("a php server that exits during start reports its port and stderr", async () => {
+  const missing = join(routerRoot("<?php"), "missing");
+  await assert.rejects(startPhpServer({ docroot: missing }), (error) => {
+    assert.match(error.message, /exited/);
+    assert.match(error.message, /port \d+/);
+    assert.match(error.message, /does not exist/i);
+    return true;
+  });
+});
+
+test("a php server that never answers is stopped, and the failure says why", async () => {
+  const hanging = routerRoot("<?php sleep(120);");
+  const failure = await startPhpServer({ docroot: hanging, limitMs: 8000 }).then(
+    (server) => {
+      server.stop();
+      assert.fail("a hanging server must not count as started");
+    },
+    (error) => error.message
+  );
+  assert.match(failure, /did not start/);
+  assert.match(failure, /Development Server/);
+  assert.match(failure, /timeout/i);
+  const port = failure.match(/port (\d+)/)[1];
+  const reply = await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(5000) }).catch((error) => error);
+  assert.equal(reply.cause?.code, "ECONNREFUSED");
 });
