@@ -1,12 +1,12 @@
 {
   "schema": "aapm-release-manifest/1",
-  "channel": "staging",
-  "sourceCommit": "98cc13cd9e8abb69f1d54a1dad59d3995fbb8bf1",
+  "channel": "production",
+  "sourceCommit": "f54cdbb42be7c6b0044125dedea1c98ae795a30e",
   "sourceDirty": false,
   "sourceTreeFingerprint": "fd888ca2dffdcb0f350901ad6ea87024a87da26f9c312c914023626e063bac2d",
   "sourceFileCount": 294,
   "artifactId": "08b9d182d25506845a7863a9e62ece1c56402fe9ca3ed5b193a09498b43516dd",
-  "builtAt": "2026-10-31T17:55:12.184Z",
+  "builtAt": "2026-10-31T18:10:19.509Z",
   "schemaCompatibility": {
     "migrationKey": "20260909_ai_conversation_archiving_v1",
     "environmentMarkerTable": "aapm_environment_marker"
