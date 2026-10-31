@@ -1,0 +1,6 @@
+<<<<<<<< HEAD:dist/assets/infoDiagram-27XIBGKW-DXXfSaev.js
+import{_ as e,l as s,F as n,d as i}from"./MermaidDiagram-DKH-s2F1.js";import{p}from"./cynefin-OW5HDTMX-DkVITWCx.js";import"./index-oKuVP0oK.js";import"./purify.es-DBIK8olT.js";import"./transform-Cl4PxC9z.js";var g={parse:e(async r=>{const a=await p("info",r);s.debug(a)},"parse")},d={version:"11.17.2"},v=e(()=>d.version,"getVersion"),m={getVersion:v},c=e((r,a,o)=>{s.debug(`rendering info diagram
+========
+import{_ as e,l as s,F as n,d as i}from"./MermaidDiagram-DBZ2cQq7.js";import{p}from"./cynefin-OW5HDTMX-Cb4c8oYL.js";import"./index-D4f87Dtp.js";import"./purify.es-DBIK8olT.js";import"./transform-Cl4PxC9z.js";var g={parse:e(async r=>{const a=await p("info",r);s.debug(a)},"parse")},d={version:"11.17.2"},v=e(()=>d.version,"getVersion"),m={getVersion:v},c=e((r,a,o)=>{s.debug(`rendering info diagram
+>>>>>>>> origin/claude/wonderful-gauss-e974e2:dist/assets/infoDiagram-27XIBGKW-DBjwg6CH.js
+`+r);const t=n(a);i(t,100,400,!0),t.append("g").append("text").attr("x",100).attr("y",40).attr("class","version").attr("font-size",32).style("text-anchor","middle").text(`v${o}`)},"draw"),l={draw:c},y={parser:g,db:m,renderer:l};export{y as diagram};
