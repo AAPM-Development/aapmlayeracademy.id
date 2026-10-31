@@ -68,7 +68,7 @@ export function buildCurriculum(modules = [], progress = []) {
         curriculumId: module.curriculumId || "",
         curriculumTitle: module.curriculumTitle || "",
         number: level,
-        name: module.levelName || meta?.name || `Level ${level}`,
+        name: module.levelName || meta?.name || `Chapter ${level}`,
         description: meta?.description || "",
         ...levelVisual(level),
         modules: [],

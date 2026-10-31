@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Outlet, Route, Routes } from 'react-router-dom
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
+import RouteAnnouncer from "@/components/RouteAnnouncer";
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import { Navigate } from 'react-router-dom';
@@ -154,6 +155,7 @@ function App() {
             <QueryClientProvider client={queryClientInstance}>
               <Router>
                 <ScrollToTop />
+                <RouteAnnouncer />
                 <AuthenticatedApp />
               </Router>
             </QueryClientProvider>

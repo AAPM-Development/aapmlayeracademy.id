@@ -12,13 +12,24 @@ export const formatNumber = (value, digits = 1) => Number(value).toLocaleString(
 export const formatMillion = (value) => `Rp ${formatNumber(value / 1e6, 1)} jt`;
 
 /**
+ * General FCR reference shared by the calculator and the weekly reading. A value
+ * exactly on a boundary belongs to the next band, as the curriculum states.
+ */
+export const FCR_ZONES = [
+  { upTo: 2.2, tone: "good", label: "Sangat baik", note: "Pakan terkonversi efisien menjadi telur." },
+  { upTo: 2.6, tone: "watch", label: "Wajar", note: "Masih wajar; pantau pakan tercecer dan berat telur." },
+  { upTo: Infinity, tone: "act", label: "Evaluasi", note: "Cek pakan tercecer, kualitas ransum, dan produksi." },
+];
+export const fcrZone = (value) => FCR_ZONES.find((zone) => value < zone.upTo);
+
+/**
  * The indicators a farm reads every week. `better` says which direction is
  * good, so a change is coloured by meaning, not by sign. FCR carries the same
  * general reference band as the calculator.
  */
 export const KPI_METRICS = [
   { id: "hdp", label: "HDP", long: "Hen day production", hue: "orange", icon: "chart", better: "up", read: (row) => toNumber(row.henDayProduction), format: (value) => `${formatNumber(value, 1)}%`, delta: (value) => `${formatNumber(Math.abs(value), 1)} poin` },
-  { id: "fcr", label: "FCR", long: "Feed conversion ratio", hue: "green", icon: "scale", better: "down", read: (row) => toNumber(row.fcr), format: (value) => formatNumber(value, 2), delta: (value) => formatNumber(Math.abs(value), 2), band: { from: 1.6, to: 2.2, label: "acuan sangat baik ≤ 2,2" } },
+  { id: "fcr", label: "FCR", long: "Feed conversion ratio", hue: "green", icon: "scale", better: "down", read: (row) => toNumber(row.fcr), format: (value) => formatNumber(value, 2), delta: (value) => formatNumber(Math.abs(value), 2), band: { from: 1.6, to: 2.2, label: "acuan sangat baik < 2,2" } },
   { id: "egg", label: "Berat telur", long: "Berat telur rata-rata", hue: "violet", icon: "egg", better: "up", read: (row) => toNumber(row.eggWeight), format: (value) => `${formatNumber(value, 1)} g`, delta: (value) => `${formatNumber(Math.abs(value), 1)} g` },
   { id: "mortality", label: "Mortalitas", long: "Mortalitas mingguan", hue: "rose", icon: "heart", better: "down", read: (row) => toNumber(row.mortality), format: (value) => `${formatNumber(value, 2)}%`, delta: (value) => `${formatNumber(Math.abs(value), 2)} poin` },
   { id: "feed", label: "Pakan", long: "Asupan pakan per ekor", hue: "teal", icon: "feed", better: null, read: (row) => toNumber(row.feedIntake), format: (value) => `${formatNumber(value, 0)} g`, delta: (value) => `${formatNumber(Math.abs(value), 0)} g` },
@@ -58,8 +69,8 @@ export function weeklyReading(rows) {
     text: change === 0 ? `${metric.label} stabil di ${metric.format(latest.value)}.` : `${metric.label} ${change > 0 ? "naik" : "turun"} ${metric.delta(change)} menjadi ${metric.format(latest.value)}.`,
   }));
   const fcr = readings.find((item) => item.metric.id === "fcr");
-  const fcrConcern = fcr && fcr.latest.value > 2.6;
-  if (fcrConcern) findings.unshift({ tone: "negative", metric: "fcr", text: `FCR ${fcr.metric.format(fcr.latest.value)} di atas acuan 2,6. Cek pakan tercecer dan kualitas ransum.` });
+  const fcrConcern = fcr && fcrZone(fcr.latest.value).tone === "act";
+  if (fcrConcern) findings.unshift({ tone: "negative", metric: "fcr", text: `FCR ${fcr.metric.format(fcr.latest.value)} masuk zona evaluasi (≥ 2,6). Cek pakan tercecer dan kualitas ransum.` });
   const negatives = comparable.filter((item) => item.sentiment === "negative").length + (fcrConcern && fcr.sentiment !== "negative" ? 1 : 0);
   const mood = negatives === 0 ? "happy" : negatives === 1 ? "think" : "concerned";
   const title = negatives === 0 ? "Minggu ini terlihat sehat" : negatives === 1 ? "Ada satu hal untuk dicek" : `${negatives} indikator perlu perhatian`;

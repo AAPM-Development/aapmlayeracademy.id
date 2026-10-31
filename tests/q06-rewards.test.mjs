@@ -28,10 +28,16 @@ test("level thresholds are inclusive and the top level has no next", () => {
   assert.equal(server.top.nextName, null);
 });
 
+test("ranks follow real curriculum progress, not a quarter of the available points", () => {
+  assert.equal(server.earlyLearner, "Field Builder", "5 of 22 modules is not the top rank");
+  assert.equal(server.supervisorTier, "Farm Analyst", "the supervisor tier reaches the analyst rank");
+  assert.equal(server.advancedTier, "Layer Leader", "the advanced tier reaches the top rank");
+});
+
 test("the web ladder matches the server ladder exactly", () => {
   assert.deepEqual(learnerRanks, server.levels);
-  for (const points of [0, 159, 160, 449, 450, 899, 900, 5000]) {
-    assert.equal(getRankProgress(points).name, server.levelAt[[0, 159, 160, 449, 450, 899, 900, 5000].indexOf(points)]);
+  for (const points of [0, 399, 400, 1499, 1500, 2699, 2700, 5000]) {
+    assert.equal(getRankProgress(points).name, server.levelAt[[0, 399, 400, 1499, 1500, 2699, 2700, 5000].indexOf(points)]);
   }
 });
 

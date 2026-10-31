@@ -392,6 +392,37 @@ function aapm_question_snapshot(array $row): array
     ];
 }
 
+/** Fisher-Yates over a list, so no two attempts rely on PHP's seeded shuffle. */
+function aapm_shuffled(array $items): array
+{
+    $items = array_values($items);
+    for ($index = count($items) - 1; $index > 0; $index--) {
+        $other = random_int(0, $index);
+        [$items[$index], $items[$other]] = [$items[$other], $items[$index]];
+    }
+
+    return $items;
+}
+
+/**
+ * One attempt's view of a bank question. Options are reordered with the key following
+ * its option; grading and review read this snapshot, so the bank stays untouched and
+ * unlimited retries cannot be answered from remembered positions.
+ */
+function aapm_attempt_question_snapshot(array $row): array
+{
+    $snapshot = aapm_question_snapshot($row);
+    $options = $snapshot['options'];
+    if (!isset($options[$snapshot['correctIndex']])) {
+        return $snapshot;
+    }
+    $order = aapm_shuffled(array_keys($options));
+    $snapshot['correctIndex'] = (int) array_search($snapshot['correctIndex'], $order, true);
+    $snapshot['options'] = array_map(static fn (int $index) => $options[$index], $order);
+
+    return $snapshot;
+}
+
 function aapm_checked_feedback(array $snapshot, int $answerIndex): array
 {
     return [
@@ -908,12 +939,12 @@ function aapm_assessment_start(array $user, array $input): array
             ]);
         $attemptId = (int) $pdo->lastInsertId();
         $insertItem = $pdo->prepare('INSERT INTO assessment_attempt_items (attempt_id, ordinal, source_question_id, question_snapshot_json) VALUES (?, ?, ?, ?)');
-        foreach ($rows as $index => $row) {
+        foreach (aapm_shuffled($rows) as $index => $row) {
             $insertItem->execute([
                 $attemptId,
                 $index + 1,
                 (int) $row['id'],
-                json_encode(aapm_question_snapshot($row), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                json_encode(aapm_attempt_question_snapshot($row), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);
         }
         $created = $pdo->prepare('SELECT * FROM assessment_attempts WHERE id = ? LIMIT 1');

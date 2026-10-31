@@ -828,16 +828,20 @@ test("the 70% module boundary: 6 of 10 fails and 7 of 10 passes", async () => {
   await withSite(site, async (api) => {
     const learner = await signIn(api.port, "peserta-a@example.test");
     const attempt = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 1, requestKey: randomUUID() })).json.data.attempt;
+    const firstKey = attemptKey(site, attempt.id);
     for (let index = 0; index < 10; index++) {
-      await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/answers`, { questionId: attempt.questions[index].id, answerIndex: index < 6 ? 0 : 1 });
+      const entry = firstKey.get(attempt.questions[index].id);
+      await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/answers`, { questionId: attempt.questions[index].id, answerIndex: index < 6 ? entry.correct : wrongIndex(entry) });
     }
     const failed = await learner.mutate("POST", `/api/assessments/attempts/${attempt.id}/submit`, { requestKey: randomUUID() });
     assert.equal(failed.json.data.attempt.result.scorePercent, 60);
     assert.equal(failed.json.data.attempt.result.passed, false);
 
     const retake = (await learner.mutate("POST", "/api/assessments/attempts", { assessmentType: "module_quiz", moduleNumber: 1, requestKey: randomUUID() })).json.data.attempt;
+    const retakeKey = attemptKey(site, retake.id);
     for (let index = 0; index < 10; index++) {
-      await learner.mutate("POST", `/api/assessments/attempts/${retake.id}/answers`, { questionId: retake.questions[index].id, answerIndex: index < 7 ? 0 : 1 });
+      const entry = retakeKey.get(retake.questions[index].id);
+      await learner.mutate("POST", `/api/assessments/attempts/${retake.id}/answers`, { questionId: retake.questions[index].id, answerIndex: index < 7 ? entry.correct : wrongIndex(entry) });
     }
     const passed = await learner.mutate("POST", `/api/assessments/attempts/${retake.id}/submit`, { requestKey: randomUUID() });
     assert.equal(passed.json.data.attempt.result.scorePercent, 70);

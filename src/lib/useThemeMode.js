@@ -12,8 +12,8 @@ function readStoredTheme() {
     // Storage can be unavailable in privacy-restricted browsers.
   }
 
-  // No explicit choice yet: follow the system appearance.
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  // No explicit choice yet: the app opens in light mode.
+  return "light";
 }
 
 function applyTheme(mode) {
@@ -38,7 +38,7 @@ function useThemeModeState() {
     applyTheme(mode);
   }, [mode]);
 
-  // Only an explicit toggle is remembered; until then the theme follows the system.
+  // Only an explicit toggle is remembered; until then the theme stays light.
   const toggleTheme = useCallback(() => {
     setMode((current) => {
       const next = current === "dark" ? "light" : "dark";

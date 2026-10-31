@@ -20,78 +20,62 @@
 .aapm-cert *, .aapm-cert *::before, .aapm-cert *::after { box-sizing: border-box; margin: 0; }
 .aapm-cert__frame {
   display: grid;
-  grid-template-columns: 196px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 304px;
   height: 100%;
   border: 2px solid var(--cert-accent);
   border-radius: 16px;
   overflow: hidden;
 }
 
-/* Ribbon: tier medal, three stars, vertical wordmark. */
-.aapm-cert__ribbon { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 48px 0 32px; background: var(--cert-soft); }
-.aapm-cert__ribbon-top { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.aapm-cert__medal {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  width: 124px;
-  height: 124px;
-  border-radius: 50%;
-  background: var(--cert-accent);
-  color: var(--cert-on);
-  font-family: "Nunito", "Inter", system-ui, sans-serif;
-  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.15), 0 0 0 5px var(--cert-tint);
-}
-.aapm-cert__medal-label { font-size: 12px; line-height: 16px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
-.aapm-cert__medal-number { font-size: 40px; line-height: 44px; font-weight: 800; letter-spacing: -.02em; }
-.aapm-cert__stars { display: flex; gap: 6px; color: var(--cert-ink); }
-.aapm-cert__ribbon-text { color: var(--cert-ink); font-family: "Nunito", "Inter", system-ui, sans-serif; font-size: 12px; line-height: 16px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; writing-mode: vertical-rl; transform: rotate(180deg); }
-
-/* Body. */
-.aapm-cert__body { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 32px 48px 24px; }
-.aapm-cert__brand { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.aapm-cert__logo { height: 72px; width: auto; }
+/* Reading side: left-aligned, the holder's name carries the page. */
+.aapm-cert__body { display: flex; flex-direction: column; min-width: 0; padding: 44px 56px 32px; text-align: left; }
+.aapm-cert__brand { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.aapm-cert__logo { display: block; width: 285px; height: 34px; }
 .aapm-cert__brand-sub { color: #5f6661; font-size: 13px; line-height: 20px; }
-.aapm-cert__middle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: 100%; flex: 1 1 auto; padding: 16px 0; }
-.aapm-cert__title-row { display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; max-width: 560px; }
-.aapm-cert__rule { display: block; flex: 1; height: 1px; background: #e3e6e1; }
-.aapm-cert__rule--full { flex: none; width: 100%; }
-.aapm-cert__title { color: var(--cert-ink); font-family: "Nunito", "Inter", system-ui, sans-serif; font-size: 12px; line-height: 16px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
-.aapm-cert__award { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
-.aapm-cert__lead { color: #5f6661; }
+.aapm-cert__award { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; flex: 1 1 auto; min-height: 0; padding: 20px 0; }
+.aapm-cert__title { margin-bottom: 28px; padding-bottom: 12px; border-bottom: 3px solid var(--cert-accent); color: var(--cert-ink); font-family: "Nunito", "Inter", system-ui, sans-serif; font-size: 13px; line-height: 18px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.aapm-cert__lead { color: #5f6661; font-size: 15px; line-height: 24px; }
 .aapm-cert__holder {
   display: -webkit-box;
-  max-width: 760px;
+  max-width: 100%;
+  margin: 6px 0 20px;
   overflow: hidden;
   font-family: "Nunito", "Inter", system-ui, sans-serif;
-  font-size: 40px;
-  line-height: 44px;
+  font-size: 60px;
+  line-height: 66px;
   font-weight: 800;
-  letter-spacing: -.02em;
-  text-wrap: balance;
+  letter-spacing: -.025em;
   overflow-wrap: anywhere;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.aapm-cert__tier { color: var(--cert-ink); font-family: "Nunito", "Inter", system-ui, sans-serif; font-size: 24px; line-height: 32px; font-weight: 800; letter-spacing: -.015em; }
-.aapm-cert__achievement { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--cert-soft); color: var(--cert-ink); font-size: 13px; font-weight: 700; }
-.aapm-cert__footer { display: flex; flex-direction: column; gap: 16px; width: 100%; flex: none; }
-.aapm-cert__footer-grid { display: grid; grid-template-columns: 236px minmax(0, 1fr) 292px; gap: 24px; align-items: end; text-align: left; }
-.aapm-cert__meta { display: flex; flex-direction: column; gap: 8px; }
+.aapm-cert__holder[data-long="true"] { font-size: 44px; line-height: 50px; -webkit-line-clamp: 3; }
+.aapm-cert__tier { margin-top: 2px; color: var(--cert-ink); font-family: "Nunito", "Inter", system-ui, sans-serif; font-size: 28px; line-height: 36px; font-weight: 800; letter-spacing: -.015em; }
+/* Rings, the numeral, and the chip use the box model the exporter draws faithfully:
+   natural line height and block text, no flex baseline. */
+.aapm-cert__achievement { display: inline-block; margin-top: 14px; padding: 6px 12px 7px; border-radius: 999px; background: var(--cert-soft); color: var(--cert-ink); font-size: 13px; line-height: normal; font-weight: 700; white-space: nowrap; }
+.aapm-cert__achievement svg { display: inline-block; margin-right: 6px; vertical-align: -3px; }
+.aapm-cert__footer { display: flex; flex-direction: column; gap: 14px; flex: none; padding-top: 18px; border-top: 1px solid #e3e6e1; }
+.aapm-cert__meta { display: grid; grid-template-columns: 170px 190px minmax(0, 1fr); gap: 20px; }
 .aapm-cert__meta dt { color: #5f6661; font-size: 12px; line-height: 18px; }
-.aapm-cert__meta-value { font-weight: 700; }
-.aapm-cert__meta-id { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
-.aapm-cert__seal { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 32px; text-align: center; }
-.aapm-cert__seal-name { padding-top: 4px; font-size: 13px; line-height: 20px; font-weight: 700; }
-.aapm-cert__seal-role { color: #5f6661; font-size: 12px; line-height: 18px; }
-.aapm-cert__verify { display: flex; align-items: center; gap: 12px; }
-.aapm-cert__qr { flex: none; width: 88px; height: 88px; padding: 4px; border-radius: 10px; background: #ffffff; }
-.aapm-cert__qr--empty { display: grid; place-items: center; border: 1px dashed #cfd4cd; background: #f0f2ef; color: #5f6661; font-size: 12px; }
-.aapm-cert__verify-text { color: #5f6661; font-size: 12px; line-height: 18px; }
-.aapm-cert__disclaimer { color: #5f6661; font-size: 12px; line-height: 18px; text-align: center; text-wrap: pretty; }
+.aapm-cert__meta-value { font-size: 14px; line-height: 20px; font-weight: 700; }
+.aapm-cert__meta-id { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; line-height: 20px; overflow-wrap: anywhere; }
+.aapm-cert__disclaimer { color: #5f6661; font-size: 12px; line-height: 18px; }
+
+/* Tier panel: full height in the tier colour, the numeral is the medal. */
+.aapm-cert__panel { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 44px 28px 28px; overflow: hidden; background: var(--cert-accent); color: var(--cert-on); }
+.aapm-cert__ring { position: absolute; left: 50%; top: 146px; border: 2px solid var(--cert-on); border-radius: 50%; opacity: .16; }
+.aapm-cert__panel-top { position: relative; display: flex; flex-direction: column; align-items: center; font-family: "Nunito", "Inter", system-ui, sans-serif; }
+.aapm-cert__panel-label { font-size: 14px; line-height: 20px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.aapm-cert__panel-number { display: block; width: 200px; height: 145px; margin: 8px 0 14px; }
+.aapm-cert__stars { display: flex; gap: 8px; }
+.aapm-cert__verify { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; padding: 16px; border-radius: 14px; background: #ffffff; color: #1f2320; text-align: center; }
+.aapm-cert__qr { display: block; flex: none; width: 124px; height: 124px; background: #ffffff; }
+.aapm-cert__qr--empty { display: grid; place-items: center; border: 1px dashed #cfd4cd; border-radius: 10px; background: #f0f2ef; color: #5f6661; font-size: 12px; }
+.aapm-cert__verify-text { color: #5f6661; font-size: 12px; line-height: 17px; }
 
 /* Expert tier: a second gold rule inside the frame. */
-.aapm-cert[data-expert="true"] .aapm-cert__frame { box-shadow: inset 0 0 0 4px #ffffff, inset 0 0 0 6px #ffe9a3; }
+.aapm-cert[data-expert="true"]::after { content: ""; position: absolute; inset: 26px 334px 26px 26px; border: 1px solid #ffe9a3; border-radius: 10px; pointer-events: none; }
 
 /* Preview wrapper: the document scaled to the container width. */
 .aapm-cert-preview { position: relative; width: 100%; overflow: hidden; border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08); }

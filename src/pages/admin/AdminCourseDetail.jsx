@@ -295,7 +295,7 @@ function ModuleRow({ module, courseId, onAction, onDelete, saving, compact }) {
           {module.publishedTitle && module.publishedTitle !== module.title ? <span className="li-meta t-clamp-1">Judul terbit: {module.publishedTitle}</span> : null}
           {module.lifecycleStatus === "archived" ? <span className="li-meta t-clamp-1">Alasan arsip: {module.archiveReason || "—"}</span> : null}
         </div>
-        <div className="row" style={{ flex: compact ? "1 1 100%" : "0 0 200px" }}><ModuleLifecycleStatus module={module} /></div>
+        <div className="row" style={{ flex: compact ? "1 1 100%" : "0 1 200px" }}><ModuleLifecycleStatus module={module} /></div>
       </div>
       <ModuleActions module={module} courseId={courseId} onAction={onAction} onDelete={onDelete} saving={saving} />
     </li>

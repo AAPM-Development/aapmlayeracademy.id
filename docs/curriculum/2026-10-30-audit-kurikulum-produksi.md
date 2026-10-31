@@ -62,7 +62,7 @@ Seluruh 22 modul sebelumnya memakai naskah video template "Pada lesson ini kita 
 | Jawaban benar = opsi terpanjang | Belum diukur | 53 dari 140 soal (38%); maksimal 2 dari 5 per modul dan 9 dari 30 di ujian akhir, sehingga selalu memilih opsi terpanjang tidak meluluskan kuis mana pun |
 | Kelulusan | 70% dari 1 soal | Modul: minimal 4 dari 5; ujian akhir (80%): minimal 24 dari 30 |
 
-Setiap soal memiliki pembahasan, tingkat kesulitan, dan tujuan pembelajaran. Semua soal hitungan sudah diverifikasi ulang. Aplikasi tidak mengacak urutan opsi, sehingga posisi kunci diatur dalam paket.
+Setiap soal memiliki pembahasan, tingkat kesulitan, dan tujuan pembelajaran. Semua soal hitungan sudah diverifikasi ulang. Sejak 31 Oktober 2026 aplikasi mengacak urutan soal dan opsi per percobaan; sebaran kunci di paket tetap dipertahankan.
 
 **Catatan untuk reviu tim Produksi:**
 
@@ -82,7 +82,7 @@ Kedua belas contoh perhitungan diverifikasi dan hasilnya benar. Catatan yang per
 ## E. Yang tidak diubah
 
 - **Slide, video, dan gambar yang sudah terbit** (misalnya 13 slide dan gambar "Memantau Farm" di Modul 1) dipertahankan oleh skrip dan ditempatkan sebelum materi teks paket.
-- **Nama chapter, urutan modul, URL video, dan sampul modul** tidak diubah.
+- **Nama chapter, urutan modul, dan sampul modul** tidak diubah. Pembaruan video ada di `2026-10-31-aturan-video-expo.md`.
 - **Kebijakan kurikulum, nilai, sertifikat, dan percobaan kuis yang sedang berjalan** tidak disentuh. Percobaan yang sedang berjalan tetap memakai snapshot soal lamanya.
 
 ## Cara menerbitkan ke Production

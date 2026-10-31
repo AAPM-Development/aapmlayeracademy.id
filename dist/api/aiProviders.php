@@ -217,7 +217,7 @@ function ai_registry_validate_label(string $label, string $fallback = 'AI provid
 function ai_registry_validate_model(string $model): string
 {
     $model = trim($model);
-    if ($model === '' || strlen($model) > 220 || !preg_match('/\A[a-zA-Z0-9][a-zA-Z0-9._:@\/-]*\z/', $model)) {
+    if ($model === '' || strlen($model) > 190 || !preg_match('/\A[a-zA-Z0-9][a-zA-Z0-9._:@\/-]*\z/', $model)) {
         error_response('Model ID AI tidak valid.', 422, 'invalid_ai_model');
     }
     return $model;
@@ -226,6 +226,7 @@ function ai_registry_validate_model(string $model): string
 function ai_registry_is_private_host(string $host): bool
 {
     $host = strtolower(trim($host, '[]'));
+    if (strpos($host, '::ffff:') === 0) return ai_registry_is_private_host(substr($host, 7));
     if ($host === '' || $host === 'localhost' || $host === 'host.docker.internal' || substr($host, -6) === '.local') return true;
     if (strpos($host, '.') === false && !filter_var($host, FILTER_VALIDATE_IP)) return true;
     $ip = filter_var($host, FILTER_VALIDATE_IP);
@@ -234,7 +235,8 @@ function ai_registry_is_private_host(string $host): bool
         $long = ip2long($ip);
         if ($long === false) return false;
         $long = sprintf('%u', $long);
-        return ($long >= 167772160 && $long <= 184549375) // 10.0.0.0/8
+        return $long <= 16777215 // 0.0.0.0/8
+            || ($long >= 167772160 && $long <= 184549375) // 10.0.0.0/8
             || ($long >= 2886729728 && $long <= 2886794751) // 172.16.0.0/12
             || ($long >= 3232235520 && $long <= 3232301055) // 192.168.0.0/16
             || ($long >= 2851995648 && $long <= 2852061183) // 169.254.0.0/16
@@ -242,6 +244,17 @@ function ai_registry_is_private_host(string $host): bool
             || ($long >= 2130706432 && $long <= 2147483647); // 127.0.0.0/8
     }
     return strpos($host, '::1') === 0 || strpos($host, 'fc') === 0 || strpos($host, 'fd') === 0 || strpos($host, 'fe80:') === 0;
+}
+
+/** A public-looking name can still point inside the server's network. */
+function ai_registry_host_resolves_private(string $host): bool
+{
+    if (ai_registry_is_private_host($host)) return true;
+    if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) return false;
+    foreach (@gethostbynamel($host) ?: [] as $ip) {
+        if (ai_registry_is_private_host($ip)) return true;
+    }
+    return false;
 }
 
 function ai_registry_normalize_url(string $baseUrl, bool $allowLocal, string $fallback): string
@@ -338,6 +351,13 @@ function ai_registry_default_record(): array
     ];
 }
 
+/** Records saved under the old default keep cutting tables mid-row, so they move with it. */
+function ai_registry_max_tokens($value): int
+{
+    $tokens = max(64, min(8192, (int) $value));
+    return $tokens === AAPM_AI_LEGACY_MAX_TOKENS ? AAPM_AI_MAX_TOKENS : $tokens;
+}
+
 function ai_registry_records(): array
 {
     $raw = app_setting_get(AAPM_AI_REGISTRY_SETTING);
@@ -364,7 +384,7 @@ function ai_registry_records(): array
         $record['supportsVision'] = array_key_exists('supportsVision', $record) ? !empty($record['supportsVision']) : (bool) $definition['supportsVision'];
         $record['chatPath'] = (string) ($record['chatPath'] ?? '/chat/completions');
         $record['modelsPath'] = (string) ($record['modelsPath'] ?? '/models');
-        $record['maxTokens'] = max(64, min(8192, (int) ($record['maxTokens'] ?? AAPM_AI_MAX_TOKENS)));
+        $record['maxTokens'] = ai_registry_max_tokens($record['maxTokens'] ?? AAPM_AI_MAX_TOKENS);
         $record['temperature'] = max(0, min(2, (float) ($record['temperature'] ?? 0.3)));
         $record['timeoutSeconds'] = max(8, min(120, (int) ($record['timeoutSeconds'] ?? 35)));
         $record['secret'] = (string) ($record['secret'] ?? '');
@@ -425,7 +445,7 @@ function ai_registry_record_settings(array $record, ?string $privateApiKey = nul
         'authMode' => $authMode,
         'chatPath' => (string) ($record['chatPath'] ?? '/chat/completions'),
         'modelsPath' => (string) ($record['modelsPath'] ?? '/models'),
-        'maxTokens' => max(64, min(8192, (int) ($record['maxTokens'] ?? AAPM_AI_MAX_TOKENS))),
+        'maxTokens' => ai_registry_max_tokens($record['maxTokens'] ?? AAPM_AI_MAX_TOKENS),
         'temperature' => max(0, min(2, (float) ($record['temperature'] ?? 0.3))),
         'timeoutSeconds' => max(8, min(120, (int) ($record['timeoutSeconds'] ?? 35))),
         '_extraHeaders' => $headers,
@@ -838,6 +858,13 @@ function ai_registry_discover_models(array $input = []): array
     return ['providerId' => $settings['providerId'], 'models' => array_values(array_slice($models, 0, 160, true)), 'note' => $models ? 'Model berhasil dibaca dari endpoint provider.' : 'Endpoint merespons, tetapi tidak mengirim daftar model yang dikenali.'];
 }
 
+function ai_user_is_admin(int $userId): bool
+{
+    $statement = db()->prepare('SELECT role FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    return in_array((string) $statement->fetchColumn(), ['admin', 'super_admin'], true);
+}
+
 function ai_user_ai_row(int $userId): ?array
 {
     if ($userId < 1) return null;
@@ -890,10 +917,16 @@ function ai_user_ai_runtime_status(int $userId): array
 {
     $global = ai_registry_runtime_status();
     $row = ai_user_ai_row($userId);
+    if ($row && empty($row['enabled'])) {
+        $global['enabled'] = false;
+        $global['accountMode'] = 'disabled';
+        return $global;
+    }
     if (!$row || (string) ($row['mode'] ?? 'global') === 'global') {
         $global['accountMode'] = 'global';
         return $global;
     }
+    $isAdmin = ai_user_is_admin($userId);
 
     $mode = (string) ($row['mode'] ?? 'global');
     $settings = null;
@@ -901,7 +934,9 @@ function ai_user_ai_runtime_status(int $userId): array
         $record = ai_registry_find(ai_registry_records(), (string) ($row['provider_id'] ?? ''));
         if ($record) $settings = ai_registry_record_settings($record);
     } elseif ($mode === 'custom') {
-        $record = [
+        // Checked on every request as well: a saved name can start pointing inward later.
+        $reachable = $isAdmin || !ai_registry_host_resolves_private((string) parse_url((string) ($row['base_url'] ?? ''), PHP_URL_HOST));
+        $record = !$reachable ? null : [
             'id' => 'account-' . $userId,
             'type' => 'custom-openai',
             'label' => 'Provider akun',
@@ -909,7 +944,7 @@ function ai_user_ai_runtime_status(int $userId): array
             'baseUrl' => (string) ($row['base_url'] ?? ''),
             'model' => (string) ($row['model'] ?? 'custom-model'),
             'enabled' => !empty($row['enabled']),
-            'allowLocal' => !empty($row['allow_local']),
+            'allowLocal' => $isAdmin && !empty($row['allow_local']),
             'authMode' => (string) ($row['auth_mode'] ?? 'bearer'),
             'keyRequired' => true,
             'supportsStreaming' => true,
@@ -922,8 +957,10 @@ function ai_user_ai_runtime_status(int $userId): array
             'secret' => (string) ($row['api_key_encrypted'] ?? ''),
             'headersSecret' => (string) ($row['headers_encrypted'] ?? ''),
         ];
-        $settings = ai_registry_record_settings($record);
-        $settings['_userApiKey'] = ai_registry_decode_secret((string) ($row['api_key_encrypted'] ?? ''));
+        if ($record) {
+            $settings = ai_registry_record_settings($record);
+            $settings['_userApiKey'] = ai_registry_decode_secret((string) ($row['api_key_encrypted'] ?? ''));
+        }
     }
 
     if (!$settings) {
@@ -931,7 +968,8 @@ function ai_user_ai_runtime_status(int $userId): array
         $global['accountNotice'] = 'Konfigurasi akun tidak lagi tersedia; APPI kembali ke provider global.';
         return $global;
     }
-    if (trim((string) ($row['model'] ?? '')) !== '') $settings['model'] = ai_registry_validate_model((string) $row['model']);
+    // A learner on the shared key stays on the model the admin chose for it.
+    if (trim((string) ($row['model'] ?? '')) !== '' && ($isAdmin || $mode === 'custom')) $settings['model'] = ai_registry_validate_model((string) $row['model']);
     $settings['accountMode'] = $mode;
     $settings['accountProviderId'] = (string) ($row['provider_id'] ?? '');
     $settings['accountApiKeyConfigured'] = !empty($row['api_key_encrypted']);
@@ -945,12 +983,13 @@ function ai_user_ai_save(int $userId, array $input): array
     $mode = trim((string) ($input['mode'] ?? 'global'));
     if (!in_array($mode, ['global', 'provider', 'custom'], true)) error_response('Mode provider akun tidak valid.', 422, 'invalid_ai_account_mode');
     $existing = ai_user_ai_row($userId) ?: [];
+    $isAdmin = ai_user_is_admin($userId);
     $providerId = trim((string) ($input['providerId'] ?? ''));
     $model = trim((string) ($input['model'] ?? ''));
     $adapter = 'openai-compatible';
     $baseUrl = '';
     $authMode = 'bearer';
-    $allowLocal = bool_value($input['allowLocal'] ?? false) === 1;
+    $allowLocal = $isAdmin && bool_value($input['allowLocal'] ?? false) === 1;
     $supportsVision = bool_value($input['supportsVision'] ?? ($existing['supports_vision'] ?? false)) === 1;
     $apiKeyEncrypted = (string) ($existing['api_key_encrypted'] ?? '');
     $headersEncrypted = (string) ($existing['headers_encrypted'] ?? '');
@@ -962,11 +1001,14 @@ function ai_user_ai_save(int $userId, array $input): array
         $adapter = (string) $record['adapter'];
         $baseUrl = (string) $record['baseUrl'];
         $authMode = (string) $record['authMode'];
-        if ($model !== '') $model = ai_registry_validate_model($model);
+        $model = $isAdmin && $model !== '' ? ai_registry_validate_model($model) : '';
         $apiKeyEncrypted = '';
         $headersEncrypted = '';
     } elseif ($mode === 'custom') {
         if (trim((string) ($input['baseUrl'] ?? '')) === '') error_response('Base URL provider akun wajib diisi.', 422, 'invalid_ai_base_url');
+        if (!$isAdmin && ai_registry_host_resolves_private((string) parse_url(trim((string) $input['baseUrl']), PHP_URL_HOST))) {
+            error_response('Base URL provider akun harus berupa alamat publik.', 422, 'ai_private_endpoint_forbidden');
+        }
         $custom = ai_registry_build_record([
             'id' => 'account-' . $userId,
             'type' => 'custom-openai',

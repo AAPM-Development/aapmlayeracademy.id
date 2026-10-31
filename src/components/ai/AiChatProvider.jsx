@@ -71,6 +71,8 @@ function clientMessage(message) {
     startedAt: message.startedAt ?? null,
     stopped: Boolean(message.stopped),
     interrupted: Boolean(message.interrupted),
+    truncated: Boolean(message.truncated),
+    sources: message.sources ?? [],
   };
 }
 
@@ -277,8 +279,11 @@ export function AiChatProvider({ children }) {
         if (detail?.conversation) upsertConversation(detail.conversation);
         if (replaceMessages && activeRef.current === id) {
           setMessages((current) => detailMessages.map((message, index) => {
+            // Local ids differ from saved ones. The server keeps no photo, so the
+            // question keeps the one this session still holds.
             const local = current.find((item) => item.id === message.id)
-              || (index === detailMessages.length - 1 && message.role === "assistant" && message.content === expectedAssistantContent ? current.at(-1) : null);
+              || (index === detailMessages.length - 1 && message.role === "assistant" && message.content === expectedAssistantContent ? current.at(-1) : null)
+              || (message.role === "user" ? current.find((item) => item.role === "user" && item.image && item.content === message.content) : null);
             return clientMessage({ ...local, ...message, persisted: true });
           }));
           setIsDraft(false);
@@ -419,6 +424,7 @@ export function AiChatProvider({ children }) {
         allowWebSearch = false,
         image = null,
         pageContext = "",
+        retry = false,
       } = {},
     ) => {
       const message = rawMessage.trim();
@@ -457,6 +463,9 @@ export function AiChatProvider({ children }) {
 
       const assistantId = idFor("assistant");
       const userId = idFor("user");
+      // A retry takes the place of the turn it repeats, photo included.
+      const repeated = retry ? messagesRef.current.findLast((item) => item.role === "user" && item.content === message) : null;
+      const sentImage = image ?? repeated?.image ?? null;
       const startedAt = Date.now();
       let pendingText = "";
       let pendingReasoning = "";
@@ -518,12 +527,12 @@ export function AiChatProvider({ children }) {
         setPromptDraftState("");
       }
       setMessages((current) => [
-        ...current,
+        ...(repeated ? current.slice(0, current.lastIndexOf(repeated)) : current),
         clientMessage({
           id: userId,
           role: "user",
           content: message,
-          image,
+          image: sentImage,
           persisted: false,
         }),
         clientMessage({
@@ -562,8 +571,9 @@ export function AiChatProvider({ children }) {
           farmContext: includeFarm && farm.length ? farm.slice(-8) : null,
           includeFarmContext: includeFarm,
           allowWebSearch,
-          imageDataUrl: image?.dataUrl ?? null,
+          imageDataUrl: sentImage?.dataUrl ?? null,
           pageContext,
+          retry,
           signal: controller.signal,
           onEvent: ({ event, data }) => {
             if (!isCurrentRequest()) return;
@@ -589,6 +599,7 @@ export function AiChatProvider({ children }) {
               // Whether the answer is local is decided by `done`, not by a notice.
               updateAssistant({ notice: data.text || "" });
             }
+            if (event === "sources") updateAssistant({ sources: data.sources || [] });
             if (event === "persistence_error") {
               updateAssistant({
                 notice:
@@ -648,6 +659,7 @@ export function AiChatProvider({ children }) {
         if (stopRequestedRef.current) {
           // Stopped by the learner. The server keeps what was written and saves
           // it after it notices the closed connection, so poll briefly for it.
+          clearPromptDraft(conversation.id, "");
           if (!streamedContent) {
             setMessages((current) => current.filter((item) => item.id !== assistantId));
             setHistorySyncState("saved");
@@ -673,12 +685,15 @@ export function AiChatProvider({ children }) {
           settleStreamPhase("complete");
           return { ok: true, persisted: saved, stopped: true, conversationId: conversation.id, assistantId };
         }
-        const visibleContent = streamedContent || error?.message || "Koneksi ke asisten belum tersedia.";
+        // A failed fetch explains itself in English; the learner reads what to do next.
+        const failure = error instanceof TypeError
+          ? "Koneksi terputus. Periksa internet Anda lalu kirim ulang."
+          : error?.message || "Koneksi ke asisten belum tersedia.";
         updateAssistant({
           streaming: false,
           persisted,
-          content: visibleContent,
-          notice: streamedContent ? "Jawaban terputus sebelum selesai. Coba kirim ulang." : "",
+          content: streamedContent,
+          notice: streamedContent ? "Jawaban terputus sebelum selesai. Coba kirim ulang." : failure,
           error: true,
         });
         const reconciled = await reconcileConversation(conversation.id, {

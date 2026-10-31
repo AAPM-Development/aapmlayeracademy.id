@@ -1378,13 +1378,14 @@ export default function AdminModuleEditor() {
     );
   return (
     <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); if (tab === "preview") loadServerPreview(); }} className="focus aapm-editor-focus" data-tone="calm">
+      <a className="aapm-skip-link" href="#aapm-editor-main">Lewati ke konten</a>
       <header className="focus-bar">
         <div className="row gap-3" style={{ flex: "1 1 0", minWidth: 0 }}>
           <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Kembali ke kurikulum" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}><Ic name="arrow-left" /></button>
           <span className="vr" style={{ margin: "14px 0" }} />
           <div className="stack" style={{ minWidth: 0 }}>
-            <span className="t-caption t-muted t-clamp-1">Editor modul · Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</span>
-            <h1 className="t-heading t-clamp-1">{form.title || (isNew ? "Modul baru" : "Edit modul")}</h1>
+            <span className="t-caption t-muted t-clamp-1" title={form.levelName || undefined}>Editor modul · Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</span>
+            <h1 className="t-heading t-clamp-1" title={form.title || undefined}>{form.title || (isNew ? "Modul baru" : "Edit modul")}</h1>
           </div>
         </div>
         <TabsList variant="segmented" className="hide-sm aapm-editor-mode" aria-label="Mode editor">
@@ -1392,7 +1393,7 @@ export default function AdminModuleEditor() {
           <TabsTrigger value="preview" disabled={isNew}><Ic name="eye" />Pratinjau</TabsTrigger>
           <TabsTrigger value="assessment" disabled={isNew}><Ic name="exam" />Bank soal</TabsTrigger>
         </TabsList>
-        <div className="row gap-3 justify-end" style={{ flex: "1 1 0", minWidth: 0 }}>
+        <div className="row gap-3 justify-end" style={{ flex: "none" }}>
           <span className={`chip chip-dot hide-md ${isSaving ? "chip-ai" : saveError ? "chip-danger" : isDirty || questionDirty ? "chip-warning" : "chip-success"}`} aria-hidden="true">
             {isSaving ? "Menyimpan…" : saveError ? "Gagal disimpan" : isDirty || questionDirty ? "Belum disimpan" : "Tersimpan"}
           </span>
@@ -1404,7 +1405,7 @@ export default function AdminModuleEditor() {
         </div>
       </header>
       <div className="focus-body">
-        <div className="aapm-editor-stage">
+        <main id="aapm-editor-main" className="aapm-editor-stage" tabIndex={-1} aria-label="Editor modul">
         {conflict && <div className="alert alert-warning editor-notices" role="alert" tabIndex={-1} ref={conflictRef}>
           <Ic name="alert" />
           <div className="stack gap-2 grow">
@@ -1732,7 +1733,7 @@ export default function AdminModuleEditor() {
             beginWrite={beginEditorialWrite} endWrite={endEditorialWrite} onVersion={handleQuestionVersion} onError={handleEditorialError}
             onDirty={setQuestionDirty} resetKey={questionResetKey} />}
         </TabsContent>
-        </div>
+        </main>
       </div>
       <ConfirmDialog
         open={Boolean(pendingDraft)}

@@ -75,12 +75,12 @@ function AcademyBrandPanel() {
           aria-hidden="true"
           onError={() => setVideoFailed(true)}
         />}
+        <div className="appi-stage auth-brand-appi">
+          <AppiMascot mood="happy" size="xl" enter="pop" />
+          <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: -22, top: 2, width: 28 }} />
+          <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={/** @type {React.CSSProperties} */ ({ left: -16, top: 36, width: 18, "--i": 2 })} />
+        </div>
         <div className="stack gap-3 auth-brand-foot">
-          <div className="appi-stage" style={{ alignSelf: "flex-start", marginLeft: "var(--s-4)" }}>
-            <AppiMascot mood="happy" size="xl" enter="pop" />
-            <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: -22, top: 2, width: 28 }} />
-            <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={/** @type {React.CSSProperties} */ ({ left: -16, top: 36, width: 18, "--i": 2 })} />
-          </div>
           <figure className="card card-pad-lg card-raised stack gap-5" aria-roledescription="carousel" aria-label="Kutipan Academy">
             <blockquote key={index} className="t-title-c anim-rise" aria-live={paused ? "polite" : "off"}>“{academyInsights[index]}”</blockquote>
             <figcaption className="row between gap-4">
@@ -209,11 +209,6 @@ function AuthInstallHint() {
 
 function AuthLayout({ title, subtitle, footer = null, children, icon = null, tone = null, visual = null, back = null }) {
   const compact = Boolean(icon || visual);
-  useEffect(() => {
-    const previous = document.title;
-    document.title = `${title} · AAPM Layer Academy`;
-    return () => { document.title = previous; };
-  }, [title]);
 
   return (
     <div className="auth">

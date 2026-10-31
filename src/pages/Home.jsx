@@ -52,11 +52,11 @@ function HomeHero({ user, nextModule, nextProgress, summary, completedSet }) {
             )}
             <div className="stack gap-3" style={{ padding: "16px 20px", minWidth: 0 }}>
               <div className="stack gap-1">
-                <span className="t-overline t-ink">Modul {moduleNo(nextModule)} · Level {nextModule.level} {nextModule.levelName}</span>
+                <span className="t-overline t-ink">Modul {moduleNo(nextModule)} · Chapter {nextModule.level} {nextModule.levelName}</span>
                 <span className="t-heading">{nextModule.title}</span>
                 <span className="t-support t-muted">{moduleMeta(nextModule)}</span>
               </div>
-              <FlowSteps steps={steps} className="hide-sm" />
+              <FlowSteps steps={steps} className="hide-md" />
             </div>
           </Link>
         ) : (
@@ -124,13 +124,13 @@ function LevelTrack({ curriculum, activeLevel }) {
     <section className="card card-pad stack gap-5 anim-rise" style={{ "--i": 5 }} aria-labelledby="track-title">
       <div className="card-head">
         <div className="stack gap-0-5">
-          <h2 className="card-title" id="track-title">Perjalanan {learningLevels.length} level</h2>
-          <p className="card-desc">{doneCount} level tuntas{active ? ` · Anda di Level ${active.number} ${active.name}` : ""}</p>
+          <h2 className="card-title" id="track-title">Perjalanan {learningLevels.length} chapter</h2>
+          <p className="card-desc">{doneCount} chapter tuntas{active ? ` · Anda di Chapter ${active.number} ${active.name}` : ""}</p>
         </div>
-        <Link className="btn btn-ghost btn-sm" to="/modules">Semua level<Ic name="chev-right" /></Link>
+        <Link className="btn btn-ghost btn-sm" to="/modules">Semua chapter<Ic name="chev-right" /></Link>
       </div>
       <div className="scroll-x pulse-room">
-        <ol style={{ display: "grid", gridTemplateColumns: `repeat(${learningLevels.length}, minmax(38px, 1fr))`, alignItems: "end", minWidth: 560, paddingTop: 8 }} aria-label="Level kurikulum">
+        <ol style={{ display: "grid", gridTemplateColumns: `repeat(${learningLevels.length}, minmax(38px, 1fr))`, alignItems: "end", minWidth: 560, paddingTop: 8 }} aria-label="Chapter kurikulum">
           {learningLevels.map((meta, index) => {
             const level = byNumber.get(meta.number);
             const done = level && level.total && level.completed === level.total;
@@ -139,15 +139,15 @@ function LevelTrack({ curriculum, activeLevel }) {
             return (
               <li key={meta.number} className="stack items-center gap-2">
                 {done ? (
-                  <Egg size="xs" state="done" className="anim-pop" style={{ "--i": index }}><Ic name="check" /><span className="sr-only">Level {meta.number} tuntas</span></Egg>
+                  <Egg size="xs" state="done" className="anim-pop" style={{ "--i": index }}><Ic name="check" /><span className="sr-only">Chapter {meta.number} tuntas</span></Egg>
                 ) : current ? (
                   <Egg size="sm" state="current" className="anim-pop anim-pulse" style={{ "--i": index }} aria-current="step">{meta.number}</Egg>
                 ) : last ? (
-                  <Egg size="xs" state="gold"><Ic name="award" /><span className="sr-only">Level {meta.number} dan sertifikat Expert</span></Egg>
+                  <Egg size="xs" state="gold"><Ic name="award" /><span className="sr-only">Chapter {meta.number} dan sertifikat Expert</span></Egg>
                 ) : (
                   <Egg size="xs">{meta.number}</Egg>
                 )}
-                <span className={current ? "t-caption t-strong t-ai" : "t-caption t-muted"}>L{meta.number}</span>
+                <span className={current ? "t-caption t-strong t-ai" : "t-caption t-muted"}>C{meta.number}</span>
               </li>
             );
           })}
@@ -157,8 +157,8 @@ function LevelTrack({ curriculum, activeLevel }) {
         <div className="reward" data-hue={active.hue}>
           <span className="tile tile-round tile-solid"><AapmIcon name={active.icon} /></span>
           <div className="stack grow gap-1-5">
-            <div className="row between gap-3"><span className="t-heading t-heading-sm">Level {active.number} · {active.name}</span><span className="t-caption t-strong t-num">{active.completed}/{active.total} modul</span></div>
-            <Bar value={active.percent} onTint animate label={`Progres Level ${active.number}`} now={active.completed} max={active.total} />
+            <div className="row between gap-3"><span className="t-heading t-heading-sm">Chapter {active.number} · {active.name}</span><span className="t-caption t-strong t-num">{active.completed}/{active.total} modul</span></div>
+            <Bar value={active.percent} onTint animate label={`Progres Chapter ${active.number}`} now={active.completed} max={active.total} />
           </div>
         </div>
       ) : null}
@@ -172,7 +172,7 @@ function NextModules({ modules, completedSet, curriculum }) {
     if (index === 0) return "sedang dipelajari";
     const level = curriculum.find((item) => item.number === Number(module.level));
     const remainingInLevel = level ? level.modules.filter((item) => item.state !== "completed") : [];
-    if (remainingInLevel.length && remainingInLevel[remainingInLevel.length - 1].moduleNumber === module.moduleNumber) return `menutup Level ${module.level}`;
+    if (remainingInLevel.length && remainingInLevel[remainingInLevel.length - 1].moduleNumber === module.moduleNumber) return `menutup Chapter ${module.level}`;
     const tier = tierForModule(module.moduleNumber, completedSet);
     return tier ? `syarat Tingkat ${tier.number}` : module.levelName;
   };
@@ -187,7 +187,7 @@ function NextModules({ modules, completedSet, curriculum }) {
             <Egg size="xs" state={index === 0 ? "current" : undefined}>{moduleNo(module)}</Egg>
             <div className="stack grow" style={{ minWidth: 0 }}>
               <span className="li-title t-clamp-1">{module.title}</span>
-              <span className="li-meta">Level {module.level} · {moduleMeta(module, { short: true })} · {note(module, index)}</span>
+              <span className="li-meta">Chapter {module.level} · {moduleMeta(module, { short: true })} · {note(module, index)}</span>
             </div>
             {index === 0 ? <span className="xp xp-sm"><Ic name="star" />+100</span> : <Ic name="chev-right" className="t-muted" />}
           </Link>

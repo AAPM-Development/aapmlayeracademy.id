@@ -14,6 +14,7 @@ import {
   focusFirstError,
   newPasswordError,
 } from "@/lib/authValidation";
+import { hasFinePointer } from "@/lib/utils";
 
 // Development builds may receive a verification token so the flow can be exercised
 // locally. Deployed responses never include one, and this link is never rendered for them.
@@ -138,7 +139,9 @@ export default function Register() {
             leadingIcon="mail"
             type="email"
             autoComplete="email"
-            autoFocus
+            autoCapitalize="none"
+            spellCheck={false}
+            autoFocus={hasFinePointer()}
             placeholder="nama@perusahaan.com"
             value={email}
             onChange={(e) => { setEmail(e.target.value); clearError("email"); }}

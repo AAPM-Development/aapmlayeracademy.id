@@ -16,14 +16,18 @@ const AAPM_FARM_ENTRIES_CAP = 12;
 const AAPM_MINUTES_PER_POINT = 10;
 const AAPM_STUDY_POINTS_CAP = 60;
 
-/** Ascending. The first entry starts at 0 so every learner has a level. */
+/**
+ * Ascending. The first entry starts at 0 so every learner has a level. Thresholds track
+ * the certificate tiers: Field Builder near tier 1, Farm Analyst near tier 3, Layer Leader
+ * near tier 5, measured on a learner who passes modules without logging practice.
+ */
 function aapm_reward_levels(): array
 {
     return [
         ['name' => 'Foundation', 'from' => 0],
-        ['name' => 'Field Builder', 'from' => 160],
-        ['name' => 'Farm Analyst', 'from' => 450],
-        ['name' => 'Layer Leader', 'from' => 900],
+        ['name' => 'Field Builder', 'from' => 400],
+        ['name' => 'Farm Analyst', 'from' => 1500],
+        ['name' => 'Layer Leader', 'from' => 2700],
     ];
 }
 

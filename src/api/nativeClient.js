@@ -435,12 +435,13 @@ export const nativeApi = {
         imageDataUrl = null,
         pageContext = "",
         includeFarmContext = true,
+        retry = false,
         onEvent,
         signal,
       }) =>
         stream(
           `/ai/conversations/${encodeURIComponent(id)}/stream`,
-          { message, farmContext, includeFarmContext, allowWebSearch, imageDataUrl, pageContext },
+          { message, farmContext, includeFarmContext, allowWebSearch, imageDataUrl, pageContext, retry },
           onEvent,
           { signal },
         ),

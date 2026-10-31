@@ -153,6 +153,8 @@ export function createYouTubeSession({ mount, videoId, title, onUpdate, onError,
           const iframe = player.getIframe();
           iframe.title = title;
           iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+          // The player's own controls drive playback; the frame would be an unmarked tab stop.
+          iframe.setAttribute("tabindex", "-1");
           sync();
           poll = win.setInterval(sync, 500);
         },

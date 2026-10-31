@@ -11,7 +11,7 @@ import { moduleNo } from "@/lib/moduleNumber";
 
 const EXAM_TITLE = "Sertifikasi Tingkat 6 · Layer Poultry Farm Expert";
 
-/** The 22-egg grid of required modules: verified, being studied, not started. */
+/** The egg grid of required modules: verified, being studied, not started. */
 function RequirementEggs({ modules, completedSet, currentNumber, missing }) {
   const missingSet = new Set(missing);
   return (
@@ -159,7 +159,7 @@ export default function FinalExam() {
             <span className="vr" style={{ margin: "14px 4px" }} />
             <div className="stack grow" style={{ minWidth: 0 }}>
               <span className="t-caption t-muted t-clamp-1">Hasil ujian akhir</span>
-              <span className="t-heading t-clamp-1">{EXAM_TITLE}</span>
+              <span className="t-heading t-clamp-1" title={EXAM_TITLE}>{EXAM_TITLE}</span>
             </div>
             <span className="chip chip-lg chip-success hide-sm"><Ic name="check-circle" />Tercatat</span>
           </header>
@@ -247,7 +247,7 @@ export default function FinalExam() {
             <span className="vr" style={{ margin: "14px 4px" }} />
             <div className="stack grow" style={{ minWidth: 0 }}>
               <span className="t-caption t-muted t-clamp-1">Ujian akhir</span>
-              <span className="t-heading t-clamp-1">{EXAM_TITLE}</span>
+              <span className="t-heading t-clamp-1" title={EXAM_TITLE}>{EXAM_TITLE}</span>
             </div>
             {finished ? <span className="chip chip-lg chip-success hide-sm"><Ic name="check-circle" />Lulus</span> : ready ? <span className="chip chip-lg chip-info hide-sm"><Ic name="exam" />Terbuka</span> : <span className="chip chip-lg chip-warning hide-sm"><Ic name="lock" />Belum terbuka</span>}
           </header>
