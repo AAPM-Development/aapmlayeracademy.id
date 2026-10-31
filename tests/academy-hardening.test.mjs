@@ -692,7 +692,7 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.match(shell, /function NavigationSheet/);
   assert.match(shell, /export const FocusShell/);
   assert.match(styles, /\.aapm-bottom-nav__item\[aria-current="page"\]/);
-  assert.match(styles, /html\[data-shell="focus"\] \.aapm-ai-launcher/);
+  assert.match(styles, /html\[data-shell="focus"\] \.aapm-ai-floating-panel/);
   assert.match(aiComposer, /Menyiapkan foto/);
   assert.match(styles, /--aapm-shell-border-alpha: 0\.46/);
   assert.match(styles, /\.aapm-ai-frame[\s\S]*box-shadow: var\(--aapm-shell-shadow, none\)/);

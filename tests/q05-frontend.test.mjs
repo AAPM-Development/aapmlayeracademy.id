@@ -45,7 +45,16 @@ test("curriculum phone actions clear the retained shell navigation and policy co
   const touchTarget = declarations(".aapm-curriculum-actionbar__mobile :is(.aapm-button, .aapm-icon-button)");
   assert.equal(touchTarget["min-height"], "44px");
   assert.equal(touchTarget["min-width"], "44px");
-  assert.equal(declarations(".aapm-page > .aapm-curriculum-editor").animation, "none", "entrance transforms cannot anchor the fixed action bar to the form");
+  const anchoring = /^(animation|animation-name|transform|translate|rotate|scale|filter|backdrop-filter|perspective|will-change|contain)$/;
+  const formOrParent = /\.(page|main-scroll|aapm-curriculum-editor)(?![\w-])[^\s>+~]*(\s*>\s*\*)?$/;
+  const anchors = [];
+  for (const [, path] of read("src/index.css").matchAll(/@import "\.\/([^"]+\.css)";/g)) {
+    postcss.parse(read(`src/${path}`)).walkDecls(anchoring, (decl) => {
+      if (decl.value === "none" || decl.parent.parent?.name?.endsWith("keyframes")) return;
+      anchors.push(...decl.parent.selectors.filter((selector) => formOrParent.test(selector)).map((selector) => `${path}: ${selector} { ${decl.prop} }`));
+    });
+  }
+  assert.deepEqual(anchors, [], "entrance transforms cannot anchor the fixed action bar to the form");
   assert.ok(declarations(".aapm-curriculum-editor")["padding-bottom"], "last form controls can scroll clear of the fixed action bar");
   let selectorGrid;
   result.root.walkRules((rule) => {
