@@ -1,4 +1,5 @@
 import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
+import { moduleNo } from "@/lib/moduleNumber";
 
 function finite(value) {
   return Number.isFinite(Number(value));
@@ -26,7 +27,7 @@ export function personalizedSuggestions({
   const completed = getCompletedModuleSet(progress, modules).size;
   const nextModule = getNextModule(modules, progress);
   const nextModuleLabel = nextModule
-    ? `Modul ${nextModule.moduleNumber}: ${nextModule.title}`
+    ? `Modul ${moduleNo(nextModule)}: ${nextModule.title}`
     : "modul Academy yang belum selesai";
   const weekLabel = latest?.week ? `minggu ${latest.week}` : "catatan terbaru";
   const hdp = Number(latest?.henDayProduction);
