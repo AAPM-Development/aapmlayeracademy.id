@@ -34,6 +34,8 @@ import {
 import { cn } from "@/lib/utils";
 import { safeEditorialImage } from "@/lib/editorialUrls";
 import { EDITORIAL_PRESENTATION_MAX_BYTES } from "@/lib/editorialLimits";
+import { tableCellExit, tableCellTarget } from "@/lib/tableCellNavigation";
+import useReducedMotion from "@/lib/useReducedMotion";
 import {
   EDITORIAL_PRESENTATION_ACCEPT,
   editorialPresentationMeta,
@@ -390,13 +392,46 @@ function TableBlockFields({ block, onChange }) {
   const rows = Array.isArray(block.rows) ? block.rows : [];
   const updateColumn = (index, value) => onChange({ columns: columns.map((column, currentIndex) => currentIndex === index ? value : column) });
   const updateCell = (rowIndex, columnIndex, value) => onChange({ rows: rows.map((row, currentRow) => currentRow === rowIndex ? row.map((cell, currentColumn) => currentColumn === columnIndex ? value : cell) : row) });
+  const tableRef = React.useRef(null);
+  const revealNewColumn = React.useRef(false);
+  const reducedMotion = useReducedMotion();
   const addColumn = () => {
     if (columns.length >= 8) return;
+    revealNewColumn.current = true;
     onChange({ columns: [...columns, ""], rows: rows.map((row) => [...row, ""]) });
   };
   const addRow = () => {
     if (rows.length >= 20) return;
     onChange({ rows: [...rows, columns.map(() => "")] });
+  };
+  React.useEffect(() => {
+    if (!revealNewColumn.current) return;
+    revealNewColumn.current = false;
+    const wrap = tableRef.current?.closest(".table-wrap");
+    wrap?.scrollTo({ left: wrap.scrollWidth, behavior: reducedMotion ? "auto" : "smooth" });
+  }, [columns.length, reducedMotion]);
+  const focusCell = ({ row, column }, key) => {
+    const field = document.getElementById(row === 0 ? `${block.id}-column-${column}` : `${block.id}-cell-${row - 1}-${column}`);
+    if (!field) return;
+    field.focus();
+    const caret = key === "ArrowLeft" || key === "ArrowUp" ? field.value.length : 0;
+    field.setSelectionRange(caret, caret);
+  };
+  const moveByArrow = (event, row, column) => {
+    if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return;
+    const { key, currentTarget: field } = event;
+    const target = tableCellTarget({ key, row, column, rows: rows.length + 1, columns: columns.length });
+    if (!target) return;
+    const start = field.selectionStart;
+    const exit = tableCellExit({ key, start, end: field.selectionEnd, length: field.value.length, multiline: field.tagName === "TEXTAREA" });
+    if (exit === "leave") {
+      event.preventDefault();
+      focusCell(target, key);
+    } else if (exit === "wait") {
+      requestAnimationFrame(() => {
+        if (document.activeElement === field && field.selectionStart === start) focusCell(target, key);
+      });
+    }
   };
 
   return (
@@ -408,9 +443,9 @@ function TableBlockFields({ block, onChange }) {
          <div className="text-xs font-semibold">Isi tabel</div>
         <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" disabled={columns.length >= 8} onClick={addColumn}><AapmIcon name="add" className="h-3.5 w-3.5" />Kolom</Button><Button type="button" size="sm" variant="outline" disabled={rows.length >= 20} onClick={addRow}><AapmIcon name="add" className="h-3.5 w-3.5" />Baris</Button></div>
       </div>
-      <Table wrapClassName="aapm-editor-table" className="aapm-editorial-table aapm-editorial-table--editor min-w-full text-xs" aria-label={block.title ? `Editor tabel ${block.title}` : "Editor tabel materi"}>
-        <TableHeader><TableRow>{columns.map((column, index) => <TableHead key={`column-${index}`} className="min-w-36 align-top"><label className="sr-only" htmlFor={`${block.id}-column-${index}`}>Nama kolom {index + 1}</label><Input id={`${block.id}-column-${index}`} value={column} maxLength={160} onChange={(event) => updateColumn(index, event.target.value)} className="text-xs font-semibold" /></TableHead>)}</TableRow></TableHeader>
-        <TableBody>{rows.map((row, rowIndex) => <TableRow key={`row-${rowIndex}`} className="align-top">{columns.map((_, columnIndex) => <TableCell key={`cell-${rowIndex}-${columnIndex}`} className="min-w-36 align-top"><label className="sr-only" htmlFor={`${block.id}-cell-${rowIndex}-${columnIndex}`}>Baris {rowIndex + 1}, kolom {columnIndex + 1}</label><Textarea id={`${block.id}-cell-${rowIndex}-${columnIndex}`} rows={2} maxLength={3000} value={row?.[columnIndex] || ""} onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)} className="text-xs" /></TableCell>)}</TableRow>)}</TableBody>
+      <Table ref={tableRef} wrapClassName="aapm-editor-table" className="aapm-editorial-table aapm-editorial-table--editor min-w-full text-xs" aria-label={block.title ? `Editor tabel ${block.title}` : "Editor tabel materi"}>
+        <TableHeader><TableRow>{columns.map((column, index) => <TableHead key={`column-${index}`} className="min-w-36 align-top"><label className="sr-only" htmlFor={`${block.id}-column-${index}`}>Nama kolom {index + 1}</label><Input id={`${block.id}-column-${index}`} value={column} maxLength={160} onChange={(event) => updateColumn(index, event.target.value)} onKeyDown={(event) => moveByArrow(event, 0, index)} className="text-xs font-semibold" /></TableHead>)}</TableRow></TableHeader>
+        <TableBody>{rows.map((row, rowIndex) => <TableRow key={`row-${rowIndex}`} className="align-top">{columns.map((_, columnIndex) => <TableCell key={`cell-${rowIndex}-${columnIndex}`} className="min-w-36 align-top"><label className="sr-only" htmlFor={`${block.id}-cell-${rowIndex}-${columnIndex}`}>Baris {rowIndex + 1}, kolom {columnIndex + 1}</label><Textarea id={`${block.id}-cell-${rowIndex}-${columnIndex}`} rows={2} maxLength={3000} value={row?.[columnIndex] || ""} onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)} onKeyDown={(event) => moveByArrow(event, rowIndex + 1, columnIndex)} className="text-xs" /></TableCell>)}</TableRow>)}</TableBody>
       </Table>
     </div>
   );
