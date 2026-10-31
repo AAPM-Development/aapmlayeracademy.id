@@ -31,6 +31,27 @@ test("always-visible block toolbars sit in the flow and stay above the block's h
   assert.match(touch, /\.aapm-block__bar \{[^}]*position: relative[^}]*top: 0[^}]*right: 0/);
 });
 
+test("a block editor bounds its column, so a wide table scrolls inside its own wrap", () => {
+  const blocks = read("src/styles/features/editor-blocks.css");
+  // An implicit grid track grows to the table's min-content and carries the whole editor past the card.
+  assert.match(blocks, /\.aapm-block__editor \{[^}]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(read("src/design-system/styles/academy.css"), /\.table-wrap \{ overflow-x: auto; \}/);
+  assert.match(read("src/design-system/components/data.jsx"), /<div className=\{cn\("table-wrap", wrapClassName\)\}/);
+});
+
+test("the table block edits like a spreadsheet: ruled cells take typing and the active cell is outlined", () => {
+  const blocks = read("src/styles/features/editor-blocks.css");
+  const composer = read("src/components/admin/EditorialComposer.jsx");
+  assert.match(composer, /<Table wrapClassName="aapm-editor-table"/);
+  // Input and Textarea render .input and .textarea; the older .aapm-input selectors match nothing here.
+  assert.match(read("src/design-system/components/forms.jsx"), /<input ref=\{ref\} type=\{type\} className=\{cn\("input", className\)\}/);
+  assert.match(read("src/design-system/components/forms.jsx"), /<textarea ref=\{ref\} className=\{cn\("textarea", className\)\}/);
+  assert.match(blocks, /\.aapm-editor-table \.table tr > :is\(th, td\) \{[^}]*padding: 0/);
+  assert.match(blocks, /\.aapm-editor-table \.input,\n\.aapm-editor-table \.textarea \{[^}]*border: 0[^}]*border-radius: 0/);
+  // The resting box goes, so focus has to draw the cell being typed in.
+  assert.match(blocks, /\.aapm-editor-table \.input:focus,\n\.aapm-editor-table \.textarea:focus \{[^}]*outline: 2px solid var\(--aapm-semantic-primary\)[^}]*outline-offset: -2px/);
+});
+
 test("a lesson whose video was retired does not call its instructor notes a video", () => {
   const lesson = read("src/pages/ModuleDetail.jsx");
   assert.match(lesson, /const lessonVideoIsPresent = \[module\?\.videoUrl, module\?\.videoEmbedUrl, module\?\.video\]\.some\(hasText\);/);
