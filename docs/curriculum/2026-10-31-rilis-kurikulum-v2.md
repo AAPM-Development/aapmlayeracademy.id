@@ -36,6 +36,16 @@ php scripts/curriculum/move-learners-to-policy.php --policy-version=academy-v2 -
 php scripts/curriculum/move-learners-to-policy.php --policy-version=academy-v2 --expect-environment=staging --actor-email=ADMIN --apply --operator=NAMA --evidence-ref=REF
 ```
 
+Bila `--dry-run` menandai modul sebagai `number_held`, nomornya masih tercatat di
+`module_number_allocations`, biasanya karena draf modul itu pernah dihapus. Baca `holdState`:
+
+- `unused`: tidak ada catatan apa pun. Tambahkan `--release-unused-numbers` pada dry-run dan
+  apply. Pelepasan dicatat sebagai `module_number.released`.
+- `retired`: ada catatan di tabel yang tertulis pada `records`. Jangan dilepas. Periksa dulu.
+- `other_curriculum`: nomor dipakai modul di kurikulum lain. Periksa dulu.
+
+Di Production, nomor 23 tertahan dengan cara ini pada 31 Oktober 2026, sedangkan di Staging tidak.
+
 Tes `tests/curriculum-v2-release.test.mjs` menjalankan urutan yang sama di SQLite sekali pakai.
 Alur ini juga lolos di salinan data rekaman: 23 modul, 100 akun pindah, 83 akun generasi baru,
 237 sertifikat utuh, dan impor ulang tidak mengubah apa pun.
