@@ -5,7 +5,7 @@ import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { SQLITE, cleanEnv, cleanup, repo, rows, setup, signIn, passModule, withSite } from "./helpers/site.mjs";
+import { SQLITE, cleanEnv, cleanup, repo, rows, setup, signIn, passModule, sql, withSite } from "./helpers/site.mjs";
 
 after(cleanup);
 
@@ -29,6 +29,38 @@ test("without --create-missing a module outside the catalogue stops the import",
   assert.deepEqual(plan.blocking, [23]);
   assert.equal(importer(site, ["--apply", ...evidence]).status, 4);
   assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM course_modules")[0].n), 22, "nothing was written");
+});
+
+const holdNumber = (site) => sql(site, "INSERT INTO module_number_allocations (module_number, first_module_id, allocated_at) VALUES (23, 900, '2026-10-01 00:00:00')");
+
+test("a number left by a deleted draft shows in the dry run and is released only on request", async () => {
+  const { site } = await setup("v2-held");
+  holdNumber(site);
+  const plan = jsonOut(importer(site, ["--dry-run", "--create-missing"]));
+  assert.deepEqual(plan.blocking, [23]);
+  assert.equal(plan.modules.find((module) => module.moduleNumber === 23).status, "number_held");
+  assert.equal(importer(site, ["--apply", "--create-missing", ...evidence]).status, 4);
+  assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM course_modules")[0].n), 22, "nothing was written");
+
+  const release = ["--create-missing", "--release-unused-numbers"];
+  assert.deepEqual(jsonOut(importer(site, ["--dry-run", ...release])).blocking, []);
+  ok(importer(site, ["--apply", ...release, ...evidence]));
+  assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM course_modules WHERE lifecycle_status = 'active'")[0].n), 23);
+  const event = rows(site, "SELECT metadata_json FROM curriculum_publication_events WHERE event_type = 'module_number.released'");
+  assert.equal(event.length, 1);
+  assert.equal(JSON.parse(event[0].metadata_json).evidenceRef, "AUDIT-2026-10-31");
+});
+
+test("a held number with any record behind it stays held, even on request", async () => {
+  const { site, learnerA } = await setup("v2-held-record");
+  holdNumber(site);
+  sql(site, `INSERT INTO assessment_attempts (public_id, user_id, assessment_type, module_number, policy_version, passing_grade, status, total_questions, started_at, expires_at, start_request_key, created_at, updated_at) VALUES ('old-23', ${learnerA}, 'module_quiz', 23, 'academy-v1', 70, 'superseded', 5, '2026-10-01 00:00:00', '2026-10-02 00:00:00', 'old-23-key', '2026-10-01 00:00:00', '2026-10-01 00:00:00')`);
+  const release = ["--create-missing", "--release-unused-numbers"];
+  const held = jsonOut(importer(site, ["--dry-run", ...release])).modules.find((module) => module.moduleNumber === 23);
+  assert.equal(held.status, "number_held");
+  assert.deepEqual(held.records, { assessment_attempts: 1 });
+  assert.equal(importer(site, ["--apply", ...release, ...evidence]).status, 4);
+  assert.equal(Number(rows(site, "SELECT COUNT(*) AS n FROM module_number_allocations WHERE module_number = 23")[0].n), 1);
 });
 
 test("the v2 release moves chapters, creates module 23, and sends every learner to the new policy", async () => {
