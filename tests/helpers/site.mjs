@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { startPhpServer } from "./php-server.mjs";
 
 export const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const fixtures = join(repo, "tests", "fixtures");
@@ -153,17 +153,6 @@ export function attemptKey(site, publicId) {
 
 export const wrongIndex = (entry) => (entry.correct + 1) % entry.count;
 
-export function freePort() {
-  return new Promise((resolvePort, reject) => {
-    const probe = createServer();
-    probe.on("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const { port } = probe.address();
-      probe.close(() => resolvePort(port));
-    });
-  });
-}
-
 /** Cookie-carrying client. Mutations fetch a fresh CSRF token first, as the browser does. */
 export class Api {
   constructor(port) {
@@ -207,28 +196,8 @@ export class Api {
   }
 }
 
-export const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
-
-export async function startSite(site) {
-  const port = await freePort();
-  let stderr = "";
-  const child = spawn("php", [...SQLITE, "-S", `127.0.0.1:${port}`, "-t", "public", join("public", "router.php")], {
-    cwd: repo,
-    env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }),
-    stdio: ["ignore", "ignore", "pipe"],
-  });
-  child.stderr.on("data", (chunk) => (stderr += chunk));
-  for (let attempt = 0; attempt < 600; attempt++) {
-    if (child.exitCode !== null) throw new Error(`php server exited: ${stderr}`);
-    try {
-      await new Api(port).get("/api/health");
-      return { port, stop: () => child.kill() };
-    } catch {
-      await sleep(100);
-    }
-  }
-  child.kill();
-  throw new Error("php server did not start");
+export function startSite(site) {
+  return startPhpServer({ args: SQLITE, docroot: "public", cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
 }
 
 export async function withSite(site, run) {
