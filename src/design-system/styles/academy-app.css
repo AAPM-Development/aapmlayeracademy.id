@@ -498,7 +498,7 @@ input.input { display: block; }
 /* Alert: the tone sits on a round icon plate, so the message reads as text and not as a filled block. */
 .alert { align-items: center; padding: var(--s-3) var(--s-4); }
 .alert > .aapm-icon, .alert > .ic { flex: none; margin-top: 1px; }
-.alert > :not(.aapm-icon, .ic, .alert-action) { flex: 1 1 0; min-width: 0; }
+.alert > :is(p, div):not(.alert-action) { flex: 1 1 0; min-width: 0; }
 .alert:has(.alert-title) { align-items: flex-start; }
 .alert-title { line-height: 20px; }
 .alert-action { margin-left: auto; align-self: center; }
