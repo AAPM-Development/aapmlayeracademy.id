@@ -23,9 +23,6 @@
 }
 
 @media (max-width: 859px) {
-  /* Match the existing editor exception: entrance transforms must not
-     turn the form into the containing block of viewport-fixed controls. */
-  .aapm-page > .aapm-curriculum-editor { animation: none; }
   .aapm-curriculum-editor { padding-bottom: 7rem; }
   .aapm-curriculum-editor :is(input, textarea, button) {
     scroll-margin-bottom: calc(7rem + var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom));

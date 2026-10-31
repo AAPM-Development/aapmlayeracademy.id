@@ -68,11 +68,19 @@ test("the action bar follows the page on a short screen instead of taking the re
 });
 
 test("feature stylesheets target the rendered shell, not the retired one", () => {
-  for (const file of ["src/styles/features/sweep.css", "src/styles/features/mascot.css"]) {
-    assert.doesNotMatch(read(file), /\.aapm-app(__main)?(?![\w-])/, `${file} still styles a class no shell renders`);
+  for (const file of ["src/styles/features/sweep.css", "src/styles/features/mascot.css", "src/styles/features/curriculum.css"]) {
+    assert.doesNotMatch(read(file), /\.aapm-(app(__main)?|page|focus__main)(?![\w-])/, `${file} still styles a class no shell renders`);
   }
   assert.doesNotMatch(read("src/styles/features/sweep.css"), /--aapm-action-sidebar-width/);
   assert.match(read("src/design-system/patterns/AppShell.jsx"), /cn\("app", /);
+});
+
+test("the design-system shell sheet keeps only what the rendered shells reach", () => {
+  const shell = read("src/design-system/styles/shell.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const classes = [...new Set([...shell.matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name))].sort();
+  assert.deepEqual(classes, ["aapm-ai-floating-panel", "aapm-route-progress", "aapm-skip-link"]);
+  assert.match(mediaBlock(shell, "(max-width: 859px)"), /:root \{ --aapm-component-bottom-nav-height: 72px; \}/, "fixed phone surfaces read this clearance");
+  assert.match(shell, /html\[data-shell="focus"\] body,/);
 });
 
 const mediaBlock = (css, query) => {
