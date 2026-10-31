@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useModules } from "@/lib/useCourseData";
-import { getLevelForModule, sortModules } from "@/lib/academyData";
+import { getLevelForModule, sortModules, TOTAL_MODULES } from "@/lib/academyData";
 import { CommandTrigger } from "@/design-system/patterns/AppShell";
 import SearchPalette, { useCommandShortcut } from "./SearchPalette";
 import { moduleNo } from "@/lib/moduleNumber";
@@ -10,7 +10,7 @@ const destinations = [
   { key: "calc", ic: "calc", hue: "teal", title: "Kalkulator farm", meta: "FCR, HDP, egg mass, uniformity", to: "/calculators" },
   { key: "kpi", ic: "chart", hue: "blue", title: "Farm KPI", meta: "Catat dan baca KPI mingguan", to: "/kpi" },
   { key: "appi", ic: "sparkle", hue: "ai", title: "Tanya APPI", meta: "Asisten belajar dan farm", to: "/ai-assistant" },
-  { key: "path", ic: "route", hue: "green", title: "Jalur belajar", meta: "14 chapter · 22 modul", to: "/modules" },
+  { key: "path", ic: "route", hue: "green", title: "Jalur belajar", meta: `14 chapter · ${TOTAL_MODULES} modul`, to: "/modules" },
   { key: "exam", ic: "exam", hue: "gold", title: "Ujian akhir", meta: "Sertifikasi Expert", to: "/final-exam" },
   { key: "cert", ic: "cert", hue: "teal", title: "Sertifikasi", meta: "6 tingkat sertifikat", to: "/certification" },
   { key: "profile", ic: "medal", hue: "violet", title: "Prestasi & profil", meta: "Poin, peringkat, Hall of Fame", to: "/profile" },

@@ -11,7 +11,7 @@ import { moduleNo } from "@/lib/moduleNumber";
 
 const EXAM_TITLE = "Sertifikasi Tingkat 6 · Layer Poultry Farm Expert";
 
-/** The 22-egg grid of required modules: verified, being studied, not started. */
+/** The egg grid of required modules: verified, being studied, not started. */
 function RequirementEggs({ modules, completedSet, currentNumber, missing }) {
   const missingSet = new Set(missing);
   return (

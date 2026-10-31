@@ -20,7 +20,9 @@ declare(strict_types=1);
  *   php scripts/curriculum/import-curriculum-update.php --file=... --expect-environment=production --actor-email=ADMIN --apply --operator=NAME --evidence-ref=REF
  *
  * Optional: --modules=1,2,3 limits the run to those module numbers; --skip-final leaves
- * the final-exam bank untouched.
+ * the final-exam bank untouched; --create-missing creates a package module that is not in
+ * the catalogue yet (it needs levelNumber) and publishes it through the same path.
+ * A module's levelNumber moves it to that chapter on a whole-package run.
  */
 
 if (PHP_SAPI !== 'cli' || isset($_SERVER['HTTP_HOST']) || isset($_SERVER['REQUEST_METHOD'])) {
@@ -65,7 +67,7 @@ foreach (array_slice($argv, 1) as $argument) {
     }
     $options[$match[1]] = $match[2] ?? true;
 }
-$allowed = ['file', 'expect-environment', 'actor-email', 'dry-run', 'apply', 'operator', 'evidence-ref', 'modules', 'skip-final'];
+$allowed = ['file', 'expect-environment', 'actor-email', 'dry-run', 'apply', 'operator', 'evidence-ref', 'modules', 'skip-final', 'create-missing'];
 foreach (array_keys($options) as $key) {
     if (!in_array($key, $allowed, true)) {
         import_fail(2, 'Opsi tidak dikenal: --' . $key);
@@ -98,6 +100,7 @@ if (isset($options['modules'])) {
     $onlyModules = array_map('intval', explode(',', (string) $options['modules']));
 }
 $skipFinal = isset($options['skip-final']);
+$createMissing = isset($options['create-missing']);
 
 $file = (string) ($options['file'] ?? '');
 $path = $file !== '' && $file[0] !== '/' ? getcwd() . '/' . $file : $file;
@@ -132,7 +135,7 @@ if (!$actor || !in_array((string) $actor['role'], ['admin', 'super_admin'], true
 }
 $actorId = (int) $actor['id'];
 
-const IMPORT_TEXT_FIELDS = ['title', 'summary', 'content', 'videoScript', 'practicalAssignment'];
+const IMPORT_TEXT_FIELDS = ['title', 'category', 'summary', 'content', 'videoScript', 'practicalAssignment'];
 const IMPORT_LIST_FIELDS = ['learningObjectives', 'keyTakeaways', 'checklist'];
 
 /** @return list<string> Retired video URLs in stored form. */
@@ -190,37 +193,7 @@ function import_questions(array $questions): array
 }
 
 // ------------------------------------------------------------------ plan
-$plan = [];
-$blocking = [];
-$seen = [];
-foreach ($package['modules'] as $entry) {
-    $number = (int) ($entry['moduleNumber'] ?? 0);
-    if ($number < 1 || isset($seen[$number])) {
-        import_fail(2, 'Paket memuat nomor modul yang tidak valid atau berulang.');
-    }
-    $seen[$number] = true;
-    if ($onlyModules !== null && !in_array($number, $onlyModules, true)) {
-        continue;
-    }
-    $statement = $pdo->prepare('SELECT * FROM course_modules WHERE module_number = ? AND curriculum_id = ? LIMIT 1');
-    $statement->execute([$number, $curriculumId]);
-    $row = $statement->fetch();
-    if (!$row) {
-        $plan[] = ['moduleNumber' => $number, 'status' => 'not_found'];
-        $blocking[] = $number;
-        continue;
-    }
-    if ((string) ($row['lifecycle_status'] ?? 'active') !== 'active') {
-        $plan[] = ['moduleNumber' => $number, 'title' => (string) $row['title'], 'status' => 'not_active', 'lifecycleStatus' => (string) $row['lifecycle_status']];
-        $blocking[] = $number;
-        continue;
-    }
-    if (import_module_pending($pdo, $row)) {
-        $plan[] = ['moduleNumber' => $number, 'title' => (string) $row['title'], 'status' => 'pending_draft'];
-        $blocking[] = $number;
-        continue;
-    }
-
+$planModule = static function (array $entry, array $row, int $number) use ($pdo, $curriculumId, $preserveTypes, $onlyModules, $chapters): array {
     $published = aapm_cur_payload_from_row($row);
     $fields = (array) ($entry['fields'] ?? []);
     $input = [];
@@ -244,11 +217,13 @@ foreach ($package['modules'] as $entry) {
     if (isset($entry['editorialBlocks']) && is_array($entry['editorialBlocks'])) {
         [$input['editorialContent'], $kept, $removedMedia] = import_editorial((string) $published['editorialContent'], $entry['editorialBlocks'], $preserveTypes, $retiredUrls);
     }
-    // A chapter name lives on every module in it, so only a whole-package run changes it.
-    // Validation requires today's name; the new one reaches each module through its revision.
-    $chapterName = $onlyModules === null ? ($chapters[(int) $row['level_number']] ?? null) : null;
+    // A chapter lives on every module in it, so only a whole-package run moves or renames one.
+    // Validation requires the chapter's name today; the new one arrives through the revision.
+    $chapterNumber = $onlyModules === null && isset($entry['levelNumber']) ? (int) $entry['levelNumber'] : (int) $row['level_number'];
+    $chapterName = $onlyModules === null ? ($chapters[$chapterNumber] ?? null) : null;
     if ($chapterName !== null) {
-        $input['levelName'] = admin_existing_chapter_name((int) $row['level_number'], null, $curriculumId) ?? (string) $published['levelName'];
+        $input['levelNumber'] = $chapterNumber;
+        $input['levelName'] = admin_existing_chapter_name($chapterNumber, null, $curriculumId) ?? (string) $chapterName;
     }
     $target = aapm_cur_normalise_content($input, $published, $curriculumId);
     $target['moduleNumber'] = $number;
@@ -273,7 +248,7 @@ foreach ($package['modules'] as $entry) {
     if ($questionsChanged) {
         $changed[] = 'questions';
     }
-    $plan[] = [
+    return [
         'moduleNumber' => $number,
         'moduleId' => (int) $row['id'],
         'status' => $changed === [] ? 'unchanged' : 'update',
@@ -286,6 +261,44 @@ foreach ($package['modules'] as $entry) {
         '_payload' => $target,
         '_questions' => $targetQuestions,
     ];
+};
+
+$plan = [];
+$blocking = [];
+$seen = [];
+foreach ($package['modules'] as $entry) {
+    $number = (int) ($entry['moduleNumber'] ?? 0);
+    if ($number < 1 || isset($seen[$number])) {
+        import_fail(2, 'Paket memuat nomor modul yang tidak valid atau berulang.');
+    }
+    $seen[$number] = true;
+    if ($onlyModules !== null && !in_array($number, $onlyModules, true)) {
+        continue;
+    }
+    $statement = $pdo->prepare('SELECT * FROM course_modules WHERE module_number = ? AND curriculum_id = ? LIMIT 1');
+    $statement->execute([$number, $curriculumId]);
+    $row = $statement->fetch();
+    if (!$row) {
+        if ($createMissing && isset($entry['levelNumber'], $entry['fields']['title'])) {
+            $plan[] = ['moduleNumber' => $number, 'status' => 'create', 'title' => ['current' => null, 'target' => (string) $entry['fields']['title']], '_entry' => $entry];
+            continue;
+        }
+        $plan[] = ['moduleNumber' => $number, 'status' => 'not_found'];
+        $blocking[] = $number;
+        continue;
+    }
+    if ((string) ($row['lifecycle_status'] ?? 'active') !== 'active') {
+        $plan[] = ['moduleNumber' => $number, 'title' => (string) $row['title'], 'status' => 'not_active', 'lifecycleStatus' => (string) $row['lifecycle_status']];
+        $blocking[] = $number;
+        continue;
+    }
+    if (import_module_pending($pdo, $row)) {
+        $plan[] = ['moduleNumber' => $number, 'title' => (string) $row['title'], 'status' => 'pending_draft'];
+        $blocking[] = $number;
+        continue;
+    }
+
+    $plan[] = $planModule($entry, $row, $number);
 }
 
 $finalPlan = null;
@@ -331,6 +344,28 @@ if ($blocking !== []) {
 
 // ------------------------------------------------------------------ apply
 $audit = ['source' => 'curriculum-import', 'package' => $packageId, 'operator' => $operator, 'evidenceRef' => $evidence];
+// A new module starts as the editor's draft, then follows the same publish path below.
+foreach ($plan as $index => $item) {
+    if ($item['status'] !== 'create') {
+        continue;
+    }
+    $number = (int) $item['moduleNumber'];
+    $entry = $item['_entry'];
+    $chapterNumber = (int) $entry['levelNumber'];
+    aapm_cur_create_module([
+        'moduleNumber' => $number,
+        'curriculumId' => $curriculumId,
+        'levelNumber' => $chapterNumber,
+        'levelName' => admin_existing_chapter_name($chapterNumber, null, $curriculumId) ?? (string) ($chapters[$chapterNumber] ?? ''),
+        'title' => (string) $entry['fields']['title'],
+    ], $actorId);
+    $created = $pdo->prepare('SELECT * FROM course_modules WHERE module_number = ? AND curriculum_id = ? LIMIT 1');
+    $created->execute([$number, $curriculumId]);
+    $plan[$index] = $planModule($entry, $created->fetch(), $number);
+    $plan[$index]['status'] = 'update';
+    fwrite(STDOUT, "Modul {$number} dibuat sebagai draf.
+");
+}
 $published = [];
 foreach ($plan as $item) {
     if ($item['status'] !== 'update') {

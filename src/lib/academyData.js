@@ -1,4 +1,4 @@
-export const TOTAL_MODULES = 22;
+export const TOTAL_MODULES = 23;
 export const TOTAL_LEARNING_LEVELS = 14;
 export const TOTAL_CERTIFICATION_TIERS = 6;
 
@@ -19,13 +19,15 @@ export const learningLevels = [
   { number: 14, name: "Expert Level", description: "Mengambil keputusan dan memimpin perbaikan." },
 ];
 
+// Tiers of the academy-v2 policy (curriculum v2.0). Learners on v1 get the same
+// names from their own policy row; this table is the public catalogue.
 export const certificationTiers = [
   { number: 1, name: "Layer Poultry Farm Foundation", modules: [1, 2, 3] },
-  { number: 2, name: "Layer Farm Operator", modules: [4, 5] },
-  { number: 3, name: "Layer Farm Supervisor", modules: [6, 7, 8, 11, 12, 13, 15, 16, 17] },
-  { number: 4, name: "Layer Farm Manager", modules: [9, 10, 14, 18] },
-  { number: 5, name: "Advanced Layer Farm Management", modules: [19, 20, 21] },
-  { number: 6, name: "Layer Poultry Farm Expert", modules: [22], requiresFinal: true },
+  { number: 2, name: "Layer Farm Operator", modules: [4, 5, 6, 7] },
+  { number: 3, name: "Layer Farm Supervisor", modules: [8, 9, 10, 11, 12, 13, 14] },
+  { number: 4, name: "Layer Farm Manager", modules: [15, 16, 17, 18, 19] },
+  { number: 5, name: "Advanced Layer Farm Management", modules: [20, 21] },
+  { number: 6, name: "Layer Poultry Farm Expert", modules: [22, 23], requiresFinal: true },
 ];
 
 export function sortModules(modules = []) {
