@@ -21,7 +21,9 @@ declare(strict_types=1);
  *
  * Optional: --modules=1,2,3 limits the run to those module numbers; --skip-final leaves
  * the final-exam bank untouched; --create-missing creates a package module that is not in
- * the catalogue yet (it needs levelNumber) and publishes it through the same path.
+ * the catalogue yet (it needs levelNumber) and publishes it through the same path;
+ * --release-unused-numbers also frees a number left allocated by a deleted draft, but only
+ * when no table holds a record for it, and writes module_number.released to the audit log.
  * A module's levelNumber moves it to that chapter on a whole-package run.
  */
 
@@ -46,6 +48,35 @@ register_shutdown_function(static function () use (&$importFinished): void {
     exit(5);
 });
 
+/**
+ * What stands behind a module number outside the catalogue. Deleting a draft keeps its
+ * number allocated so a later module cannot inherit a learner's record. With no record in
+ * any table the allocation protects nothing, and only then may an operator free it.
+ *
+ * @return array{state: string, records: array<string, int>}
+ */
+function import_number_hold(PDO $pdo, int $number): array
+{
+    $count = static function (string $table) use ($pdo, $number): int {
+        $statement = $pdo->prepare("SELECT COUNT(*) FROM {$table} WHERE module_number = ?");
+        $statement->execute([$number]);
+        return (int) $statement->fetchColumn();
+    };
+    if ($count('course_modules') > 0) {
+        return ['state' => 'other_curriculum', 'records' => ['course_modules' => 1]];
+    }
+    if ($count('module_number_allocations') === 0) {
+        return ['state' => 'free', 'records' => []];
+    }
+    $records = [];
+    foreach (['assessment_attempts', 'module_learning_events', 'certificate_evidence', 'user_progress', 'legacy_progress_snapshots', 'module_revisions', 'module_drafts', 'quiz_questions', 'question_bank_revisions', 'question_bank_drafts', 'curriculum_policy_modules'] as $table) {
+        if (aapm_table_exists($pdo, $table) && ($rows = $count($table)) > 0) {
+            $records[$table] = $rows;
+        }
+    }
+    return ['state' => $records === [] ? 'unused' : 'retired', 'records' => $records];
+}
+
 function import_fail(int $code, string $message): void
 {
     global $importFinished;
@@ -67,7 +98,7 @@ foreach (array_slice($argv, 1) as $argument) {
     }
     $options[$match[1]] = $match[2] ?? true;
 }
-$allowed = ['file', 'expect-environment', 'actor-email', 'dry-run', 'apply', 'operator', 'evidence-ref', 'modules', 'skip-final', 'create-missing'];
+$allowed = ['file', 'expect-environment', 'actor-email', 'dry-run', 'apply', 'operator', 'evidence-ref', 'modules', 'skip-final', 'create-missing', 'release-unused-numbers'];
 foreach (array_keys($options) as $key) {
     if (!in_array($key, $allowed, true)) {
         import_fail(2, 'Opsi tidak dikenal: --' . $key);
@@ -101,6 +132,7 @@ if (isset($options['modules'])) {
 }
 $skipFinal = isset($options['skip-final']);
 $createMissing = isset($options['create-missing']);
+$releaseUnusedNumbers = isset($options['release-unused-numbers']);
 
 $file = (string) ($options['file'] ?? '');
 $path = $file !== '' && $file[0] !== '/' ? getcwd() . '/' . $file : $file;
@@ -280,7 +312,14 @@ foreach ($package['modules'] as $entry) {
     $row = $statement->fetch();
     if (!$row) {
         if ($createMissing && isset($entry['levelNumber'], $entry['fields']['title'])) {
-            $plan[] = ['moduleNumber' => $number, 'status' => 'create', 'title' => ['current' => null, 'target' => (string) $entry['fields']['title']], '_entry' => $entry];
+            $hold = import_number_hold($pdo, $number);
+            $released = $hold['state'] === 'unused' && $releaseUnusedNumbers;
+            if ($hold['state'] !== 'free' && !$released) {
+                $plan[] = ['moduleNumber' => $number, 'status' => 'number_held', 'holdState' => $hold['state'], 'records' => $hold['records']];
+                $blocking[] = $number;
+                continue;
+            }
+            $plan[] = ['moduleNumber' => $number, 'status' => 'create', 'title' => ['current' => null, 'target' => (string) $entry['fields']['title']], 'releasesNumber' => $released, '_entry' => $entry];
             continue;
         }
         $plan[] = ['moduleNumber' => $number, 'status' => 'not_found'];
@@ -352,6 +391,21 @@ foreach ($plan as $index => $item) {
     $number = (int) $item['moduleNumber'];
     $entry = $item['_entry'];
     $chapterNumber = (int) $entry['levelNumber'];
+    if ($item['releasesNumber']) {
+        aapm_tx_begin($pdo);
+        try {
+            if (import_number_hold($pdo, $number)['state'] !== 'unused') {
+                aapm_tx_rollback($pdo);
+                import_fail(5, "Nomor modul {$number} berubah sejak rencana dibuat. Jalankan ulang --dry-run.");
+            }
+            $pdo->prepare('DELETE FROM module_number_allocations WHERE module_number = ?')->execute([$number]);
+            aapm_cur_event($pdo, 'module_number.released', $number, null, null, $actorId, $audit);
+            aapm_tx_commit($pdo);
+        } catch (Throwable $exception) {
+            aapm_tx_rollback($pdo);
+            throw $exception;
+        }
+    }
     aapm_cur_create_module([
         'moduleNumber' => $number,
         'curriculumId' => $curriculumId,
