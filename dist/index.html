@@ -16,7 +16,7 @@
       // Apply the saved appearance before first paint (no light→dark flash).
       try {
         var savedTheme = localStorage.getItem("aapm-theme");
-        if (savedTheme === "dark" || (!savedTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        if (savedTheme === "dark") {
           document.documentElement.classList.add("dark");
           document.documentElement.style.colorScheme = "dark";
         }
@@ -39,10 +39,10 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="AAPM Layer Academy — Pelatihan Profesional Manajemen Peternakan Ayam Petelur" />
     <meta name="twitter:description" content="Platform e-learning profesional AAPM untuk manajemen peternakan ayam petelur komersial." />
-    <script type="module" crossorigin src="/assets/index-DpRYuQcN.js"></script>
+    <script type="module" crossorigin src="/assets/index-8z26z2s3.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-CAhF8RnB.css">
   </head>
   <body class="aapm">
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>
