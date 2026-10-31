@@ -251,8 +251,8 @@ export default function ModuleDetail() {
           <button type="button" className="btn btn-ghost btn-icon btn-quiet hide-md" aria-label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} aria-pressed={outlineOpen} onClick={toggleOutline}><Ic name="sidebar" /></button>
           <span className="vr hide-sm" style={{ margin: "14px 4px" }} />
           <div className="stack grow" style={{ minWidth: 0 }}>
-            <span className="t-caption t-muted t-clamp-1">Modul {moduleNo(module)} dari {summary.total} · Chapter {module.level} {module.levelName || module.category}</span>
-            <span className="t-heading t-clamp-1">{module.title}</span>
+            <span className="t-caption t-muted t-clamp-1" title={`Chapter ${module.level} ${module.levelName || module.category}`}>Modul {moduleNo(module)} dari {summary.total} · Chapter {module.level} {module.levelName || module.category}</span>
+            <span className="t-heading t-clamp-1" title={module.title}>{module.title}</span>
           </div>
           <FlowSteps steps={steps} className="hide-md" style={{ width: 380 }} />
           <span className="vr hide-md" style={{ margin: "14px 4px" }} />

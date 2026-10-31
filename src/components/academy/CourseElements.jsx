@@ -172,7 +172,7 @@ function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
           <h2 className="unit-title" id={titleId}>{level.name}</h2>
           {level.description ? <p className="t-support t-clamp-1">{level.description}</p> : null}
         </div>
-        <div className="stack items-end gap-1-5">
+        <div className="stack items-end gap-1-5" style={{ flex: "none" }}>
           {done ? <span className="chip"><Ic name="check" />Tuntas</span> : level.hasCurrent ? <span className="chip chip-ai chip-dot">Aktif</span> : null}
           <span className="t-caption t-strong t-num">{level.completed}/{level.total} modul</span>
         </div>

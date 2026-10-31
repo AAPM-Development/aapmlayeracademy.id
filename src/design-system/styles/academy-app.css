@@ -109,8 +109,10 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
   .focus-bar .btn-sm.btn-icon { width: var(--h-md); }
   .focus-bar [role="tab"] { min-height: var(--h-md); }
 }
+/* Five tabs on the narrowest phone: the long admin labels need the whole cell. */
+@media (max-width: 360px) { .m-nav { padding-inline: 2px; } .m-nav > a, .m-nav > button { font-size: 11px; font-weight: 700; } }
 /* The fixed curriculum bar sits above the bottom nav, so the launcher's rest does too. */
-@media (max-width: 859px) and (min-height: 501px) {
+@media (max-width: 859px) and (min-height: 701px) {
   .app[data-tone="calm"]:has(.aapm-curriculum-actionbar) .launcher { bottom: calc(188px + env(safe-area-inset-bottom)); }
 }
 
@@ -495,7 +497,8 @@ input.input { display: block; }
 .typing[data-size="lg"] > i { width: 9px; height: 9px; }
 /* Alert: the tone sits on a round icon plate, so the message reads as text and not as a filled block. */
 .alert { align-items: center; padding: var(--s-3) var(--s-4); }
-.alert > .aapm-icon, .alert > .ic { flex: none; box-sizing: content-box; padding: 6px; margin-top: 0; border-radius: 50%; background: var(--surface); }
+.alert > .aapm-icon, .alert > .ic { flex: none; margin-top: 1px; }
+.alert > :not(.aapm-icon, .ic, .alert-action) { flex: 1 1 0; min-width: 0; }
 .alert:has(.alert-title) { align-items: flex-start; }
 .alert-title { line-height: 20px; }
 .alert-action { margin-left: auto; align-self: center; }

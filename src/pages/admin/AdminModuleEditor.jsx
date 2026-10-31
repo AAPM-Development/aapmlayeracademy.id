@@ -1384,7 +1384,7 @@ export default function AdminModuleEditor() {
           <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Kembali ke kurikulum" onClick={() => requestNavigation(`/admin/courses/${courseId}`)}><Ic name="arrow-left" /></button>
           <span className="vr" style={{ margin: "14px 0" }} />
           <div className="stack" style={{ minWidth: 0 }}>
-            <span className="t-caption t-muted t-clamp-1">Editor modul · Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</span>
+            <span className="t-caption t-muted t-clamp-1" title={form.levelName || undefined}>Editor modul · Chapter {form.levelNumber || "—"}{form.levelName ? ` · ${form.levelName}` : ""}</span>
             <h1 className="t-heading t-clamp-1" title={form.title || undefined}>{form.title || (isNew ? "Modul baru" : "Edit modul")}</h1>
           </div>
         </div>

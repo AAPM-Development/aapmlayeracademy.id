@@ -23,7 +23,7 @@ export function AssessmentBar({ onExit, total = 0, current = 0, states = [], che
       <span className="vr hide-sm" style={{ margin: "14px 4px" }} />
       {title || context ? (
         <div className="stack grow" style={{ minWidth: 0 }}>
-          {context ? <span className="t-caption t-muted t-clamp-1">{context}</span> : null}
+          {context ? <span className="t-caption t-muted t-clamp-1" title={context}>{context}</span> : null}
           {title ? <span className="t-heading t-clamp-1" title={title}>{title}</span> : null}
         </div>
       ) : <span className="grow" />}

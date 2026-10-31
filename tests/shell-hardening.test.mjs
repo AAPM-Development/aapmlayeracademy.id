@@ -219,6 +219,17 @@ test("the APPI room is one rail and one reading column, with the composer as the
   assert.match(read("src/pages/AiAssistant.jsx"), /className="anim-rise appi-suggest"/);
 });
 
+test("no rule paints a background on a mask icon, which would colour the glyph itself", () => {
+  const css = `${canvas()}\n${app()}`.replace(/\/\*[\s\S]*?\*\//g, "");
+  const rules = css.match(/[^{}]+\{[^{}]*\}/g) || [];
+  const painted = rules.filter((rule) => {
+    const [selectors, body] = rule.split("{");
+    const icon = selectors.split(",").some((selector) => /\.ic\s*$/.test(selector.trim()));
+    return icon && !/^\s*\.ic\s*$/.test(selectors) && /(^|[;\s])background(-color)?\s*:/.test(body);
+  });
+  assert.deepEqual(painted.map((rule) => rule.trim().slice(0, 80)), []);
+});
+
 test("the certificate export draws the numeral from an image, the same pixels as the preview", () => {
   const document = read("src/components/certificate/CertificateDocument.jsx");
   assert.match(document, /async function tierNumeral\(tierNumber, color\)/);
