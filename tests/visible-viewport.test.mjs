@@ -103,3 +103,69 @@ test('the active field clears the available APPI launcher only when their horizo
   state.handlers.get('resize')();
   assert.equal(shift, 64, 'the field stays clear without repeated scrolling');
 });
+
+// Rendered ancestors, nearest first, so a selector for a class no shell renders finds nothing.
+function fieldInside(chain, top = 650) {
+  const nodes = chain.map(({ name, scrolls = true, fixed = false }) => ({
+    name, shift: 0, fixed,
+    scrollHeight: scrolls ? 1600 : 420, clientHeight: 420,
+    getBoundingClientRect: () => ({ top: 60, bottom: 800 }),
+    scrollBy({ top: by }) { this.shift += by; },
+  }));
+  const closestFrom = (start) => (selector) => {
+    const wanted = selector.split(',').map((part) => part.trim().slice(1));
+    return nodes.slice(start).find((node) => wanted.includes(node.name)) ?? null;
+  };
+  nodes.forEach((node, index) => { node.closest = closestFrom(index); node.parentElement = nodes[index + 1] ?? null; });
+  const moved = () => nodes.reduce((sum, node) => sum + node.shift, 0);
+  return {
+    nodes,
+    field: {
+      matches: () => true, closest: closestFrom(0),
+      getBoundingClientRect: () => ({ top: top - moved(), bottom: top + 96 - moved(), height: 96 }),
+    },
+  };
+}
+const openKeyboard = (state, field) => {
+  state.document.activeElement = field;
+  state.document.querySelector = () => null;
+  state.viewport.height = 480;
+  state.handlers.get('resize')();
+};
+
+test('the keyboard scrolls the panel each screen really renders', () => {
+  const shell = readFileSync(new URL('../src/design-system/patterns/AppShell.jsx', import.meta.url), 'utf8');
+  const editor = readFileSync(new URL('../src/pages/admin/AdminModuleEditor.jsx', import.meta.url), 'utf8');
+  assert.match(shell, /className="main-scroll"/);
+  assert.match(editor, /aapm-editor-form aapm-editor-workspace/);
+  assert.match(editor, /className="aapm-editor-scroll/);
+  for (const name of ['main-scroll', 'aapm-editor-workspace', 'aapm-editor-scroll']) {
+    const state = viewportFixture();
+    const { nodes, field } = fieldInside([{ name }]);
+    openKeyboard(state, field);
+    assert.equal(nodes[0].shift, 266, `${name} moves the field above the keyboard`);
+  }
+});
+
+test('an open drawer scrolls itself and leaves the canvas behind it still', () => {
+  const state = viewportFixture();
+  const { nodes, field } = fieldInside([{ name: 'aapm-editor-inspector' }, { name: 'aapm-editor-workspace' }]);
+  openKeyboard(state, field);
+  assert.equal(nodes[0].shift, 266);
+  assert.equal(nodes[1].shift, 0);
+});
+
+test('a panel with nothing to scroll hands over to the panel that holds it', () => {
+  const state = viewportFixture();
+  const { nodes, field } = fieldInside([{ name: 'aapm-editor-inspector', scrolls: false }, { name: 'aapm-editor-workspace' }]);
+  openKeyboard(state, field);
+  assert.equal(nodes[0].shift, 0);
+  assert.equal(nodes[1].shift, 266);
+});
+
+test('a field outside every scroll panel is left where the browser put it', () => {
+  const state = viewportFixture();
+  const { field } = fieldInside([{ name: 'aapm-ai-floating-panel' }]);
+  assert.doesNotThrow(() => openKeyboard(state, field));
+  assert.equal(state.root.dataset.keyboard, 'open');
+});
