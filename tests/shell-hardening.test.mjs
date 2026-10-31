@@ -60,11 +60,11 @@ test("a collapsed sidebar does not scroll sideways", () => {
 });
 
 test("the APPI launcher rests above the curriculum action bar, not behind it", () => {
-  assert.match(app(), /@media \(max-width: 859px\) and \(min-height: 501px\) \{\n\s*\.app\[data-tone="calm"\]:has\(\.aapm-curriculum-actionbar\) \.launcher \{/);
+  assert.match(app(), /@media \(max-width: 859px\) and \(min-height: 701px\) \{\n\s*\.app\[data-tone="calm"\]:has\(\.aapm-curriculum-actionbar\) \.launcher \{/);
 });
 
 test("the action bar follows the page on a short screen instead of taking the reading room", () => {
-  assert.match(curriculum(), /@media \(max-width: 859px\) and \(max-height: 500px\) \{\n\s*\.aapm-curriculum-actionbar \{ position: static; \}/);
+  assert.match(curriculum(), /@media \(max-width: 859px\) and \(max-height: 700px\) \{\n\s*\.aapm-curriculum-actionbar \{ position: static; \}/);
 });
 
 test("the app opens in light mode until the learner chooses dark", () => {
