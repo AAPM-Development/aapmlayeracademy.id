@@ -77,7 +77,7 @@ export default function AdminQuickSearch() {
 
   return (
     <>
-      <CommandTrigger label="Cari peserta atau modul" onOpen={openPalette} width={300} />
+      <CommandTrigger label="Cari peserta atau modul" onOpen={openPalette} />
       <SearchPalette
         open={open}
         onOpenChange={setOpen}

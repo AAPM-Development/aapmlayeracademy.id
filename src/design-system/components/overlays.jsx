@@ -4,13 +4,38 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import * as DropdownPrimitive from "@radix-ui/react-dropdown-menu";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import AapmIcon from "@/components/icons/AapmIcon";
-import { cn } from "@/lib/utils";
+import { cn, hasFinePointer } from "@/lib/utils";
 import { Ic } from "../canvas";
 import { Button } from "./actions";
 
 // Canvas overlays (academy.css §12): scrim → dialog → menu on one z ladder.
 // The canvas draws them inside a board; academy-app.css fixes them to the
 // viewport and adds the open/close motion.
+
+/**
+ * Radix returns focus only to its own Trigger, and most overlays here open from app state,
+ * so without this focus falls to the page body on close. Keeps whatever had focus at open.
+ * On touch the panel itself takes focus, so opening it does not raise the keyboard.
+ */
+function useFocusReturn({ onOpenAutoFocus, onCloseAutoFocus }) {
+  const opener = React.useRef(null);
+  return {
+    onOpenAutoFocus: (event) => {
+      opener.current = document.activeElement;
+      onOpenAutoFocus?.(event);
+      if (event.defaultPrevented || hasFinePointer()) return;
+      event.preventDefault();
+      event.target.focus({ preventScroll: true });
+    },
+    onCloseAutoFocus: (event) => {
+      onCloseAutoFocus?.(event);
+      const target = opener.current;
+      if (event.defaultPrevented || !target?.isConnected || target === document.body) return;
+      event.preventDefault();
+      target.focus({ preventScroll: true });
+    },
+  };
+}
 
 function CloseButton({ label, className }) {
   return (
@@ -34,13 +59,14 @@ const DialogOverlay = React.forwardRef(function DialogOverlay({ className, ...pr
 
 /**
  * Modal dialog (`.dialog`). `size` sm | md | lg | xl. On phones dialogs
- * become bottom sheets unless `mobile="center"`. Long forms use DialogBody
- * so the header and footer stay visible while the body scrolls.
+ * become bottom sheets unless `mobile="center"`. The content scrolls inside
+ * `.dialog-scroll`, so the close button, header, and footer stay in view.
  */
 const DialogContent = React.forwardRef(function DialogContent(
   { className, children, size = "md", hideClose = false, closeLabel = "Tutup", mobile, layout, ...props },
   ref,
 ) {
+  const focusReturn = useFocusReturn(props);
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -51,8 +77,9 @@ const DialogContent = React.forwardRef(function DialogContent(
         data-mobile={mobile}
         data-layout={layout}
         {...props}
+        {...focusReturn}
       >
-        {children}
+        <div className="dialog-scroll">{children}</div>
         {!hideClose && <CloseButton label={closeLabel} className="dialog-close" />}
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -83,10 +110,11 @@ const SheetContent = React.forwardRef(function SheetContent(
   { side = "right", className, children, hideClose = false, closeLabel = "Tutup", ...props },
   ref,
 ) {
+  const focusReturn = useFocusReturn(props);
   return (
     <SheetPortal>
       <SheetOverlay />
-      <DialogPrimitive.Content ref={ref} className={cn("sheet sheet-live", className)} data-side={side} {...props}>
+      <DialogPrimitive.Content ref={ref} className={cn("sheet sheet-live", className)} data-side={side} {...props} {...focusReturn}>
         {children}
         {!hideClose && <CloseButton label={closeLabel} className="sheet-close" />}
       </DialogPrimitive.Content>
@@ -94,7 +122,7 @@ const SheetContent = React.forwardRef(function SheetContent(
   );
 });
 
-const SheetHeader = ({ className, ...props }) => <div className={cn("sheet-head", className)} {...props} />;
+const SheetHeader = ({ className, ...props }) => <div className={cn("sheet-head sheet-head-stack", className)} {...props} />;
 const SheetBody = ({ className, ...props }) => <div className={cn("sheet-body", className)} {...props} />;
 const SheetFooter = ({ className, ...props }) => <div className={cn("sheet-foot", className)} {...props} />;
 const SheetTitle = DialogTitle;
@@ -109,7 +137,8 @@ const AlertDialogOverlay = React.forwardRef(function AlertDialogOverlay({ classN
   return <AlertDialogPrimitive.Overlay ref={ref} className={cn("scrim scrim-live", className)} {...props} />;
 });
 
-const AlertDialogContent = React.forwardRef(function AlertDialogContent({ className, size = "sm", ...props }, ref) {
+const AlertDialogContent = React.forwardRef(function AlertDialogContent({ className, size = "sm", children, ...props }, ref) {
+  const focusReturn = useFocusReturn(props);
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -119,7 +148,10 @@ const AlertDialogContent = React.forwardRef(function AlertDialogContent({ classN
         data-size={size}
         data-mobile="center"
         {...props}
-      />
+        {...focusReturn}
+      >
+        <div className="dialog-scroll">{children}</div>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 });

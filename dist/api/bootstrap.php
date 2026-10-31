@@ -1051,16 +1051,16 @@ function default_course_module_video_urls(): array
 {
     return [
         1 => 'https://www.youtube.com/watch?v=kvz8QQG_mXU',
-        2 => 'https://www.youtube.com/watch?v=hsvid7YhOXU',
-        3 => 'https://www.youtube.com/watch?v=nd5-NiPIC0I',
+        2 => 'https://www.youtube.com/watch?v=zEYm8Yicj24',
+        3 => 'https://www.youtube.com/watch?v=Ust1NkPfzMw',
         4 => 'https://www.youtube.com/watch?v=Z_YYierQRas',
         5 => 'https://www.youtube.com/watch?v=DfI-cjQxIos',
         6 => 'https://www.youtube.com/watch?v=SD72BnoRSck',
-        7 => 'https://www.youtube.com/watch?v=FRGJnDn8BGU',
-        8 => 'https://www.youtube.com/watch?v=QOd_27gFlGk',
-        9 => 'https://www.youtube.com/watch?v=Ust1NkPfzMw',
+        7 => 'https://www.youtube.com/watch?v=kZ4ZoC6RBDg',
+        8 => 'https://www.youtube.com/watch?v=iuDhbyl_TKw',
+        9 => 'https://www.youtube.com/watch?v=mMaDGz9BLm4',
         10 => 'https://www.youtube.com/watch?v=Q9UpOZ_t6eg',
-        11 => 'https://www.youtube.com/watch?v=8FCC6XPLfqw',
+        11 => 'https://www.youtube.com/watch?v=O_iX38dYKtk',
         12 => 'https://www.youtube.com/watch?v=gJYgqGw8ljw',
         13 => 'https://www.youtube.com/watch?v=bE5vhWqDiqU',
         14 => 'https://www.youtube.com/watch?v=ibl923M0i2E',
@@ -1068,10 +1068,10 @@ function default_course_module_video_urls(): array
         16 => 'https://www.youtube.com/watch?v=v8TZ3Gx5edk',
         17 => 'https://www.youtube.com/watch?v=Urx09wfnosE',
         18 => 'https://www.youtube.com/watch?v=2aNSaA4RTec',
-        19 => 'https://www.youtube.com/watch?v=x0xbE03LZxk',
+        19 => 'https://www.youtube.com/watch?v=Awo_wygDTEg',
         20 => 'https://www.youtube.com/watch?v=5QkDT-aCwVk',
-        21 => 'https://www.youtube.com/watch?v=NyoRSGe7SBE',
-        22 => 'https://www.youtube.com/watch?v=I-2NsGXXDnM',
+        21 => 'https://www.youtube.com/watch?v=qim1CdTvHSc',
+        22 => 'https://www.youtube.com/watch?v=F5vtCRFRAK0',
     ];
 }
 
@@ -1887,6 +1887,35 @@ function admin_attach_progress_totals(array $rows): array
     }, $rows);
 }
 
+/**
+ * Certificates held per user: distinct tiers across verified, unrevoked issuances and
+ * historical rows, so a tier held in both records counts once. Revoking a tier also
+ * withdraws its historical row. Points, achievements, and the admin lists read this count.
+ *
+ * @return array<int, int>
+ */
+function learner_certificate_counts(array $userIds): array
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn (int $id): bool => $id > 0)));
+    if ($ids === []) {
+        return [];
+    }
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $statement = db()->prepare("SELECT user_id, COUNT(DISTINCT tier) AS n FROM (
+            SELECT user_id, tier_number AS tier FROM certificate_issuances WHERE status = ? AND user_id IN ({$in})
+            UNION
+            SELECT c.user_id, c.level_number AS tier FROM certificates c WHERE c.user_id IN ({$in})
+                AND NOT EXISTS (SELECT 1 FROM certificate_issuances r WHERE r.user_id = c.user_id AND r.tier_number = c.level_number AND r.status = 'revoked')
+        ) held GROUP BY user_id");
+    $statement->execute(array_merge(['issued'], $ids, $ids));
+    $counts = [];
+    foreach ($statement->fetchAll() as $row) {
+        $counts[(int) $row['user_id']] = (int) $row['n'];
+    }
+
+    return $counts;
+}
+
 /** Verified, unrevoked certificate tiers per user, for the admin learner list. */
 function admin_issued_tiers(array $userIds): array
 {
@@ -2099,10 +2128,8 @@ function admin_learner_list(string $search = ''): array
 function admin_account_list(string $search = ''): array
 {
     $search = trim($search);
-    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version,
-        COALESCE(c.certificate_count, 0) AS certificate_count
-        FROM users u
-        LEFT JOIN (SELECT user_id, COUNT(*) AS certificate_count FROM certificates GROUP BY user_id) c ON c.user_id = u.id';
+    $sql = 'SELECT u.id, u.email, u.full_name, u.role, u.created_at, u.email_verified_at, u.verification_required_at, u.auth_version
+        FROM users u';
     $params = [];
     if ($search !== '') {
         $sql .= ' WHERE (LOWER(u.email) LIKE ? OR LOWER(u.full_name) LIKE ?)';
@@ -2114,9 +2141,11 @@ function admin_account_list(string $search = ''): array
     $statement->execute($params);
     $rows = admin_attach_progress_totals($statement->fetchAll());
     $totalModules = count(admin_module_rows());
-    $issuedTiers = admin_issued_tiers(array_map(static fn (array $row): int => (int) $row['id'], $rows));
+    $rowIds = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+    $issuedTiers = admin_issued_tiers($rowIds);
+    $certificateCounts = learner_certificate_counts($rowIds);
 
-    return array_map(static function (array $row) use ($totalModules, $issuedTiers): array {
+    return array_map(static function (array $row) use ($totalModules, $issuedTiers, $certificateCounts): array {
         $user = present_authenticated_user($row);
         $completed = (int) ($row['completed_modules'] ?? 0);
         $quizTotal = (float) ($row['quiz_total_sum'] ?? 0);
@@ -2127,7 +2156,7 @@ function admin_account_list(string $search = ''): array
             'progressEntries' => (int) ($row['progress_entries'] ?? 0),
             'quizAverage' => $quizTotal > 0 ? max(0, min(100, (int) round(((float) $row['quiz_score_sum'] / $quizTotal) * 100))) : null,
             'lastActivity' => $row['last_activity'] ?? null,
-            'certificateCount' => (int) ($row['certificate_count'] ?? 0),
+            'certificateCount' => $certificateCounts[(int) $row['id']] ?? 0,
             'certificateTiers' => $issuedTiers[(int) $row['id']] ?? [],
         ]);
     }, $rows);
@@ -2279,7 +2308,7 @@ function profile_learning_contexts(array $userIds): array
         }
         return $counts;
     };
-    $certificates = $count('certificates');
+    $certificates = learner_certificate_counts($ids);
     $farm = $count('farm_data');
     $contexts = [];
     foreach ($ids as $id) {
@@ -2304,11 +2333,9 @@ function profile_learning_summary(int $userId, ?array $context = null, bool $rec
         $totals = aapm_learner_progress_aggregates(db(), [$userId])[$userId];
         $completedNumbers = array_column($totals['completions'] ?? [], 'moduleNumber');
         $progress = admin_progress_summary_from_totals($totals, $moduleTotal);
-        $certificateStatement = db()->prepare('SELECT COUNT(*) FROM certificates WHERE user_id = ?');
-        $certificateStatement->execute([$userId]);
         $farmStatement = db()->prepare('SELECT COUNT(*) FROM farm_data WHERE user_id = ?');
         $farmStatement->execute([$userId]);
-        $certificates = (int) $certificateStatement->fetchColumn();
+        $certificates = learner_certificate_counts([$userId])[$userId] ?? 0;
         $farmEntries = (int) $farmStatement->fetchColumn();
     } else {
         $moduleTotal = (int) $context['moduleTotal'];
@@ -3519,6 +3546,8 @@ function present_ai_chat_message(array $row): array
         'thinkingMs' => max(0, (int) ($details['thinkingMs'] ?? 0)),
         'stopped' => (bool) ($details['stopped'] ?? false),
         'interrupted' => (bool) ($details['interrupted'] ?? false),
+        'truncated' => (bool) ($details['truncated'] ?? false),
+        'sources' => is_array($details['sources'] ?? null) ? $details['sources'] : [],
         'processSteps' => array_values(array_filter(is_array($details['steps'] ?? null) ? $details['steps'] : [], 'is_array')),
     ];
 }

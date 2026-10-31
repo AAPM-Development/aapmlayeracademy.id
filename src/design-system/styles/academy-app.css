@@ -9,7 +9,7 @@ body.aapm { margin: 0; min-height: 100vh; min-height: 100dvh; }
 /* The sidebar stays put; the main column owns the only page scroll. */
 .app { height: 100vh; height: 100dvh; min-height: 0; flex-wrap: nowrap; overflow: hidden; }
 .app > .side { min-height: 0; transition: flex-basis var(--dur) var(--ease), max-width var(--dur) var(--ease); }
-.side-brand > a { display: flex; align-items: center; min-width: 0; border-radius: var(--r-sm); }
+.side-brand > a { display: flex; align-items: center; min-width: 0; min-height: var(--h-sm); border-radius: var(--r-sm); }
 .side-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .main { position: relative; min-height: 0; }
 .main-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: var(--s-4); }
@@ -29,6 +29,7 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
 .side[data-collapsed="true"] { flex-basis: 72px; max-width: 72px; }
 .side[data-collapsed="true"] .side-brand { justify-content: center; padding: 0; }
 .side[data-collapsed="true"] .side-brand > a { display: none; }
+.side[data-collapsed="true"] .side-brand[data-rail="true"] > a { display: flex; }
 .side[data-collapsed="true"] .side-body { padding-inline: var(--s-3); align-items: center; }
 .side[data-collapsed="true"] .nav-label,
 .side[data-collapsed="true"] .nav-text,
@@ -40,6 +41,31 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
 .side[data-collapsed="true"] .nav-item { justify-content: center; width: var(--h-lg); padding: 0; }
 .side[data-collapsed="true"] .journey { padding: var(--s-1-5); align-items: center; }
 .side[data-collapsed="true"] .ctx-switch { grid-template-columns: 1fr; }
+
+/* A collapsed rail never scrolls sideways: the journey ring is wider than its padded column. */
+.side[data-collapsed="true"] .side-body { overflow-x: hidden; }
+
+/* The search gives way in a narrow topbar so the account control stays on screen. */
+.topbar > .cmd { flex: 0 1 440px; width: auto; min-width: 0; }
+.topbar:has(> .cmd) > .ml-auto { flex: none; }
+/* Admin topbar: the search shrinks first, so the breadcrumb keeps the page's name. */
+.topbar:has(> .crumbs) > .ml-auto { flex: 0 8 auto; min-width: 0; }
+.topbar > .ml-auto > .cmd { flex: 1 1 300px; width: 300px; min-width: 120px; }
+@media (max-width: 1180px) { .topbar > .ml-auto > .cmd .kbd { display: none; } }
+.topbar-account .t-clamp-1 { max-width: 11rem; }
+@media (max-width: 1023px) {
+  .topbar > .cmd .kbd { display: none; }
+  .topbar-account > :not(.avatar) { display: none; }
+}
+
+/* The navigation sheet: one column the sheet's height, with .side-body as its scroll owner. */
+.aapm-nav-sheet { display: flex; flex-direction: column; }
+.aapm-nav-sheet .side { flex: 1 1 auto; max-width: none; min-height: 0; border-right: 0; }
+.aapm-nav-sheet .side-brand { padding-right: calc(var(--s-4) + var(--h-md)); }
+
+/* Titles carry learner and module names: a long unbroken one wraps instead of widening the page. */
+:is(h1, h2, h3, h4), .ph-title, .ph-desc, .sh-title { overflow-wrap: anywhere; }
+.m-top > .grow { min-width: 0; }
 
 /* Route progress sits on the topbar edge while a lazy route loads. */
 .main > .aapm-route-progress { z-index: var(--z-sticky); }
@@ -70,6 +96,25 @@ a.journey:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--sur
   .app .m-nav { bottom: calc(8px + env(safe-area-inset-bottom)); }
   .app .main-scroll { padding-bottom: env(safe-area-inset-bottom); }
 }
+/* Phone chrome: bars keep their height, their controls reach a 40px target. */
+@media (max-width: 860px), (pointer: coarse) {
+  /* iOS zooms the page on focus below 16px, so every field stays at that size on touch. */
+  .input > input, .input > textarea, input.input, .textarea, .select, .search > input, .composer textarea, .appi-panel .composer textarea { font-size: var(--fs-lg); }
+  .input, input.input, .select, .search { min-height: var(--h-lg); }
+  .menu-item { min-height: var(--h-lg); }
+  .check { min-height: var(--h-lg); align-items: center; }
+  .m-top > a:first-child { width: var(--h-md); height: var(--h-md); justify-content: center; margin-inline: -5px; }
+  .m-top .xp { height: var(--h-md); }
+  .focus-bar .btn-sm, .focus-foot .btn-sm { height: var(--h-md); min-height: var(--h-md); }
+  .focus-bar .btn-sm.btn-icon { width: var(--h-md); }
+  .focus-bar [role="tab"] { min-height: var(--h-md); }
+}
+/* Five tabs on the narrowest phone: the long admin labels need the whole cell. */
+@media (max-width: 360px) { .m-nav { padding-inline: 2px; } .m-nav > a, .m-nav > button { font-size: 11px; font-weight: 700; } }
+/* The fixed curriculum bar sits above the bottom nav, so the launcher's rest does too. */
+@media (max-width: 859px) and (min-height: 701px) {
+  .app[data-tone="calm"]:has(.aapm-curriculum-actionbar) .launcher { bottom: calc(188px + env(safe-area-inset-bottom)); }
+}
 
 /* --------------------------------------------------------------- APPI rig */
 .appi-gesture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; max-width: none; }
@@ -88,6 +133,7 @@ a.reward, a.li, a.card { color: inherit; text-decoration: none; }
 a.li { transition: background-color var(--dur-fast) var(--ease); }
 a.li:hover { background: var(--surface-subtle); }
 .unit-banner .chip { background: rgba(255,255,255,.92); color: var(--h-ink); }
+:is(.dark .aapm, .aapm[data-theme="dark"]) .unit-banner .chip { background: var(--surface); }
 .unit-banner .chip.chip-ai { background: var(--ai-soft); color: var(--ai-ink); }
 
 /* ---------------------------------------------------------------- Lesson */
@@ -118,7 +164,7 @@ a.li:hover { background: var(--surface-subtle); }
 .check-feedback { flex: 1 1 260px; min-width: 0; max-width: 760px; }
 .check-more { align-self: flex-start; height: auto; }
 .quiz-action { flex: none; }
-.exam-eggs { display: grid; grid-template-columns: repeat(11, minmax(36px, 1fr)); gap: var(--s-3) var(--s-1); justify-items: center; min-width: 440px; padding: var(--s-2) 0 var(--s-1); }
+.exam-eggs { display: grid; grid-template-columns: repeat(12, minmax(36px, 1fr)); gap: var(--s-3) var(--s-1); justify-items: center; min-width: 480px; padding: var(--s-2) 0 var(--s-1); }
 .exam-medal { position: absolute; right: 16px; bottom: 4px; width: 76px; height: 76px; color: var(--on-gold); z-index: var(--z-badge); }
 .focus-foot .appi-stage { flex: none; }
 .answer-review > summary { cursor: pointer; list-style: none; }
@@ -156,17 +202,37 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 /* ------------------------------------------------------------------ APPI */
 /* The chat page fills the main column: history rail, chat, composer dock. */
 .app.aapm-app--chat .main-scroll { overflow: hidden; display: flex; flex-direction: column; }
-.app.aapm-app--chat .main-scroll > .aapm-ai-workspace { flex: 1 1 auto; min-height: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
-.appi-history { width: 288px; flex: none; gap: var(--s-4); padding: var(--s-4) var(--s-3); background: var(--surface); border-right: 1px solid var(--border); }
+/* The next tier's slot closes the certificate grid on its own row, whatever the column count. */
+.cert-next-slot { grid-column: 1 / -1; }
+/* A quiet room: one history rail, one reading column, and the composer as the only raised object. */
+.app.aapm-app--chat .main-scroll > .aapm-ai-workspace { flex: 1 1 auto; min-height: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--surface); }
+.appi-history { width: 272px; flex: none; gap: var(--s-3); padding: var(--s-3); background: var(--surface-subtle); border-right: 0; }
 .appi-history-head { padding: 0 var(--s-1); }
-.appi-chat-head { height: 56px; padding: 0 var(--s-6); flex: none; }
+.appi-chat-head { gap: var(--s-2); height: 52px; padding: 0 var(--s-4); flex: none; border-bottom: 0; background: transparent; box-shadow: none; }
+.appi-chat-head h1 { min-width: 0; font-size: var(--fs-ui); }
 .appi-chat-head .tile .appi-rig { --s: 30px; }
-.appi-transcript-col { width: 100%; max-width: 824px; margin: 0 auto; padding: var(--s-8) var(--page-px) var(--s-4); display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
-.appi-welcome { width: 100%; max-width: 776px; margin: 0 auto; padding-top: var(--s-4); }
-.appi-starter { text-align: left; }
-.appi-dock { flex: none; padding: var(--s-2) var(--page-px) var(--s-5); }
-.appi-dock-col { max-width: 776px; margin: 0 auto; }
+.appi-transcript-col { width: 100%; max-width: 880px; margin: 0 auto; padding: var(--s-5) var(--s-6) var(--s-4); display: flex; flex-direction: column; gap: var(--s-6); min-width: 0; }
+/* An empty chat sits in the middle of the room; the first message sends the composer to the floor. */
+.appi-transcript-col:has(> .appi-welcome) { min-height: 100%; justify-content: center; }
+.appi-welcome { width: 100%; max-width: 720px; margin: 0 auto; }
+.appi-suggest-grid { display: grid; gap: var(--s-2); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 560px) { .appi-suggest-grid { grid-template-columns: minmax(0, 1fr); } }
+.appi-suggest { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); min-width: 0; padding: var(--s-3); border: var(--bw) solid var(--border); border-radius: var(--r-panel); background: var(--surface); color: var(--fg); font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.appi-suggest:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
+.appi-suggest:active { transform: translateY(1px); }
+.appi-dock { flex: none; padding: var(--s-1) var(--s-6) var(--s-2); background: var(--surface); }
+.appi-dock-col { max-width: 832px; margin: 0 auto; }
+.aapm-ai-workspace__main .composer { padding: var(--s-3) var(--s-3) var(--s-2) var(--s-5); border-color: var(--border); border-radius: var(--r-surface); box-shadow: var(--shadow-card); }
+.aapm-ai-workspace__main .msg-user { max-width: 70%; padding: 10px 16px; border: 0; border-radius: var(--r-surface); background: var(--surface-2); box-shadow: none; }
 .msg-user { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* A running chat hands the height to the transcript: one line to type, the tools beneath it. */
+.composer-docked .composer { gap: var(--s-1); padding: var(--s-2) var(--s-2) var(--s-1-5) var(--s-4); }
+.composer-docked .composer textarea { min-height: 24px; }
+.seg.aapm-history-tabs > button { min-width: 0; padding-inline: var(--s-2); }
+@media (max-width: 380px) { .aapm-ai-workspace__main .composer { padding-left: var(--s-3); } }
+/* A short landscape screen keeps the composer above the fold, so the mascot gives way. */
+@media (max-height: 520px) { .appi-welcome .appi-rig { display: none; } }
+.appi-chat-back { display: none; }
 .msg-photo { align-self: flex-end; width: 220px; max-height: 220px; object-fit: cover; padding: 0; }
 .msg-appi > .appi-rig { margin-top: 2px; }
 .msg-text { font-size: var(--fs-ui); line-height: 26px; text-wrap: pretty; overflow-wrap: anywhere; }
@@ -174,6 +240,13 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .msg-text ol { list-style: decimal; padding-left: 22px; }
 .msg-text ul { list-style: disc; padding-left: 22px; }
 .msg-text li + li { margin-top: 6px; }
+.msg-body .msg-text li + li { margin-top: 0; }
+.aapm-ai-sources { display: flex; flex-direction: column; gap: var(--s-1); }
+.msg-body .aapm-ai-sources__list, .aapm-ai-sources__list { display: flex; flex-flow: row wrap; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.aapm-ai-status-line .btn-link { min-height: 0; height: auto; font-size: inherit; }
+.aapm-ai-sources__list > li { min-width: 0; max-width: 100%; }
+.aapm-ai-sources__list a { display: inline-flex; align-items: center; gap: var(--s-1); max-width: 260px; min-height: var(--h-sm); padding: 0 var(--s-2); border: var(--bw) solid var(--border); border-radius: var(--r-pill); color: var(--fg); font-size: var(--fs-xs); text-decoration: none; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.aapm-ai-sources__list a:hover { background: var(--surface-subtle); border-color: var(--border-strong); }
 .msg-text strong { font-weight: 600; }
 .msg-text :where(h2, h3, h4) { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-lg); line-height: 24px; }
 .msg-text table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
@@ -183,6 +256,7 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .answer-actions { margin-left: -12px; align-items: center; }
 .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ai); }
 .composer { min-width: 0; }
+.composer-foot .send { margin-left: auto; }
 .composer textarea { color: var(--fg); }
 .composer textarea::placeholder { color: var(--subtle); }
 .composer:focus-within { border-color: color-mix(in srgb, var(--ai) 45%, var(--border-strong)); box-shadow: var(--shadow-card), 0 0 0 3px var(--ai-soft); }
@@ -216,7 +290,8 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .appi-status-dot[data-state="saving"] { background: var(--amber); }
 .appi-status-dot[data-state="attention"] { background: var(--danger); }
 .appi-quick { width: 100%; border: 0; background: none; text-align: left; cursor: pointer; padding: var(--s-2) var(--s-4); }
-.appi-quick:hover, .appi-quick:focus-visible { background: var(--surface-subtle); outline: none; }
+.appi-quick:hover, .appi-quick:focus-visible { background: var(--surface-subtle); }
+.appi-quick:focus-visible, .palette-row:focus-visible { outline-offset: -2px; }
 .msg-user-sm { max-width: 86%; padding: 8px 12px; font-size: var(--fs-md); line-height: 22px; border-radius: 16px 16px 6px 16px; }
 .msg-appi-sm { grid-template-columns: 24px minmax(0, 1fr); gap: 10px; }
 .msg-text-sm { font-size: var(--fs-md); line-height: 22px; }
@@ -228,8 +303,19 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 760px) { .show-sm { display: revert !important; } }
 @media (max-width: 860px) {
   .appi-chat-head { padding: 0 var(--s-2) 0 var(--s-4); }
-  .appi-transcript-col { padding: var(--s-5) var(--s-4) var(--s-4); }
-  .appi-dock { padding: var(--s-2) var(--s-3) calc(84px + env(safe-area-inset-bottom)); }
+  .appi-transcript-col { padding: var(--s-4) var(--s-4) var(--s-3); }
+  .aapm-ai-workspace__main .msg-user { max-width: 86%; }
+  /* A phone conversation runs full screen on one header, like a messaging app. The bottom
+     nav returns on the empty chat and through the back button. */
+  .appi-dock { padding: var(--s-1) var(--s-3) calc(var(--s-2) + env(safe-area-inset-bottom)); }
+  .app.aapm-app--chat:has(.appi-dock) .m-top, .app.aapm-app--chat:has(.appi-dock) .m-nav { display: none; }
+  .app.aapm-app--chat:has(.appi-dock) .appi-chat-back { display: inline-flex; }
+  .app.aapm-app--chat:has(.appi-dock) .appi-chat-head { padding-left: var(--s-1); }
+}
+@media (max-width: 560px) {
+  /* The avatar's gutter goes back to the text; the header keeps APPI on screen. */
+  .aapm-ai-workspace__main .msg-appi { display: block; }
+  .aapm-ai-workspace__main .msg-appi > .appi-rig { display: none; }
 }
 
 /* ------------------------------------------------------------ Page frame */
@@ -245,6 +331,8 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 .focus-foot { position: relative; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 .outline-item { text-decoration: none; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
 .outline-item:hover:not(.is-current) { background: var(--surface-subtle); }
+/* The rail clips anything drawn outside it, so the ring sits inside the link. */
+.outline-item:focus-visible { outline-offset: -2px; }
 .toc-link { text-decoration: none; }
 .toc-link:hover:not(.is-active) { background: var(--surface-subtle); color: var(--fg); }
 @media (max-width: 760px) {
@@ -254,6 +342,8 @@ button.card { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------------------------------------------------------------- Forms */
 .input, .textarea, .select, .search { transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.input:hover:not(:focus-within), .textarea:hover:not(:focus), .select:hover:not(:focus):not(:disabled), .search:hover:not(:focus-within) { border-color: var(--border-strong); }
+.textarea { resize: vertical; }
 input.input { display: block; }
 .input:focus-within, input.input:focus, .textarea:focus, .select:focus, .select[data-state="open"], .search:focus-within {
   outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
@@ -294,42 +384,56 @@ input.input { display: block; }
 
 /* -------------------------------------------------------------- Overlays */
 .scrim-live { position: fixed; inset: 0; z-index: var(--z-overlay); }
-.dialog.dialog-live { position: fixed; z-index: var(--z-dialog); max-height: calc(100dvh - 48px); overflow: auto; padding: var(--s-6); }
+.dialog.dialog-live { position: fixed; z-index: var(--z-dialog); display: flex; flex-direction: column; max-height: calc(100dvh - 48px); overflow: hidden; padding: 0; gap: 0; --dialog-pad: var(--s-6); }
 .dialog-live[data-size="sm"] { width: min(400px, calc(100% - 32px)); }
 .dialog-live[data-size="lg"] { width: min(640px, calc(100% - 32px)); }
 .dialog-live[data-size="xl"] { width: min(820px, calc(100% - 32px)); }
-.dialog-live:has(> .dialog-body) { overflow: hidden; display: flex; flex-direction: column; }
-.dialog-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s-4); margin: 0 calc(var(--s-6) * -1); padding: 2px var(--s-6); }
+.dialog-scroll { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--s-4); padding: var(--dialog-pad); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.dialog-live.p-0 > .dialog-scroll { --dialog-pad: 0px; gap: 0; }
+.dialog-scroll:has(> .dialog-body) { overflow: hidden; }
+.dialog-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--s-4); margin: 0 calc(var(--dialog-pad) * -1); padding: 2px var(--dialog-pad); }
 .dialog-head { padding-right: var(--s-8); }
-.dialog-close { position: absolute; top: var(--s-4); right: var(--s-4); }
+/* Title and actions stay in view while a long body scrolls under them. */
+.dialog-scroll > .dialog-head { position: sticky; top: calc(var(--dialog-pad) * -1); z-index: var(--z-raise); margin: calc(var(--dialog-pad) * -1) calc(var(--dialog-pad) * -1) 0; padding: var(--dialog-pad) calc(var(--dialog-pad) + var(--s-8)) var(--s-2) var(--dialog-pad); background: var(--surface); }
+.dialog-scroll > .dialog-foot { position: sticky; bottom: calc(var(--dialog-pad) * -1); z-index: var(--z-raise); margin: 0 calc(var(--dialog-pad) * -1) calc(var(--dialog-pad) * -1); padding: var(--s-3) var(--dialog-pad) var(--dialog-pad); background: var(--surface); }
+.dialog-close { position: absolute; top: var(--s-4); right: var(--s-4); z-index: var(--z-decor); }
 .dialog:focus { outline: none; }
 .sheet.sheet-live { position: fixed; z-index: var(--z-dialog); top: 0; bottom: 0; right: 0; overflow: hidden; }
 .sheet-live[data-side="left"] { left: 0; right: auto; }
 .sheet-live[data-side="bottom"] { top: auto; left: 0; width: 100%; max-height: 86dvh; border-radius: var(--r-surface) var(--r-surface) 0 0; }
-.sheet-body { overflow-y: auto; min-height: 0; }
+.sheet-body { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; min-height: 0; padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); }
+.sheet-foot { flex: none; padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); background: var(--surface); }
 .sheet-close { position: absolute; top: var(--s-4); right: var(--s-4); z-index: var(--z-raise); }
 .sheet-head { padding-right: calc(var(--s-6) + var(--s-8)); }
+.sheet-head-stack { flex-direction: column; justify-content: flex-start; gap: var(--s-1); }
 .sheet:focus { outline: none; }
-.menu-pop { z-index: var(--z-menu); max-height: min(var(--radix-dropdown-menu-content-available-height, 420px), 420px); overflow-y: auto; }
+.menu-pop { z-index: var(--z-menu); max-width: calc(100vw - 16px); max-height: min(var(--radix-dropdown-menu-content-available-height, 420px), 420px); overflow-y: auto; overscroll-behavior: contain; }
 .menu-pop[data-select] { min-width: var(--radix-select-trigger-width); max-height: var(--radix-select-content-available-height, 320px); }
 .menu-viewport { display: flex; flex-direction: column; gap: 2px; }
-.menu-item { cursor: pointer; color: var(--fg); text-decoration: none; outline: none; }
+.menu-item { height: auto; min-height: 36px; padding-block: 6px; cursor: pointer; color: var(--fg); text-decoration: none; outline: none; overflow-wrap: anywhere; }
 .menu-item[data-highlighted], .menu-item:focus-visible { background: var(--surface-2); }
 .menu-item[data-disabled] { opacity: .5; cursor: not-allowed; }
 .menu-item.is-danger[data-highlighted] { background: var(--danger-surface); }
+/* A select keeps its choice visible when it opens, not only the small check. */
+.menu-item[data-select][data-state="checked"] { background: var(--primary-soft); color: var(--primary-ink); font-weight: 600; }
 .menu-check { display: grid; place-items: center; width: 16px; flex: none; color: var(--primary-ink); }
 .menu-inset { padding-left: 32px; }
-.popover { z-index: var(--z-menu); padding: var(--s-4); width: min(320px, calc(100vw - 32px)); }
-.tip-live { z-index: var(--z-menu); }
-.palette { gap: var(--s-3); padding: var(--s-4); }
+.popover { z-index: var(--z-menu); padding: var(--s-4); width: min(320px, calc(100vw - 32px)); max-height: var(--radix-popover-content-available-height, 70dvh); overflow-y: auto; overscroll-behavior: contain; }
+.tip-live { z-index: var(--z-menu); max-width: min(260px, calc(100vw - 16px)); overflow-wrap: anywhere; }
+.palette { --dialog-pad: var(--s-4); }
+.palette > .dialog-scroll { gap: var(--s-3); overflow: hidden; }
 .palette .dialog-close { display: none; }
 .palette-results { display: flex; flex-direction: column; gap: var(--s-4); max-height: min(60dvh, 480px); overflow-y: auto; margin: 0 calc(var(--s-4) * -1); padding: 0 var(--s-4) var(--s-1); }
 .palette-row { width: 100%; border: 0; background: none; text-align: left; cursor: pointer; border-radius: var(--r-ctl); padding-inline: var(--s-2); }
-.palette-row:hover, .palette-row:focus-visible { background: var(--surface-subtle); outline: none; }
+.palette-row:hover, .palette-row:focus-visible { background: var(--surface-subtle); }
 .palette .list > .li { border-top: 0; min-height: 52px; }
 .palette-status { padding: var(--s-4) var(--s-2); }
 @media (max-width: 640px) {
-  .dialog.dialog-live:not([data-mobile="center"]) { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: 100%; max-height: 90dvh; border-radius: var(--r-surface) var(--r-surface) 0 0; padding-bottom: calc(var(--s-6) + env(safe-area-inset-bottom)); }
+  .dialog.dialog-live:not([data-mobile="center"]) { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: 100%; max-height: 90dvh; border-radius: var(--r-surface) var(--r-surface) 0 0; --dialog-pad: var(--s-5); }
+  .dialog.dialog-live:not([data-mobile="center"]) > .dialog-scroll { padding-bottom: calc(var(--dialog-pad) + env(safe-area-inset-bottom)); }
+  .dialog-foot > .btn, .sheet-foot > .btn { flex: 1 1 calc(50% - var(--s-3)); }
+  /* A form drawer holds its height, so the sheet does not jump as errors appear. */
+  .sheet-live[data-side="right"]:not(.aapm-nav-sheet) { height: 92dvh; max-height: 92dvh; }
   .sheet.sheet-live { top: auto; left: 0; width: 100%; max-height: 86dvh; border-radius: var(--r-surface) var(--r-surface) 0 0; }
 }
 @keyframes scrim-in { from { opacity: 0; } }
@@ -339,6 +443,9 @@ input.input { display: block; }
 @keyframes sheet-in-right { from { transform: translateX(100%); } }
 @keyframes sheet-in-left { from { transform: translateX(-100%); } }
 @keyframes sheet-in-up { from { transform: translateY(100%); } }
+@keyframes sheet-out-right { to { transform: translateX(100%); } }
+@keyframes sheet-out-left { to { transform: translateX(-100%); } }
+@keyframes sheet-out-down { to { transform: translateY(100%); } }
 @keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(.96); } }
 .scrim-live[data-state="open"] { animation: scrim-in var(--dur) var(--ease); }
@@ -348,14 +455,26 @@ input.input { display: block; }
 .sheet-live[data-state="open"] { animation: sheet-in-right 280ms var(--ease); }
 .sheet-live[data-side="left"][data-state="open"] { animation-name: sheet-in-left; }
 .sheet-live[data-side="bottom"][data-state="open"] { animation-name: sheet-in-up; }
+.sheet-live[data-state="closed"] { animation: sheet-out-right var(--dur) var(--ease) forwards; }
+.sheet-live[data-side="left"][data-state="closed"] { animation-name: sheet-out-left; }
+.sheet-live[data-side="bottom"][data-state="closed"] { animation-name: sheet-out-down; }
+/* Above phone width a list "sheet" is a centred modal, not a full-width strip along the floor. */
+@media (min-width: 641px) {
+  .sheet.sheet-live[data-side="bottom"] { top: 50%; bottom: auto; left: 50%; right: auto; width: min(640px, calc(100% - 32px)); max-height: calc(100dvh - 48px); transform: translate(-50%, -50%); border-radius: var(--r-surface); }
+  .sheet-live[data-side="bottom"][data-state="open"] { animation-name: dialog-in; animation-timing-function: var(--ease-spring); }
+  .sheet-live[data-side="bottom"][data-state="closed"] { animation-name: dialog-out; animation-duration: var(--dur-fast); }
+}
 .menu-pop[data-state="open"], .tip-live[data-state="delayed-open"] { animation: menu-in var(--dur-fast) var(--ease); }
 @media (max-width: 640px) {
   .dialog-live:not([data-mobile="center"])[data-state="open"], .sheet-live[data-state="open"] { animation: sheet-in-up 280ms var(--ease); }
-  .dialog-live:not([data-mobile="center"])[data-state="closed"] { animation: none; }
+  .dialog-live:not([data-mobile="center"])[data-state="closed"], .sheet-live[data-state="closed"] { animation: sheet-out-down var(--dur-fast) var(--ease) forwards; }
 }
 
 /* ------------------------------------------------------------ Feedback */
-.toast-region { position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: calc(var(--z-menu) + 1); display: flex; flex-direction: column; gap: var(--s-2); pointer-events: none; }
+.toast-region { position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: calc(var(--z-menu) + 1); display: flex; flex-direction: column; gap: var(--s-2); max-width: calc(100vw - var(--s-8)); pointer-events: none; }
+/* Toasts clear the shell's own bottom chrome: the APPI launcher and the focus action bar. */
+:root:has(.launcher-fixed) .toast-region { bottom: calc(var(--s-6) + 76px); }
+:root[data-shell="focus"] .toast-region { bottom: calc(var(--aapm-focus-footer-height, 0px) + var(--s-4)); }
 .toast-live { pointer-events: auto; animation: toast-in 320ms var(--ease-spring); }
 .toast-live[data-leaving="true"] { opacity: 0; transform: translateY(6px); transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease); }
 .toast[data-tone="danger"] > .ic { color: var(--rose-tint); }
@@ -364,7 +483,11 @@ input.input { display: block; }
 .toast-action { color: var(--primary-tint); height: auto; }
 .toast-close { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin: -4px -4px 0 0; border: 0; border-radius: var(--r-sm); background: transparent; color: inherit; opacity: .7; cursor: pointer; }
 .toast-close:hover { opacity: 1; background: rgba(255,255,255,.08); }
-@media (max-width: 860px) { .toast-region { left: var(--s-4); right: var(--s-4); bottom: calc(88px + env(safe-area-inset-bottom)); } .toast { width: 100%; } }
+@media (max-width: 860px) {
+  .toast-region, :root:has(.launcher-fixed) .toast-region { left: var(--s-4); right: var(--s-4); bottom: calc(88px + env(safe-area-inset-bottom)); max-width: none; }
+  :root[data-shell="focus"] .toast-region { bottom: calc(var(--aapm-focus-footer-height, 0px) + var(--s-3)); }
+  .toast { width: 100%; }
+}
 .state-view { width: 100%; }
 .state-view.card-dashed { padding: 40px 24px; }
 .state-view.state-compact { padding: 24px 16px; gap: 6px; }
@@ -372,6 +495,12 @@ input.input { display: block; }
 .state-view .appi-stage { margin-bottom: var(--s-1); }
 .state-actions { margin-top: var(--s-2); }
 .typing[data-size="lg"] > i { width: 9px; height: 9px; }
+/* Alert: the tone sits on a round icon plate, so the message reads as text and not as a filled block. */
+.alert { align-items: center; padding: var(--s-3) var(--s-4); }
+.alert > .aapm-icon, .alert > .ic { flex: none; margin-top: 1px; }
+.alert > :not(.aapm-icon, .ic, .alert-action) { flex: 1 1 0; min-width: 0; }
+.alert:has(.alert-title) { align-items: flex-start; }
+.alert-title { line-height: 20px; }
 .alert-action { margin-left: auto; align-self: center; }
 @media (max-width: 640px) { .alert { flex-wrap: wrap; } .alert-action { margin-left: 30px; } }
 
@@ -393,7 +522,6 @@ input.input { display: block; }
 }
 .metric-chart { margin: 4px -16px -16px; }
 .metric-chart .spark { height: 36px; }
-.tabs-content:focus-visible { outline: none; }
 
 /* ------------------------------------------------------------ Accordion */
 .accordion-item { border-top: 1px solid var(--border); }
@@ -415,8 +543,10 @@ input.input { display: block; }
   .scrim-live, .dialog-live, .sheet-live, .menu-pop, .toast-live, .tip-live { animation: none !important; }
 }
 
-/* Tabs scroll sideways only; the 2px indicator must not raise a vertical scrollbar. */
-.tabs { overflow-y: hidden; }
+/* Tabs scroll sideways only. overflow-y clips at the padding box, so the rule is an inset
+   shadow and the tab stays inside it; otherwise the active indicator loses 2 of its 3 px. */
+.tabs { overflow-y: hidden; border-bottom: 0; box-shadow: inset 0 -2px 0 var(--border); }
+.tab { margin-bottom: 0; }
 
 /* ------------------------------------------------------------------ auth
  * Canvas Login/Register/AuthStates: form column + always-dark brand panel. */
@@ -432,14 +562,15 @@ input.input { display: block; }
 .auth-brand-video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .auth-brand-frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, .55)); pointer-events: none; }
 .auth-brand-foot { position: relative; z-index: 1; }
+.auth-brand-appi { position: relative; z-index: 1; align-self: center; margin-bottom: auto; }
 .auth-brand-foot figcaption { flex-wrap: wrap; }
 .auth-brand-foot figcaption > span:last-child { margin-left: auto; }
 @media (max-height: 700px) {
   .auth-main { padding-top: var(--s-6); }
   .auth-main > .auth-col:first-child { gap: var(--s-5); }
-  .auth-brand-foot > .appi-stage { display: none; }
   .auth-brand-foot figure { padding: var(--s-4); gap: var(--s-3); }
 }
+@media (max-height: 520px) { .auth-brand-appi { display: none; } }
 
 /* Canvas system pages: one card, centred on the page or in the shell. */
 .status-card { width: min(420px, 100%); min-height: 420px; }
@@ -451,6 +582,7 @@ input.input { display: block; }
  * own, so the bar and footer never move. */
 .aapm-editor-focus .focus-bar > .seg { flex: none; }
 .aapm-editor-focus .focus-bar .seg [role="tab"] { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 900px) { .aapm-editor-focus .focus-bar .seg [role="tab"] .ic { display: none; } }
 .aapm-editor-stage { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .aapm-editor-stage > .editor-notices { flex: none; max-height: 42vh; overflow-y: auto; margin: 0; padding: var(--s-3) var(--s-4); border-radius: 0; border-width: 0 0 1px; background: var(--bg); }
 .aapm-editor-stage > .alert.editor-notices { background: var(--warning-surface); }
@@ -474,7 +606,8 @@ input.input { display: block; }
   .aapm-editor-focus .aapm-editor-inspector { grid-column: auto; overflow-y: auto; }
 }
 @media (max-width: 1199px) {
-  .aapm-editor-focus .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); overflow-y: auto; overscroll-behavior: contain; }
+  /* min-height: 0 lets an auto row collapse below its content, so the stacked canvas would run under the inspector. */
+  .aapm-editor-focus .aapm-editor-workspace { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; overscroll-behavior: contain; }
   .aapm-editor-focus .aapm-editor-canvas { overflow: visible; }
   .aapm-editor-focus .aapm-editor-outline { position: fixed; max-height: min(78svh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: var(--s-3) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); border-right: 0; }
   .aapm-editor-focus .aapm-editor-inspector { border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
@@ -570,7 +703,7 @@ input.input { display: block; }
 .aapm .cover { background: color-mix(in srgb, var(--h) 42%, var(--surface)); }
 .aapm .cover::before { border-color: color-mix(in srgb, var(--h) 34%, transparent); }
 .aapm .cover::after { background: color-mix(in srgb, var(--h) 26%, transparent); }
-.aapm .cover-num { color: color-mix(in srgb, var(--h) 70%, transparent); }
+.aapm .cover-num { color: color-mix(in srgb, var(--h) 65%, var(--fg)); }
 
 /* Navigation and the journey card carry the brand colour with a ledge. */
 .aapm .nav-item.is-active {
@@ -628,6 +761,7 @@ input.input { display: block; }
    is open the nav steps aside so it never floats over the composer. */
 @media (max-width: 860px) {
   .app.aapm-app--chat .main-scroll { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .app.aapm-app--chat:has(.appi-dock) .main-scroll { padding-bottom: 0; }
   html[data-keyboard="open"] .app .m-nav { display: none; }
   html[data-keyboard="open"] .app.aapm-app--chat .main-scroll { padding-bottom: 0; }
 }
@@ -713,7 +847,7 @@ input.input { display: block; }
 .aapm-editor-section-remove { flex: none; align-self: flex-start; }
 
 /* ------------------------------------------------------------ Curriculum, edited in place */
-.curriculum-add { display: grid; gap: var(--s-1-5); }
+.curriculum-add { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1-5); }
 .curriculum-add-row { min-height: 44px; }
 .curriculum-add-egg { background: var(--surface-subtle); color: var(--muted); --egg-ledge: var(--border); }
 .curriculum-add-egg .ic { --ic: 14px; }
@@ -793,6 +927,7 @@ input.input { display: block; }
 .achv-hero-medal { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%; background: var(--gold); color: var(--on-gold); box-shadow: 0 4px 0 var(--gold-ledge); }
 .achv-hero-medal .ic { width: 26px; height: 26px; }
 .achv.is-unlocked { border-color: var(--h); background: var(--h-tint); box-shadow: 0 var(--ledge) 0 var(--h); }
+.achv.is-unlocked .t-muted { color: var(--fg); }
 .achv.is-new { animation: achv-pop .7s cubic-bezier(.2, 1.4, .4, 1) both; box-shadow: 0 var(--ledge) 0 var(--gold-ledge), 0 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent); border-color: var(--gold); }
 @keyframes achv-pop { 0% { transform: scale(.94); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .achv.is-new { animation: none; } }
@@ -833,6 +968,35 @@ input.input { display: block; }
   .composer-foot .switch { gap: 4px; padding: 0 2px !important; font-size: 12px; white-space: nowrap; }
   .composer-foot .composer-sep { margin: 4px 2px !important; }
   .composer .send { width: 34px; height: 34px; }
+}
+@media (max-width: 360px) {
+  .composer-foot { gap: 2px; }
+  .composer-foot .composer-sep { display: none; }
+  .composer-foot .switch { gap: 3px; }
+  .composer-foot .btn.aapm-ai-attachment-control { padding-inline: 4px; }
+  .composer { padding-inline: 10px; }
+}
+
+/* Variable text that can arrive as one long token: model ids, config keys, long words. */
+.t-break, .li-title { overflow-wrap: anywhere; }
+.cover-row .t-heading { overflow-wrap: anywhere; }
+
+/* Mascot art is not square; a square box must not stretch it. */
+.m-appi-btn img, .tile img, .sparkle { object-fit: contain; }
+
+/* A segmented control wider than a phone scrolls inside the toolbar, not past the card. */
+.toolbar > .seg { max-width: 100%; min-width: 0; overflow-x: auto; }
+.toolbar > .seg > * { flex: none; }
+
+/* Public certificate page: phone gutters, so the logo and the action share the width. */
+@media (max-width: 640px) { .verify-topbar { padding-inline: var(--s-4); } }
+
+/* Four or six stat cards fold into even rows instead of leaving one alone. */
+@media (min-width: 640px) and (max-width: 1240px) {
+  .grid-sm:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 640px) {
+  .grid-xs:has(> :nth-child(6):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* Calculator chip strip: still swipeable, without the native scrollbar on phones. */

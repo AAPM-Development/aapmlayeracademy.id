@@ -7,9 +7,9 @@ import { IconTile, Skeleton } from "./display";
 // rows, metric cards, deltas and inline SVG charts.
 
 /* ----------------------------------------------------------------- Table */
-const Table = React.forwardRef(/** @param {any} props @param {any} ref */ function Table({ className = undefined, wrapClassName = undefined, density = undefined, responsive = undefined, ...props }, ref) {
+const Table = React.forwardRef(/** @param {any} props @param {any} ref */ function Table({ className = undefined, wrapClassName = undefined, wrapProps = undefined, density = undefined, responsive = undefined, ...props }, ref) {
   return (
-    <div className={cn("table-wrap", wrapClassName)}>
+    <div className={cn("table-wrap", wrapClassName)} {...wrapProps}>
       <table ref={ref} className={cn("table", className)} data-density={density} data-responsive={responsive} {...props} />
     </div>
   );

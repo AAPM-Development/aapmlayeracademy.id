@@ -75,7 +75,8 @@ export default function AcademyShell() {
   const isAiWorkspace = location.pathname === "/ai-assistant";
   const focus = isFocusRoute(location.pathname);
   const page = getNavigationMeta(location.pathname);
-  const collapsed = collapsedPreference;
+  // The chat room runs on one history rail, so the app navigation folds to icons there.
+  const collapsed = collapsedPreference || isAiWorkspace;
   const accountContext = user?.role === "super_admin" ? "Super Admin Academy" : isAdmin ? "Admin Academy" : "Peserta Layer Farm";
 
   const summary = getProgressSummary(modules, progress, TOTAL_MODULES);
@@ -146,7 +147,7 @@ export default function AcademyShell() {
           sidebar={(
             <Sidebar
               collapsed={collapsed}
-              onToggle={toggleCollapsed}
+              onToggle={isAiWorkspace ? null : toggleCollapsed}
               brandLabel="Beranda Academy"
               label="Navigasi Academy"
               context={<JourneyCard summary={summary} next={next} rank={rank} />}

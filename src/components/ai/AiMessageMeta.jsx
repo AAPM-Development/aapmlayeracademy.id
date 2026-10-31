@@ -2,6 +2,8 @@ import React from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { Button } from "@/components/primitives";
 
+const CONTINUE_PROMPT = "Lanjutkan jawaban sebelumnya dari bagian yang terpotong.";
+
 function providerLabel(message) {
   if (!message?.provider || message.fallback) return "";
   const provider =
@@ -49,6 +51,7 @@ export default function AiMessageMeta({
   if (!showMeta && message?.persisted) return null;
 
   const canRetryProvider = Boolean((message?.fallback || message?.stopped || message?.interrupted) && retryPrompt && onRetry);
+  const canContinue = Boolean(message?.truncated && onRetry);
   const canRetryPersistence = Boolean(
     !message?.persisted &&
       hasContent &&
@@ -94,10 +97,10 @@ export default function AiMessageMeta({
     );
   }
 
-  const cut = Boolean(message?.stopped || message?.interrupted);
-  const warning = Boolean(message?.fallback || !message?.persisted || message?.interrupted);
+  const cut = Boolean(message?.stopped || message?.interrupted || message?.truncated);
+  const warning = Boolean(message?.fallback || !message?.persisted || message?.interrupted || message?.truncated);
   const provider = message.model ? "" : providerLabel(message);
-  const cutLabel = message?.stopped ? "Dihentikan" : "Terputus";
+  const cutLabel = message?.stopped ? "Dihentikan" : message?.truncated ? "Terpotong" : "Terputus";
   const label = cut
     ? `${cutLabel} · ${message.persisted ? "tersimpan" : "belum tersimpan"}`
     : message?.fallback
@@ -122,10 +125,16 @@ export default function AiMessageMeta({
       <span className="min-w-0 truncate">{label}</span>
       {provider && <span className="t-muted t-clamp-1">· {provider}</span>}
       <span className="sr-only">{message.notice || ""}</span>
-      {canRetryProvider && (
+      {canContinue && (
+        <button type="button" onClick={() => onRetry(CONTINUE_PROMPT)} disabled={disabled} className="btn btn-link t-caption">
+          Lanjutkan
+        </button>
+      )}
+      {canRetryProvider && !canContinue && (
         <button
           type="button"
           onClick={() => onRetry(retryPrompt)}
+          disabled={disabled}
           className="btn btn-link t-caption"
         >
           {message?.fallback ? "Coba provider lagi" : "Kirim ulang"}

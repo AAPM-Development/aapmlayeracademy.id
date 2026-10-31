@@ -9,11 +9,18 @@ import CanvasLineChart from "@/components/learn/CanvasChart";
 import { askAppi } from "@/lib/askAppi";
 import { formatMillion, formatNumber, KPI_METRICS, kpiPrompt, readingFor, sortByWeek, toNumber, weeklyReading } from "@/lib/kpiReading";
 import { useFarmData, useSaveFarmData, useDeleteFarmData } from "@/lib/useCourseData";
-import { cn } from "@/lib/utils";
+import { cn, hasFinePointer } from "@/lib/utils";
 
 /** @typedef {{key: string, direction: "asc" | "desc"}} DataTableSort */
 
 const FARM_ENTRY_POINTS_LIMIT = 12;
+
+// The sheet's close button comes first in the DOM; a desktop entry starts on the first field.
+function focusFirstField(event) {
+  if (!hasFinePointer()) return;
+  event.preventDefault();
+  event.target.querySelector("form input:not([disabled])")?.focus();
+}
 
 function emptyForm() {
   return { week: "", henDayProduction: "", eggWeight: "", mortality: "", feedIntake: "", waterIntake: "", temperature: "", humidity: "", revenue: "", cost: "", notes: "" };
@@ -454,7 +461,7 @@ export default function KpiDashboard() {
       )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="right" hideClose aria-describedby="entry-desc">
+        <SheetContent side="right" hideClose aria-describedby="entry-desc" onOpenAutoFocus={focusFirstField}>
           <div className="sheet-head">
             <div className="stack gap-2">
               <div className="stack gap-0-5">

@@ -24,6 +24,19 @@ const AAPM_CERT_TIERS_ACADEMY_V1 = [
     6 => ['name' => 'Layer Poultry Farm Expert', 'modules' => [22], 'final' => true],
 ];
 
+/**
+ * The academy-v2 tier mapping (curriculum v2.0, 23 modules). Installed on a new policy
+ * version by scripts/curriculum/prepare-policy-v2.php; academy-v1 rows are never rewritten.
+ */
+const AAPM_CERT_TIERS_ACADEMY_V2 = [
+    1 => ['name' => 'Layer Poultry Farm Foundation', 'modules' => [1, 2, 3], 'final' => false],
+    2 => ['name' => 'Layer Farm Operator', 'modules' => [4, 5, 6, 7], 'final' => false],
+    3 => ['name' => 'Layer Farm Supervisor', 'modules' => [8, 9, 10, 11, 12, 13, 14], 'final' => false],
+    4 => ['name' => 'Layer Farm Manager', 'modules' => [15, 16, 17, 18, 19], 'final' => false],
+    5 => ['name' => 'Advanced Layer Farm Management', 'modules' => [20, 21], 'final' => false],
+    6 => ['name' => 'Layer Poultry Farm Expert', 'modules' => [22, 23], 'final' => true],
+];
+
 function aapm_cert_ddl(string $driver): array
 {
     if ($driver === 'sqlite') {

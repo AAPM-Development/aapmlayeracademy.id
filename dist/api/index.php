@@ -1127,13 +1127,19 @@ try {
             error_response('Pertanyaan terlalu panjang. Batasi hingga 3.000 karakter.', 422, 'validation_error');
         }
         rate_limit_guard('ai-user', (string) $user['id'], 30, 300, 300);
+        // Counted up front: parallel requests must not all pass while one is still streaming.
+        rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         $includeFarmContext = bool_value($input['includeFarmContext'] ?? (is_array($input['farmContext'] ?? null) ? 1 : 0)) === 1;
         $farmContext = $includeFarmContext ? ai_context_for_user((int) $user['id']) : [];
         $allowWebSearch = bool_value($input['allowWebSearch'] ?? false) === 1;
         $imageDataUrl = ai_normalize_image_data_url($input['imageDataUrl'] ?? null);
         $pageContext = trim((string) ($input['pageContext'] ?? ''));
+        if (ai_user_has_open_final_exam((int) $user['id'])) $pageContext = 'exam';
+        // A retry reuses the question already saved, so it is not recorded twice.
+        $retry = bool_value($input['retry'] ?? false) === 1 ? ai_conversation_retry_turn((int) $conversation['id'], $message) : null;
         // Read before Phase 1 so the new question is not part of its own history.
         $history = ai_conversation_history((int) $conversation['id']);
+        if ($retry !== null) $history = ai_history_before_question($history, $message);
         $accountMemory = ai_account_memory_for_user((int) $user['id'], (int) $conversation['id']);
         $accountContext = ai_account_context_for_user((int) $user['id']);
         // Phase 1 is deliberately short and atomic. The user turn, activity
@@ -1142,7 +1148,7 @@ try {
         $phaseOneDatabase = db();
         try {
             $phaseOneDatabase->beginTransaction();
-            ai_record_chat_message((int) $conversation['id'], 'user', $message);
+            if ($retry === null) ai_record_chat_message((int) $conversation['id'], 'user', $message);
             ai_record_activity(
                 (int) $user['id'],
                 (int) $conversation['id'],
@@ -1168,7 +1174,7 @@ try {
         // account history must remain durable.
         @ignore_user_abort(true);
         try {
-            $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext, $history);
+            $response = ai_assistant_stream($message, $farmContext, $allowWebSearch, $imageDataUrl, $pageContext, $accountMemory, $accountContext, $history, $includeFarmContext);
         } catch (Throwable $exception) {
             error_log('[aapm-ai-stream] ' . $exception->getMessage());
             if (ai_sse_text_emitted()) ai_sse_emit('reset');
@@ -1185,7 +1191,6 @@ try {
         $stopped = !empty($response['stopped']);
         if ($stopped && trim((string) $response['reply']) === '') {
             // Stopped before the first word: nothing to keep, the question stays.
-            rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
             exit;
         }
         if (!$stopped) ai_sse_step('APPI lagi simpan obrolan…', 'Menyimpan ke riwayat', 'Jawaban dan langkah ini disimpan di akunmu.');
@@ -1194,6 +1199,10 @@ try {
         try {
             $database = db();
             $database->beginTransaction();
+            // The new answer replaces the old one only now that it exists.
+            if (($retry['assistantId'] ?? null) !== null) {
+                $database->prepare('DELETE FROM ai_chat_messages WHERE id = ? AND conversation_id = ?')->execute([$retry['assistantId'], (int) $conversation['id']]);
+            }
             ai_record_chat_message((int) $conversation['id'], 'assistant', (string) $response['reply'], $response['provider'], $response['model'], (bool) $response['fallback'], $response['responseDetails'] ?? []);
             ai_record_activity(
                 (int) $user['id'],
@@ -1220,7 +1229,6 @@ try {
                 'persisted' => false,
                 'conversation' => null,
             ]);
-            rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
             exit;
         }
         ai_sse_emit('persisted', [
@@ -1233,13 +1241,14 @@ try {
             'persisted' => true,
             'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null,
         ]);
-        rate_limit_failure('ai-user', (string) $user['id'], 30, 300, 300);
         exit;
     }
 
     if (preg_match('#^ai/conversations/(\d+)/messages$#', $path, $matches) && $method === 'POST') {
         $user = require_user();
         require_csrf();
+        rate_limit_guard('ai-save', (string) $user['id'], 60, 300, 300);
+        rate_limit_failure('ai-save', (string) $user['id'], 60, 300, 300);
         $conversation = ai_conversation_for_user((int) $matches[1], (int) $user['id']);
         if (!$conversation) {
             error_response('Percakapan tidak ditemukan.', 404, 'not_found');
@@ -1447,6 +1456,40 @@ function ai_conversation_for_user(int $conversationId, int $userId): ?array
  * list. Bounded by turn count and characters; local fallback replies are left out
  * because they are not analysis the model should build on.
  */
+/**
+ * The saved turn a retry stands on: the same question as the newest user message,
+ * with or without an answer after it. Null means the message is simply a new question.
+ * @return array{assistantId: ?int}|null
+ */
+function ai_conversation_retry_turn(int $conversationId, string $message): ?array
+{
+    $stmt = db()->prepare('SELECT id, role, content FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT 2');
+    $stmt->execute([$conversationId]);
+    $latest = $stmt->fetchAll();
+    $first = $latest[0] ?? null;
+    $second = $latest[1] ?? null;
+    if (($first['role'] ?? '') === 'user' && (string) $first['content'] === $message) return ['assistantId' => null];
+    if (($first['role'] ?? '') === 'assistant' && ($second['role'] ?? '') === 'user' && (string) $second['content'] === $message) return ['assistantId' => (int) $first['id']];
+    return null;
+}
+
+/** History up to the question being retried; a local answer is not in it, so count from the question. */
+function ai_history_before_question(array $history, string $message): array
+{
+    $question = trim(function_exists('mb_substr') ? mb_substr($message, 0, 4000) : substr($message, 0, 4000));
+    for ($index = count($history) - 1; $index >= 0; $index--) {
+        if ($history[$index]['role'] === 'user' && $history[$index]['content'] === $question) return array_slice($history, 0, $index);
+    }
+    return $history;
+}
+
+function ai_user_has_open_final_exam(int $userId): bool
+{
+    $stmt = db()->prepare("SELECT id FROM assessment_attempts WHERE user_id = ? AND assessment_type = 'final_exam' AND status = 'in_progress' AND expires_at > ? LIMIT 1");
+    $stmt->execute([$userId, aapm_utc_now()]);
+    return (bool) $stmt->fetchColumn();
+}
+
 function ai_conversation_history(int $conversationId, int $maxTurns = 12, int $charBudget = 16000): array
 {
     $stmt = db()->prepare('SELECT role, content, used_fallback FROM ai_chat_messages WHERE conversation_id = ? ORDER BY id DESC LIMIT ' . max(2, min(40, $maxTurns)));
@@ -1472,7 +1515,7 @@ function ai_account_memory_for_user(int $userId, ?int $excludeConversationId = n
     // month in a three-month window. Deleting a conversation removes it from memory.
     // The active conversation travels as real turns, so it is excluded here.
     $exclude = $excludeConversationId !== null ? ' AND c.id <> ' . (int) $excludeConversationId : '';
-    $recentStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ?' . $exclude . ' ORDER BY m.created_at DESC, m.id DESC LIMIT 6');
+    $recentStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? AND c.archived_at IS NULL' . $exclude . ' ORDER BY m.created_at DESC, m.id DESC LIMIT 6');
     $recentStmt->execute([$userId]);
     $rows = array_reverse($recentStmt->fetchAll());
     $seen = [];
@@ -1481,7 +1524,7 @@ function ai_account_memory_for_user(int $userId, ?int $excludeConversationId = n
     }
 
     $monthStart = new DateTimeImmutable('first day of this month 00:00:00');
-    $anchorStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ?' . $exclude . ' AND m.role = ? AND m.created_at >= ? AND m.created_at < ? ORDER BY m.created_at DESC, m.id DESC LIMIT 1');
+    $anchorStmt = db()->prepare('SELECT m.id, m.role, m.content, m.created_at FROM ai_chat_messages m INNER JOIN ai_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? AND c.archived_at IS NULL' . $exclude . ' AND m.role = ? AND m.created_at >= ? AND m.created_at < ? ORDER BY m.created_at DESC, m.id DESC LIMIT 1');
     for ($offset = 3; $offset >= 0; $offset--) {
         $start = $monthStart->modify('-' . $offset . ' months');
         $end = $start->modify('+1 month');
@@ -1516,6 +1559,8 @@ function ai_record_chat_message(int $conversationId, string $role, string $conte
         'thinkingMs' => max(0, min(600000, (int) ($responseDetails['thinkingMs'] ?? 0))),
         'stopped' => (bool) ($responseDetails['stopped'] ?? false),
         'interrupted' => (bool) ($responseDetails['interrupted'] ?? false),
+        'truncated' => (bool) ($responseDetails['truncated'] ?? false),
+        'sources' => array_slice(array_values(array_filter(is_array($responseDetails['sources'] ?? null) ? $responseDetails['sources'] : [], 'is_array')), 0, AAPM_AI_MAX_SOURCES),
         'steps' => array_slice(array_values(array_map(static fn ($step): array => [
             'label' => substr((string) ($step['label'] ?? ''), 0, 80),
             'detail' => substr((string) ($step['detail'] ?? ''), 0, 240),
@@ -1647,7 +1692,7 @@ function native_ai_reply(string $message, $farmContext): string
             $contextNote = sprintf(
                 "\n\nData terakhir yang terbaca: minggu %s, HDP %s%%, FCR %s.",
                 $latest['week'] ?? '—',
-                $latest['henDayProduction'] ?? '—',
+                $latest['hen_day_production'] ?? '—',
                 $latest['fcr'] ?? '—'
             );
         }

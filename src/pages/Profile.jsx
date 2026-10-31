@@ -24,7 +24,7 @@ import { useCertificates } from "@/lib/useCourseData";
 import { useHallOfFame, useLearningProfile, useSaveLearningProfile } from "@/lib/useProfileData";
 import { useAiAccountSettings, useSaveAiAccountSettings } from "@/lib/useAiSettings";
 import { usePwaInstall } from "@/lib/usePwaInstall";
-import { getRankProgress, learnerRanks, TOTAL_CERTIFICATION_TIERS } from "@/lib/academyData";
+import { getRankProgress, learnerRanks, TOTAL_CERTIFICATION_TIERS, TOTAL_MODULES } from "@/lib/academyData";
 import { formatStudyTime } from "@/lib/learnerCopy";
 
 function resizeProfileImage(file) {
@@ -156,7 +156,7 @@ function ProfileHero({ user, profileUser, rank }) {
                       <span className="medal medal-sm is-locked" aria-hidden="true"><Ic name="flag" /></span>
                     )}
                   </span>
-                  <span className={`t-caption t-strong${current ? " t-ink" : ""}`}>{item.name}{current ? <span className="sr-only"> (peringkat Anda)</span> : null}</span>
+                  <span className={`t-caption t-strong t-break${current ? " t-ink" : ""}`}>{item.name}{current ? <span className="sr-only"> (peringkat Anda)</span> : null}</span>
                 </li>
               );
             })}
@@ -171,7 +171,7 @@ function ProfileHero({ user, profileUser, rank }) {
 }
 
 function SummaryMetrics({ learning, user, certificates }) {
-  const total = learning.moduleTotal || 22;
+  const total = learning.moduleTotal || TOTAL_MODULES;
   const owned = certificates.filter((item) => item.source !== "legacy_unverified" && item.status !== "revoked");
   const topTier = owned.reduce((max, item) => Math.max(max, Number(item.tierNumber) || 0), 0);
   const since = formatDate(user?.created_at || user?.createdAt, { day: "2-digit", month: "short", year: "numeric" });
@@ -258,7 +258,7 @@ function Achievements({ achievements, userId = "" }) {
           <div className="stack grow gap-1-5" style={{ minWidth: 0 }}>
             <span className="t-heading">{unlocked === total ? "Semua pencapaian terbuka!" : unlocked ? `${unlocked} pencapaian sudah jadi milikmu` : "Buka pencapaian pertamamu"}</span>
             <Bar value={percentAll} size="sm" animate label={`Pencapaian terbuka ${percentAll}%`} />
-            {next ? <span className="t-caption t-muted">Berikutnya: <span className="t-strong t-ink">{next.title}</span> · {remainingText(next, Math.min(next.current, next.target))}</span> : <span className="t-caption t-muted">Kamu luar biasa. Pertahankan kebiasaan belajarmu.</span>}
+            {next ? <span className="t-caption t-ink">Berikutnya: <span className="t-strong t-ink">{next.title}</span> · {remainingText(next, Math.min(next.current, next.target))}</span> : <span className="t-caption t-muted">Kamu luar biasa. Pertahankan kebiasaan belajarmu.</span>}
           </div>
         </div>
       ) : null}

@@ -80,7 +80,10 @@ export default function ModuleDetail() {
 
   const editorialVideoIsPresent = useMemo(() => hasEditorialVideo(module?.editorialContent), [module?.editorialContent]);
   const editorialNavigationItems = useMemo(() => editorialLearnerNavigationItems(module?.editorialContent), [module?.editorialContent]);
-  const legacyVideoIsPresent = [module?.videoUrl, module?.videoEmbedUrl, module?.video, module?.videoScript].some(hasText);
+  const lessonVideoIsPresent = [module?.videoUrl, module?.videoEmbedUrl, module?.video].some(hasText);
+  const legacyVideoIsPresent = lessonVideoIsPresent || hasText(module?.videoScript);
+  // A module can keep its instructor notes after its video is retired.
+  const videoSectionTitle = lessonVideoIsPresent ? "Video materi" : "Catatan instruktur";
   const objectivesArePresent = hasListContent(module?.learningObjectives) || hasListContent(module?.keyTakeaways);
   const practiceIsPresent = hasText(module?.practicalAssignment) || hasListContent(module?.checklist);
   const flowProgress = practiceOverride === null ? moduleProgress : { ...moduleProgress, practicalDone: practiceOverride };
@@ -94,9 +97,9 @@ export default function ModuleDetail() {
       if (section.id === "practical") return practiceIsPresent;
       return true;
     });
-    const [contentSection, ...remaining] = visible;
+    const [contentSection, ...remaining] = visible.map((section) => (section.id === "video" ? { ...section, label: videoSectionTitle } : section));
     return [contentSection, ...editorialNavigationItems, ...remaining, { id: "lanjut", label: "Langkah berikutnya" }].filter(Boolean);
-  }, [editorialNavigationItems, editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent]);
+  }, [editorialNavigationItems, editorialVideoIsPresent, legacyVideoIsPresent, objectivesArePresent, practiceIsPresent, videoSectionTitle]);
 
   // Reading progress: the line under the focus bar and the TOC card fill as
   // the learner scrolls (CSS variable only, no re-render per scroll event).
@@ -248,8 +251,8 @@ export default function ModuleDetail() {
           <button type="button" className="btn btn-ghost btn-icon btn-quiet hide-md" aria-label={outlineOpen ? "Sembunyikan kurikulum" : "Tampilkan kurikulum"} aria-pressed={outlineOpen} onClick={toggleOutline}><Ic name="sidebar" /></button>
           <span className="vr hide-sm" style={{ margin: "14px 4px" }} />
           <div className="stack grow" style={{ minWidth: 0 }}>
-            <span className="t-caption t-muted t-clamp-1">Modul {moduleNo(module)} dari {summary.total} · Level {module.level} {module.levelName || module.category}</span>
-            <span className="t-heading t-clamp-1">{module.title}</span>
+            <span className="t-caption t-muted t-clamp-1" title={`Chapter ${module.level} ${module.levelName || module.category}`}>Modul {moduleNo(module)} dari {summary.total} · Chapter {module.level} {module.levelName || module.category}</span>
+            <span className="t-heading t-clamp-1" title={module.title}>{module.title}</span>
           </div>
           <FlowSteps steps={steps} className="hide-md" style={{ width: 380 }} />
           <span className="vr hide-md" style={{ margin: "14px 4px" }} />
@@ -284,9 +287,9 @@ export default function ModuleDetail() {
           </LessonSection>
 
           {!editorialVideoIsPresent && legacyVideoIsPresent && (
-            <LessonSection id="video" title="Video materi" ic="video" hue="violet">
-              <LessonMedia module={module} />
-              {hasText(module.videoScript) && (
+            <LessonSection id="video" title={videoSectionTitle} ic={lessonVideoIsPresent ? "video" : "lesson"} hue="violet">
+              {lessonVideoIsPresent ? <LessonMedia module={module} /> : <p className="t-body t-muted">{module.videoScript}</p>}
+              {lessonVideoIsPresent && hasText(module.videoScript) && (
                 <details className="card card-pad-sm lesson-notes">
                   <summary className="row gap-2 t-support t-medium"><Ic name="chev-right" size="sm" />Catatan instruktur</summary>
                   <p className="t-body t-muted">{module.videoScript}</p>

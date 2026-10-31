@@ -1,10 +1,10 @@
-export const TOTAL_MODULES = 22;
+export const TOTAL_MODULES = 23;
 export const TOTAL_LEARNING_LEVELS = 14;
 export const TOTAL_CERTIFICATION_TIERS = 6;
 
 export const learningLevels = [
-  { number: 1, name: "Foundation", description: "Peta sistem dan operasi layer farm." },
-  { number: 2, name: "Brooding & Rearing", description: "Membangun flock yang seragam sejak awal." },
+  { number: 1, name: "Foundation", description: "Cara bisnis layer menghasilkan uang dan memilih bibit." },
+  { number: 2, name: "Pondasi", description: "Menyiapkan kandang dan pullet yang seragam." },
   { number: 3, name: "Layer Management", description: "Mengawal transisi dan produksi." },
   { number: 4, name: "Nutrition", description: "Menghubungkan pakan dengan output." },
   { number: 5, name: "Water Management", description: "Menjaga akses dan kualitas air." },
@@ -19,13 +19,15 @@ export const learningLevels = [
   { number: 14, name: "Expert Level", description: "Mengambil keputusan dan memimpin perbaikan." },
 ];
 
+// Tiers of the academy-v2 policy (curriculum v2.0). Learners on v1 get the same
+// names from their own policy row; this table is the public catalogue.
 export const certificationTiers = [
   { number: 1, name: "Layer Poultry Farm Foundation", modules: [1, 2, 3] },
-  { number: 2, name: "Layer Farm Operator", modules: [4, 5] },
-  { number: 3, name: "Layer Farm Supervisor", modules: [6, 7, 8, 11, 12, 13, 15, 16, 17] },
-  { number: 4, name: "Layer Farm Manager", modules: [9, 10, 14, 18] },
-  { number: 5, name: "Advanced Layer Farm Management", modules: [19, 20, 21] },
-  { number: 6, name: "Layer Poultry Farm Expert", modules: [22], requiresFinal: true },
+  { number: 2, name: "Layer Farm Operator", modules: [4, 5, 6, 7] },
+  { number: 3, name: "Layer Farm Supervisor", modules: [8, 9, 10, 11, 12, 13, 14] },
+  { number: 4, name: "Layer Farm Manager", modules: [15, 16, 17, 18, 19] },
+  { number: 5, name: "Advanced Layer Farm Management", modules: [20, 21] },
+  { number: 6, name: "Layer Poultry Farm Expert", modules: [22, 23], requiresFinal: true },
 ];
 
 export function sortModules(modules = []) {
@@ -109,9 +111,9 @@ export function getCertificationState(tier, completedSet = new Set(), finalPasse
 // average, farm entries and study time.
 export const learnerRanks = [
   { name: "Foundation", from: 0 },
-  { name: "Field Builder", from: 160 },
-  { name: "Farm Analyst", from: 450 },
-  { name: "Layer Leader", from: 900 },
+  { name: "Field Builder", from: 400 },
+  { name: "Farm Analyst", from: 1500 },
+  { name: "Layer Leader", from: 2700 },
 ];
 
 /** Rank, its point window and the distance to the next rank. */
@@ -124,8 +126,18 @@ export function getRankProgress(points = 0) {
   return { name: rank.name, points: value, from: rank.from, to: next?.from ?? null, nextName: next?.name ?? null, toNext: next ? next.from - value : 0, percent: Math.max(0, Math.min(100, percent)) };
 }
 
-/** The learning level (number, name) a module belongs to. */
+/** Chapters for lists and filters: a name saved on the modules wins over the fallback. */
+export function chapterOptions(modules = []) {
+  return learningLevels.map((level) => {
+    const own = modules.find((module) => Number(module?.level) === level.number && module?.levelName);
+    return own ? { ...level, name: own.levelName } : level;
+  });
+}
+
+/** The chapter (number, name) a module belongs to. */
 export function getLevelForModule(module) {
   if (!module) return null;
-  return learningLevels.find((level) => level.number === Number(module.level)) || null;
+  const level = learningLevels.find((item) => item.number === Number(module.level));
+  if (!level) return null;
+  return module.levelName ? { ...level, name: module.levelName } : level;
 }

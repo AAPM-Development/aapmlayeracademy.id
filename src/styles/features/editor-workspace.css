@@ -176,7 +176,7 @@
 .aapm-editor-point-list { display: grid; gap: 2px; }
 .aapm-editor-point-row { grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--aapm-primitive-space-2); padding: 2px var(--aapm-primitive-space-1); border-radius: var(--aapm-primitive-radius-control); }
 .aapm-editor-point-row:focus-within { background: var(--aapm-semantic-surface); box-shadow: var(--aapm-semantic-shadow-rest); }
-.aapm-editor-point-index { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--aapm-semantic-surface); color: var(--hue-ink, var(--aapm-semantic-muted)); font-size: 11px; font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; }
+.aapm-editor-point-index { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--aapm-semantic-surface); color: var(--hue-ink, var(--aapm-semantic-muted)); font-size: var(--fs-xs); font-weight: var(--aapm-primitive-weight-heading); font-variant-numeric: tabular-nums; }
 .aapm-editor-point-input.aapm-input { min-height: 34px; padding-inline: var(--aapm-primitive-space-1); border-color: transparent; background: transparent; box-shadow: none; }
 .aapm-editor-point-input.aapm-input:focus { border-color: transparent; box-shadow: none; }
 .aapm-editor-point-action { opacity: .4; }

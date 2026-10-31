@@ -26,6 +26,8 @@
 .aapm-editor-doc-summary:hover { background: var(--aapm-semantic-surface-subtle); }
 .aapm-editor-doc-title:focus,
 .aapm-editor-doc-summary:focus { outline: none; border-color: var(--aapm-semantic-border-strong); background: var(--aapm-semantic-surface); }
+.aapm-editor-doc-title:focus-visible,
+.aapm-editor-doc-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
 /* Quality strip. */
 .aapm-editorial-quality details { border-radius: var(--aapm-primitive-radius-panel); background: var(--aapm-semantic-surface-subtle); }
@@ -112,7 +114,8 @@
   .aapm-insert-point::before { opacity: .45; }
   .aapm-insert-point__button { width: 36px; height: 36px; opacity: 1; transform: none; border-color: var(--aapm-semantic-primary); color: var(--aapm-semantic-primary); }
   .aapm-insert-point__button .aapm-icon { width: 16px; height: 16px; }
-  .aapm-block__bar { opacity: 1; pointer-events: auto; transform: none; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - var(--aapm-primitive-space-4)); }
+  /* Always visible here, so it takes its own line instead of floating over the block's text. */
+  .aapm-block__bar { position: relative; top: 0; right: 0; width: fit-content; margin: var(--aapm-primitive-space-2) var(--aapm-primitive-space-2) 0 auto; opacity: 1; pointer-events: auto; transform: none; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - var(--aapm-primitive-space-4)); }
   .aapm-block__tools { flex-wrap: wrap; justify-content: flex-end; }
   .aapm-block__bar .aapm-button, .aapm-block__bar .btn { min-width: 44px; min-height: 44px; }
 }

@@ -82,7 +82,7 @@ export function LevelProgressGrid({ curriculum = [], limit = 6 }) {
         id="level-progress-title"
         title="Progres per level"
         description="Warna menandai level kurikulum."
-        actions={<Button asChild variant="ghost" size="sm"><Link to="/modules">Semua level<AapmIcon name="arrowRight" /></Link></Button>}
+        actions={<Button asChild variant="ghost" size="sm"><Link to="/modules">Semua chapter<AapmIcon name="arrowRight" /></Link></Button>}
       />
       <div className="aapm-progress-grid--compact grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {ordered.slice(0, limit).map((level) => (
@@ -92,7 +92,7 @@ export function LevelProgressGrid({ curriculum = [], limit = 6 }) {
               {level.hasCurrent ? <span className="aapm-chip" data-tone="attention"><span className="aapm-chip__dot" />Aktif</span> : level.percent === 100 ? <span className="aapm-chip" data-tone="solid">Tuntas</span> : null}
             </div>
             <div className="aapm-progress-tile__body">
-              <p className="aapm-text-overline m-0">Level {level.number}</p>
+              <p className="aapm-text-overline m-0">Chapter {level.number}</p>
               <p className="aapm-progress-tile__title">{level.name}</p>
             </div>
             <Progress value={level.percent} label={`Progress ${level.name}`} />

@@ -6,6 +6,7 @@ import { Button, Field, InputGroup } from "@/components/primitives";
 import AuthLayout from "@/components/AuthLayout";
 import { Ic } from "@/design-system/canvas";
 import { emailError } from "@/lib/authValidation";
+import { hasFinePointer } from "@/lib/utils";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -81,7 +82,7 @@ export default function ForgotPassword() {
             leadingIcon="mail"
             type="email"
             autoComplete="email"
-            autoFocus
+            autoFocus={hasFinePointer()}
             placeholder="nama@perusahaan.com"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldError(""); }}

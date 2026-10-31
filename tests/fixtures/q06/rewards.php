@@ -10,8 +10,11 @@ echo json_encode([
     'points' => $points,
     'hostile' => aapm_reward_points(['completed' => -5, 'practical' => -1, 'certificates' => -2, 'quizAverage' => 900, 'farmEntries' => 999, 'minutes' => -50]),
     'empty' => aapm_reward_points([]),
-    'levelAt' => array_map(static fn (int $p): string => aapm_reward_level($p)['name'], [0, 159, 160, 449, 450, 899, 900, 5000]),
+    'levelAt' => array_map(static fn (int $p): string => aapm_reward_level($p)['name'], [0, 399, 400, 1499, 1500, 2699, 2700, 5000]),
     'top' => aapm_reward_level(5000),
+    'earlyLearner' => aapm_reward_level(aapm_reward_points(['completed' => 5, 'practical' => 5, 'certificates' => 2, 'quizAverage' => 80, 'farmEntries' => 12, 'minutes' => 120]))['name'],
+    'supervisorTier' => aapm_reward_level(aapm_reward_points(['completed' => 14, 'certificates' => 3, 'quizAverage' => 80]))['name'],
+    'advancedTier' => aapm_reward_level(aapm_reward_points(['completed' => 21, 'certificates' => 5, 'quizAverage' => 80]))['name'],
     'definitions' => aapm_reward_achievement_definitions($facts),
     'zeroTotal' => array_column(aapm_reward_achievement_definitions(['moduleTotal' => 0]), 'target', 'id'),
 ], JSON_UNESCAPED_SLASHES);

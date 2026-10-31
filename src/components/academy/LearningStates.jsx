@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button, Skeleton, StateView } from "@/design-system";
 
-export function LearningLoading({ label = "Memuat pengalaman belajar...", lines = 3 } = {}) {
+export function LearningLoading({ label = "Memuat pengalaman belajar…", lines = 3 } = {}) {
   return (
     <div className="grid gap-3" role="status" aria-live="polite" aria-label={label}>
       <Skeleton className="h-24 w-full rounded-[var(--aapm-component-surface-radius)]" />

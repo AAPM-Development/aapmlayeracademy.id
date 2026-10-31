@@ -110,7 +110,7 @@ export default function AdminFinalBank() {
           <section className="card card-pad stack gap-4" aria-labelledby="h-komposisi">
             <div className="stack gap-0-5"><h2 className="card-title" id="h-komposisi">Komposisi kesulitan</h2><p className="card-desc">Dihitung dari {questions.length} soal di draf.</p></div>
             <div className="cgrid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-              {composition.map((item) => <div key={item.key} className="inset stack gap-0-5" style={{ padding: '10px 12px' }}><span className="t-caption t-muted">{item.label}</span><span className="t-heading t-num">{item.count}</span></div>)}
+              {composition.map((item) => <div key={item.key} className="inset stack gap-0-5" style={{ padding: '10px 12px' }}><span className="t-caption t-muted t-break">{item.label}</span><span className="t-heading t-num">{item.count}</span></div>)}
             </div>
           </section>
         </div>
