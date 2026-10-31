@@ -13,14 +13,6 @@
     max-height: calc(var(--aapm-visible-height, 100dvh) - var(--aapm-primitive-space-4));
   }
 }
-/* The chat owns its transcript scroll. Remove the shell's normal page and
- * launcher clearance; the canvas reserves the mobile navigation once. */
-.aapm-app.aapm-app--chat[data-bottom-nav="true"] .aapm-app__main {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  overflow: hidden;
-}
 .aapm-app--chat .aapm-ai-workspace { flex: 1; }
 
 .aapm-room.aapm-ai-frame { border: 0; border-radius: 0; box-shadow: none; background: var(--aapm-semantic-background); }
