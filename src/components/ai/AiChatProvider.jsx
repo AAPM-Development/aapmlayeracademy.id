@@ -152,6 +152,7 @@ export function AiChatProvider({ children }) {
   const accountRequestRef = useRef(0);
   const streamControllerRef = useRef(null);
   const stopRequestedRef = useRef(false);
+  const stopSaveRef = useRef(null);
   const promptDraftRef = useRef("");
 
   const settleStreamPhase = useCallback((phase, delay = 1100) => {
@@ -259,7 +260,7 @@ export function AiChatProvider({ children }) {
   );
 
   const reconcileConversation = useCallback(
-    async (id, { replaceMessages = true, expectedAssistantContent = null } = {}) => {
+    async (id, { replaceMessages = true, expectedAssistantContent = null, answerStart = "" } = {}) => {
       if (!id || !accountId) {
         return { ok: false, assistantPersisted: false };
       }
@@ -275,7 +276,8 @@ export function AiChatProvider({ children }) {
           (expectedAssistantContent === null ||
             typeof expectedAssistantContent === "string") &&
           (expectedAssistantContent === null ||
-            latestMessage?.content === expectedAssistantContent);
+            latestMessage?.content === expectedAssistantContent) &&
+          String(latestMessage?.content ?? "").startsWith(answerStart);
         if (detail?.conversation) upsertConversation(detail.conversation);
         if (replaceMessages && activeRef.current === id) {
           setMessages((current) => detailMessages.map((message, index) => {
@@ -376,10 +378,18 @@ export function AiChatProvider({ children }) {
   }, [composerDraftStorageKey, persistActiveConversation]);
 
   const ensureConversation = useCallback(
-    async (title, accountRequest) => {
+    async (title, accountRequest, signal) => {
+      if (signal.aborted) throw new DOMException("Dihentikan.", "AbortError");
       if (activeRef.current) return { id: activeRef.current };
       const conversation = await nativeApi.ai.conversations.create(title);
       if (accountRequest !== accountRequestRef.current) throw new DOMException("Sesi berubah.", "AbortError");
+      if (signal.aborted) {
+        // A sent request cannot be recalled, so the empty chat it made goes too.
+        void nativeApi.ai.conversations.delete(conversation.id).catch(() => {}).finally(() => {
+          queryClient.invalidateQueries({ queryKey: conversationQueryKey });
+        });
+        throw new DOMException("Dihentikan.", "AbortError");
+      }
       setIsDraft(false);
       setActiveConversationId(conversation.id);
       activeRef.current = conversation.id;
@@ -416,6 +426,47 @@ export function AiChatProvider({ children }) {
     selectConversation,
   ]);
 
+  // The server keeps what was written and saves it after it notices the closed
+  // connection. The composer is free meanwhile, so this polls on its own; a new
+  // question in this chat waits for it (see send), because a save landing after
+  // that question would read as its answer.
+  const settleStoppedAnswer = useCallback(
+    (conversationId, assistantId, answerStart) => {
+      const accountRequest = accountRequestRef.current;
+      const stillOpen = () => accountRequest === accountRequestRef.current && activeRef.current === conversationId;
+      const saving = { conversationId, done: null };
+      setRetryingMessageId(assistantId);
+      saving.done = (async () => {
+        try {
+          let saved = false;
+          for (const wait of [700, 1400, 2400]) {
+            await sleep(wait);
+            if (!stillOpen()) return;
+            const reconciled = await reconcileConversation(conversationId, {
+              replaceMessages: false,
+              expectedAssistantContent: null,
+              answerStart,
+            });
+            if (reconciled.assistantPersisted) {
+              saved = true;
+              break;
+            }
+          }
+          if (!stillOpen()) return;
+          if (saved) await reconcileConversation(conversationId, { replaceMessages: true });
+          setHistorySyncState(saved ? "saved" : "attention");
+          queryClient.invalidateQueries({ queryKey: conversationQueryKey });
+          queryClient.invalidateQueries({ queryKey: activityQueryKey });
+        } finally {
+          if (stopSaveRef.current === saving) stopSaveRef.current = null;
+          setRetryingMessageId((current) => (current === assistantId ? null : current));
+        }
+      })();
+      stopSaveRef.current = saving;
+    },
+    [activityQueryKey, conversationQueryKey, queryClient, reconcileConversation],
+  );
+
   const send = useCallback(
     async (
       rawMessage,
@@ -431,6 +482,10 @@ export function AiChatProvider({ children }) {
       if (!message || !accountId || sendInFlightRef.current || loadingConversationRef.current) return { ok: false, persisted: false };
       sendInFlightRef.current = true;
       setIsStreaming(true);
+      // Stop works from here on, also while a new chat is still being made.
+      const controller = new AbortController();
+      streamControllerRef.current = controller;
+      stopRequestedRef.current = false;
       const accountRequest = accountRequestRef.current;
       const isCurrentRequest = () => accountRequest === accountRequestRef.current;
       const submittedDraft = promptDraftRef.current;
@@ -445,12 +500,21 @@ export function AiChatProvider({ children }) {
         }
       };
 
+      const preparing = (async () => {
+        const stopSave = stopSaveRef.current;
+        if (stopSave?.conversationId === activeRef.current) await stopSave.done;
+        return ensureConversation(message, accountRequest, controller.signal);
+      })();
+      const stoppedFirst = new Promise((resolve) => {
+        controller.signal.addEventListener("abort", () => resolve(null), { once: true });
+      });
       let conversation;
       try {
-        conversation = await ensureConversation(message, accountRequest);
+        conversation = await Promise.race([preparing, stoppedFirst]);
       } catch (error) {
         if (!isCurrentRequest()) return { ok: false, persisted: false };
         sendInFlightRef.current = false;
+        streamControllerRef.current = null;
         setIsStreaming(false);
         setHistoryError(error);
         setHistorySyncState("attention");
@@ -458,13 +522,21 @@ export function AiChatProvider({ children }) {
         return { ok: false, persisted: false };
       }
       if (!isCurrentRequest()) return { ok: false, persisted: false };
-      const controller = new AbortController();
-      streamControllerRef.current = controller;
+      if (!conversation) {
+        // Stopped before the question left: nothing was sent, and the composer still holds it.
+        sendInFlightRef.current = false;
+        streamControllerRef.current = null;
+        stopRequestedRef.current = false;
+        setIsStreaming(false);
+        settleStreamPhase("stopped");
+        return { ok: false, persisted: false, stopped: true };
+      }
 
       const assistantId = idFor("assistant");
       const userId = idFor("user");
       // A retry takes the place of the turn it repeats, photo included.
-      const repeated = retry ? messagesRef.current.findLast((item) => item.role === "user" && item.content === message) : null;
+      const isRepeated = (item) => item.role === "user" && item.content === message;
+      const repeated = retry ? messagesRef.current.findLast(isRepeated) : null;
       const sentImage = image ?? repeated?.image ?? null;
       const startedAt = Date.now();
       let pendingText = "";
@@ -473,7 +545,6 @@ export function AiChatProvider({ children }) {
       let deltaFrame = null;
       let persisted = false;
       let firstTokenSeen = false;
-      stopRequestedRef.current = false;
       const updateAssistant = (update) =>
         setMessages((current) =>
           current.map((item) =>
@@ -526,24 +597,28 @@ export function AiChatProvider({ children }) {
         promptDraftRef.current = "";
         setPromptDraftState("");
       }
-      setMessages((current) => [
-        ...(repeated ? current.slice(0, current.lastIndexOf(repeated)) : current),
-        clientMessage({
-          id: userId,
-          role: "user",
-          content: message,
-          image: sentImage,
-          persisted: false,
-        }),
-        clientMessage({
-          id: assistantId,
-          role: "assistant",
-          content: "",
-          streaming: true,
-          persisted: false,
-          startedAt,
-        }),
-      ]);
+      setMessages((current) => {
+        // Found again here: the save of a stopped answer may have replaced the list.
+        const repeatedAt = retry ? current.findLastIndex(isRepeated) : -1;
+        return [
+          ...(repeatedAt < 0 ? current : current.slice(0, repeatedAt)),
+          clientMessage({
+            id: userId,
+            role: "user",
+            content: message,
+            image: sentImage,
+            persisted: false,
+          }),
+          clientMessage({
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            streaming: true,
+            persisted: false,
+            startedAt,
+          }),
+        ];
+      });
       setHistorySyncState("saving");
       setHistoryError(null);
       window.clearTimeout(phaseTimerRef.current);
@@ -657,33 +732,17 @@ export function AiChatProvider({ children }) {
         if (!isCurrentRequest()) return { ok: false, persisted: false };
         flushPendingText();
         if (stopRequestedRef.current) {
-          // Stopped by the learner. The server keeps what was written and saves
-          // it after it notices the closed connection, so poll briefly for it.
           clearPromptDraft(conversation.id, "");
+          settleStreamPhase("stopped");
           if (!streamedContent) {
             setMessages((current) => current.filter((item) => item.id !== assistantId));
             setHistorySyncState("saved");
-            settleStreamPhase("complete");
             return { ok: true, persisted: true, stopped: true, conversationId: conversation.id };
           }
           updateAssistant({ streaming: false, stopped: true, error: false, notice: "Dihentikan sebelum selesai." });
-          let saved = false;
-          for (const wait of [700, 1400, 2400]) {
-            await sleep(wait);
-            if (!isCurrentRequest()) return { ok: false, persisted: false };
-            const reconciled = await reconcileConversation(conversation.id, {
-              replaceMessages: false,
-              expectedAssistantContent: null,
-            });
-            if (reconciled.assistantPersisted) {
-              saved = true;
-              break;
-            }
-          }
-          if (saved) await reconcileConversation(conversation.id, { replaceMessages: true });
-          setHistorySyncState(saved ? "saved" : "attention");
-          settleStreamPhase("complete");
-          return { ok: true, persisted: saved, stopped: true, conversationId: conversation.id, assistantId };
+          // Its start tells the new answer from the one a retry is about to replace.
+          settleStoppedAnswer(conversation.id, assistantId, streamedContent.trim().slice(0, 120));
+          return { ok: true, persisted: false, stopped: true, conversationId: conversation.id, assistantId };
         }
         // A failed fetch explains itself in English; the learner reads what to do next.
         const failure = error instanceof TypeError
@@ -734,6 +793,7 @@ export function AiChatProvider({ children }) {
       farm,
       queryClient,
       reconcileConversation,
+      settleStoppedAnswer,
       settleStreamPhase,
       upsertConversation,
     ],

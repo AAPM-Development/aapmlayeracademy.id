@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 
 /**
  * The one live region for an answer in progress. Streaming tokens are never
- * announced; screen readers hear only that APPI started and finished.
+ * announced; screen readers hear only that APPI started and how it ended.
  */
-export default function StreamAnnouncer({ isStreaming, failed = false }) {
+export default function StreamAnnouncer({ isStreaming, failed = false, stopped = false }) {
   const [text, setText] = useState("");
   const wasStreaming = useRef(false);
 
@@ -16,9 +16,10 @@ export default function StreamAnnouncer({ isStreaming, failed = false }) {
     }
     if (wasStreaming.current) {
       wasStreaming.current = false;
-      setText(failed ? "Jawaban APPI belum selesai. Coba kirim ulang." : "APPI selesai menjawab.");
+      if (stopped) setText("Jawaban APPI dihentikan.");
+      else setText(failed ? "Jawaban APPI belum selesai. Coba kirim ulang." : "APPI selesai menjawab.");
     }
-  }, [failed, isStreaming]);
+  }, [failed, isStreaming, stopped]);
 
   return (
     <div className="aapm-visually-hidden" role="status" aria-live="polite">

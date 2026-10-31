@@ -4,7 +4,9 @@ import AapmIcon from "@/components/icons/AapmIcon";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import AiResponseDetails from "@/components/ai/AiResponseDetails";
 import AiThinking from "@/components/ai/AiThinking";
+import AiJumpToLatest from "@/components/ai/AiJumpToLatest";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
+import useChatSubmit, { answerPrompts, findLastAssistantMessageIndex } from "@/components/ai/useChatSubmit";
 import useLauncherClearance from "@/components/ai/useLauncherClearance";
 import useScrollEdgeFade from "@/lib/useScrollEdgeFade";
 import AiActivityList from "@/components/ai/AiActivityList";
@@ -56,13 +58,6 @@ const quickActions = [
   },
 ];
 
-function findLastAssistantMessageIndex(messages = []) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index]?.role === "assistant") return index;
-  }
-  return -1;
-}
-
 function pageContextForPath(pathname) {
   if (pathname === "/calculators") return "calculators";
   if (pathname === "/kpi") return "kpi";
@@ -104,11 +99,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
   const [renaming, setRenaming] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
-  const [imageAttachment, setImageAttachment] = useState(null);
-  const [imageLoading, setImageLoading] = useState(false);
-  const [attachmentError, setAttachmentError] = useState("");
   const closeTimer = useRef(null);
-  const imageInputRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -147,7 +138,6 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
     archiveConversation,
     bulkArchiveConversations,
     bulkDeleteConversations,
-    send,
     stopStreaming,
     retryPersistAssistant,
     retryingMessageId,
@@ -192,6 +182,21 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
   const historyScrollRef = useScrollEdgeFade();
   const panelRef = useRef(null);
   const launcherRef = useRef(null);
+  const {
+    submit,
+    retryAnswer,
+    imageInputRef,
+    handleImageSelection,
+    imageAttachment,
+    removeImage,
+    imageLoading,
+    attachmentError,
+  } = useChatSubmit({
+    includeFarm: true,
+    allowWebSearch,
+    pageContext: pageContextForPath(location.pathname),
+    composerField: () => panelRef.current?.querySelector("textarea"),
+  });
   const wasOpenRef = useRef(false);
   useLauncherClearance(launcherRef, !open && showLauncher && location.pathname !== "/ai-assistant");
 
@@ -285,55 +290,6 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
   const closePanel = () => {
     setHistoryOpen(false);
     setClosing(true);
-  };
-  const submit = async (text = promptDraft, { retry = false } = {}) => {
-    const message =
-      text.trim() ||
-      (imageAttachment
-        ? "Tolong analisis foto farm ini dan sebutkan observasi yang perlu saya verifikasi di lapangan."
-        : "");
-    if (!message || isStreaming || isLoadingConversation || imageLoading) return;
-    const image = retry ? null : imageAttachment;
-    const result = await send(message, {
-      retry,
-      includeFarm: true,
-      allowWebSearch,
-      pageContext: pageContextForPath(location.pathname),
-      image,
-    });
-    if (result?.ok && !retry) {
-      setImageAttachment(null);
-      setAttachmentError("");
-    }
-  };
-  const retryAnswer = (prompt) => submit(prompt, { retry: true });
-  const handleImageSelection = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
-      setImageLoading(false);
-      setAttachmentError("Gunakan foto JPG, PNG, atau WebP.");
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      setImageLoading(false);
-      setAttachmentError("Ukuran foto maksimal 3 MB.");
-      return;
-    }
-    setImageLoading(true);
-    setAttachmentError("");
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageAttachment({ dataUrl: String(reader.result), name: file.name });
-      setImageLoading(false);
-      setAttachmentError("");
-    };
-    reader.onerror = () => {
-      setImageLoading(false);
-      setAttachmentError("Foto tidak dapat dibaca.");
-    };
-    reader.readAsDataURL(file);
   };
   const handleDeleteConversation = async (id) => {
     try {
@@ -429,7 +385,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
             <button type="button" className="btn btn-ghost btn-sm btn-icon btn-quiet" aria-label="Tutup APPI" onClick={closePanel}><Ic name="x" /></button>
           </header>
           <div className="aapm-ai-floating-panel__body relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
-            <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} />
+            <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} stopped={streamPhase === "stopped"} />
             <div
               ref={chatViewportRef}
               role="log"
@@ -445,7 +401,9 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                   <button type="button" onClick={refreshHistory} className="shrink-0 font-semibold text-brand-orange">Coba lagi</button>
                 </div>
               )}
-              {messages.length === 0 ? (
+              {isLoadingConversation ? (
+                <p className="t-caption t-muted" role="status">Memuat riwayat…</p>
+              ) : messages.length === 0 ? (
                 <div className="stack gap-4">
                   <div className="appi-says">
                     <div className="appi-stage"><AppiMascot mood="wink" size="md" enter="slide" /></div>
@@ -468,13 +426,15 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                   </section>
                 </div>
               ) : (
-                messages.map((message, index) =>
-                  message.role === "user" ? (
+                messages.map((message, index) => {
+                  if (message.role === "user") return (
                     <div key={message.id} className="stack gap-2" style={{ minWidth: 0 }}>
                       {message.image?.dataUrl ? <img src={message.image.dataUrl} alt="Foto yang dikirim untuk dianalisis" className="card msg-photo" /> : null}
                       {message.content ? <p className="msg-user msg-user-sm">{message.content}</p> : null}
                     </div>
-                  ) : (
+                  );
+                  const { retryPrompt, regeneratePrompt } = answerPrompts(messages, index);
+                  return (
                     <article key={message.id} className="msg-appi msg-appi-sm" aria-label="Jawaban APPI">
                       <AppiMascot mood={message.streaming ? (message.content ? "talk" : "think") : "talk"} animated={Boolean(message.streaming)} size="xs" />
                       <div className="stack gap-2" style={{ minWidth: 0 }}>
@@ -489,10 +449,15 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                         {message.content && !message.streaming ? (
                           <div className="row wrap gap-1 answer-actions">
                             <AiCopyButton text={message.content} label="Salin" rich />
-                            <AiMessageMeta message={message} retryPrompt={message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""} onRetry={retryAnswer} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
+                            {regeneratePrompt ? (
+                              <button type="button" className="btn btn-ghost btn-sm btn-quiet" disabled={isStreaming} onClick={() => retryAnswer(regeneratePrompt)}>
+                                <Ic name="refresh" />Buat ulang
+                              </button>
+                            ) : null}
+                            <AiMessageMeta message={message} retryPrompt={retryPrompt} onRetry={retryAnswer} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
                           </div>
                         ) : (
-                          <AiMessageMeta message={message} retryPrompt={message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""} onRetry={retryAnswer} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
+                          <AiMessageMeta message={message} retryPrompt={retryPrompt} onRetry={retryAnswer} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
                         )}
                         {!message.streaming ? <AiResponseDetails message={message} compact /> : null}
                         {index === lastAssistantMessageIndex && !message.streaming && !message.error && !message.fallback && (
@@ -500,22 +465,13 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                         )}
                       </div>
                     </article>
-                  ),
-                )
+                  );
+                })
               )}
               <div ref={chatEndRef} />
               </div>
             </div>
-            {showJumpToLatest && (
-              <button
-                type="button"
-                onClick={jumpToLatest}
-                className="aapm-token-control absolute bottom-[5.7rem] left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-foreground backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-              >
-                <AapmIcon name="chevronDown" className="h-3 w-3 text-brand-orange" />
-                Ke terbaru
-              </button>
-            )}
+            {showJumpToLatest && <AiJumpToLatest onClick={jumpToLatest} />}
             {historyOpen && (
               <aside
                 aria-label="Riwayat percakapan APPI"
@@ -642,7 +598,7 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
               onImageSelection={handleImageSelection}
               imageLoading={imageLoading}
               imageAttachment={imageAttachment}
-              onRemoveImage={() => setImageAttachment(null)}
+              onRemoveImage={removeImage}
               attachmentError={attachmentError}
               allowWebSearch={allowWebSearch}
               onAllowWebSearchChange={setAllowWebSearch}
