@@ -671,7 +671,12 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.match(academyShell, /className=\{isAiWorkspace \? "aapm-app--chat" : undefined\}/);
   assert.doesNotMatch(aiPage, /aapm-ai-workspace--full-mobile/);
   assert.match(appiRoomStyles, /\.aapm-app--chat\s*\{\s*height: 100dvh;/);
-  assert.match(appiRoomStyles, /\.aapm-app\.aapm-app--chat\[data-bottom-nav="true"\] \.aapm-app__main\s*\{[^}]*padding: 0;[^}]*overflow: hidden;/);
+  assert.match(styles, /\.app\.aapm-app--chat \.main-scroll \{ overflow: hidden; display: flex; flex-direction: column; \}/);
+  // The floating phone nav is cleared once: on the empty chat, not behind the dock or the keyboard.
+  assert.match(styles, /\.app\.aapm-app--chat \.main-scroll \{ padding-bottom: calc\(80px \+ env\(safe-area-inset-bottom\)\); \}/);
+  assert.match(styles, /\.app\.aapm-app--chat:has\(\.appi-dock\) \.main-scroll \{ padding-bottom: 0; \}/);
+  assert.match(styles, /html\[data-keyboard="open"\] \.app \.m-nav \{ display: none; \}/);
+  assert.match(styles, /html\[data-keyboard="open"\] \.app\.aapm-app--chat \.main-scroll \{ padding-bottom: 0; \}/);
   assert.match(aiPage, /aapm-ai-transcript[^"\n]*overflow-x-hidden overflow-y-auto/);
   assert.match(aiPage, /AiHistoryBulkBar/);
   assert.match(floatingAi, /AiHistoryBulkBar/);
@@ -687,12 +692,11 @@ test("mobile shells keep APPI, dashboard cards, uploads, and session recovery bo
   assert.match(shell, /function NavigationSheet/);
   assert.match(shell, /export const FocusShell/);
   assert.match(styles, /\.aapm-bottom-nav__item\[aria-current="page"\]/);
-  assert.match(styles, /html\[data-shell="focus"\] \.aapm-ai-launcher/);
+  assert.match(styles, /html\[data-shell="focus"\] \.aapm-ai-floating-panel/);
   assert.match(aiComposer, /Menyiapkan foto/);
   assert.match(styles, /--aapm-shell-border-alpha: 0\.46/);
   assert.match(styles, /\.aapm-ai-frame[\s\S]*box-shadow: var\(--aapm-shell-shadow, none\)/);
   assert.match(styles, /\.aapm-ai-conversation-sidebar,[\s\S]*background-image: none/);
-  assert.match(styles, /\.aapm-ai-card--interactive:hover[\s\S]*box-shadow: none/);
   assert.match(moduleEditor, /aapm-editor-point-row grid/);
   assert.match(moduleEditor, /aapm-editor-point-action/);
   // Insights are the canvas numbered list; the CSS draws the index badges.

@@ -1,5 +1,9 @@
 import { useEffect } from "react";
 
+// What a focused field can scroll: the app shell's canvas and the module
+// editor's panels, which sit outside that shell.
+const SCROLL_PANELS = '.aapm-editor-inspector, .aapm-editor-outline, .aapm-editor-scroll, .aapm-editor-workspace, .main-scroll';
+
 /** Follow the visible screen when a mobile keyboard resizes only VisualViewport. */
 export default function useVisibleViewport() {
   useEffect(() => {
@@ -25,8 +29,10 @@ export default function useVisibleViewport() {
       root.dataset.keyboard = keyboard ? "open" : "closed";
       // A keyboard can shrink the shell after the browser has focused the
       // field. Keep that field above docked actions by scrolling its panel only.
-      const panel = keyboard && window.innerWidth <= 1023 ? field?.closest?.('.aapm-app__main') : null;
-      if (panel && panel.scrollHeight > panel.clientHeight) {
+      let panel = keyboard && window.innerWidth <= 1023 ? field?.closest?.(SCROLL_PANELS) : null;
+      // An inspector stacked in the page has no scroll of its own; the page does.
+      while (panel && panel.scrollHeight <= panel.clientHeight) panel = panel.parentElement?.closest(SCROLL_PANELS);
+      if (panel) {
         const bounds = panel.getBoundingClientRect();
         const rect = field.getBoundingClientRect();
         const top = Math.max(bounds.top, viewport.offsetTop);

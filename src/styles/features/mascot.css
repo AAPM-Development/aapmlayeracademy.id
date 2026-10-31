@@ -460,13 +460,9 @@
 
 
 /* Launcher everywhere except the APPI workspace: above the bottom bar on
- * phones and above the action bar in lessons and assessments, and the
- * scrolling canvas reserves room so it never sits on a button at the end. */
+ * phones and above the action bar in lessons and assessments. */
 @media (max-width: 859px) {
   .aapm-appi-launcher.aapm-ai-launcher { right: var(--aapm-primitive-space-3); bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-3)); width: 52px; height: 52px; }
   .aapm-appi-launcher .aapm-appi { --appi-size: 38px; }
-  .aapm-app[data-bottom-nav="true"] .aapm-app__main { padding-bottom: calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + 72px); }
 }
 html[data-shell="focus"] .aapm-appi-launcher.aapm-ai-launcher { right: var(--aapm-primitive-space-3); width: 52px; height: 52px; }
-html[data-shell="focus"] .aapm-focus__main { padding-bottom: 76px; }
-.aapm-app__main { padding-bottom: 88px; }

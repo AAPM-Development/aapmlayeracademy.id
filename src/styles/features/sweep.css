@@ -2,24 +2,9 @@
  * (375px, 540px and desktop). Loaded last so it settles shared edges
  * without rewriting each feature file. */
 
-/* The app canvas reserves room for the floating APPI launcher on ordinary
- * pages. Pages with a sticky action surface use that space for the action
- * surface instead, so keep the sticky edge flush with the desktop viewport. */
-@media (min-width: 860px) {
-  .aapm-app__main:has(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
-    padding-bottom: 0;
-  }
-  .aapm-app__main:has(.aapm-editor-actionbar, .aapm-curriculum-actionbar) > .aapm-page {
-    padding-bottom: 0;
-  }
-}
-
 /* Editor action bar on phones: an opaque, edge-to-edge bar, so content never
  * shows through or beside it while the canvas scrolls underneath. */
 @media (max-width: 639px) {
-  html[data-keyboard="open"] .aapm-editor-actionbar {
-    bottom: var(--aapm-visible-bottom, 0px);
-  }
   .aapm-editor-content:has([data-editor-actionbar]) {
     padding-bottom: calc(var(--aapm-editor-footer-height, 160px) + var(--aapm-primitive-space-4));
   }
@@ -107,24 +92,9 @@ html[data-shell-footer="true"] .aapm-ai-floating-panel {
   .aapm-pwa-notice__actions { flex-wrap: wrap; }
 }
 
-/* Draft controls dock to the shell edge, independent of document length. */
-.aapm-app { --aapm-action-sidebar-width: var(--aapm-component-nav-width); }
-.aapm-app[data-collapsed="true"] { --aapm-action-sidebar-width: var(--aapm-component-nav-collapsed-width); }
-.aapm-page > .aapm-curriculum-editor { animation: none; }
+/* Draft controls dock to the phone's bottom edge, independent of document length. */
 .aapm-editor-content:has([data-editor-actionbar]) { padding-bottom: calc(var(--aapm-editor-footer-height, 100px) + var(--aapm-primitive-space-4)); }
 .aapm-curriculum-editor { padding-bottom: calc(var(--aapm-curriculum-footer-height, 100px) + var(--aapm-primitive-space-4)); }
-@media (min-width: 860px) {
-  .aapm-app :is(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
-    position: fixed;
-    inset-inline-start: var(--aapm-action-sidebar-width);
-    inset-inline-end: 0;
-    bottom: 0;
-    margin: 0;
-    padding-inline: var(--aapm-component-page-inset);
-    border-radius: 0;
-    background: var(--aapm-semantic-surface);
-  }
-}
 @media (max-width: 859px) {
   .aapm-editor-actionbar {
     position: fixed;
@@ -139,12 +109,27 @@ html[data-shell-footer="true"] .aapm-ai-floating-panel {
     border-radius: 0;
     background: var(--aapm-semantic-surface);
   }
-}
-/* The keyboard replaces the phone navigation clearance. Keep both draft
- * bars at the visible screen edge, including tablets with a tall layout viewport. */
-@media (max-width: 1023px) {
-  html[data-keyboard="open"] .aapm-app :is(.aapm-editor-actionbar, .aapm-curriculum-actionbar) {
+  /* The keyboard replaces the phone navigation clearance, so the draft bar
+   * rests on it. From 860px the bar is sticky under the page header instead. */
+  html[data-keyboard="open"] .app .aapm-curriculum-actionbar {
     position: fixed;
     bottom: var(--aapm-visible-bottom, 0px);
+  }
+  /* A keyboard that shrinks only the visual viewport leaves the layout tall, so
+   * the last fields run out of scroll behind it. End it at the visible edge, as
+   * a resizing keyboard does. */
+  html[data-keyboard="open"] .app:has(.aapm-curriculum-actionbar) {
+    height: calc(100dvh - var(--aapm-visible-bottom, 0px));
+  }
+}
+/* The editor sits outside the shell, and its bar and panels are in flow, so they
+ * follow its height. Tablets with a tall layout viewport need this too. */
+@media (max-width: 1023px) {
+  html[data-keyboard="open"] .aapm-editor-focus {
+    height: calc(100dvh - var(--aapm-visible-bottom, 0px));
+  }
+  html[data-keyboard="open"] .aapm-editor-focus [data-drawer-open="true"] {
+    bottom: var(--aapm-visible-bottom, 0px);
+    max-height: min(78svh, 40rem, calc(var(--aapm-visible-height, 100svh) - var(--aapm-primitive-space-4)));
   }
 }

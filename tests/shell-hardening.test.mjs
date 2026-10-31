@@ -67,6 +67,54 @@ test("the action bar follows the page on a short screen instead of taking the re
   assert.match(curriculum(), /@media \(max-width: 859px\) and \(max-height: 700px\) \{\n\s*\.aapm-curriculum-actionbar \{ position: static; \}/);
 });
 
+test("feature stylesheets target the rendered shell, not the retired one", () => {
+  for (const file of ["src/styles/features/sweep.css", "src/styles/features/mascot.css", "src/styles/features/curriculum.css"]) {
+    assert.doesNotMatch(read(file), /\.aapm-(app(__main)?|page|focus__main)(?![\w-])/, `${file} still styles a class no shell renders`);
+  }
+  assert.doesNotMatch(read("src/styles/features/sweep.css"), /--aapm-action-sidebar-width/);
+  assert.match(read("src/design-system/patterns/AppShell.jsx"), /cn\("app", /);
+});
+
+test("the design-system shell sheet keeps only what the rendered shells reach", () => {
+  const shell = read("src/design-system/styles/shell.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const classes = [...new Set([...shell.matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name))].sort();
+  assert.deepEqual(classes, ["aapm-ai-floating-panel", "aapm-route-progress", "aapm-skip-link"]);
+  assert.match(mediaBlock(shell, "(max-width: 859px)"), /:root \{ --aapm-component-bottom-nav-height: 72px; \}/, "fixed phone surfaces read this clearance");
+  assert.match(shell, /html\[data-shell="focus"\] body,/);
+});
+
+const mediaBlock = (css, query) => {
+  const start = css.lastIndexOf(`@media ${query} {`);
+  assert.notEqual(start, -1, `no ${query} block`);
+  const end = css.indexOf("\n}\n", start);
+  return css.slice(start, end);
+};
+
+test("the phone draft bar reaches the keyboard edge, and the desktop sticky bar is left alone", () => {
+  const sweep = read("src/styles/features/sweep.css");
+  const keyboardBar = /html\[data-keyboard="open"\] \.app \.aapm-curriculum-actionbar \{\s*position: fixed;\s*bottom: var\(--aapm-visible-bottom, 0px\);\s*\}/;
+  assert.match(mediaBlock(sweep, "(max-width: 859px)"), keyboardBar);
+  // From 860px the bar is sticky at top, so a fixed bottom would stretch it down to the keyboard.
+  assert.equal(sweep.match(new RegExp(keyboardBar.source, "g")).length, 1);
+  assert.match(app(), /\.app \.aapm-curriculum-actionbar\.lifecycle,\n\s*\.aapm-curriculum-actionbar\.lifecycle \{ position: sticky;/);
+});
+
+test("a keyboard that leaves the layout tall ends the page and the editor at the visible edge", () => {
+  const sweep = read("src/styles/features/sweep.css");
+  const endsAtEdge = /\{\s*height: calc\(100dvh - var\(--aapm-visible-bottom, 0px\)\);\s*\}/.source;
+  assert.match(mediaBlock(sweep, "(max-width: 859px)"), new RegExp(`html\\[data-keyboard="open"\\] \\.app:has\\(\\.aapm-curriculum-actionbar\\) ${endsAtEdge}`));
+  assert.match(mediaBlock(sweep, "(max-width: 1023px)"), new RegExp(`html\\[data-keyboard="open"\\] \\.aapm-editor-focus ${endsAtEdge}`));
+  // The bar is in flow inside .focus: shifting it as well would lift it off the keyboard.
+  assert.doesNotMatch(read("src/styles/features/sweep.css"), /html\[data-keyboard="open"\] \.aapm-editor-actionbar/);
+});
+
+test("an open editor sheet rests on the keyboard and keeps its close control on screen", () => {
+  const block = mediaBlock(read("src/styles/features/sweep.css"), "(max-width: 1023px)");
+  assert.match(block, /html\[data-keyboard="open"\] \.aapm-editor-focus \[data-drawer-open="true"\] \{[^}]*bottom: var\(--aapm-visible-bottom, 0px\);[^}]*max-height: [^}]*var\(--aapm-visible-height, 100svh\)/);
+  assert.match(read("src/components/admin/EditorOutline.jsx"), /data-drawer-open=/);
+  assert.match(read("src/pages/admin/AdminModuleEditor.jsx"), /className="aapm-editor-inspector"[^>]*data-drawer-open=/);
+});
+
 test("the app opens in light mode until the learner chooses dark", () => {
   for (const file of ["index.html", "src/lib/useThemeMode.js"]) {
     const source = readFileSync(file, "utf8");
