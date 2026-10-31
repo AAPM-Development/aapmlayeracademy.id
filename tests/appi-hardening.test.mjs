@@ -1,9 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, sql, cleanup } from './helpers/site.mjs';
+import { settledMarkdown } from '../src/lib/streamingMarkdown.js';
 
 test.after(cleanup);
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 /** A local OpenAI-compatible provider: each request plays the next scripted chunk list. */
 async function mockProvider(script) {
@@ -132,4 +140,101 @@ test('a learner cannot point APPI at the server network', async () => {
     }
     assert.equal(Number(rows(appi.site, 'SELECT COUNT(*) AS n FROM user_ai_settings')[0].n), 0);
   } finally { appi.close(); }
+});
+
+test('a learner on a stored provider keeps the model the admin chose; an admin can pick another', async () => {
+  const provider = await mockProvider([{ chunks: [text('Siap.')] }, { chunks: [text('Siap.')] }]);
+  const site = makeSite('appi-provider-mode');
+  seedCurriculum(site);
+  const learnerId = seedAccount(site, { email: 'learner@example.test', verified: true });
+  const ownerId = seedAccount(site, { email: 'owner@example.test', role: 'super_admin', verified: true });
+  const server = await startSite(site);
+  try {
+    const owner = await signIn(server.port, 'owner@example.test');
+    const stored = await owner.mutate('PUT', '/api/admin/ai-settings', { config: { type: 'openai-compatible', label: 'Gateway AAPM', baseUrl: `http://127.0.0.1:${provider.port}/v1`, allowLocal: true, authMode: 'none', model: 'model-admin', activate: true } });
+    assert.equal(stored.status, 200, stored.text);
+    const providerId = stored.json.data.providers.find((item) => item.label === 'Gateway AAPM').id;
+    const savedModel = (userId) => rows(site, 'SELECT mode, provider_id, model FROM user_ai_settings WHERE user_id = ?', [userId])[0];
+    const modelSent = async (account) => {
+      const { id } = (await account.mutate('POST', '/api/ai/conversations', { title: 'Model' })).json.data;
+      await account.mutate('POST', `/api/ai/conversations/${id}/stream`, { message: 'Tes model', includeFarmContext: false });
+      return provider.requests.at(-1).model;
+    };
+
+    const learner = await signIn(server.port, 'learner@example.test');
+    const asked = await learner.mutate('PUT', '/api/ai-settings', { mode: 'provider', providerId, model: 'model-mahal-pilihan-peserta' });
+    assert.equal(asked.status, 200, asked.text);
+    assert.equal(asked.json.data.model, '');
+    assert.deepEqual(savedModel(learnerId), { mode: 'provider', provider_id: providerId, model: '' });
+    assert.equal(await modelSent(learner), 'model-admin');
+
+    const chosen = await owner.mutate('PUT', '/api/ai-settings', { mode: 'provider', providerId, model: 'model-pilihan-admin' });
+    assert.equal(chosen.status, 200, chosen.text);
+    assert.deepEqual(savedModel(ownerId), { mode: 'provider', provider_id: providerId, model: 'model-pilihan-admin' });
+    assert.equal(await modelSent(owner), 'model-pilihan-admin');
+  } finally { server.stop(); provider.close(); }
+});
+
+const drawn = (markdown) => renderToStaticMarkup(createElement(ReactMarkdown, { remarkPlugins: [remarkGfm] }, markdown));
+
+test('a table being written never shows raw pipes, and grows one whole row at a time', () => {
+  const answer = 'Ringkasan minggu ini:\n\n| Minggu | HDP |\n| --- | --- |\n| 30 | 93 |\n| 31 | 92 |\n\nPeriksa pakan.';
+  for (let end = 1; end <= answer.length; end++) {
+    const html = drawn(settledMarkdown(answer.slice(0, end)));
+    assert.equal(html.includes('|'), false, `after ${end} characters: ${html}`);
+    if (html.includes('<table>')) assert.equal(html.match(/<tr>/g).length, 1 + (html.match(/<td>/g)?.length ?? 0) / 2, `half a row after ${end} characters`);
+  }
+  assert.equal(settledMarkdown(answer), answer);
+});
+
+test('holding a table back leaves everything else as written', () => {
+  for (const text of ['Tanpa tabel sama sekali', 'Pakan | air di tengah kalimat', '| bukan tabel\n| baris kedua', '```\n| kode | bukan tabel |', '| a |\nteks biasa\n']) {
+    assert.equal(settledMarkdown(text), text);
+  }
+  assert.equal(settledMarkdown('Awal.\n\n| Minggu |'), 'Awal.\n');
+});
+
+test('Stop works from the moment a question is sent, and a stopped answer does not hold the composer', () => {
+  const chat = read('src/components/ai/AiChatProvider.jsx');
+  assert.ok(chat.indexOf('new AbortController()') < chat.indexOf('ensureConversation(message'), 'the controller exists before the chat is created');
+  assert.match(chat, /Promise\.race\(\[preparing, stoppedFirst\]\)/);
+  // A new question in the same chat waits for the save, or that save lands after it.
+  assert.match(chat, /if \(stopSave\?\.conversationId === activeRef\.current\) await stopSave\.done;/);
+  const stopBranch = chat.slice(chat.indexOf('if (stopRequestedRef.current) {'), chat.indexOf('// A failed fetch explains itself'));
+  assert.match(stopBranch, /settleStoppedAnswer\(/);
+  assert.doesNotMatch(stopBranch, /await /, 'send returns at once, so the composer is free');
+  // The polling shows on the answer's own save link, so it cannot save the answer twice.
+  assert.match(chat, /setRetryingMessageId\(assistantId\);/);
+  // A chat made by a request that was stopped does not stay behind, empty.
+  assert.match(chat, /if \(signal\.aborted\) \{\n[^}]*conversations\.delete\(conversation\.id\)/);
+});
+
+test('a screen reader hears that the answer was stopped, not that it finished', () => {
+  assert.match(read('src/components/ai/StreamAnnouncer.jsx'), /if \(stopped\) setText\("Jawaban APPI dihentikan\."\);/);
+  assert.match(read('src/components/ai/AiChatProvider.jsx'), /settleStreamPhase\("stopped"\)/);
+  for (const surface of ['src/pages/AiAssistant.jsx', 'src/components/ai/FloatingAiAssistant.jsx']) {
+    assert.match(read(surface), /<StreamAnnouncer [^>]*stopped=\{streamPhase === "stopped"\}/, surface);
+  }
+});
+
+test('the workspace and the quick panel share one way to ask, so they cannot drift apart', () => {
+  const page = read('src/pages/AiAssistant.jsx');
+  const panel = read('src/components/ai/FloatingAiAssistant.jsx');
+  for (const [name, source] of [['workspace', page], ['panel', panel]]) {
+    assert.match(source, /useChatSubmit\(\{/, name);
+    assert.match(source, /<AiJumpToLatest onClick=\{jumpToLatest\} \/>/, name);
+    assert.match(source, /Memuat riwayat…/, name);
+    assert.doesNotMatch(source, /new FileReader|analisis foto farm/, name);
+  }
+  assert.doesNotMatch(page, /function personalizedSuggestions/);
+  assert.match(read('src/lib/aiSuggestions.js'), /`Modul \$\{moduleNo\(nextModule\)\}: /);
+  assert.match(panel, /<Ic name="refresh" \/>Buat ulang/);
+  assert.doesNotMatch(panel, /bottom-\[5\.7rem\]|aapm-token-control/);
+  // Quick actions cannot be pressed while a chat loads: the list they would act on is not shown yet.
+  assert.match(panel, /\{isLoadingConversation \? \(\n\s*<p [^>]*role="status">Memuat riwayat…<\/p>\n\s*\) : messages\.length === 0 \? \(/);
+});
+
+test('the APPI stylesheets carry no rules for classes the app no longer renders', () => {
+  const css = `${read('src/styles/features/ai-chat.css')}\n${read('src/styles/features/appi-room.css')}`;
+  assert.doesNotMatch(css, /\.aapm-(ai-composer-(frame|toggle|tools|switch|context)|ai-composer--compact|chat-suggestion|chat-welcome|room__|ai-user-bubble|ai-answer-|chat-header__|token-(popover|scrim))/);
 });

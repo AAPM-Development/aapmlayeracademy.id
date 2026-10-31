@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import { Table } from "@/components/primitives";
 import AiCopyButton from "@/components/ai/AiCopyButton";
+import { settledMarkdown } from "@/lib/streamingMarkdown";
 
 const MermaidDiagram = React.lazy(() => import("@/components/ai/MermaidDiagram"));
 // A diagram half-written is invalid Mermaid; draw it once the answer is complete.
@@ -107,7 +108,7 @@ function AiMarkdown({ content, compact = false, streaming = false }) {
     <div className="aapm-ai-markdown" data-density={compact ? "compact" : undefined}>
       <StreamingContext.Provider value={streaming}>
         <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={compact ? COMPACT_COMPONENTS : COMPONENTS}>
-          {content}
+          {streaming ? settledMarkdown(content) : content}
         </ReactMarkdown>
       </StreamingContext.Provider>
     </div>

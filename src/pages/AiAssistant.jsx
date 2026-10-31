@@ -5,7 +5,9 @@ import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
 import { ResponseDetailsPanel, ResponseDetailsToggle } from "@/components/ai/AiResponseDetails";
 import AiThinking from "@/components/ai/AiThinking";
+import AiJumpToLatest from "@/components/ai/AiJumpToLatest";
 import useChatScrollFollow from "@/components/ai/useChatScrollFollow";
+import useChatSubmit, { answerPrompts, findLastAssistantMessageIndex } from "@/components/ai/useChatSubmit";
 import StreamAnnouncer from "@/components/ai/StreamAnnouncer";
 import useModalFocus from "@/components/ai/useModalFocus";
 import AiActivityList from "@/components/ai/AiActivityList";
@@ -25,11 +27,9 @@ import AppiMascot from "@/components/appi/AppiMascot";
 import { Ic } from "@/design-system/canvas";
 import { firstName } from "@/lib/learnerCopy";
 import { useAuth } from "@/lib/AuthContext";
-import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
-import { moduleNo } from "@/lib/moduleNumber";
-import { hasFinePointer } from "@/lib/utils";
+import { personalizedSuggestions } from "@/lib/aiSuggestions";
 
 // Starter cards (canvas "APPI — sambutan"): one hue and icon per prompt.
 const STARTER_LOOK = {
@@ -45,139 +45,6 @@ const STARTER_LOOK = {
   readiness: { hue: "gold", ic: "cert" },
   default: [{ hue: "orange", ic: "chart" }, { hue: "teal", ic: "table" }, { hue: "green", ic: "feed" }, { hue: "blue", ic: "book" }],
 };
-
-function findLastAssistantMessageIndex(messages = []) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index]?.role === "assistant") return index;
-  }
-  return -1;
-}
-
-function personalizedSuggestions({ farm = [], progress = [], modules = [], user, pageContext = "" }) {
-  const displayName = user?.fullName || user?.full_name || "Anda";
-  const name = displayName.split(" ")[0] || "Anda";
-  const latest = farm.at(-1);
-  const previous = farm.at(-2);
-  const completed = getCompletedModuleSet(progress, modules).size;
-  const nextModule = getNextModule(modules, progress);
-  const nextModuleLabel = nextModule
-    ? `Modul ${moduleNo(nextModule)}: ${nextModule.title}`
-    : "modul Academy yang belum selesai";
-  const finite = (value) => Number.isFinite(Number(value));
-  const formatValue = (value) =>
-    finite(value)
-      ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(Number(value))
-      : "—";
-  const weekLabel = latest?.week ? `minggu ${latest.week}` : "catatan terbaru";
-  const hdp = Number(latest?.henDayProduction);
-  const previousHdp = Number(previous?.henDayProduction);
-  const hdpDelta = finite(hdp) && finite(previousHdp) ? hdp - previousHdp : null;
-  const missingFields = latest
-    ? [
-        ["feedIntake", "pakan"],
-        ["waterIntake", "air"],
-        ["eggWeight", "berat telur"],
-        ["mortality", "mortalitas"],
-        ["temperature", "suhu"],
-        ["humidity", "kelembapan"],
-        ["fcr", "FCR"],
-      ]
-        .filter(([key]) => !finite(latest[key]))
-        .map(([, label]) => label)
-      : [];
-  const suggestions = [];
-  const add = (id, label, detail, prompt) =>
-    suggestions.push({ id, label, detail, prompt });
-
-  if (!latest) {
-    add(
-      "baseline",
-      "Bangun baseline farm",
-      "Tentukan data minimum untuk mulai membaca performa.",
-      `${name}, saya belum memiliki catatan KPI farm. Susun lima data baseline yang perlu saya catat minggu ini, lengkap dengan satuan, periode, dan cara mengecek konsistensinya.`,
-    );
-    add(
-      "daily-log",
-      "Siapkan catatan harian",
-      "Buat format sederhana yang siap dipakai tim lapangan.",
-      "Buatkan format catatan harian farm yang ringkas untuk HDP, pakan, air, berat telur, mortalitas, suhu, dan kelembapan.",
-    );
-  } else {
-    const changeText =
-      hdpDelta === null
-        ? "perbandingan minggu sebelumnya belum tersedia"
-        : `${hdpDelta >= 0 ? "naik" : "turun"} ${formatValue(Math.abs(hdpDelta))} poin dari minggu sebelumnya`;
-    add(
-      "latest-signal",
-      "Baca sinyal terbaru",
-      `${weekLabel} · HDP ${formatValue(hdp)}% · ${changeText}`,
-      finite(hdp)
-        ? `HDP ${weekLabel} saya ${formatValue(hdp)}%${finite(previousHdp) ? `, dibanding ${formatValue(previousHdp)}% pada minggu sebelumnya` : ""}. Susun tiga pemeriksaan prioritas, data pembanding yang perlu saya siapkan, dan batas kesimpulan yang aman.`
-        : `Baca sinyal operasional dari ${weekLabel} dan susun urutan pemeriksaan yang paling masuk akal sebelum saya menarik kesimpulan.`,
-    );
-    add(
-      "context-gap",
-      "Lengkapi konteks KPI",
-      missingFields.length
-        ? `Belum ada: ${missingFields.slice(0, 4).join(", ")}${missingFields.length > 4 ? ", dan lainnya" : ""}.`
-        : "Semua kolom utama sudah terisi; cek konsistensi antarperiode.",
-      missingFields.length
-        ? `Untuk ${weekLabel}, data ${missingFields.join(", ")} belum tercatat. Urutkan data mana yang paling penting dilengkapi lebih dulu dan jelaskan mengapa data itu dibutuhkan untuk membaca HDP atau FCR.`
-        : `Data KPI ${weekLabel} sudah cukup lengkap. Buatkan pemeriksaan konsistensi antarperiode agar angka yang tampak berubah tidak langsung dianggap sebagai masalah farm.`,
-    );
-    add(
-      "feed-output",
-      "Hubungkan pakan dan output",
-      finite(latest.fcr)
-        ? `FCR tercatat ${formatValue(latest.fcr)} · bedakan sinyal dari data yang belum pasti.`
-        : "Gunakan feed intake, egg mass, dan FCR secara berurutan.",
-      finite(latest.fcr)
-        ? `FCR ${formatValue(latest.fcr)} pada ${weekLabel}. Jelaskan data pendamping yang wajib dibaca sebelum menilai efisiensi, termasuk kemungkinan masalah satuan atau pembagian dengan nol.`
-        : `Susun urutan analisis hubungan feed intake, egg mass, dan FCR untuk data farm saya, termasuk data yang masih perlu dicatat.`,
-    );
-  }
-
-  if (pageContext === "kpi") {
-    add(
-      "kpi-decision",
-      "Validasi sebelum bertindak",
-      "Ubah angka KPI menjadi pemeriksaan lapangan yang aman.",
-      "Dari data KPI akun saya, buatkan tabel sinyal, data yang perlu divalidasi, kemungkinan penyebab, dan tindakan pertama. Pisahkan fakta dari hipotesis.",
-    );
-  } else if (pageContext === "calculators") {
-    add(
-      "calculator-check",
-      "Periksa hasil hitung",
-      "Pastikan rumus, satuan, dan keputusan tidak melenceng.",
-      "Bantu saya memeriksa hasil kalkulator yang sedang saya gunakan: jelaskan asumsi rumus, satuan yang harus cocok, dan bagaimana hasilnya diterjemahkan menjadi keputusan farm.",
-    );
-  } else if (pageContext === "learning") {
-    add(
-      "next-learning",
-      "Lanjutkan belajar dengan arah",
-      `${completed} modul selesai · fokus berikutnya: ${nextModuleLabel}.`,
-      `Saya sudah menyelesaikan ${completed} modul. Buatkan rencana belajar singkat untuk melanjutkan ke ${nextModuleLabel}, lalu kaitkan dengan masalah KPI farm yang sedang saya hadapi.`,
-    );
-  } else if (pageContext === "certification" || pageContext === "exam") {
-    add(
-      "readiness",
-      "Ukur kesiapan belajar",
-      `${completed} modul selesai · cari gap yang paling penting.`,
-      `Dengan ${completed} modul selesai, buatkan checklist kesiapan belajar saya untuk sertifikasi/ujian. Tunjukkan gap yang perlu saya tutup tanpa mengarang nilai atau menjanjikan kelulusan.`,
-    );
-  } else {
-    add(
-      "next-action",
-      "Pilih langkah berikutnya",
-      `${completed} modul selesai · tetap selaraskan belajar dengan praktik farm.`,
-      completed
-        ? `Saya sudah menyelesaikan ${completed} modul. Materi atau latihan apa yang paling relevan untuk memperkuat evaluasi KPI saya saat ini? Jelaskan alasannya.`
-        : "Saya baru mulai belajar. Urutkan fokus pertama yang paling penting untuk memahami performa layer farm dan langsung beri satu latihan praktis.",
-    );
-  }
-
-  return suggestions.slice(0, 4);
-}
 
 function AssistantMessage({
   message,
@@ -663,11 +530,7 @@ export default function AiAssistant() {
   const [includeFarm, setIncludeFarm] = useState(true);
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [imageAttachment, setImageAttachment] = useState(null);
-  const [imageLoading, setImageLoading] = useState(false);
-  const [attachmentError, setAttachmentError] = useState("");
   const initialOpenRef = useRef(false);
-  const imageInputRef = useRef(null);
   const location = useLocation();
   const { data: farm = [] } = useFarmData();
   const { data: modules = [] } = useModules();
@@ -705,7 +568,6 @@ export default function AiAssistant() {
     archiveConversation,
     bulkArchiveConversations,
     bulkDeleteConversations,
-    send,
     stopStreaming,
     retryPersistAssistant,
     retryingMessageId,
@@ -723,6 +585,21 @@ export default function AiAssistant() {
     [farm, modules, progress, suggestionContext, user],
   );
   const farmAvailable = farm.length > 0;
+  const {
+    submit,
+    retryAnswer,
+    imageInputRef,
+    handleImageSelection,
+    imageAttachment,
+    removeImage,
+    imageLoading,
+    attachmentError,
+  } = useChatSubmit({
+    includeFarm: includeFarm && farmAvailable,
+    allowWebSearch,
+    pageContext: suggestionContext,
+    composerField: () => document.querySelector(".aapm-ai-workspace__main .composer textarea"),
+  });
   const activeConversation =
     activeConversationId == null
       ? null
@@ -845,52 +722,6 @@ export default function AiAssistant() {
     isStreaming,
   });
 
-  const handleImageSelection = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
-      setImageLoading(false);
-      setAttachmentError("Gunakan foto JPG, PNG, atau WebP.");
-      return;
-    }
-    if (file.size > 3 * 1024 * 1024) {
-      setImageLoading(false);
-      setAttachmentError("Ukuran foto maksimal 3 MB.");
-      return;
-    }
-    setImageLoading(true);
-    setAttachmentError("");
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageAttachment({ dataUrl: String(reader.result), name: file.name });
-      setImageLoading(false);
-      setAttachmentError("");
-    };
-    reader.onerror = () => {
-      setImageLoading(false);
-      setAttachmentError("Foto tidak dapat dibaca.");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const submit = async (text = promptDraft, { retry = false } = {}) => {
-    const content = text.trim();
-    if ((!content && !imageAttachment) || isStreaming || isLoadingConversation || imageLoading) return;
-    // The button pressed goes away with the answer, so the question field takes the focus.
-    if (hasFinePointer()) window.requestAnimationFrame(() => document.querySelector(".aapm-ai-workspace__main .composer textarea")?.focus());
-    const image = retry ? null : imageAttachment;
-    const message =
-      content ||
-      "Tolong analisis foto farm ini. Bedakan observasi visual, hal yang belum pasti, dan data yang perlu saya cek berikutnya.";
-    const result = await send(message, { retry, includeFarm: includeFarm && farmAvailable, allowWebSearch, image, pageContext: suggestionContext });
-    if (result?.ok && !retry) {
-      setImageAttachment(null);
-      setAttachmentError("");
-    }
-  };
-  const retryAnswer = (prompt) => submit(prompt, { retry: true });
-
   const docked = Boolean(messages.length || isLoadingConversation);
   const composer = (
     <AiComposer
@@ -905,7 +736,7 @@ export default function AiAssistant() {
         onImageSelection={handleImageSelection}
         imageLoading={imageLoading}
         imageAttachment={imageAttachment}
-        onRemoveImage={() => setImageAttachment(null)}
+        onRemoveImage={removeImage}
         attachmentError={attachmentError}
         includeFarm={includeFarm && farmAvailable}
         onIncludeFarmChange={setIncludeFarm}
@@ -955,7 +786,7 @@ export default function AiAssistant() {
           <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Percakapan baru" onClick={startNewConversation} disabled={isStreaming}><Ic name="edit" /></button>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
-          <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} />
+          <StreamAnnouncer isStreaming={isStreaming} failed={streamPhase === "alert"} stopped={streamPhase === "stopped"} />
           <ScrollArea
             viewportRef={chatViewportRef}
             role="log"
@@ -974,8 +805,8 @@ export default function AiAssistant() {
                 </div>
               )}
               {isLoadingConversation ? (
-                <p className="text-sm text-muted-foreground">
-                  Memuat riwayat...
+                <p className="text-sm text-muted-foreground" role="status">
+                  Memuat riwayat…
                 </p>
               ) : messages.length === 0 ? (
                 <div className="stack items-center gap-5 appi-welcome">
@@ -1024,12 +855,7 @@ export default function AiAssistant() {
                       <AssistantMessage
                         key={message.id}
                         message={message.streaming ? { ...message, streamStatus, streamSteps } : message}
-                        retryPrompt={
-                          message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""
-                        }
-                        regeneratePrompt={
-                          index === lastAssistantMessageIndex && !message.fallback && !message.error && !message.stopped && !message.interrupted ? messages[index - 1]?.content : ""
-                        }
+                        {...answerPrompts(messages, index)}
                         onRetry={retryAnswer}
                         onQuickAction={submit}
                         onRetryPersistence={retryPersistAssistant}
@@ -1048,16 +874,7 @@ export default function AiAssistant() {
               <div ref={chatEndRef} />
             </div>
           </ScrollArea>
-          {showJumpToLatest && (
-            <button
-              type="button"
-              onClick={jumpToLatest}
-              className="aapm-chat-jump"
-            >
-              <AapmIcon name="chevronDown" className="h-3.5 w-3.5 text-brand-orange" />
-              Ke pesan terbaru
-            </button>
-          )}
+          {showJumpToLatest && <AiJumpToLatest onClick={jumpToLatest} />}
         </div>
         {/* Once the chat has started the composer floats at the bottom of the
             centred column; an empty chat keeps it in the middle (below). */}
