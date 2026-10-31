@@ -3,8 +3,8 @@ export const TOTAL_LEARNING_LEVELS = 14;
 export const TOTAL_CERTIFICATION_TIERS = 6;
 
 export const learningLevels = [
-  { number: 1, name: "Foundation", description: "Peta sistem dan operasi layer farm." },
-  { number: 2, name: "Brooding & Rearing", description: "Membangun flock yang seragam sejak awal." },
+  { number: 1, name: "Foundation", description: "Cara bisnis layer menghasilkan uang dan memilih bibit." },
+  { number: 2, name: "Pondasi", description: "Menyiapkan kandang dan pullet yang seragam." },
   { number: 3, name: "Layer Management", description: "Mengawal transisi dan produksi." },
   { number: 4, name: "Nutrition", description: "Menghubungkan pakan dengan output." },
   { number: 5, name: "Water Management", description: "Menjaga akses dan kualitas air." },
@@ -109,9 +109,9 @@ export function getCertificationState(tier, completedSet = new Set(), finalPasse
 // average, farm entries and study time.
 export const learnerRanks = [
   { name: "Foundation", from: 0 },
-  { name: "Field Builder", from: 160 },
-  { name: "Farm Analyst", from: 450 },
-  { name: "Layer Leader", from: 900 },
+  { name: "Field Builder", from: 400 },
+  { name: "Farm Analyst", from: 1500 },
+  { name: "Layer Leader", from: 2700 },
 ];
 
 /** Rank, its point window and the distance to the next rank. */
@@ -124,8 +124,18 @@ export function getRankProgress(points = 0) {
   return { name: rank.name, points: value, from: rank.from, to: next?.from ?? null, nextName: next?.name ?? null, toNext: next ? next.from - value : 0, percent: Math.max(0, Math.min(100, percent)) };
 }
 
-/** The learning level (number, name) a module belongs to. */
+/** Chapters for lists and filters: a name saved on the modules wins over the fallback. */
+export function chapterOptions(modules = []) {
+  return learningLevels.map((level) => {
+    const own = modules.find((module) => Number(module?.level) === level.number && module?.levelName);
+    return own ? { ...level, name: own.levelName } : level;
+  });
+}
+
+/** The chapter (number, name) a module belongs to. */
 export function getLevelForModule(module) {
   if (!module) return null;
-  return learningLevels.find((level) => level.number === Number(module.level)) || null;
+  const level = learningLevels.find((item) => item.number === Number(module.level));
+  if (!level) return null;
+  return module.levelName ? { ...level, name: module.levelName } : level;
 }

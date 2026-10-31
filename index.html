@@ -16,7 +16,7 @@
       // Apply the saved appearance before first paint (no light→dark flash).
       try {
         var savedTheme = localStorage.getItem("aapm-theme");
-        if (savedTheme === "dark" || (!savedTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        if (savedTheme === "dark") {
           document.documentElement.classList.add("dark");
           document.documentElement.style.colorScheme = "dark";
         }

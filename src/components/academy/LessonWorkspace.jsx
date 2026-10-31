@@ -98,7 +98,7 @@ export function LessonHeader({ module = null, completed = false, hue = "green", 
     <header className="stack gap-3" data-hue={hue}>
       {banner ? <div className="lesson-banner" aria-hidden="true"><img src={banner} alt="" decoding="async" style={{ objectPosition: `center ${bannerFocus}` }} /></div> : null}
       <div className="row wrap gap-2">
-        <span className="chip chip-hue">Level {module.level} · {module.levelName || module.category}</span>
+        <span className="chip chip-hue">Chapter {module.level} · {module.levelName || module.category}</span>
         <span className="chip">Modul {moduleNo(module)}</span>
         {minutes ? <span className="chip"><Ic name="clock" />±{minutes} menit</span> : null}
         {completed ? <span className="chip chip-success"><Ic name="check-circle" />Tuntas</span> : null}

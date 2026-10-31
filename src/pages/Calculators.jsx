@@ -417,7 +417,7 @@ const tools = [
     format: (value) => formatNumber(value, 0),
     unit: "% ROI",
     unitLong: "ROI per tahun",
-    module: /Ekonomi|Economics|Biaya|Keuangan/i,
+    module: /Break Even|ROI/i,
     scale: {
       min: -20,
       max: 60,
@@ -608,7 +608,7 @@ function ApplyLinks({ tool, farmRows, modules }) {
             <span className="tile tile-round tile-solid"><Ic name="book" /></span>
             <span className="stack grow" style={{ minWidth: 0 }}>
               <span className="li-title t-strong t-clamp-2">Modul {moduleNo(module)} · {module.title}</span>
-              <span className="li-meta">{level ? `Level ${level.number} · ${level.name}` : module.levelName}</span>
+              <span className="li-meta">{level ? `Chapter ${level.number} · ${level.name}` : module.levelName}</span>
             </span>
             <Ic name="chev-right" className="t-muted" />
           </Link>

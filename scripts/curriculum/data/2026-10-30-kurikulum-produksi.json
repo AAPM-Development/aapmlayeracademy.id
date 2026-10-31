@@ -8,6 +8,9 @@
     "video",
     "image"
   ],
+  "chapters": {
+    "2": "Pondasi"
+  },
   "modules": [
     {
       "moduleNumber": 1,
@@ -202,7 +205,14 @@
           "type": "mcq",
           "learningObjective": "Mengidentifikasi sumber revenue utama dan komponen biaya terbesar"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=kvz8QQG_mXU",
+        "language": "en",
+        "source": "Ministry of Agriculture and Fisheries, Trinidad & Tobago",
+        "sourceType": "government",
+        "minutes": 35
+      }
     },
     {
       "moduleNumber": 2,
@@ -385,6 +395,16 @@
           "type": "mcq",
           "learningObjective": "Menilai kesiapan pullet dari bobot, uniformity, kematangan seksual, dan status vaksinasi"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=zEYm8Yicj24",
+        "language": "en",
+        "source": "Royal Pas Reform",
+        "sourceType": "industry",
+        "minutes": 28
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=hsvid7YhOXU"
       ]
     },
     {
@@ -568,6 +588,16 @@
           "type": "mcq",
           "learningObjective": "Menentukan dimensi lebar, tinggi, dan jarak kandang open house"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Ust1NkPfzMw",
+        "language": "en",
+        "source": "World Poultry Foundation",
+        "sourceType": "foundation",
+        "minutes": 14
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=nd5-NiPIC0I"
       ]
     },
     {
@@ -750,7 +780,14 @@
           "type": "mcq",
           "learningObjective": "Mengidentifikasi penyebab pertumbuhan tidak seragam"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Z_YYierQRas",
+        "language": "en",
+        "source": "Teagasc",
+        "sourceType": "research",
+        "minutes": 16
+      }
     },
     {
       "moduleNumber": 5,
@@ -914,7 +951,14 @@
           "type": "mcq",
           "learningObjective": "Menyusun rencana transisi pakan dan cahaya"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=DfI-cjQxIos",
+        "language": "en",
+        "source": "Humphrey Feeds & Pullets",
+        "sourceType": "industry",
+        "minutes": 3
+      }
     },
     {
       "moduleNumber": 6,
@@ -1095,7 +1139,14 @@
           "type": "mcq",
           "learningObjective": "Menjalankan rapat produksi berbasis KPI"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=SD72BnoRSck",
+        "language": "en",
+        "source": "Teagasc",
+        "sourceType": "research",
+        "minutes": 56
+      }
     },
     {
       "moduleNumber": 7,
@@ -1305,6 +1356,16 @@
           "type": "mcq",
           "learningObjective": "Menghubungkan intake dengan egg mass dan FCR"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=kZ4ZoC6RBDg",
+        "language": "id",
+        "source": "Medion Indonesia",
+        "sourceType": "industry",
+        "minutes": 74
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=FRGJnDn8BGU"
       ]
     },
     {
@@ -1459,6 +1520,16 @@
           "type": "mcq",
           "learningObjective": "Mengecek sistem nipple, tekanan, dan reservoir"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=iuDhbyl_TKw",
+        "language": "id",
+        "source": "Medion Indonesia",
+        "sourceType": "industry",
+        "minutes": 71
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=QOd_27gFlGk"
       ]
     },
     {
@@ -1705,6 +1776,16 @@
           "type": "mcq",
           "learningObjective": "Mengukur mikroklimat dengan benar di level ayam"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=mMaDGz9BLm4",
+        "language": "id",
+        "source": "Medion Indonesia",
+        "sourceType": "industry",
+        "minutes": 68
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=Ust1NkPfzMw"
       ]
     },
     {
@@ -1954,7 +2035,14 @@
           "type": "mcq",
           "learningObjective": "Mengenali komponen closed house dan fungsinya"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Q9UpOZ_t6eg",
+        "language": "en",
+        "source": "Hy-Line North America",
+        "sourceType": "breeder",
+        "minutes": 30
+      }
     },
     {
       "moduleNumber": 11,
@@ -2132,6 +2220,16 @@
           "type": "mcq",
           "learningObjective": "Mendokumentasikan program kesehatan dan vaksinasi"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=O_iX38dYKtk",
+        "language": "id",
+        "source": "Medion Indonesia",
+        "sourceType": "industry",
+        "minutes": 27
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=8FCC6XPLfqw"
       ]
     },
     {
@@ -2324,7 +2422,14 @@
           "type": "mcq",
           "learningObjective": "Membuat prosedur akses dan sanitasi"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=gJYgqGw8ljw",
+        "language": "en",
+        "source": "Food and Agriculture Organization of the United Nations",
+        "sourceType": "un_agency",
+        "minutes": 6
+      }
     },
     {
       "moduleNumber": 13,
@@ -2506,7 +2611,14 @@
           "type": "mcq",
           "learningObjective": "Menyusun tindakan pencegahan berbasis data"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=bE5vhWqDiqU",
+        "language": "en",
+        "source": "Food and Agriculture Organization of the United Nations",
+        "sourceType": "un_agency",
+        "minutes": 9
+      }
     },
     {
       "moduleNumber": 14,
@@ -2693,7 +2805,14 @@
           "type": "mcq",
           "learningObjective": "Membedakan data primer dan data turunan"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=ibl923M0i2E",
+        "language": "en",
+        "source": "Food and Agriculture Organization of the United Nations",
+        "sourceType": "un_agency",
+        "minutes": 6
+      }
     },
     {
       "moduleNumber": 15,
@@ -2936,7 +3055,14 @@
           "type": "mcq",
           "learningObjective": "Menetapkan benchmark yang relevan dan sebanding"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=RSMWvFUNd8o",
+        "language": "en",
+        "source": "Nuffield Farming",
+        "sourceType": "foundation",
+        "minutes": 4
+      }
     },
     {
       "moduleNumber": 16,
@@ -3083,7 +3209,14 @@
           "type": "mcq",
           "learningObjective": "Mengenali cost driver dan biaya tersembunyi"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=v8TZ3Gx5edk",
+        "language": "en",
+        "source": "Food and Agriculture Organization of the United Nations",
+        "sourceType": "un_agency",
+        "minutes": 5
+      }
     },
     {
       "moduleNumber": 17,
@@ -3207,7 +3340,14 @@
           "type": "mcq",
           "learningObjective": "Menyusun skenario dan analisis sensitivitas sederhana"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Urx09wfnosE",
+        "language": "en",
+        "source": "Food and Agriculture Organization of the United Nations",
+        "sourceType": "un_agency",
+        "minutes": 9
+      }
     },
     {
       "moduleNumber": 18,
@@ -3352,7 +3492,14 @@
           "type": "mcq",
           "learningObjective": "Menyusun ritme briefing dan handover"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=2aNSaA4RTec",
+        "language": "en",
+        "source": "World Poultry Foundation",
+        "sourceType": "foundation",
+        "minutes": 12
+      }
     },
     {
       "moduleNumber": 19,
@@ -3492,7 +3639,14 @@
       ],
       "removeMediaUrls": [
         "https://www.youtube.com/watch?v=x0xbE03LZxk"
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Awo_wygDTEg",
+        "language": "en",
+        "source": "Hy-Line International",
+        "sourceType": "breeder",
+        "minutes": 49
+      }
     },
     {
       "moduleNumber": 20,
@@ -3645,7 +3799,14 @@
           "type": "mcq",
           "learningObjective": "Mengukur efektivitas tindakan"
         }
-      ]
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=5QkDT-aCwVk",
+        "language": "en",
+        "source": "Food Standards Agency, United Kingdom",
+        "sourceType": "government",
+        "minutes": 8
+      }
     },
     {
       "moduleNumber": 21,
@@ -3790,6 +3951,16 @@
           "type": "mcq",
           "learningObjective": "Membuat keputusan yang dapat dieksekusi dan dikomunikasikan"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=qim1CdTvHSc",
+        "language": "en",
+        "source": "Oklahoma State University, Agricultural Economics",
+        "sourceType": "university",
+        "minutes": 23
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=NyoRSGe7SBE"
       ]
     },
     {
@@ -3908,6 +4079,16 @@
           "type": "mcq",
           "learningObjective": "Mengintegrasikan seluruh KPI dalam satu analisis"
         }
+      ],
+      "video": {
+        "url": "https://www.youtube.com/watch?v=F5vtCRFRAK0",
+        "language": "en",
+        "source": "Bloomberg Originals",
+        "sourceType": "publisher",
+        "minutes": 5
+      },
+      "removeMediaUrls": [
+        "https://www.youtube.com/watch?v=I-2NsGXXDnM"
       ]
     }
   ],

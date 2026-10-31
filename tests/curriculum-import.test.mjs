@@ -23,6 +23,7 @@ function importer(site, args) {
   });
 }
 
+const stored = (url) => `https://www.youtube-nocookie.com/embed/${url.split("v=")[1]}?rel=0`;
 const count = (site, table) => Number(rows(site, `SELECT COUNT(*) AS n FROM ${table}`)[0].n);
 const jsonOut = (result) => JSON.parse(result.stdout.slice(result.stdout.indexOf("{")));
 const apply = ["--expect-environment=local", `--actor-email=${ADMIN}`, "--apply", "--operator=Operator Uji", "--evidence-ref=AUDIT-2026-10-30"];
@@ -74,6 +75,18 @@ test("package: module 19 retires the untrusted video and points to the written s
   const link = module.editorialBlocks.find((block) => block.type === "link");
   assert.match(link.label, /Performance Standards Guide/);
   assert.match(link.url, /^https:\/\/www\.hyline\.com\/.*BRN%20STD%20ENG\.pdf$/);
+});
+
+test("package: every video names an allowed language and a trusted source type", () => {
+  const trusted = new Set(["government", "un_agency", "research", "university", "breeder", "foundation", "publisher", "industry"]);
+  for (const module of pack.modules) {
+    const video = module.video;
+    assert.match(video.url, /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/, `module ${module.moduleNumber}`);
+    assert.ok(["id", "en"].includes(video.language), `module ${module.moduleNumber} language`);
+    assert.ok(trusted.has(video.sourceType), `module ${module.moduleNumber} source type`);
+    assert.ok(video.source.length > 3, `module ${module.moduleNumber} source`);
+    assert.ok(!(module.removeMediaUrls ?? []).includes(video.url), `module ${module.moduleNumber} does not retire its own video`);
+  }
 });
 
 test("dry run reports the plan and writes nothing", async () => {
@@ -151,6 +164,49 @@ test("apply publishes every module and the final bank, keeps media blocks, and r
   assert.equal(count(site, "module_revisions"), revisions + 22);
 });
 
+test("a package replaces a retired or missing video and leaves an editor's choice", async () => {
+  const { site } = await setup("import-video-replace");
+  const seven = pack.modules.find((entry) => entry.moduleNumber === 7);
+  const eight = pack.modules.find((entry) => entry.moduleNumber === 8);
+  const twelve = pack.modules.find((entry) => entry.moduleNumber === 12);
+  const chosen = "https://www.youtube.com/watch?v=Q9UpOZ_t6eg";
+  sql(site, "UPDATE course_modules SET video_url = ? WHERE module_number = 7", [seven.removeMediaUrls[0]]);
+  sql(site, "UPDATE course_modules SET video_url = '' WHERE module_number = 12");
+  sql(site, "UPDATE course_modules SET video_url = ? WHERE module_number = 8", [chosen]);
+
+  const result = importer(site, [...apply, "--modules=7,8,12", "--skip-final"]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const video = (number) => rows(site, "SELECT video_url FROM course_modules WHERE module_number = ?", [number])[0].video_url;
+  assert.equal(video(7), stored(seven.video.url));
+  assert.equal(video(12), stored(twelve.video.url));
+  assert.equal(video(8), chosen);
+  assert.notEqual(eight.video.url, chosen);
+});
+
+test("a package renames a chapter across its modules, as revisions, and replays as a no-op", async () => {
+  const { site } = await setup("import-chapter");
+  sql(site, "UPDATE course_modules SET level_name = 'Brooding & Rearing' WHERE level_number = 2");
+  const names = () => rows(site, "SELECT level_name FROM course_modules WHERE level_number = 2").map((row) => row.level_name);
+
+  const plan = jsonOut(importer(site, ["--expect-environment=local", `--actor-email=${ADMIN}`, "--dry-run", "--skip-final"]));
+  assert.ok(plan.modules.find((module) => module.moduleNumber === 3).changedFields.includes("levelName"));
+  assert.deepEqual([...new Set(names())], ["Brooding & Rearing"], "the plan writes nothing");
+
+  const result = importer(site, [...apply, "--skip-final"]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual([...new Set(names())], [pack.chapters["2"]]);
+  const replay = jsonOut(importer(site, ["--expect-environment=local", `--actor-email=${ADMIN}`, "--dry-run", "--skip-final"]));
+  assert.ok(replay.modules.every((module) => module.status === "unchanged"));
+});
+
+test("a run limited to some modules leaves the chapter name alone", async () => {
+  const { site } = await setup("import-chapter-partial");
+  sql(site, "UPDATE course_modules SET level_name = 'Brooding & Rearing' WHERE level_number = 2");
+  const result = importer(site, [...apply, "--modules=3", "--skip-final"]);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual([...new Set(rows(site, "SELECT level_name FROM course_modules WHERE level_number = 2").map((row) => row.level_name))], ["Brooding & Rearing"]);
+});
+
 test("a package retires a published video: the field and its block go, other media stay", async () => {
   const { site } = await setup("import-video");
   const retired = pack.modules.find((entry) => entry.moduleNumber === 19).removeMediaUrls[0];
@@ -167,7 +223,7 @@ test("a package retires a published video: the field and its block go, other med
   const result = importer(site, [...apply, ...scope]);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const live = rows(site, "SELECT video_url, editorial_content FROM course_modules WHERE module_number = 19")[0];
-  assert.equal(live.video_url, "");
+  assert.equal(live.video_url, stored(pack.modules.find((entry) => entry.moduleNumber === 19).video.url));
   const ids = JSON.parse(live.editorial_content).blocks.map((block) => block.id);
   assert.ok(ids.includes("keep-video"), "a different video stays");
   assert.ok(!ids.includes("retired-video"), "the retired video's block is gone");

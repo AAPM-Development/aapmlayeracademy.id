@@ -57,7 +57,7 @@ function QuizRewards({ module, alreadyCompleted, learning, curriculum, completed
             <span className="medal medal-sm anim-pop" style={{ "--i": 6 }}>{claimable.number}</span>
             <div className="stack" style={{ flex: "1 1 220px", minWidth: 0 }}>
               <span className="t-heading">Sertifikat Tingkat {claimable.number} siap diklaim</span>
-              <span className="t-caption t-muted">{claimable.name} · Modul {claimable.modules[0]}–{claimable.modules[claimable.modules.length - 1]} tuntas</span>
+              <span className="t-caption t-muted">{claimable.name} · semua modul wajib tuntas</span>
             </div>
             <Link className="btn btn-gold shine" to="/certification"><Ic name="award" />Klaim sertifikat</Link>
           </div>
@@ -67,11 +67,11 @@ function QuizRewards({ module, alreadyCompleted, learning, curriculum, completed
             <span className="tile tile-round tile-solid"><Ic name={level.ic} /></span>
             <div className="stack grow gap-1-5">
               <div className="row between wrap gap-2">
-                <span className="t-heading">Level {level.number} · {level.name}</span>
+                <span className="t-heading">Chapter {level.number} · {level.name}</span>
                 <span className="t-caption t-strong t-num">{level.completed}/{level.total} modul</span>
               </div>
-              <Bar value={level.percent} onTint animate index={6} label={`Progres Level ${level.number}`} now={level.completed} max={level.total} />
-              <span className="t-caption t-muted">{level.completed === level.total ? `Level ${level.number} tuntas` : `${level.total - level.completed} modul lagi menuntaskan Level ${level.number}`}</span>
+              <Bar value={level.percent} onTint animate index={6} label={`Progres Chapter ${level.number}`} now={level.completed} max={level.total} />
+              <span className="t-caption t-muted">{level.completed === level.total ? `Chapter ${level.number} tuntas` : `${level.total - level.completed} modul lagi menuntaskan Chapter ${level.number}`}</span>
             </div>
           </div>
         ) : null}

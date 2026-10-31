@@ -66,3 +66,11 @@ test("the APPI launcher rests above the curriculum action bar, not behind it", (
 test("the action bar follows the page on a short screen instead of taking the reading room", () => {
   assert.match(curriculum(), /@media \(max-width: 859px\) and \(max-height: 500px\) \{\n\s*\.aapm-curriculum-actionbar \{ position: static; \}/);
 });
+
+test("the app opens in light mode until the learner chooses dark", () => {
+  for (const file of ["index.html", "src/lib/useThemeMode.js"]) {
+    const source = readFileSync(file, "utf8");
+    assert.ok(!source.includes("prefers-color-scheme"), `${file} follows the system appearance`);
+    assert.ok(source.includes("aapm-theme"), `${file} still reads the saved choice`);
+  }
+});

@@ -11,7 +11,8 @@ declare(strict_types=1);
  * Existing slide, video, and image blocks in a module's published material are kept
  * (ahead of the package's text blocks); every other field the package names replaces
  * the published value. A module's removeMediaUrls retires those videos only where they
- * are still published, so a video an editor has since chosen is left alone. A module
+ * are still published, so a video an editor has since chosen is left alone; its
+ * video.url then takes the empty or retired place. A module
  * with unpublished editor changes stops the whole run, so an editor's work in progress
  * is never published by accident.
  *
@@ -110,6 +111,7 @@ if (!is_array($package) || ($package['schema'] ?? '') !== 'aapm-curriculum-updat
 $packageId = (string) ($package['id'] ?? '');
 $curriculumId = (string) ($package['curriculumId'] ?? AAPM_PRIMARY_CURRICULUM);
 $preserveTypes = array_values(array_intersect((array) ($package['preserveBlockTypes'] ?? []), ['slides', 'video', 'image']));
+$chapters = (array) ($package['chapters'] ?? []);
 
 try {
     $config = app_config();
@@ -233,16 +235,26 @@ foreach ($package['modules'] as $entry) {
         }
     }
     $retiredUrls = import_retired_urls($entry);
-    if (in_array(normalise_lesson_video_url($published['videoUrl'] ?? ''), $retiredUrls, true)) {
-        $input['videoUrl'] = '';
+    $publishedVideo = normalise_lesson_video_url($published['videoUrl'] ?? '');
+    if ($publishedVideo === '' || in_array($publishedVideo, $retiredUrls, true)) {
+        $input['videoUrl'] = (string) ($entry['video']['url'] ?? '');
     }
     $kept = [];
     $removedMedia = 0;
     if (isset($entry['editorialBlocks']) && is_array($entry['editorialBlocks'])) {
         [$input['editorialContent'], $kept, $removedMedia] = import_editorial((string) $published['editorialContent'], $entry['editorialBlocks'], $preserveTypes, $retiredUrls);
     }
+    // A chapter name lives on every module in it, so only a whole-package run changes it.
+    // Validation requires today's name; the new one reaches each module through its revision.
+    $chapterName = $onlyModules === null ? ($chapters[(int) $row['level_number']] ?? null) : null;
+    if ($chapterName !== null) {
+        $input['levelName'] = admin_existing_chapter_name((int) $row['level_number'], null, $curriculumId) ?? (string) $published['levelName'];
+    }
     $target = aapm_cur_normalise_content($input, $published, $curriculumId);
     $target['moduleNumber'] = $number;
+    if ($chapterName !== null) {
+        $target['levelName'] = (string) $chapterName;
+    }
 
     $liveQuestions = aapm_cur_live_questions($pdo, $number);
     $targetQuestions = isset($entry['questions']) && is_array($entry['questions']) ? import_questions($entry['questions']) : aapm_cur_question_content($liveQuestions);

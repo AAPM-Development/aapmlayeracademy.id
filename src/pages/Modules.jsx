@@ -5,7 +5,7 @@ import { Bar, Egg, Ic } from "@/design-system/canvas";
 import { ContinueCard, CourseCard, LearningPath } from "@/components/academy/CourseElements";
 import { LearningEmptyState, LearningErrorState, LearningLoading } from "@/components/academy/LearningStates";
 import { useCertificates, useModules, useUserProgress } from "@/lib/useCourseData";
-import { certificationTiers, getCompletedModuleSet, getNextModule, getProgressSummary, learningLevels } from "@/lib/academyData";
+import { certificationTiers, chapterOptions, getCompletedModuleSet, getNextModule, getProgressSummary, learningLevels } from "@/lib/academyData";
 import { buildCurriculum } from "@/lib/academyVisuals";
 import { cn } from "@/lib/utils";
 
@@ -34,16 +34,16 @@ function matchesStatus(module, status) {
   return module.state !== "completed" && module.state !== "current" && !module.progress;
 }
 
-/** Sticky rail beside the path: jump between levels, the next tier, the egg legend. */
+/** Sticky rail beside the path: jump between chapters, the next tier, the egg legend. */
 function PathRail({ curriculum, completedSet, ownedTiers }) {
   const levelsDone = curriculum.filter((level) => level.total && level.completed === level.total).length;
   const nextTier = certificationTiers.find((tier) => !ownedTiers.has(tier.number));
   const tierDone = nextTier ? nextTier.modules.filter((number) => completedSet.has(number)).length : 0;
   return (
-    <aside className="stack gap-grid path-rail" aria-label="Navigasi level">
+    <aside className="stack gap-grid path-rail" aria-label="Navigasi chapter">
       <nav className="card anim-rise" style={{ "--i": 2 }} aria-labelledby="idx-title">
         <div className="card-pad" style={{ paddingBottom: "var(--s-3)" }}>
-          <h2 className="card-title" id="idx-title">Indeks level</h2>
+          <h2 className="card-title" id="idx-title">Indeks chapter</h2>
           <p className="card-desc">{levelsDone} dari {curriculum.length} tuntas · pilih untuk melompat</p>
         </div>
         <div className="list">
@@ -58,7 +58,7 @@ function PathRail({ curriculum, completedSet, ownedTiers }) {
                 ) : (
                   <Egg size="xs">{level.number}</Egg>
                 )}
-                <span className={cn("li-title grow t-clamp-2", level.hasCurrent && "t-strong")}>{level.anchor && level.anchor !== `level-${level.number}` ? `${level.curriculumTitle} · ` : ""}L{level.number} · {level.name}</span>
+                <span className={cn("li-title grow t-clamp-2", level.hasCurrent && "t-strong")}>{level.anchor && level.anchor !== `level-${level.number}` ? `${level.curriculumTitle} · ` : ""}C{level.number} · {level.name}</span>
                 <span className={cn("t-caption t-num", level.hasCurrent ? "t-ai t-strong" : "t-muted")}>{level.completed}/{level.total}</span>
               </a>
             );
@@ -112,10 +112,10 @@ function Catalog({ curriculum }) {
           <span className="sr-only">Cari modul</span>
           <input type="search" placeholder="Cari modul…" value={query} onChange={(event) => { setQuery(event.target.value); setLimit(PAGE_SIZE); }} />
         </label>
-        <label className="sr-only" htmlFor="f-level">Level</label>
+        <label className="sr-only" htmlFor="f-level">Chapter</label>
         <select className="select" id="f-level" style={{ width: 220 }} value={level} onChange={(event) => { setLevel(event.target.value); setLimit(PAGE_SIZE); }}>
-          <option value="all">Semua level</option>
-          {learningLevels.map((item) => <option key={item.number} value={String(item.number)}>Level {item.number} · {item.name}</option>)}
+          <option value="all">Semua chapter</option>
+          {chapterOptions(curriculum.flatMap((item) => item.modules)).map((item) => <option key={item.number} value={String(item.number)}>Chapter {item.number} · {item.name}</option>)}
         </select>
         <div className="scroll-x" style={{ maxWidth: "100%" }}>
           <div className="seg" role="group" aria-label="Status modul">
@@ -137,7 +137,7 @@ function Catalog({ curriculum }) {
           <div className="card card-dashed empty">
             <span className="tile tile-round" data-hue="neutral"><Ic name="search" /></span>
             <h3 className="t-heading">Modul tidak ditemukan</h3>
-            <p className="t-support">Coba kata kunci lain atau tampilkan semua level.</p>
+            <p className="t-support">Coba kata kunci lain atau tampilkan semua chapter.</p>
             <button type="button" className="btn btn-secondary btn-sm" onClick={reset}>Atur ulang filter</button>
           </div>
         )}

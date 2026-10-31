@@ -59,7 +59,7 @@ export function CourseCard({ module, state = "available", to = undefined, index 
         {state === "current" ? <span className="chip chip-ai chip-dot cover-chip">Lanjutkan</span> : null}
       </ModuleCover>
       <div className="stack grow gap-2 card-pad">
-        <span className="chip chip-hue" style={{ alignSelf: "flex-start" }}>Level {module.level} · {module.levelName}</span>
+        <span className="chip chip-hue" style={{ alignSelf: "flex-start" }}>Chapter {module.level} · {module.levelName}</span>
         <h3 className="card-title t-clamp-2">{module.title}</h3>
         {module.summary ? <p className="t-support t-muted t-clamp-2">{module.summary}</p> : null}
       </div>
@@ -89,7 +89,7 @@ export function ModuleRow({ module, state = "available", hue = undefined }) {
       <Egg size="xs" state={state === "completed" ? "done" : state === "current" ? "current" : undefined}>{state === "completed" ? <Ic name="check" /> : moduleNo(module)}</Egg>
       <span className="stack grow" style={{ minWidth: 0 }}>
         <span className="li-title t-clamp-1">{module.title}</span>
-        <span className="li-meta">Level {module.level} · {moduleMeta(module, { short: true })}</span>
+        <span className="li-meta">Chapter {module.level} · {moduleMeta(module, { short: true })}</span>
       </span>
       <Ic name="chev-right" className="t-muted" />
     </Link>
@@ -168,7 +168,7 @@ function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
       <div className="unit-banner">
         <span className="tile tile-lg hide-sm"><Ic name={level.ic} /></span>
         <div className="stack grow gap-0-5" style={{ minWidth: 0 }}>
-          <span className="t-overline">Level {level.number}</span>
+          <span className="t-overline">Chapter {level.number}</span>
           <h2 className="unit-title" id={titleId}>{level.name}</h2>
           {level.description ? <p className="t-support t-clamp-1">{level.description}</p> : null}
         </div>
@@ -177,7 +177,7 @@ function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
           <span className="t-caption t-strong t-num">{level.completed}/{level.total} modul</span>
         </div>
       </div>
-      <ol className="path" style={done ? { gap: "var(--s-4)" } : undefined} aria-label={`Modul Level ${level.number}`}>
+      <ol className="path" style={done ? { gap: "var(--s-4)" } : undefined} aria-label={`Modul Chapter ${level.number}`}>
         {items}
       </ol>
     </section>
@@ -207,7 +207,7 @@ export function LearningPath({ curriculum = [], completedSet = new Set(), ownedT
         <section className="card card-dashed card-pad stack gap-4 anim-rise" style={{ "--i": 5 }} aria-labelledby="more-title">
           <div className="row wrap between gap-3">
             <div className="stack gap-0-5" style={{ flex: "1 1 240px", minWidth: 0 }}>
-              <h2 className="t-heading" id="more-title">Level {folded[0].number}–{folded[folded.length - 1].number} · {foldedModules.length} modul berikutnya</h2>
+              <h2 className="t-heading" id="more-title">Chapter {folded[0].number}–{folded[folded.length - 1].number} · {foldedModules.length} modul berikutnya</h2>
               <p className="t-support t-muted">{folded[0].name} sampai {folded[folded.length - 1].name}.</p>
             </div>
             <button className="btn btn-ghost btn-sm" type="button" aria-expanded="false" onClick={() => setExpanded(true)}>Tampilkan semua<Ic name="chev-down" /></button>
@@ -247,7 +247,7 @@ export function ContinueCard({ module, summary, levelsDone = 0, levelTotal = 14 
             <Ring value={summary.percent} hue="green" animate />
             <div className="stack"><dt className="t-caption t-muted">Progres</dt><dd className="t-heading t-num">{summary.completed}/{summary.total} modul</dd></div>
           </div>
-          <div className="stack"><dt className="t-caption t-muted">Level tuntas</dt><dd className="t-heading t-num">{levelsDone} dari {levelTotal}</dd></div>
+          <div className="stack"><dt className="t-caption t-muted">Chapter tuntas</dt><dd className="t-heading t-num">{levelsDone} dari {levelTotal}</dd></div>
           <div className="stack"><dt className="t-caption t-muted">Sisa</dt><dd className="t-heading t-num">{summary.total - summary.completed} modul</dd></div>
         </dl>
       </div>
@@ -278,7 +278,7 @@ export function CourseOutline({ curriculum = [], currentNumber, completed = 0, t
       {curriculum.map((level) => (
         <div key={level.key || level.number} className="stack gap-1">
           {level.curriculumStart ? <span className="t-overline t-muted" style={{ padding: "8px 8px 0" }}>{level.curriculumTitle}</span> : null}
-          <span className="row gap-2 t-caption t-strong" style={{ padding: "4px 8px" }} data-hue={level.hue}><i style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--h)" }} aria-hidden="true" />L{level.number} · {level.name}</span>
+          <span className="row gap-2 t-caption t-strong" style={{ padding: "4px 8px" }} data-hue={level.hue}><i style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--h)" }} aria-hidden="true" />C{level.number} · {level.name}</span>
           {level.modules.map((module) => {
             const current = Number(module.moduleNumber) === Number(currentNumber);
             const done = module.state === "completed";

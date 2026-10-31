@@ -574,7 +574,7 @@ function VideoBlockFields({ block, onChange }) {
   return (
     <div className="aapm-editor-video-fields aapm-editor-media-fields space-y-3">
       <div className="aapm-editor-media-row aapm-editor-video-row grid items-start gap-3">
-        <Field id={urlId} label="Tautan atau file video" required hint="YouTube, Vimeo, Google Drive, Loom, URL embed Dailymotion dengan Player ID, file MP4/WebM HTTPS, atau unggah file. Tautan biasa Dailymotion dibuka di situsnya.">
+        <Field id={urlId} label="Tautan atau file video" required hint="YouTube, Vimeo, Google Drive, Loom, URL embed Dailymotion dengan Player ID, file MP4/WebM HTTPS, atau unggah file. Tautan biasa Dailymotion dibuka di situsnya. Pakai video berbahasa Indonesia atau Inggris dari sumber tepercaya.">
           <Input id={urlId} type="text" inputMode="url" autoCapitalize="off" spellCheck={false} placeholder="https://youtu.be/… atau https://drive.google.com/file/d/…" value={block.url || ""} onChange={(event) => onChange({ url: event.target.value })} required />
         </Field>
         <Field id={captionId} label="Keterangan learner" hint="Opsional; singkatkan hal yang perlu diperhatikan.">
