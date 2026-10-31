@@ -7,6 +7,7 @@ import AuthLayout, { AuthDivider, GoogleButton } from "@/components/AuthLayout";
 import PasswordField from "@/components/PasswordField";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { collectErrors, emailError, focusFirstError, passwordError } from "@/lib/authValidation";
+import { hasFinePointer } from "@/lib/utils";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -80,7 +81,7 @@ export default function Login() {
             autoComplete="email"
             autoCapitalize="none"
             spellCheck={false}
-            autoFocus
+            autoFocus={hasFinePointer()}
             placeholder="nama@perusahaan.com"
             value={email}
             onChange={(e) => {

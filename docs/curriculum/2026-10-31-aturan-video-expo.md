@@ -107,9 +107,23 @@ Bank teraudit menggantikan bank Expo di salinan kerja. Zip asli tidak diubah. Se
 - `npm run audit:shell` dengan data Expo: admin 255 dari 255 halaman bersih. Peserta 143 halaman bersih, dan 2 temuan tersisa adalah pemeriksaan menu admin yang memang tidak dimiliki peserta.
 - Mode terang: dengan sistem gelap dan tanpa pilihan tersimpan, aplikasi tetap terang.
 
+## Latihan Staging
+
+Staging ternyata kosong (0 modul, 0 soal, tanpa admin), jadi latihan memakai modul dasar dari `database/seed.php`, bukan materi Production. Akun operator dijadikan admin dengan `scripts/security/provision-admin.php`.
+
+| Pemeriksaan di Staging (MariaDB, build `f0def61f`) | Hasil |
+|---|---|
+| Dry-run lalu apply | 22 modul terbit sebagai revisi baru, tanpa `blocking` |
+| Bank soal | 5 soal di 22 modul, 30 soal ujian akhir |
+| Video | 22 modul |
+| Kuis Modul 1 | 5 soal, soal dan opsi teracak, kunci tetap menunjuk jawaban benar pada 5 dari 5 soal |
+| Beranda peserta | Materi baru, peringkat baru, istilah Chapter, mode terang |
+
+Latihan ini tidak membuktikan penanganan slide Modul 1, karena modul dasar tidak punya slide.
+
 ## Tidak diuji
 
-Firefox, Safari, dan perangkat fisik. PHP 8.4 dan MariaDB untuk alur baru, sebab uji lokal memakai PHP 8.3 dan SQLite. Respons APPI, render PDF sertifikat, dan isi video secara utuh.
+Firefox, Safari, dan perangkat fisik. Pengiriman jawaban dan penerbitan sertifikat di MariaDB. Respons APPI, render PDF sertifikat, dan isi video secara utuh.
 
 ## Cara menerbitkan
 

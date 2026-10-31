@@ -371,7 +371,7 @@ function SlidesBlock({ block }) {
           </div>
           <div className="flex max-w-full flex-wrap justify-end gap-1" aria-label="Pilih slide">
             {visibleSlides.map((item, index) => (
-              <button key={item.id || `slide-${index}`} type="button" aria-label={`Tampilkan slide ${index + 1}`} aria-current={index === safeIndex ? "step" : undefined} onClick={() => setActiveIndex(index)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-tint-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className={cn("rounded-full transition-all", index === safeIndex ? "h-2.5 w-6 bg-brand-orange" : "h-2.5 w-2.5 bg-muted-foreground/30")}/></button>
+              <button key={item.id || `slide-${index}`} type="button" aria-label={`Tampilkan slide ${index + 1}`} aria-current={index === safeIndex ? "step" : undefined} onClick={() => setActiveIndex(index)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-tint-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className={cn("rounded-full transition-colors", index === safeIndex ? "h-2.5 w-6 bg-brand-orange" : "h-2.5 w-2.5 bg-muted-foreground/30")}/></button>
             ))}
           </div>
         </div>

@@ -49,7 +49,7 @@
   --orange: #d4451a; --orange-soft: #fdeee8; --orange-tint: #ffd9c7; --orange-ink: #9a3010;
   --blue: #2f6fb0; --blue-soft: #e9f1fa; --blue-tint: #d2e4f7; --blue-ink: #1d4f82;
   --violet: #6f52c4; --violet-soft: #f1edfb; --violet-tint: #e0d8fa; --violet-ink: #4b3394;
-  --teal: #13867a; --teal-soft: #e5f4f2; --teal-tint: #c9ece7; --teal-ink: #0b5c54;
+  --teal: #13847a; --teal-soft: #e5f4f2; --teal-tint: #c9ece7; --teal-ink: #0b5c54;
   --amber: #b7791f; --amber-soft: #fbf3e3; --amber-tint: #f8e4b4; --amber-ink: #7a4f0d;
   --rose: #c2416b; --rose-soft: #fbecf1; --rose-tint: #fad3e0; --rose-ink: #8c2547;
   --gold: #f5b400; --on-gold: #3b2a00; --gold-soft: #fff6d9; --gold-tint: #ffe9a3; --gold-ink: #7a4f0d; --gold-ledge: #c98f00;
@@ -130,16 +130,17 @@
 .aapm[data-tone="calm"] { --bw: 1px; --ledge: 3px; }
 
 /* hue scopes */
+[data-hue] { --on-medal: var(--on-hue); }
 [data-hue="green"]  { --h: var(--green);  --h-soft: var(--green-soft);  --h-tint: var(--green-tint);  --h-ink: var(--green-ink); }
 [data-hue="orange"] { --h: var(--orange); --h-soft: var(--orange-soft); --h-tint: var(--orange-tint); --h-ink: var(--orange-ink); }
 [data-hue="blue"]   { --h: var(--blue);   --h-soft: var(--blue-soft);   --h-tint: var(--blue-tint);   --h-ink: var(--blue-ink); }
 [data-hue="violet"] { --h: var(--violet); --h-soft: var(--violet-soft); --h-tint: var(--violet-tint); --h-ink: var(--violet-ink); }
 [data-hue="teal"]   { --h: var(--teal);   --h-soft: var(--teal-soft);   --h-tint: var(--teal-tint);   --h-ink: var(--teal-ink); }
-[data-hue="amber"]  { --h: var(--amber);  --h-soft: var(--amber-soft);  --h-tint: var(--amber-tint);  --h-ink: var(--amber-ink); }
+[data-hue="amber"]  { --h: var(--amber);  --h-soft: var(--amber-soft);  --h-tint: var(--amber-tint);  --h-ink: var(--amber-ink); --on-medal: #241900; }
 [data-hue="rose"]   { --h: var(--rose);   --h-soft: var(--rose-soft);   --h-tint: var(--rose-tint);   --h-ink: var(--rose-ink); }
 [data-hue="neutral"]{ --h: var(--muted);  --h-soft: var(--surface-subtle); --h-tint: var(--surface-3); --h-ink: var(--fg); }
 [data-hue="ai"]     { --h: var(--ai);     --h-soft: var(--ai-soft);     --h-tint: var(--ai-tint);     --h-ink: var(--ai-ink); }
-[data-hue="gold"]   { --h: var(--gold);   --h-soft: var(--gold-soft);   --h-tint: var(--gold-tint);   --h-ink: var(--gold-ink); }
+[data-hue="gold"]   { --h: var(--gold);   --h-soft: var(--gold-soft);   --h-tint: var(--gold-tint);   --h-ink: var(--gold-ink); --on-medal: var(--on-gold); }
 
 /* ---------- 2. Base ---------- */
 /* resets use :where() so every component class wins without !important */
@@ -794,7 +795,7 @@
 .node .ic { --ic: 16px; }
 .node.is-done { background: var(--primary); border-color: var(--primary); color: var(--on-primary); box-shadow: 0 3px 0 var(--primary-ledge); }
 .node.is-current { background: var(--ai); border-color: var(--ai); color: var(--on-ai); box-shadow: 0 3px 0 var(--ai-ledge), 0 0 0 5px var(--ai-soft); }
-.medal { position: relative; display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 50%; background: var(--h); color: var(--on-hue); font-size: var(--fs-2xl); font-weight: 800;
+.medal { position: relative; display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 50%; background: var(--h); color: var(--on-medal, var(--on-hue)); font-size: var(--fs-2xl); font-weight: 800;
   box-shadow: inset 0 -4px 0 rgba(0,0,0,.2), 0 0 0 5px var(--h-tint); }
 :is(.dark .aapm, .aapm[data-theme="dark"]) .medal { color: var(--bg); }
 .medal.is-locked { background: var(--surface-2); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--border-strong); }

@@ -22,6 +22,7 @@ import AiQuickActions from "@/components/ai/AiQuickActions";
 import { Button, ConfirmDialog, useToast } from "@/components/primitives";
 import AiMarkdown from "@/components/ai/AiMarkdown";
 import AiCopyButton from "@/components/ai/AiCopyButton";
+import AiSources from "@/components/ai/AiSources";
 import { useAuth } from "@/lib/AuthContext";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { personalizedSuggestions } from "@/lib/aiSuggestions";
@@ -285,25 +286,27 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
     setHistoryOpen(false);
     setClosing(true);
   };
-  const submit = async (text = promptDraft) => {
+  const submit = async (text = promptDraft, { retry = false } = {}) => {
     const message =
       text.trim() ||
       (imageAttachment
         ? "Tolong analisis foto farm ini dan sebutkan observasi yang perlu saya verifikasi di lapangan."
         : "");
     if (!message || isStreaming || isLoadingConversation || imageLoading) return;
-    const image = imageAttachment;
+    const image = retry ? null : imageAttachment;
     const result = await send(message, {
+      retry,
       includeFarm: true,
       allowWebSearch,
       pageContext: pageContextForPath(location.pathname),
       image,
     });
-    if (result?.ok) {
+    if (result?.ok && !retry) {
       setImageAttachment(null);
       setAttachmentError("");
     }
   };
+  const retryAnswer = (prompt) => submit(prompt, { retry: true });
   const handleImageSelection = (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -482,13 +485,14 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                             <AiMarkdown content={message.content} compact streaming={message.streaming} />
                           </div>
                         ) : null}
-                        {message.content && !message.streaming && !message.error ? (
+                        {message.content && !message.streaming ? <AiSources sources={message.sources} /> : null}
+                        {message.content && !message.streaming ? (
                           <div className="row wrap gap-1 answer-actions">
                             <AiCopyButton text={message.content} label="Salin" rich />
-                            <AiMessageMeta message={message} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
+                            <AiMessageMeta message={message} retryPrompt={message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""} onRetry={retryAnswer} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
                           </div>
                         ) : (
-                          <AiMessageMeta message={message} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
+                          <AiMessageMeta message={message} retryPrompt={message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""} onRetry={retryAnswer} onRetryPersistence={retryPersistAssistant} persistenceRetrying={retryingMessageId === message.id} disabled={isStreaming} compact showMeta={index === lastAssistantMessageIndex || !message.persisted} />
                         )}
                         {!message.streaming ? <AiResponseDetails message={message} compact /> : null}
                         {index === lastAssistantMessageIndex && !message.streaming && !message.error && !message.fallback && (
@@ -553,7 +557,6 @@ export default function FloatingAiAssistant({ showLauncher = true }) {
                     onClearQuery={() => setHistoryQuery("")}
                     conversationCount={conversations.length}
                     totalConversationCount={conversationTotal}
-                    activityCount={activity.length}
                     onRefresh={refreshHistory}
                     isRefreshing={conversationsRefreshing}
                     scope={historyScope}

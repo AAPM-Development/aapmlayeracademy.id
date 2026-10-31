@@ -3546,6 +3546,8 @@ function present_ai_chat_message(array $row): array
         'thinkingMs' => max(0, (int) ($details['thinkingMs'] ?? 0)),
         'stopped' => (bool) ($details['stopped'] ?? false),
         'interrupted' => (bool) ($details['interrupted'] ?? false),
+        'truncated' => (bool) ($details['truncated'] ?? false),
+        'sources' => is_array($details['sources'] ?? null) ? $details['sources'] : [],
         'processSteps' => array_values(array_filter(is_array($details['steps'] ?? null) ? $details['steps'] : [], 'is_array')),
     ];
 }

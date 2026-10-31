@@ -29,6 +29,7 @@ export default function AiComposer({
   farmAvailable = true,
   placeholder = "Tanya APPI tentang farm Anda…",
   compact = false,
+  docked = false,
   showFarmToggle = true,
   showPrivacy = false,
   idPrefix = "appi-composer",
@@ -78,7 +79,7 @@ export default function AiComposer({
   const farmOn = farmAvailable && includeFarm;
 
   return (
-    <div className={cn("aapm-ai-composer stack gap-2 w-full", compact && "composer-compact")} style={{ minWidth: 0 }}>
+    <div className={cn("aapm-ai-composer stack gap-1 w-full", compact && "composer-compact", docked && "composer-docked")} style={{ minWidth: 0 }}>
       <input
         ref={imageInputRef}
         id={idPrefix}
@@ -115,7 +116,9 @@ export default function AiComposer({
               if (hasContent && !cannotSend) onSubmit();
             }
           }}
-          rows={compact ? 1 : 2}
+          name="appi-message"
+          autoComplete="off"
+          rows={compact || docked ? 1 : 2}
           maxLength={3000}
           readOnly={disabled}
           placeholder={disabled ? "Memuat percakapan…" : placeholder}
@@ -191,7 +194,7 @@ export default function AiComposer({
             <span className="hide-sm">Untuk diagnosis penyakit atau dosis obat, konsultasikan dengan dokter hewan.</span>
             <span className="show-sm">Penyakit atau dosis obat? Tanyakan dokter hewan.</span>
           </span>
-          <span className="row gap-1 t-caption t-muted hide-sm"><span className="kbd">Enter</span>kirim ·<span className="kbd">Shift</span>+<span className="kbd">Enter</span>baris baru</span>
+          {docked ? null : <span className="row gap-1 t-caption t-muted hide-sm"><span className="kbd">Enter</span>kirim ·<span className="kbd">Shift</span>+<span className="kbd">Enter</span>baris baru</span>}
         </div>
       ) : null}
     </div>

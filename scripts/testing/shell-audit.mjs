@@ -86,6 +86,8 @@ const PROBE = String.raw`(() => {
     if (last) { const b = last.getBoundingClientRect().bottom; if (b > bottom + 1 && getComputedStyle(scroller).overflowY !== "visible") add("last-content-covered", { by: Math.round(b - bottom), el: name(last) }); }
     scroller.scrollTop = 0;
   }
+  // Every route names its own tab; the static title is the index.html default.
+  if (shell !== "bare" && document.title.includes("Pelatihan Profesional")) add("title-default", location.pathname);
   // Landmarks and headings.
   const h1 = [...document.querySelectorAll("h1")].filter(vis);
   if (h1.length !== 1 && shell !== "bare") add("h1-count", h1.length);

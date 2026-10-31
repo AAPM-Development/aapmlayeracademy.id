@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import AapmIcon from "@/components/icons/AapmIcon";
 import AiQuickActions from "@/components/ai/AiQuickActions";
 import AiMessageMeta from "@/components/ai/AiMessageMeta";
@@ -20,7 +20,8 @@ import AiComposer from "@/components/ai/AiComposer";
 import { Button, ConfirmDialog, ScrollArea, useToast } from "@/components/primitives";
 import AiMarkdown from "@/components/ai/AiMarkdown";
 import AiCopyButton from "@/components/ai/AiCopyButton";
-import AppiMascot, { appiAsset } from "@/components/appi/AppiMascot";
+import AiSources from "@/components/ai/AiSources";
+import AppiMascot from "@/components/appi/AppiMascot";
 import { Ic } from "@/design-system/canvas";
 import { firstName } from "@/lib/learnerCopy";
 import { useAuth } from "@/lib/AuthContext";
@@ -28,6 +29,7 @@ import { getCompletedModuleSet, getNextModule } from "@/lib/academyData";
 import { useFarmData, useModules, useUserProgress } from "@/lib/useCourseData";
 import { useAiChat } from "@/components/ai/AiChatProvider";
 import { moduleNo } from "@/lib/moduleNumber";
+import { hasFinePointer } from "@/lib/utils";
 
 // Starter cards (canvas "APPI — sambutan"): one hue and icon per prompt.
 const STARTER_LOOK = {
@@ -43,9 +45,6 @@ const STARTER_LOOK = {
   readiness: { hue: "gold", ic: "cert" },
   default: [{ hue: "orange", ic: "chart" }, { hue: "teal", ic: "table" }, { hue: "green", ic: "feed" }, { hue: "blue", ic: "book" }],
 };
-
-const welcomeMessage =
-  "Bawa situasi yang Anda lihat di farm. Saya bantu mengurai sinyal, menyusun urutan pemeriksaan, lalu merumuskan langkah berikutnya.";
 
 function findLastAssistantMessageIndex(messages = []) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -183,6 +182,7 @@ function personalizedSuggestions({ farm = [], progress = [], modules = [], user,
 function AssistantMessage({
   message,
   retryPrompt,
+  regeneratePrompt = "",
   onRetry,
   onRetryPersistence,
   persistenceRetrying = false,
@@ -195,7 +195,9 @@ function AssistantMessage({
   const [collapsed, setCollapsed] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const canCollapse = !message.streaming && message.content.length > 1150;
-  const finished = !message.streaming && !message.error && Boolean(message.content);
+  // A partial answer that failed is still text worth copying.
+  const hasAnswer = !message.streaming && Boolean(message.content);
+  const finished = hasAnswer && !message.error;
   return (
     <article className="aapm-ai-message stack gap-3" style={{ minWidth: 0 }} aria-label="Jawaban APPI">
       <AiThinking message={message} label={message.streamStatus} steps={message.streamSteps} />
@@ -204,9 +206,15 @@ function AssistantMessage({
           <AiMarkdown content={message.content} streaming={message.streaming} />
         </div>
       ) : null}
-      {finished ? (
+      {hasAnswer ? <AiSources sources={message.sources} /> : null}
+      {hasAnswer ? (
         <div className="row wrap gap-1 answer-actions">
           <AiCopyButton text={message.content} label="Salin jawaban" rich />
+          {regeneratePrompt ? (
+            <button type="button" className="btn btn-ghost btn-sm btn-quiet" disabled={disabled} onClick={() => onRetry(regeneratePrompt)}>
+              <Ic name="refresh" />Buat ulang
+            </button>
+          ) : null}
           {canCollapse ? (
             <button type="button" className="btn btn-ghost btn-sm btn-quiet" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
               <Ic name={collapsed ? "chev-down" : "chev-up"} />{collapsed ? "Tampilkan lengkap" : "Ringkas"}
@@ -277,7 +285,7 @@ function ConversationList({
   } = management;
 
   return (
-    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar appi-history hidden min-w-0 shrink-0 overflow-hidden lg:flex lg:flex-col">
+    <aside aria-label="Riwayat percakapan" className="aapm-ai-conversation-sidebar appi-history hidden min-w-0 shrink-0 overflow-hidden xl:flex xl:flex-col">
       <div className="row gap-3 appi-history-head">
         <div className="stack grow" style={{ minWidth: 0 }}>
           <span className="t-heading">Riwayat</span>
@@ -285,7 +293,7 @@ function ConversationList({
         </div>
         <button type="button" className="btn btn-ai-soft btn-icon" aria-label="Percakapan baru" onClick={onNew} disabled={disabled}><Ic name="edit" /></button>
       </div>
-      <div className="px-3 pb-2">
+      <div>
         <AiHistoryToolbar
           view={view}
           onViewChange={setView}
@@ -296,7 +304,6 @@ function ConversationList({
           onClearQuery={() => setQuery("")}
           conversationCount={conversations.length}
           totalConversationCount={conversationTotal}
-          activityCount={activity.length}
           onRefresh={onRefresh}
           isRefreshing={refreshing}
           scope={scope}
@@ -330,7 +337,7 @@ function ConversationList({
           disabled={disabled || bulkBusy}
         />
       )}
-      <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 px-2 pb-3">
+      <ScrollArea className="aapm-ai-history-scroll aapm-scroll-fade min-h-0 min-w-0 w-full max-w-full flex-1 pb-3">
         {view === "activity" ? (
           <div className="min-w-0 max-w-full px-2 pt-3">
             <AiActivityList activity={activity} loading={activityLoading} />
@@ -478,7 +485,7 @@ function MobileConversationSheet({
         type="button"
         aria-label="Tutup riwayat percakapan"
         onClick={onClose}
-        className="fixed inset-0 z-[84] bg-foreground/25 backdrop-blur-[1px] lg:hidden"
+        className="fixed inset-0 z-[84] bg-foreground/25 backdrop-blur-[1px] xl:hidden"
       />
       <aside
         role="dialog"
@@ -486,7 +493,7 @@ function MobileConversationSheet({
         aria-label="Riwayat percakapan APPI"
         ref={sheetRef}
         tabIndex={-1}
-        className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border lg:hidden"
+        className="aapm-ai-history-sheet aapm-token-sheet fixed inset-x-0 bottom-0 z-[85] flex h-[min(84dvh,44rem)] min-h-[28rem] w-full max-w-[100vw] min-w-0 flex-col overflow-hidden rounded-t-[var(--radius-overlay)] border-x border-t border-border xl:hidden"
       >
         <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3.5">
           <div className="min-w-0">
@@ -533,7 +540,6 @@ function MobileConversationSheet({
             onClearQuery={() => setQuery("")}
             conversationCount={conversations.length}
             totalConversationCount={conversationTotal}
-            activityCount={activity.length}
             onRefresh={onRefresh}
             isRefreshing={refreshing}
             scope={scope}
@@ -724,20 +730,7 @@ export default function AiAssistant() {
   const firstPrompt = messages.find((item) => item.role === "user")?.content?.trim() || "";
   const firstPromptTitle = firstPrompt.length > 60 ? `${firstPrompt.slice(0, 59).trimEnd()}…` : firstPrompt;
   const headerTitle = activeConversation?.title?.trim() || firstPromptTitle || "Percakapan baru";
-  // The line under the title says what the page is doing right now, so the
-  // header is no longer a fixed label that repeats on every screen.
   const greetingName = user?.full_name ? firstName(user) : "";
-  const headerStatus = isLoadingConversation
-    ? "Memuat riwayat…"
-    : !messages.length && !isStreaming
-      ? "tersimpan di akun setelah pesan pertama"
-    : isStreaming
-      ? "sedang menjawab"
-      : historySyncState === "saving"
-        ? "menyimpan percakapan…"
-        : historySyncState === "attention"
-          ? "riwayat belum tersinkron"
-          : "tersimpan di akun Anda";
   const lastAssistantMessageIndex = findLastAssistantMessageIndex(messages);
 
   const handleDeleteConversation = async (id) => {
@@ -881,22 +874,27 @@ export default function AiAssistant() {
     reader.readAsDataURL(file);
   };
 
-  const submit = async (text = promptDraft) => {
+  const submit = async (text = promptDraft, { retry = false } = {}) => {
     const content = text.trim();
     if ((!content && !imageAttachment) || isStreaming || isLoadingConversation || imageLoading) return;
-    const image = imageAttachment;
+    // The button pressed goes away with the answer, so the question field takes the focus.
+    if (hasFinePointer()) window.requestAnimationFrame(() => document.querySelector(".aapm-ai-workspace__main .composer textarea")?.focus());
+    const image = retry ? null : imageAttachment;
     const message =
       content ||
       "Tolong analisis foto farm ini. Bedakan observasi visual, hal yang belum pasti, dan data yang perlu saya cek berikutnya.";
-    const result = await send(message, { includeFarm: includeFarm && farmAvailable, allowWebSearch, image, pageContext: "ai-assistant" });
-    if (result?.ok) {
+    const result = await send(message, { retry, includeFarm: includeFarm && farmAvailable, allowWebSearch, image, pageContext: suggestionContext });
+    if (result?.ok && !retry) {
       setImageAttachment(null);
       setAttachmentError("");
     }
   };
+  const retryAnswer = (prompt) => submit(prompt, { retry: true });
 
+  const docked = Boolean(messages.length || isLoadingConversation);
   const composer = (
     <AiComposer
+        docked={docked}
         input={promptDraft}
         setInput={setPromptDraft}
         onSubmit={() => submit()}
@@ -948,17 +946,12 @@ export default function AiAssistant() {
       />
       <section aria-label="Ruang chat APPI" className="aapm-ai-workspace__main flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <header className="focus-bar aapm-ai-workspace__header appi-chat-head">
+          <Link to="/" className="btn btn-ghost btn-icon btn-quiet appi-chat-back" aria-label="Kembali ke Beranda"><Ic name="arrow-left" /></Link>
           <span className="tile tile-round" data-hue="ai" style={{ overflow: "hidden" }}>
             <AppiMascot mood={isStreaming ? (streamPhase === "alert" ? "concerned" : "think") : "idle"} size="sm" />
           </span>
-          <div className="stack grow" style={{ minWidth: 0 }}>
-            <h1 className="t-heading t-clamp-1" title={headerTitle}>{headerTitle}</h1>
-            <span className="row gap-1 t-caption t-muted">
-              <Ic name={messages.length ? "check-circle" : "history"} size="xs" className={messages.length ? "t-success" : undefined} />
-              <span className="t-clamp-1">APPI · {headerStatus}</span>
-            </span>
-          </div>
-          <button type="button" className="btn btn-ghost btn-icon btn-quiet lg:hidden" aria-label="Riwayat" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
+          <h1 className="t-heading grow t-clamp-1" title={headerTitle}>{headerTitle}</h1>
+          <button type="button" className="btn btn-ghost btn-icon btn-quiet xl:hidden" aria-label="Riwayat" onClick={() => setHistoryOpen(true)} disabled={isStreaming}><Ic name="history" /></button>
           <button type="button" className="btn btn-ghost btn-icon btn-quiet" aria-label="Percakapan baru" onClick={startNewConversation} disabled={isStreaming}><Ic name="edit" /></button>
         </header>
         <div className="relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden">
@@ -985,23 +978,15 @@ export default function AiAssistant() {
                   Memuat riwayat...
                 </p>
               ) : messages.length === 0 ? (
-                <div className="stack items-center gap-6 appi-welcome">
-                  <div className="stack items-center gap-4 t-center">
-                    <div className="halo" data-hue="ai" style={{ width: 172, height: 160 }}>
-                      <span className="glow" style={{ "--size": "150px" }} aria-hidden="true" />
-                      <div className="appi-stage"><AppiMascot mood="idle" size="hero" enter="pop" /></div>
-                      <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ right: 2, top: 8, width: 30 }} />
-                      <img className="sparkle anim-twinkle" src={appiAsset(13)} alt="" style={{ left: 4, top: 58, width: 18, "--i": 2 }} />
-                    </div>
-                    <div className="stack items-center gap-2">
-                      <h2 className="t-title">Halo{greetingName ? `, ${greetingName}` : ""}! Apa yang terjadi di farm hari ini?</h2>
-                      <p className="t-body t-muted t-pretty" style={{ maxWidth: "46ch" }}>{welcomeMessage}</p>
-                    </div>
+                <div className="stack items-center gap-5 appi-welcome">
+                  <div className="stack items-center gap-3 t-center">
+                    <AppiMascot mood="idle" size="xl" enter="pop" />
+                    <h2 className="t-title t-pretty">Halo{greetingName ? `, ${greetingName}` : ""}! Apa yang terjadi di farm hari ini?</h2>
                   </div>
                   <div className="w-full">{composer}</div>
-                  <section className="stack gap-3 w-full" aria-labelledby="starter-title">
-                    <h3 className="t-overline t-muted" id="starter-title">Mulai dari data Anda</h3>
-                    <div className="cols-2">
+                  <section className="w-full" aria-labelledby="starter-title">
+                    <h3 className="sr-only" id="starter-title">Mulai dari data Anda</h3>
+                    <div className="appi-suggest-grid">
                       {suggestions.map((suggestion, index) => {
                         const look = STARTER_LOOK[suggestion.id] || STARTER_LOOK.default[index % STARTER_LOOK.default.length];
                         return (
@@ -1009,16 +994,13 @@ export default function AiAssistant() {
                             key={suggestion.id}
                             type="button"
                             onClick={() => submit(suggestion.prompt)}
-                            className="card card-tactile row gap-3 anim-rise appi-starter"
+                            className="anim-rise appi-suggest"
                             data-hue={look.hue}
-                            style={{ padding: "var(--s-4)", "--i": index + 1 }}
+                            style={/** @type {React.CSSProperties} */ ({ "--i": index + 1 })}
                           >
-                            <span className="tile tile-round tile-solid"><Ic name={look.ic} /></span>
-                            <span className="stack gap-0-5 grow" style={{ minWidth: 0 }}>
-                              <span className="t-heading">{suggestion.label}</span>
-                              <span className="t-support t-muted">{suggestion.detail}</span>
-                            </span>
-                            <Ic name="arrow-right" className="t-muted" />
+                            <Ic name={look.ic} className="t-ink" />
+                            <span className="t-medium">{suggestion.label}</span>
+                            <span className="t-caption t-muted">{suggestion.detail}</span>
                           </button>
                         );
                       })}
@@ -1045,7 +1027,10 @@ export default function AiAssistant() {
                         retryPrompt={
                           message.fallback || message.error || message.stopped || message.interrupted ? messages[index - 1]?.content : ""
                         }
-                        onRetry={submit}
+                        regeneratePrompt={
+                          index === lastAssistantMessageIndex && !message.fallback && !message.error && !message.stopped && !message.interrupted ? messages[index - 1]?.content : ""
+                        }
+                        onRetry={retryAnswer}
                         onQuickAction={submit}
                         onRetryPersistence={retryPersistAssistant}
                         persistenceRetrying={retryingMessageId === message.id}
@@ -1076,7 +1061,7 @@ export default function AiAssistant() {
         </div>
         {/* Once the chat has started the composer floats at the bottom of the
             centred column; an empty chat keeps it in the middle (below). */}
-        {messages.length || isLoadingConversation ? (
+        {docked ? (
           <div className="aapm-ai-composer-dock appi-dock">
             <div className="appi-dock-col">{composer}</div>
           </div>

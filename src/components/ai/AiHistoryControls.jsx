@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AapmIcon from "@/components/icons/AapmIcon";
 import { isConversationArchived } from "@/lib/aiHistoryState";
 import { useAiChat } from "@/components/ai/AiChatProvider";
@@ -261,7 +261,6 @@ export function AiHistoryToolbar({
   onClearQuery,
   conversationCount = 0,
   totalConversationCount = conversationCount,
-  activityCount = 0,
   onRefresh,
   isRefreshing = false,
   scope = "active",
@@ -288,31 +287,40 @@ export function AiHistoryToolbar({
       toast({ title: "Riwayat belum dihapus", description: error?.message || "Periksa koneksi lalu coba lagi.", variant: "destructive" });
     } finally { setDeletingAll(false); }
   };
+  const tab = view === "activity" ? "activity" : scope === "archived" ? "archived" : "active";
+  const selectTab = (next) => {
+    onViewChange(next === "activity" ? "activity" : "chats");
+    if (next !== "activity") onScopeChange?.(next);
+  };
   return (
     <div className="aapm-history-toolbar min-w-0 max-w-full space-y-2.5" data-compact={compact || undefined}>
       <SegmentedControl
-        label="Jenis riwayat"
+        label="Riwayat APPI"
         block
         size="sm"
-        value={view}
-        onChange={onViewChange}
+        className="aapm-history-tabs"
+        value={tab}
+        onChange={selectTab}
         options={[
-          { value: "chats", label: "Chat", count: totalConversationCount },
-          { value: "activity", label: "Aktivitas", count: activityCount },
+          { value: "active", label: "Chat", count: (onScopeChange ? activeCount : totalConversationCount) || undefined },
+          ...(onScopeChange ? [{ value: "archived", label: "Arsip", count: archivedCount || undefined }] : []),
+          { value: "activity", label: "Aktivitas" },
         ]}
       />
 
       {view === "chats" ? (
-        <>
-          <label className="aapm-ai-search-control flex min-h-9 min-w-0 w-full items-center gap-2 px-2.5 py-2 transition-colors">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <label className="aapm-ai-search-control flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 py-2 transition-colors">
             <AapmIcon
               name="solar:magnifer-bold-duotone"
               className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
             />
             <input
+              name="conversation-search"
+              autoComplete="off"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Cari riwayat percakapan"
+              placeholder="Cari riwayat…"
               className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
               aria-label="Cari riwayat percakapan"
             />
@@ -329,64 +337,48 @@ export function AiHistoryToolbar({
               </Button>
             )}
           </label>
-          <div className="flex min-w-0 items-center gap-1.5">
-            {onScopeChange && (
-              <SegmentedControl
-                label="Status percakapan"
-                block
-                size="sm"
-                className="aapm-history-scope min-w-0 flex-1"
-                value={scope}
-                onChange={onScopeChange}
-                options={[
-                  { value: "active", label: "Aktif", count: activeCount },
-                  { value: "archived", label: "Arsip", count: archivedCount },
-                ]}
-              />
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={`h-10 w-10 shrink-0 ${selectionMode ? "text-brand-orange" : "text-muted-foreground"} hover:text-foreground`}
-                  aria-label="Kelola riwayat chat"
-                  title="Kelola riwayat"
-                >
-                  <AapmIcon name="solar:sort-vertical-bold-duotone" className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel>Urutkan</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={sort} onValueChange={onSortChange}>
-                  {HISTORY_SORT_OPTIONS.map((option) => (
-                    <DropdownMenuRadioItem key={option.value} value={option.value}>
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-                {(onToggleSelectionMode || onRefresh) && <DropdownMenuSeparator />}
-                {onToggleSelectionMode && (
-                  <DropdownMenuItem onSelect={onToggleSelectionMode}>
-                    <AapmIcon name="solar:checklist-bold-duotone" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
-                    {selectionMode ? "Selesai memilih" : "Pilih percakapan"}
-                  </DropdownMenuItem>
-                )}
-                {onRefresh && (
-                  <DropdownMenuItem onSelect={onRefresh} disabled={isRefreshing}>
-                    <AapmIcon name="solar:refresh-circle-bold-duotone" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
-                    Muat ulang riwayat
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem tone="danger" disabled={!totalConversationCount || deletingAll || isStreaming} onSelect={() => setDeleteAllOpen(true)}>
-                  <AapmIcon name="solar:trash-bin-trash-bold" className="mr-2 h-4 w-4" />Hapus semua percakapan
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={`h-10 w-10 shrink-0 ${selectionMode ? "text-brand-orange" : "text-muted-foreground"} hover:text-foreground`}
+                aria-label="Kelola riwayat chat"
+                title="Kelola riwayat"
+              >
+                <AapmIcon name="solar:sort-vertical-bold-duotone" className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>Urutkan</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={sort} onValueChange={onSortChange}>
+                {HISTORY_SORT_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              {(onToggleSelectionMode || onRefresh) && <DropdownMenuSeparator />}
+              {onToggleSelectionMode && (
+                <DropdownMenuItem onSelect={onToggleSelectionMode}>
+                  <AapmIcon name="solar:checklist-bold-duotone" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
+                  {selectionMode ? "Selesai memilih" : "Pilih percakapan"}
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </>
+              )}
+              {onRefresh && (
+                <DropdownMenuItem onSelect={onRefresh} disabled={isRefreshing}>
+                  <AapmIcon name="solar:refresh-circle-bold-duotone" className="mr-2 h-3.5 w-3.5 text-brand-orange" />
+                  Muat ulang riwayat
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem tone="danger" disabled={!totalConversationCount || deletingAll || isStreaming} onSelect={() => setDeleteAllOpen(true)}>
+                <AapmIcon name="solar:trash-bin-trash-bold" className="mr-2 h-4 w-4" />Hapus semua percakapan
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ) : (
         <p className="px-0.5 text-xs text-muted-foreground">
           Jejak pertanyaan dan respons APPI di akun ini.
@@ -672,6 +664,7 @@ export function AiConversationRenameDialog({
   saving = false,
 }) {
   const [title, setTitle] = useState("");
+  const titleRef = useRef(null);
   const open = Boolean(conversation);
 
   useEffect(() => {
@@ -687,7 +680,13 @@ export function AiConversationRenameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-[28rem] gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="w-[calc(100%-2rem)] max-w-[28rem] gap-0 overflow-hidden p-0"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus();
+        }}
+      >
         <form onSubmit={submit}>
           <DialogHeader className="border-b border-border/60 px-5 py-4">
             <div className="flex items-start gap-3">
@@ -714,7 +713,7 @@ export function AiConversationRenameDialog({
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={180}
-              autoFocus
+              ref={titleRef}
               className="h-10"
               placeholder="Judul percakapan"
             />

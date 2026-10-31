@@ -125,9 +125,10 @@ const actionSets = {
 };
 
 function contextFromPath(pathname = "") {
-  if (pathname === "/kpi") return "kpi";
-  if (pathname === "/calculators") return "calculator";
-  if (pathname === "/modules" || pathname.startsWith("/module/")) {
+  // The workspace passes the page it was opened from, as a path or a context name.
+  if (pathname === "/kpi" || pathname === "kpi") return "kpi";
+  if (pathname === "/calculators" || pathname === "calculators") return "calculator";
+  if (pathname === "/modules" || pathname === "learning" || pathname.startsWith("/modules/")) {
     return "learning";
   }
   return "";

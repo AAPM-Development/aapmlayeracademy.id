@@ -172,7 +172,7 @@ function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
           <h2 className="unit-title" id={titleId}>{level.name}</h2>
           {level.description ? <p className="t-support t-clamp-1">{level.description}</p> : null}
         </div>
-        <div className="stack items-end gap-1-5">
+        <div className="stack items-end gap-1-5" style={{ flex: "none" }}>
           {done ? <span className="chip"><Ic name="check" />Tuntas</span> : level.hasCurrent ? <span className="chip chip-ai chip-dot">Aktif</span> : null}
           <span className="t-caption t-strong t-num">{level.completed}/{level.total} modul</span>
         </div>
@@ -235,7 +235,7 @@ export function ContinueCard({ module, summary, levelsDone = 0, levelTotal = 14 
     <section className="card cover-row anim-rise" data-hue={visual.hue} aria-labelledby="cont-title">
       <ModuleCover module={module} style={{ minHeight: 112 }} />
       <div className="row wrap gap-5" style={{ padding: "var(--s-4) var(--s-5)", minWidth: 0 }}>
-        <div className="stack grow gap-1" style={{ minWidth: 220 }}>
+        <div className="stack grow gap-1" style={{ minWidth: "min(220px, 100%)" }}>
           <span className="t-overline t-ink">Modul {moduleNo(module)} · {module.levelName}</span>
           <h2 className="t-heading t-clamp-2" id="cont-title">{module.title}</h2>
           <span className="t-support t-muted">{moduleMeta(module)}</span>
