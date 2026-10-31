@@ -466,4 +466,3 @@
   .aapm-appi-launcher .aapm-appi { --appi-size: 38px; }
 }
 html[data-shell="focus"] .aapm-appi-launcher.aapm-ai-launcher { right: var(--aapm-primitive-space-3); width: 52px; height: 52px; }
-html[data-shell="focus"] .aapm-focus__main { padding-bottom: 76px; }
