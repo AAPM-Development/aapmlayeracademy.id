@@ -94,7 +94,8 @@ test("the phone draft bar reaches the keyboard edge, and the desktop sticky bar 
 test("a keyboard that leaves the layout tall ends the page and the editor at the visible edge", () => {
   const sweep = read("src/styles/features/sweep.css");
   const endsAtEdge = /\{\s*height: calc\(100dvh - var\(--aapm-visible-bottom, 0px\)\);\s*\}/.source;
-  assert.match(mediaBlock(sweep, "(max-width: 859px)"), new RegExp(`html\\[data-keyboard="open"\\] \\.app:has\\(\\.aapm-curriculum-actionbar\\) ${endsAtEdge}`));
+  // Tablets too: the sticky bar scrolls with the page, so the last field needs this height.
+  assert.match(mediaBlock(sweep, "(max-width: 1023px)"), new RegExp(`html\\[data-keyboard="open"\\] \\.app:has\\(\\.aapm-curriculum-actionbar\\) ${endsAtEdge}`));
   assert.match(mediaBlock(sweep, "(max-width: 1023px)"), new RegExp(`html\\[data-keyboard="open"\\] \\.aapm-editor-focus ${endsAtEdge}`));
   // The bar is in flow inside .focus: shifting it as well would lift it off the keyboard.
   assert.doesNotMatch(read("src/styles/features/sweep.css"), /html\[data-keyboard="open"\] \.aapm-editor-actionbar/);

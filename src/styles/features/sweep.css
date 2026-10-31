@@ -116,16 +116,16 @@ html[data-shell-footer="true"] .aapm-ai-floating-panel {
     position: fixed;
     bottom: var(--aapm-visible-bottom, 0px);
   }
+}
+@media (max-width: 1023px) {
   /* A keyboard that shrinks only the visual viewport leaves the layout tall, so
    * the last fields run out of scroll behind it. End it at the visible edge, as
    * a resizing keyboard does. */
   html[data-keyboard="open"] .app:has(.aapm-curriculum-actionbar) {
     height: calc(100dvh - var(--aapm-visible-bottom, 0px));
   }
-}
-/* The editor sits outside the shell, and its bar and panels are in flow, so they
- * follow its height. Tablets with a tall layout viewport need this too. */
-@media (max-width: 1023px) {
+  /* The editor sits outside the shell, and its bar and panels are in flow, so
+   * they follow its height. */
   html[data-keyboard="open"] .aapm-editor-focus {
     height: calc(100dvh - var(--aapm-visible-bottom, 0px));
   }
