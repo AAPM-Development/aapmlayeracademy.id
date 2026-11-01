@@ -290,3 +290,13 @@ test("the certificate export draws the numeral from an image, the same pixels as
   assert.equal(document.match(/numeralUrl=\{numeralUrl\}/g)?.length, 2, "preview and export");
   assert.match(read("public/brand/aapm/logo_long.svg"), /width="738" height="88"/);
 });
+
+test("the verify-email page keeps its success screen when the auth gate remounts it", () => {
+  // After a successful verification the page refreshes auth, the boot gate unmounts the route and
+  // mounts it again with no token left. A module flag, not component state, must survive that.
+  const page = read("src/pages/VerifyEmail.jsx");
+  assert.match(page, /^let verifiedThisLoad = false;$/m);
+  assert.match(page, /\.then\(async \(\) => \{\s*verifiedThisLoad = true;\s*forgetToken\(\);/);
+  assert.match(page, /useState\(verifiedThisLoad \? "success" : "verifying"\)/);
+  assert.match(page, /useEffect\(\(\) => \{\s*if \(verifiedThisLoad \|\| attempted\.current\) return;/);
+});
