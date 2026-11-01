@@ -2,16 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, sql, cleanup } from './helpers/site.mjs';
+import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, sql, cleanup, fixtures } from './helpers/site.mjs';
 import { settledMarkdown } from '../src/lib/streamingMarkdown.js';
 
 test.after(cleanup);
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const lostConnection = join(fixtures, 'appi', 'lost-connection-router.php');
 
 /** A local OpenAI-compatible provider: each request plays the next scripted chunk list. */
 async function mockProvider(script) {
@@ -21,7 +23,12 @@ async function mockProvider(script) {
     request.on('data', (chunk) => { body += chunk; });
     request.on('end', () => {
       requests.push(JSON.parse(body));
-      const { chunks = [], done = true, status = 200 } = script.shift() || {};
+      const { chunks = [], done = true, status = 200, json } = script.shift() || {};
+      if (json) {
+        response.writeHead(status, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify(json));
+        return;
+      }
       response.writeHead(status, { 'Content-Type': 'text/event-stream' });
       for (const chunk of chunks) response.write(`data: ${JSON.stringify(chunk)}\n\n`);
       response.end(done ? 'data: [DONE]\n\n' : '');
@@ -38,14 +45,14 @@ const events = (sse) => sse.split(/\n\n/).filter((block) => block.startsWith('ev
   return { event: head.slice(6).trim(), data: JSON.parse(data.slice(5)) };
 });
 
-async function room(name, script) {
+async function room(name, script, { router, settings = {} } = {}) {
   const provider = await mockProvider(script);
   const site = makeSite(name, {
-    ai_provider: 'openai-compatible', ai_api_key: 'fixture-mock-provider-key', ai_base_url: `http://127.0.0.1:${provider.port}/v1`, ai_allow_local: true, ai_model: 'mock-model',
+    ai_provider: 'openai-compatible', ai_api_key: 'fixture-mock-provider-key', ai_base_url: `http://127.0.0.1:${provider.port}/v1`, ai_allow_local: true, ai_model: 'mock-model', ...settings,
   });
   seedCurriculum(site);
   seedAccount(site, { email: 'learner@example.test', verified: true });
-  const server = await startSite(site);
+  const server = await startSite(site, { router });
   const learner = await signIn(server.port, 'learner@example.test');
   const created = await learner.mutate('POST', '/api/ai/conversations', { title: 'Uji' });
   assert.equal(created.status, 201, created.text);
@@ -68,6 +75,57 @@ test('a retry replaces the answer on the saved question instead of recording the
     await appi.ask('Pertanyaan lain?', { retry: true });
     assert.equal(appi.saved().length, 4);
   } finally { appi.close(); }
+});
+
+test('an answer outlives the database connection it started on, in the quick panel and in the APPI room', async () => {
+  const appi = await room('appi-lost-connection', [
+    { chunks: [text('Jawaban panel cepat.'), finished('stop')] },
+    { chunks: [text('Jawaban ruang APPI.'), finished('stop')] },
+  ], { router: lostConnection });
+  try {
+    for (const [question, pageContext] of [['Apa arti hasil ini?', 'calculators'], ['Lalu langkah berikutnya?', 'ai-assistant']]) {
+      const stream = events((await appi.ask(question, { pageContext })).text);
+      assert.equal(stream.some((entry) => entry.event === 'persistence_error'), false);
+      assert.equal(stream.at(-1).data.persisted, true);
+    }
+    const detail = await appi.learner.get(`/api/ai/conversations/${appi.id}`);
+    assert.deepEqual(detail.json.data.messages.map(({ role, content }) => [role, content]), [
+      ['user', 'Apa arti hasil ini?'], ['assistant', 'Jawaban panel cepat.'],
+      ['user', 'Lalu langkah berikutnya?'], ['assistant', 'Jawaban ruang APPI.'],
+    ]);
+    assert.equal(detail.json.data.conversation.messageCount, 4);
+  } finally { appi.close(); }
+});
+
+test('a retry on a lost connection still replaces its answer in one step', async () => {
+  const appi = await room('appi-lost-connection-retry', [{ chunks: [text('Jawaban pertama.')] }, { chunks: [text('Jawaban kedua.')] }], { router: lostConnection });
+  try {
+    assert.equal(events((await appi.ask('Berapa FCR ideal?')).text).at(-1).data.persisted, true);
+    assert.equal(events((await appi.ask('Berapa FCR ideal?', { retry: true })).text).at(-1).data.persisted, true);
+    assert.deepEqual(appi.saved().map(({ role, content }) => [role, content]), [['user', 'Berapa FCR ideal?'], ['assistant', 'Jawaban kedua.']]);
+  } finally { appi.close(); }
+});
+
+test('an answer from a provider that does not stream outlives the connection too', async () => {
+  const appi = await room('appi-lost-connection-whole', [{ json: { candidates: [{ content: { parts: [{ text: 'Jawaban utuh.' }] } }] } }], {
+    router: lostConnection,
+    settings: { ai_provider: 'gemini', ai_model: 'gemini-uji' },
+  });
+  try {
+    const stream = events((await appi.ask('Berapa HDP ideal?')).text);
+    assert.equal(stream.at(-1).data.provider, 'gemini');
+    assert.equal(stream.at(-1).data.persisted, true);
+    assert.deepEqual(appi.saved().map(({ role, content }) => [role, content]), [['user', 'Berapa HDP ideal?'], ['assistant', 'Jawaban utuh.']]);
+  } finally { appi.close(); }
+});
+
+test('LiteSpeed lets a stream finish after the browser leaves, so its words can still be saved', () => {
+  const rules = read('public/.htaccess');
+  const keep = rules.search(/RewriteRule \S+ - \[E=noabort:1,E=noconntimeout:1\]/);
+  assert.ok(keep > -1);
+  assert.match(rules.slice(0, keep), /RewriteCond %\{THE_REQUEST\} \^POST\\s\/api\/ai\/conversations\/\[0-9\]\+\/stream\s*$/m);
+  // The API rewrite ends with [L], so a rule after it would never run.
+  assert.ok(keep < rules.indexOf('RewriteRule ^api/?$'));
 });
 
 test('an answer cut by the token limit or by a missing end marker says so and stays marked', async () => {

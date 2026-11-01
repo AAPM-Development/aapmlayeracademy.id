@@ -2,6 +2,11 @@
   RewriteEngine On
   RewriteBase /
 
+  # LiteSpeed may end PHP when the browser disconnects. An APPI stream must run on
+  # after that, so the words written so far reach the history. Apache ignores these.
+  RewriteCond %{THE_REQUEST} ^POST\s/api/ai/conversations/[0-9]+/stream
+  RewriteRule .* - [E=noabort:1,E=noconntimeout:1]
+
   # Native PHP API. The route is passed as a query parameter so the same
   # front controller works on Apache and PHP's built-in development server.
   RewriteRule ^api/?$ api/index.php [L,QSA]
