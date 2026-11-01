@@ -12,6 +12,7 @@ import { nativeApi } from "@/api/nativeClient";
 import { useFarmData } from "@/lib/useCourseData";
 import { useAuth } from "@/lib/AuthContext";
 import {
+  answerDetails,
   flattenConversationPages,
   removeConversationFromPages,
   upsertConversationInPages,
@@ -703,6 +704,9 @@ export function AiChatProvider({ children }) {
                 provider: data.provider,
                 model: data.model,
                 fallback: Boolean(data.fallback),
+                stopped: Boolean(data.stopped),
+                interrupted: Boolean(data.interrupted),
+                truncated: Boolean(data.truncated),
               });
               if (!didPersist) setHistorySyncState("attention");
             }
@@ -829,6 +833,7 @@ export function AiChatProvider({ children }) {
           provider: message.provider || "",
           model: message.model || "",
           fallback: Boolean(message.fallback),
+          details: answerDetails(message),
         });
         if (result?.conversation) upsertConversation(result.conversation);
         const reconciled = await reconcileConversation(conversationId, { replaceMessages: true });
