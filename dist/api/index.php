@@ -1165,6 +1165,8 @@ try {
             error_log('[aapm-ai-phase1] ' . $exception->getMessage());
             error_response('Pertanyaan belum dapat disimpan ke riwayat akun. Coba lagi.', 503, 'persistence_error');
         }
+        // Only db() may hold the connection across the provider wait; see db_release().
+        unset($phaseOneDatabase);
         ai_sse_start();
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
