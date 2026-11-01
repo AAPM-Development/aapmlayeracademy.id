@@ -196,8 +196,8 @@ export class Api {
   }
 }
 
-export function startSite(site) {
-  return startPhpServer({ args: SQLITE, docroot: "public", cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
+export function startSite(site, { router } = {}) {
+  return startPhpServer({ args: SQLITE, docroot: "public", router, cwd: repo, env: cleanEnv({ AAPLAYERACADEMY_CONFIG: site.config }) });
 }
 
 export async function withSite(site, run) {

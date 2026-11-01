@@ -265,11 +265,10 @@ function aapm_verify_environment_marker(PDO $connection, string $environment): v
 
 function db(): PDO
 {
-    static $pdo = null;
     static $schemaReady = false;
 
-    if ($pdo instanceof PDO) {
-        return $pdo;
+    if (($GLOBALS['aapm_db'] ?? null) instanceof PDO) {
+        return $GLOBALS['aapm_db'];
     }
 
     $config = app_config();
@@ -318,9 +317,20 @@ function db(): PDO
         $schemaReady = true;
     }
 
-    $pdo = $connection;
+    $GLOBALS['aapm_db'] = $connection;
 
-    return $pdo;
+    return $connection;
+}
+
+/**
+ * Lets go of the connection before a wait the database cannot see. A host closes a
+ * connection left idle past its wait_timeout and a model can take minutes, so the work
+ * after the wait opens a new one through db() instead of failing on the old one.
+ * Never call this inside a transaction.
+ */
+function db_release(): void
+{
+    unset($GLOBALS['aapm_db']);
 }
 
 /**

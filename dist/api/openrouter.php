@@ -475,6 +475,7 @@ function ai_http_json(string $url, array $headers, array $body, string $provider
         CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2, CURLOPT_USERAGENT => 'AAPM-Layer-Academy/1.0',
         CURLOPT_HTTPHEADER => array_merge(['Accept: application/json', 'Content-Type: application/json'], $headers), CURLOPT_POST => true, CURLOPT_POSTFIELDS => $payload,
     ]);
+    db_release();
     $bodyText = curl_exec($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
     $curlError = curl_error($handle);
@@ -850,6 +851,7 @@ function ai_openrouter_stream_completion(array $settings, string $apiKey, string
             return strlen($chunk);
         },
     ]);
+    db_release();
     $ok = curl_exec($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
     $curlError = curl_error($handle);

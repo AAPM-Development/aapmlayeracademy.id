@@ -39,11 +39,11 @@ export async function freePort(nextPort = osPort) {
   throw new Error(`no usable port in ${PORT_TRIES} tries, last: ${probeResult(outcome)}`);
 }
 
-/** Starts php -S on docroot/router.php; any HTTP reply from /api/health means it is up. */
-export async function startPhpServer({ args = [], docroot, cwd, env, limitMs = START_LIMIT_MS }) {
+/** Starts php -S on docroot/router.php unless told otherwise; any HTTP reply from /api/health means it is up. */
+export async function startPhpServer({ args = [], docroot, cwd, env, router = join(docroot, "router.php"), limitMs = START_LIMIT_MS }) {
   const port = await freePort();
   let stderr = "";
-  const child = spawn("php", [...args, "-S", `127.0.0.1:${port}`, "-t", docroot, join(docroot, "router.php")], {
+  const child = spawn("php", [...args, "-S", `127.0.0.1:${port}`, "-t", docroot, router], {
     cwd,
     env,
     stdio: ["ignore", "ignore", "pipe"],

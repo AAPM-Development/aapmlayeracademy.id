@@ -1,12 +1,12 @@
 {
   "schema": "aapm-release-manifest/1",
   "channel": "staging",
-  "sourceCommit": "6ef572dd13e00837964c3dd071f7392ac9d73244",
+  "sourceCommit": "f2857cf5ecd9f3a63403fc73b27a294b943c574b",
   "sourceDirty": false,
-  "sourceTreeFingerprint": "850bc71019b388daa62fc4f9299cbc08a962587a793113f607d0afe47a6c6286",
+  "sourceTreeFingerprint": "04212a05ff718cb9cbec7fc0cdf781ad58b0efc13e15b99a17a9728b17b19f52",
   "sourceFileCount": 304,
-  "artifactId": "0e8b9b93e2378383b1311014d257108f4c21c3acd3c98a6be463be3ab576da9e",
-  "builtAt": "2026-11-01T09:32:46.494Z",
+  "artifactId": "0f15ce329373d0df5277838d77153d594d517ff7b4d40def7d058d6349cc81ab",
+  "builtAt": "2026-11-01T16:37:59.316Z",
   "schemaCompatibility": {
     "migrationKey": "20260909_ai_conversation_archiving_v1",
     "environmentMarkerTable": "aapm_environment_marker"
@@ -14,8 +14,8 @@
   "files": [
     {
       "path": ".htaccess",
-      "sha256": "24332dcc9b98a626d73c75f544068ffccb5c175f3dac58ba1c5df449edce650f",
-      "bytes": 2309
+      "sha256": "82232bbab7d9c2a126ecf1ad7375dd016edfe14d9a2648f89ab94d1bf3cf1895",
+      "bytes": 2606
     },
     {
       "path": "api/aiProviders.php",
@@ -29,8 +29,8 @@
     },
     {
       "path": "api/bootstrap.php",
-      "sha256": "866caf9388d415ac8a34e567d3b5ddc60c466642a103f0eab109be3b66db8ae9",
-      "bytes": 163029
+      "sha256": "b5e19d9e246e85aa901dfe89825c7fa802f4e9c5d432792928d2c9ed5847db8d",
+      "bytes": 163435
     },
     {
       "path": "api/certification.php",
@@ -49,8 +49,8 @@
     },
     {
       "path": "api/index.php",
-      "sha256": "25e0ce2b89a129f8076f0a5e63dd47f91dbca17317383a667f78148ca5e1233b",
-      "bytes": 85966
+      "sha256": "879fc7b89aea020c7aab29d1550e850644cc727a6b4307da5b76980dbdb2b67f",
+      "bytes": 86091
     },
     {
       "path": "api/mail.php",
@@ -59,8 +59,8 @@
     },
     {
       "path": "api/openrouter.php",
-      "sha256": "993a707930c677c4b1507259120972de9d93047cbf111c5efb54e0e1d4f33c78",
-      "bytes": 76618
+      "sha256": "34847ab818e2d093df0bb1f9ddfa61610af65e8c61723936f418767e9b6de5cb",
+      "bytes": 76656
     },
     {
       "path": "api/rewards.php",

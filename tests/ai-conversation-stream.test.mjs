@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, cleanup } from './helpers/site.mjs';
+import { join } from 'node:path';
+import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, cleanup, fixtures } from './helpers/site.mjs';
 
 test.after(cleanup);
 
@@ -104,7 +105,7 @@ test('APPI sends the conversation turns, keeps a broken partial answer once and 
   }
 });
 
-test('closing the stream stops the provider and keeps the words written so far', async () => {
+const closedStream = (siteName, startOptions) => async () => {
   const wait = (ms) => new Promise((done) => setTimeout(done, ms));
   const requests = [];
   let providerClosed = false;
@@ -122,7 +123,7 @@ test('closing the stream stops the provider and keeps the words written so far',
     });
   });
   await new Promise((done) => providerServer.listen(0, '127.0.0.1', done));
-  const site = makeSite('appi-conversation-stop', {
+  const site = makeSite(siteName, {
     ai_provider: 'openai-compatible',
     ai_api_key: 'fixture-mock-provider-key',
     ai_base_url: `http://127.0.0.1:${providerServer.address().port}/v1`,
@@ -131,7 +132,7 @@ test('closing the stream stops the provider and keeps the words written so far',
   });
   seedCurriculum(site);
   seedAccount(site, { email: 'learner@example.test', verified: true });
-  const server = await startSite(site);
+  const server = await startSite(site, startOptions);
   try {
     const learner = await signIn(server.port, 'learner@example.test');
     const id = (await learner.mutate('POST', '/api/ai/conversations', { title: 'Stop' })).json.data.id;
@@ -162,4 +163,10 @@ test('closing the stream stops the provider and keeps the words written so far',
     server.stop();
     providerServer.close();
   }
-});
+};
+
+test('closing the stream stops the provider and keeps the words written so far', closedStream('appi-conversation-stop'));
+
+test('a stream closed after the database dropped its connection still keeps the words', closedStream('appi-conversation-stop-lost', {
+  router: join(fixtures, 'appi', 'lost-connection-router.php'),
+}));
