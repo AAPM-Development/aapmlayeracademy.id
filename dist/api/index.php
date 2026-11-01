@@ -1197,6 +1197,15 @@ try {
         }
         if (!$stopped) ai_sse_step('APPI lagi simpan obrolan…', 'Menyimpan ke riwayat', 'Jawaban dan langkah ini disimpan di akunmu.');
         $response['responseDetails'] = array_merge($response['responseDetails'] ?? [], ['steps' => ai_sse_steps()]);
+        // The browser learns how the answer ended here; a failed save gives it no other way.
+        $done = [
+            'provider' => $response['provider'],
+            'model' => $response['model'],
+            'fallback' => (bool) $response['fallback'],
+            'stopped' => $stopped,
+            'interrupted' => !empty($response['responseDetails']['interrupted']),
+            'truncated' => !empty($response['responseDetails']['truncated']),
+        ];
         $savedConversation = null;
         try {
             $database = db();
@@ -1224,25 +1233,13 @@ try {
             ai_sse_emit('persistence_error', [
                 'message' => 'Jawaban APPI belum dapat disimpan ke riwayat akun. Coba kirim ulang atau muat ulang riwayat.',
             ]);
-            ai_sse_emit('done', [
-                'provider' => $response['provider'],
-                'model' => $response['model'],
-                'fallback' => (bool) $response['fallback'],
-                'persisted' => false,
-                'conversation' => null,
-            ]);
+            ai_sse_emit('done', $done + ['persisted' => false, 'conversation' => null]);
             exit;
         }
         ai_sse_emit('persisted', [
             'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null,
         ]);
-        ai_sse_emit('done', [
-            'provider' => $response['provider'],
-            'model' => $response['model'],
-            'fallback' => (bool) $response['fallback'],
-            'persisted' => true,
-            'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null,
-        ]);
+        ai_sse_emit('done', $done + ['persisted' => true, 'conversation' => $savedConversation ? present_ai_conversation($savedConversation) : null]);
         exit;
     }
 
@@ -1282,7 +1279,8 @@ try {
                     $content,
                     $provider !== '' ? $provider : null,
                     $model !== '' ? $model : null,
-                    $fallback
+                    $fallback,
+                    ai_saved_answer_details($input['details'] ?? null)
                 );
                 ai_record_activity(
                     (int) $user['id'],
@@ -1568,6 +1566,30 @@ function ai_record_chat_message(int $conversationId, string $role, string $conte
             'detail' => substr((string) ($step['detail'] ?? ''), 0, 240),
         ], array_filter(is_array($responseDetails['steps'] ?? null) ? $responseDetails['steps'] : [], 'is_array'))), 0, 12),
     ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
+}
+
+/**
+ * How an answer ended, as the browser sends it back through the save link. It is the
+ * learner's own history but still input, so only these fields of the right type pass;
+ * ai_record_chat_message bounds their size.
+ */
+function ai_saved_answer_details($details): array
+{
+    if (!is_array($details)) return [];
+    $text = static fn ($value): string => is_string($value) ? $value : '';
+    $items = static fn ($value): array => is_array($value) ? array_filter($value, 'is_array') : [];
+    $sources = array_map(static fn (array $source): ?array => ai_source($text($source['url'] ?? null), $text($source['title'] ?? null)), $items($details['sources'] ?? null));
+    $steps = array_map(static fn (array $step): array => ['label' => $text($step['label'] ?? null), 'detail' => $text($step['detail'] ?? null)], $items($details['steps'] ?? null));
+    return [
+        'reasoningSummary' => $text($details['reasoningSummary'] ?? null),
+        'reasoningObserved' => ($details['reasoningObserved'] ?? false) === true,
+        'thinkingMs' => is_numeric($details['thinkingMs'] ?? null) ? (int) $details['thinkingMs'] : 0,
+        'stopped' => ($details['stopped'] ?? false) === true,
+        'interrupted' => ($details['interrupted'] ?? false) === true,
+        'truncated' => ($details['truncated'] ?? false) === true,
+        'sources' => array_values(array_filter($sources)),
+        'steps' => array_values(array_filter($steps, static fn (array $step): bool => $step['label'] !== '')),
+    ];
 }
 
 function ai_record_activity(int $userId, ?int $conversationId, string $type, string $label, string $detail = ''): void

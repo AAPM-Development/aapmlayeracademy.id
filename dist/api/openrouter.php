@@ -591,15 +591,22 @@ function ai_public_reasoning_summaries(array $delta): array
 }
 
 /** Web sources a provider attached to a chunk, as https links only. */
+/** A source the page may link to: https only and bounded. Null when it cannot be one. */
+function ai_source(string $url, string $title): ?array
+{
+    $url = trim($url);
+    if ($url === '' || !preg_match('#^https://#i', $url)) return null;
+    return ['url' => ai_cut($url, 500), 'title' => ai_cut(trim($title), 160)];
+}
+
 function ai_url_citations(array $choice): array
 {
     $annotations = $choice['delta']['annotations'] ?? $choice['message']['annotations'] ?? [];
     $sources = [];
     foreach (is_array($annotations) ? $annotations : [] as $annotation) {
         $citation = is_array($annotation) ? ($annotation['url_citation'] ?? null) : null;
-        $url = is_array($citation) ? trim((string) ($citation['url'] ?? '')) : '';
-        if ($url === '' || !preg_match('#^https://#i', $url)) continue;
-        $sources[] = ['url' => ai_cut($url, 500), 'title' => ai_cut(trim((string) ($citation['title'] ?? '')), 160)];
+        $source = is_array($citation) ? ai_source((string) ($citation['url'] ?? ''), (string) ($citation['title'] ?? '')) : null;
+        if ($source !== null) $sources[] = $source;
     }
     return $sources;
 }

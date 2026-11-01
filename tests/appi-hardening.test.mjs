@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, sql, cleanup, fixtures } from './helpers/site.mjs';
+import { UNSAVED_STEP, answerDetails } from '../src/lib/aiHistoryState.js';
 import { settledMarkdown } from '../src/lib/streamingMarkdown.js';
 
 test.after(cleanup);
@@ -126,6 +127,112 @@ test('LiteSpeed lets a stream finish after the browser leaves, so its words can 
   assert.match(rules.slice(0, keep), /RewriteCond %\{THE_REQUEST\} \^POST\\s\/api\/ai\/conversations\/\[0-9\]\+\/stream\s*$/m);
   // The API rewrite ends with [L], so a rule after it would never run.
   assert.ok(keep < rules.indexOf('RewriteRule ^api/?$'));
+});
+
+/** Fails the server's own save, so an answer can reach history only through the save link. */
+function blockAnswers(site) {
+  sql(site, site.driver === 'sqlite'
+    ? "CREATE TRIGGER block_answers BEFORE INSERT ON ai_chat_messages WHEN NEW.role = 'assistant' BEGIN SELECT RAISE(ABORT, 'ditolak'); END"
+    : "CREATE TRIGGER block_answers BEFORE INSERT ON ai_chat_messages FOR EACH ROW BEGIN IF NEW.role = 'assistant' THEN SIGNAL SQLSTATE '45000'; END IF; END");
+  return () => sql(site, 'DROP TRIGGER block_answers');
+}
+
+test('an answer the server could not save still says how it ended, and the save link keeps it', async () => {
+  const citation = { type: 'url_citation', url_citation: { url: 'https://example.test/a', title: 'Sumber A' } };
+  const appi = await room('appi-save-link', [{ chunks: [
+    { choices: [{ delta: { reasoning_details: [{ type: 'reasoning.summary', summary: 'Membaca umur flock.' }] } }] },
+    { choices: [{ delta: { content: '| Minggu | HDP |', annotations: [citation] } }] },
+    finished('length'),
+  ] }]);
+  try {
+    const unblock = blockAnswers(appi.site);
+    const stream = events((await appi.ask('Tabel?')).text);
+    unblock();
+    const done = stream.at(-1).data;
+    assert.equal(done.persisted, false);
+    assert.equal(done.truncated, true);
+    assert.equal(done.interrupted, false);
+
+    // What the browser holds once the stream ended, in the shape it sends back.
+    const details = answerDetails({
+      reasoningSummary: stream.find((entry) => entry.event === 'reasoning').data.summary,
+      reasoningObserved: true,
+      thinkingMs: 1200,
+      stopped: done.stopped,
+      interrupted: done.interrupted,
+      truncated: done.truncated,
+      sources: stream.find((entry) => entry.event === 'sources').data.sources,
+      processSteps: stream.filter((entry) => entry.event === 'status').map(({ data }) => ({ label: data.step, detail: data.detail })),
+    });
+    const saved = await appi.learner.mutate('POST', `/api/ai/conversations/${appi.id}/messages`, { content: '| Minggu | HDP |', provider: done.provider, model: done.model, fallback: done.fallback, details });
+    assert.equal(saved.status, 200, saved.text);
+
+    const answer = (await appi.learner.get(`/api/ai/conversations/${appi.id}`)).json.data.messages.at(-1);
+    assert.equal(answer.truncated, true);
+    assert.equal(answer.interrupted, false);
+    assert.equal(answer.reasoningSummary, 'Membaca umur flock.');
+    assert.equal(answer.thinkingMs, 1200);
+    assert.deepEqual(answer.sources, [{ url: 'https://example.test/a', title: 'Sumber A' }]);
+    assert.ok(answer.processSteps.some((step) => step.label === 'Menyusun pemikiran'));
+  } finally { appi.close(); }
+});
+
+test('what a browser sends back to the save link is input: only real fields of the right type pass', async () => {
+  const appi = await room('appi-save-link-input', []);
+  try {
+    const send = (details) => appi.learner.mutate('POST', `/api/ai/conversations/${appi.id}/messages`, { content: `Jawaban ${Math.random()}`, details });
+    const answer = async () => (await appi.learner.get(`/api/ai/conversations/${appi.id}`)).json.data.messages.at(-1);
+
+    const odd = await send({
+      truncated: 'ya',
+      reasoningSummary: ['bukan teks'],
+      sources: [
+        { url: 'http://example.test/polos', title: 'Tanpa https' },
+        { url: 'javascript:alert(1)', title: 'Skrip' },
+        { url: ['https://example.test/daftar'], title: 'Bukan teks' },
+        'bukan objek',
+        { url: 'https://example.test/ok', title: { a: 1 } },
+      ],
+      steps: [{ label: ['x'], detail: 'Tanpa label' }, 'bukan objek', { label: 'Langkah', detail: 5 }],
+    });
+    assert.equal(odd.status, 200, odd.text);
+    const kept = await answer();
+    assert.equal(kept.truncated, false);
+    assert.equal(kept.reasoningSummary, '');
+    assert.deepEqual(kept.sources, [{ url: 'https://example.test/ok', title: '' }]);
+    assert.deepEqual(kept.processSteps, [{ label: 'Langkah', detail: '' }]);
+
+    const many = await send({
+      sources: Array.from({ length: 9 }, (_, index) => ({ url: `https://example.test/${index}`, title: 'x'.repeat(400) })),
+      steps: Array.from({ length: 30 }, (_, index) => ({ label: `Langkah ${index}`, detail: 'd' })),
+      reasoningSummary: 'r'.repeat(20000),
+    });
+    assert.equal(many.status, 200, many.text);
+    const bounded = await answer();
+    assert.equal(bounded.sources.length, 5);
+    assert.equal(bounded.sources[0].title.length, 160);
+    assert.equal(bounded.processSteps.length, 12);
+    assert.equal(bounded.reasoningSummary.length, 12000);
+
+    // An old tab sends no details at all, and the answer is still saved.
+    const plain = await send(undefined);
+    assert.equal(plain.status, 200, plain.text);
+    assert.deepEqual((await answer()).sources, []);
+  } finally { appi.close(); }
+});
+
+test('an answer saved by hand does not keep the note that it was unsaved', () => {
+  const chat = read('src/components/ai/AiChatProvider.jsx');
+  assert.match(chat.slice(chat.indexOf('if (event === "persistence_error") {')), /reportStep\(\{ label: UNSAVED_STEP, step: UNSAVED_STEP,/);
+  const written = { label: 'Mulai menulis', detail: 'Setelah berpikir sekitar 1 detik.' };
+  assert.deepEqual(answerDetails({ processSteps: [written, { label: UNSAVED_STEP, detail: 'Jawaban tampil, tapi belum masuk riwayat akun.' }] }).steps, [written]);
+});
+
+test('the save link sends how the answer ended, and the stream tells the browser first', () => {
+  const chat = read('src/components/ai/AiChatProvider.jsx');
+  assert.match(chat, /persistAssistant\(conversationId, \{[^}]*details: answerDetails\(message\),/);
+  const done = chat.slice(chat.indexOf('if (event === "done") {'), chat.indexOf('if (!didPersist) setHistorySyncState("attention");'));
+  for (const flag of ['stopped', 'interrupted', 'truncated']) assert.match(done, new RegExp(`${flag}: Boolean\\(data\\.${flag}\\)`));
 });
 
 test('an answer cut by the token limit or by a missing end marker says so and stays marked', async () => {
