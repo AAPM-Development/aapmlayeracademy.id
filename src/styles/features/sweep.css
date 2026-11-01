@@ -19,77 +19,13 @@
     box-shadow: 0 -8px 20px color-mix(in srgb, var(--aapm-semantic-foreground) 8%, transparent);
   }
 }
-html[data-shell-footer="true"] .aapm-ai-launcher,
 html[data-shell-footer="true"] .aapm-ai-floating-panel {
   bottom: calc(var(--aapm-shell-footer-offset, 0px) + var(--aapm-primitive-space-3));
 }
 @media (max-width: 1023px) {
-  html[data-shell-footer="true"] .aapm-ai-launcher,
   html[data-shell-footer="true"] .aapm-ai-floating-panel {
     bottom: max(calc(var(--aapm-shell-footer-offset, 0px) + var(--aapm-primitive-space-3)), calc(var(--aapm-component-bottom-nav-height) + env(safe-area-inset-bottom) + var(--aapm-primitive-space-3)));
   }
-}
-
-/* Metric cards on phones (admin overview, profile, learner detail): the icon
- * leads the label on one line, so two-column cards never fold a label into
- * three lines and every card keeps the same rhythm. */
-@media (max-width: 639px) {
-  .aapm-metric { gap: var(--aapm-primitive-space-1-5); padding: var(--aapm-primitive-space-3) var(--aapm-primitive-space-3-5, 14px); }
-  .aapm-metric__head { flex-direction: row-reverse; justify-content: flex-end; gap: var(--aapm-primitive-space-2); }
-  .aapm-metric__head .aapm-icon-tile { width: 28px; height: 28px; flex: none; }
-  .aapm-metric__head .aapm-icon-tile .aapm-icon { width: 16px; height: 16px; }
-  .aapm-metric__label {
-    display: -webkit-box;
-    overflow: hidden;
-    font-size: var(--aapm-component-type-caption-size);
-    line-height: var(--aapm-component-type-caption-line);
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-  .aapm-metric__value { font-size: var(--aapm-component-type-section-size); line-height: var(--aapm-component-type-section-line); }
-}
-
-
-/* Stat tiles: labels wrap instead of ending in an ellipsis ("Rata-rata k…"). */
-.aapm-stat__label { white-space: normal; text-wrap: balance; }
-
-/* Final exam start screen: APPI, one headline, the next step and a way back. */
-.aapm-exam-intro-page { min-height: 100svh; justify-content: center; }
-.aapm-exam-intro {
-  display: grid;
-  justify-items: center;
-  gap: var(--aapm-primitive-space-2);
-  padding: var(--aapm-primitive-space-6) var(--aapm-primitive-space-4);
-  text-align: center;
-}
-.aapm-exam-intro > .aapm-appi { margin-bottom: var(--aapm-primitive-space-3); }
-.aapm-exam-intro__eyebrow { margin: 0; color: var(--aapm-semantic-muted); font-size: var(--aapm-component-type-caption-size); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: .04em; text-transform: uppercase; }
-.aapm-exam-intro__title { margin: 0; font-size: var(--aapm-component-type-title-size); line-height: var(--aapm-component-type-title-line); font-weight: var(--aapm-primitive-weight-heading); letter-spacing: var(--aapm-primitive-tracking-tight); text-wrap: balance; animation: aapm-appi-bubble-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease-spring) 160ms both; }
-.aapm-exam-intro__text { max-width: 44ch; margin: 0; color: var(--aapm-semantic-muted); text-wrap: pretty; }
-.aapm-exam-intro__actions { display: grid; gap: var(--aapm-primitive-space-2); width: 100%; max-width: 360px; margin-top: var(--aapm-primitive-space-5); }
-.aapm-quiz-intro { min-height: 100%; align-content: center; }
-.aapm-quiz-intro__facts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--aapm-primitive-space-2); margin-block: var(--aapm-primitive-space-3); }
-
-/* Lesson reading progress under the focus bar. */
-.aapm-lesson-bar { position: relative; }
-.aapm-lesson-bar__read { position: absolute; inset: auto 0 -1px; height: 3px; overflow: hidden; pointer-events: none; }
-.aapm-lesson-bar__read > span { display: block; width: 100%; height: 100%; border-radius: 0 999px 999px 0; background: var(--hue, var(--aapm-semantic-primary)); transform: scaleX(0); transform-origin: left center; transition: transform 120ms linear; }
-.aapm-pwa-notice {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--aapm-primitive-space-4);
-  padding: var(--aapm-primitive-space-4);
-  margin-bottom: var(--aapm-primitive-space-4);
-  border: 1px solid var(--aapm-semantic-border);
-  border-radius: var(--aapm-primitive-space-4);
-  background: var(--aapm-semantic-surface);
-}
-.aapm-pwa-notice p { margin: var(--aapm-primitive-space-2) 0 0; }
-.aapm-pwa-notice__actions { display: flex; gap: var(--aapm-primitive-space-2); flex-shrink: 0; }
-@media (max-width: 639px) {
-  .aapm-pwa-notice { align-items: stretch; flex-direction: column; }
-  .aapm-pwa-notice__actions { flex-wrap: wrap; }
 }
 
 /* Draft controls dock to the phone's bottom edge, independent of document length. */

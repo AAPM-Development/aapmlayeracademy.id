@@ -31,11 +31,6 @@
     background: hsl(var(--surface-border) / 0.64);
   }
 
-.aapm-rich-editor__toolbar-style-select {
-    border-color: hsl(var(--surface-border) / 0.78);
-    background: hsl(var(--control-canvas) / 0.82);
-  }
-
 .aapm-rich-editor__toolbar-button {
     color: hsl(var(--muted-foreground));
     transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
@@ -77,80 +72,6 @@
 /* The module editor is an entity-form workspace, not a stack of cards. Keep
    * the shared Ten4Seven controls, but let the document flow and hairlines
    * provide hierarchy so the author can focus on the content itself. */
-
-.aapm-editorial-summary {
-    border: 0 !important;
-    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 0 var(--t7-ref-space-4, 1rem) !important;
-  }
-
-.aapm-editorial-layout {
-    align-items: start;
-    gap: var(--t7-ref-space-5, 1.25rem);
-  }
-
-.aapm-editor-block-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--t7-ref-space-3, 0.75rem) !important;
-  }
-
-.aapm-editor-block-list > * {
-    margin-top: 0 !important;
-  }
-
-.aapm-editorial-block {
-    scroll-margin-top: 6.5rem;
-    border: 0 !important;
-    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none;
-    padding-bottom: var(--t7-ref-space-3, 0.75rem);
-  }
-
-.aapm-editorial-block__header {
-    border-bottom: 0 !important;
-    background: transparent !important;
-    align-items: center !important;
-    gap: var(--t7-ref-space-2, 0.5rem) !important;
-    min-height: 2.5rem;
-    padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
-  }
-
-.aapm-editorial-block__body {
-    padding: 0 0 var(--t7-ref-space-3, 0.75rem) !important;
-  }
-
-.aapm-editorial-element-preview {
-    margin-top: var(--t7-ref-space-2, 0.5rem) !important;
-    border-top: 1px solid var(--aapm-editor-hairline) !important;
-    border-right: 0 !important;
-    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
-    border-left: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-.aapm-editorial-element-preview [data-editorial-element-preview-toggle] {
-    min-height: 2rem;
-    border-radius: 0 !important;
-    background: hsl(var(--tw-surface-subtle) / 0.3) !important;
-    padding: var(--t7-ref-space-1, 0.25rem) 0 !important;
-  }
-
-.aapm-editorial-element-preview [data-editorial-element-preview-toggle]:hover {
-    background: hsl(var(--tw-surface-subtle) / 0.58) !important;
-  }
-
-.aapm-editorial-element-preview__body {
-    border-top: 0 !important;
-    padding: var(--t7-ref-space-2, 0.5rem) 0 !important;
-  }
 
 .aapm-editor-media-fields {
     min-width: 0;
@@ -241,34 +162,6 @@
     min-height: 2rem;
   }
 
-.aapm-editorial-block > :last-child {
-    min-width: 0;
-  }
-
-.aapm-editorial-outline {
-    min-width: 0;
-  }
-
-.aapm-editorial-outline > aside {
-    border: 0 !important;
-    border-left: 1px solid var(--aapm-editor-hairline) !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none;
-  }
-
-.aapm-editorial-outline > aside > div:first-child {
-    border-bottom-color: var(--aapm-editor-hairline) !important;
-  }
-
-.aapm-editorial-outline > section {
-    border: 0 !important;
-    border-bottom: 1px solid var(--aapm-editor-hairline) !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    padding-inline: 0 !important;
-  }
-
 .aapm-editorial-quality {
     border-top: 1px solid hsl(var(--surface-border) / 0.36) !important;
     border-right: 0 !important;
@@ -280,21 +173,7 @@
     padding: var(--t7-ref-space-3, 0.75rem) 0 !important;
   }
 
-.aapm-editorial-insert-rail {
-    border-top: 1px solid var(--aapm-editor-hairline) !important;
-    border-right: 0 !important;
-    border-bottom: 0 !important;
-    border-left: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    padding: var(--t7-ref-space-5, 1.25rem) 0 0 !important;
-  }
-
 @media (max-width: 860px) {
-    .aapm-editorial-outline > aside {
-      border-left: 0 !important;
-    }
-
     .aapm-editor-outcome-grid,
     .aapm-editor-practice-fields {
       gap: var(--t7-ref-space-5, 1.25rem);

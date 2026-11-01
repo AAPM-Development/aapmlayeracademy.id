@@ -90,9 +90,6 @@
 .aapm-block__placeholder .aapm-icon { width: 18px; height: 18px; }
 .aapm-block__media-summary { display: flex; align-items: center; gap: var(--aapm-primitive-space-3); padding: var(--aapm-primitive-space-3); border-radius: var(--aapm-primitive-radius-panel); background: var(--aapm-semantic-hue-orange-tint); }
 .dark .aapm-block__media-summary { background: var(--aapm-semantic-hue-orange-soft); }
-.aapm-block__heading-input.aapm-input { min-height: 48px; font-size: var(--aapm-component-type-title-compact-size); font-weight: var(--aapm-primitive-weight-heading); }
-.aapm-block__heading-input.aapm-input[data-level="3"] { font-size: var(--aapm-component-type-section-size); }
-.aapm-block__heading-input.aapm-input[data-level="4"] { font-size: var(--aapm-component-type-heading-size); }
 .aapm-block__cta-preview { display: flex; padding: var(--aapm-primitive-space-3); border-radius: var(--aapm-primitive-radius-control); background: var(--aapm-semantic-surface-subtle); }
 
 /* Table block: a spreadsheet grid. Ruled cells take typing directly and the active cell is outlined. */
@@ -126,16 +123,11 @@
   /* Always visible here, so it takes its own line instead of floating over the block's text. */
   .aapm-block__bar { position: relative; top: 0; right: 0; width: fit-content; margin: var(--aapm-primitive-space-2) var(--aapm-primitive-space-2) 0 auto; opacity: 1; pointer-events: auto; transform: none; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - var(--aapm-primitive-space-4)); }
   .aapm-block__tools { flex-wrap: wrap; justify-content: flex-end; }
-  .aapm-block__bar .aapm-button, .aapm-block__bar .btn { min-width: 44px; min-height: 44px; }
+  .aapm-block__bar .btn { min-width: 44px; min-height: 44px; }
   .aapm-editor-table .input,
   .aapm-editor-table .textarea { min-height: 44px; }
 }
 
-/* Block library. */
-.aapm-block-picker-popover.aapm-popover { width: min(30rem, calc(100vw - 24px)); max-width: none; padding: var(--aapm-primitive-space-3); }
-/* The picker never grows past the space Radix leaves on screen, so on a phone its top
- * groups cannot slip above the viewport. Long lists scroll inside the picker. */
-.aapm-block-picker-popover.aapm-popover { max-height: min(var(--radix-popover-content-available-height, 70svh), 70svh); overflow-y: auto; overscroll-behavior: contain; }
 .aapm-block-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--aapm-primitive-space-3); }
 .aapm-block-picker__group { display: grid; align-content: start; gap: 2px; }
 .aapm-block-picker__group > .aapm-text-overline { padding: 0 var(--aapm-primitive-space-2) var(--aapm-primitive-space-1); }
@@ -150,6 +142,5 @@
 .aapm-inspector-tabs .aapm-tabs-trigger { width: 100%; }
 .aapm-option-group { display: flex; width: 100%; }
 .aapm-option-group .aapm-tabs-trigger { flex: 1 1 0; min-width: 0; padding-inline: var(--aapm-primitive-space-2); }
-.aapm-editor-inspector .aapm-card__content > .aapm-field + .aapm-field,
 .aapm-editor-inspector [data-block-inspector] > .aapm-field + .aapm-field { margin-top: var(--aapm-primitive-space-1); }
 .aapm-editor-inspector [data-block-inspector] { gap: var(--aapm-primitive-space-3); }

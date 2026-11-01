@@ -92,50 +92,6 @@ a, button, input, select, textarea, label, summary, [role="button"], [role="tab"
 }
 
 /* Typography roles. Importance drives size; most product copy is body. */
-.aapm-text-display,
-.aapm-text-title,
-.aapm-text-title-compact,
-.aapm-text-section,
-.aapm-text-heading {
-  margin: 0;
-  font-weight: var(--aapm-primitive-weight-heading);
-  color: var(--aapm-semantic-foreground);
-  text-wrap: balance;
-}
-
-.aapm-text-display {
-  font-size: var(--aapm-component-type-display-size);
-  line-height: var(--aapm-component-type-display-line);
-  letter-spacing: var(--aapm-primitive-tracking-tight);
-}
-
-.aapm-text-title {
-  font-size: var(--aapm-component-type-title-size);
-  line-height: var(--aapm-component-type-title-line);
-  letter-spacing: var(--aapm-primitive-tracking-tight);
-}
-
-.aapm-text-title-compact {
-  font-size: var(--aapm-component-type-title-compact-size);
-  line-height: var(--aapm-component-type-title-compact-line);
-  letter-spacing: var(--aapm-primitive-tracking-snug);
-}
-
-.aapm-text-section {
-  font-size: var(--aapm-component-type-section-size);
-  line-height: var(--aapm-component-type-section-line);
-  letter-spacing: var(--aapm-primitive-tracking-snug);
-}
-
-.aapm-text-heading {
-  font-size: var(--aapm-component-type-heading-size);
-  line-height: var(--aapm-component-type-heading-line);
-}
-
-.aapm-text-body {
-  font-size: var(--aapm-component-type-body-size);
-  line-height: var(--aapm-component-type-body-line);
-}
 
 .aapm-text-support {
   font-size: var(--aapm-component-type-support-size);
@@ -162,14 +118,6 @@ a, button, input, select, textarea, label, summary, [role="button"], [role="tab"
   letter-spacing: var(--aapm-primitive-tracking-caps);
   text-transform: uppercase;
   color: var(--aapm-semantic-muted);
-}
-
-.aapm-text-metric {
-  font-size: var(--aapm-component-type-metric-size);
-  line-height: var(--aapm-component-type-metric-line);
-  font-weight: var(--aapm-primitive-weight-heading);
-  letter-spacing: var(--aapm-primitive-tracking-tight);
-  font-variant-numeric: tabular-nums;
 }
 
 .aapm-numeric {
@@ -287,20 +235,6 @@ a, button, input, select, textarea, label, summary, [role="button"], [role="tab"
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
-
-.aapm-motion-rise {
-  animation: aapm-rise-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
-}
-
-.aapm-motion-stack > * {
-  animation: aapm-rise-in var(--aapm-primitive-motion-entrance) var(--aapm-primitive-motion-ease) both;
-}
-
-.aapm-motion-stack > :nth-child(2) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 1); }
-.aapm-motion-stack > :nth-child(3) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 2); }
-.aapm-motion-stack > :nth-child(4) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 3); }
-.aapm-motion-stack > :nth-child(5) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 4); }
-.aapm-motion-stack > :nth-child(n + 6) { animation-delay: calc(var(--aapm-primitive-motion-stagger) * 5); }
 
 /* Tactile depth (path nodes, verdict and send buttons): the bottom edge mixes
  * the face colour toward this shade, so it reads darker in both themes. */
