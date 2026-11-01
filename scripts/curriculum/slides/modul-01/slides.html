@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Slide Modul 1</title>
+<style>
+@font-face { font-family: Nunito; src: url(../../../../public/fonts/Nunito-Variable-latin.woff2) format("woff2"); font-weight: 200 1000; }
+@font-face { font-family: Inter; src: url(../../../../public/fonts/Inter-Variable.woff2) format("woff2"); font-weight: 100 900; }
+:root {
+  --green: #318139; --green-ink: #1f5a26; --green-soft: #eaf4eb; --green-tint: #d3ecd6;
+  --orange: #d4451a; --orange-ink: #9a3010; --orange-soft: #fdeee8;
+  --paper: #fbf9f3; --ink: #1c2a1f; --muted: #55635a; --line: #e2e6dc;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+body { color: var(--ink); font-family: Inter, sans-serif; }
+.slide { display: none; width: 1920px; height: 1080px; padding: 76px 100px 68px; flex-direction: column; gap: 44px; background: var(--paper); }
+.slide:target { display: flex; }
+h1 { font: 800 88px/1.08 Nunito, sans-serif; letter-spacing: -.015em; color: var(--green-ink); }
+.grow { flex: 1; min-height: 0; }
+.note { font-size: 44px; line-height: 1.25; color: var(--muted); }
+.card { border-radius: 32px; background: #fff; border: 3px solid var(--line); border-bottom-width: 12px; padding: 36px 40px; }
+.card b, .name { font: 800 60px/1.12 Nunito, sans-serif; }
+.card.green { background: var(--green); border-color: var(--green-ink); color: #fff; }
+.card.soft { background: var(--green-soft); border-color: var(--green-tint); }
+.card.warm { background: var(--orange-soft); border-color: #f6cdbc; }
+.num { color: var(--orange); }
+
+.chain { display: grid; grid-template-columns: 1fr 76px 1fr 76px 1fr; gap: 28px 12px; align-items: center; align-content: center; }
+.chain .card { display: flex; align-items: center; justify-content: center; min-height: 230px; text-align: center; }
+.chain .arrow { font: 800 68px/1 Nunito, sans-serif; color: var(--orange); text-align: center; }
+
+.cols { display: grid; gap: 32px; align-items: stretch; }
+.cols.three { grid-template-columns: repeat(3, 1fr); }
+.cols .card { display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.cols .card p { font-size: 60px; line-height: 1.2; }
+
+.steps { display: flex; flex-direction: column; justify-content: center; gap: 26px; }
+.steps .card { display: flex; justify-content: space-between; align-items: center; gap: 40px; padding: 32px 44px; }
+.steps .sum { font-size: 56px; color: var(--muted); }
+.steps b { font-size: 68px; color: var(--green-ink); white-space: nowrap; }
+.steps .card.green b, .steps .card.green .sum { color: #fff; }
+
+.bars { display: flex; flex-direction: column; justify-content: center; gap: 34px; }
+.bar-row { display: grid; grid-template-columns: 1fr auto; row-gap: 10px; font: 800 60px/1.1 Nunito, sans-serif; }
+.bar { grid-column: 1 / -1; height: 76px; border-radius: 20px; }
+
+.drivers { display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+.driver { display: grid; grid-template-columns: 90px 540px 1fr; align-items: center; gap: 24px; padding: 20px 36px; border-radius: 28px; background: #fff; border: 3px solid var(--line); border-bottom-width: 9px; }
+.driver i { font: 800 60px/1 Nunito, sans-serif; color: var(--orange); }
+.driver span { font-size: 52px; line-height: 1.15; color: var(--muted); }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.compare .card { display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 36px 44px; }
+.compare .label { font-size: 52px; font-weight: 600; color: var(--muted); }
+.compare .big { font: 800 96px/1.05 Nunito, sans-serif; color: var(--green-ink); white-space: nowrap; }
+.compare .warm .big { color: var(--orange-ink); }
+.compare .sub { font-size: 50px; color: var(--muted); }
+.punch { padding: 30px 44px; border-radius: 28px; background: var(--green-ink); color: #fff; font: 800 62px/1.15 Nunito, sans-serif; text-align: center; }
+
+table { width: 100%; border-collapse: separate; border-spacing: 0 10px; font-size: 56px; }
+th { font: 800 56px/1.1 Nunito, sans-serif; text-align: left; color: var(--muted); padding: 2px 32px; }
+td { padding: 18px 32px; background: #fff; border-block: 3px solid var(--line); font-weight: 600; }
+td:first-child { border-left: 3px solid var(--line); border-radius: 24px 0 0 24px; color: var(--muted); font-weight: 500; }
+td:last-child { border-right: 3px solid var(--line); border-radius: 0 24px 24px 0; }
+td.win { background: var(--green-soft); color: var(--green-ink); font-weight: 800; }
+
+.equation { display: flex; align-items: center; justify-content: center; gap: 30px; font: 800 72px/1 Nunito, sans-serif; color: var(--green-ink); }
+.equation em { font-style: normal; color: var(--orange); }
+
+.closing { justify-content: center; background: var(--green-ink); color: #fff; gap: 34px; }
+.closing:target { display: flex; }
+.closing h1 { color: #fff; font-size: 104px; }
+.closing .lead { font: 800 88px/1.1 Nunito, sans-serif; color: #ffd9c7; }
+.chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; margin-top: 30px; }
+.chips span { display: flex; align-items: center; justify-content: center; padding: 34px 16px; border-radius: 28px; background: #fff; color: var(--green-ink); font: 800 56px/1.1 Nunito, sans-serif; text-align: center; }
+</style>
+</head>
+<body>
+
+<section class="slide" id="s1">
+  <h1>Dari modal menjadi profit</h1>
+  <div class="chain grow">
+    <div class="card"><b>Modal</b></div><div class="arrow">→</div>
+    <div class="card"><b>Farm</b></div><div class="arrow">→</div>
+    <div class="card"><b>Layer</b></div>
+    <div class="card"><b>Produksi telur</b></div><div class="arrow">→</div>
+    <div class="card"><b>Revenue</b></div><div class="arrow">→</div>
+    <div class="card green"><b>Profit</b></div>
+  </div>
+  <p class="note">Profit adalah revenue yang tersisa setelah semua biaya.</p>
+</section>
+
+<section class="slide" id="s2">
+  <h1>Tiga sumber revenue</h1>
+  <div class="cols three grow">
+    <div class="card green"><b>Telur</b><p>Revenue utama: produksi, grading, dan harga bertemu di sini.</p></div>
+    <div class="card soft"><b>Ayam afkir</b><p>Nilai sisa setelah periode produksi berakhir.</p></div>
+    <div class="card warm"><b>Manure</b><p>Peluang sirkular, bila ada pengelolaan dan pembeli.</p></div>
+  </div>
+</section>
+
+<section class="slide" id="s3">
+  <h1>Egg mass: dari kandang ke revenue</h1>
+  <div class="steps grow">
+    <div class="card"><span class="sum">100.000 layer × 90%</span><b>90.000 telur/hari</b></div>
+    <div class="card"><span class="sum">90.000 × 62 g ÷ 1.000</span><b>5.580 kg/hari</b></div>
+    <div class="card green"><span class="sum">5.580 kg × Rp27.000/kg</span><b>Rp150,66 juta/hari</b></div>
+  </div>
+  <p class="note">Ilustrasi mekanisme, bukan harga pasar.</p>
+</section>
+
+<section class="slide" id="s4">
+  <h1>Revenue tinggi belum tentu profit tinggi</h1>
+  <div class="bars grow">
+    <div class="bar-row"><span>Revenue</span><span>Rp150 juta</span><div class="bar" style="width: 100%; background: var(--green)"></div></div>
+    <div class="bar-row"><span>Total biaya</span><span>Rp137 juta</span><div class="bar" style="width: 91.3%; background: #9db8a0"></div></div>
+    <div class="bar-row"><span>Operating contribution</span><span class="num">Rp13 juta</span><div class="bar" style="width: 8.7%; background: var(--orange)"></div></div>
+  </div>
+  <p class="note">Ilustrasi per hari. Pakan adalah komponen biaya terbesar.</p>
+</section>
+
+<section class="slide" id="s5">
+  <h1>Lima profit driver</h1>
+  <div class="drivers grow">
+    <div class="driver"><i>1</i><b class="name">Population</b><span>Ayam hidup yang produktif</span></div>
+    <div class="driver"><i>2</i><b class="name">Productivity</b><span>HD%, egg mass, berat telur</span></div>
+    <div class="driver"><i>3</i><b class="name">Feed efficiency</b><span>FCR: pakan ke kg egg mass</span></div>
+    <div class="driver"><i>4</i><b class="name">Egg price</b><span>Output sama, profit berbeda</span></div>
+    <div class="driver"><i>5</i><b class="name">Cost control</b><span>Dampak per kg egg mass</span></div>
+  </div>
+</section>
+
+<section class="slide" id="s6">
+  <h1>FCR naik sedikit, biaya naik jutaan</h1>
+  <div class="compare grow">
+    <div class="card soft"><span class="label">FCR 2,0</span><span class="big">Rp15.000</span><span class="sub">biaya pakan per kg telur</span></div>
+    <div class="card warm"><span class="label">FCR 2,1</span><span class="big">Rp15.750</span><span class="sub">biaya pakan per kg telur</span></div>
+  </div>
+  <div class="punch">+Rp750/kg × 5.580 kg = +Rp4.185.000 per hari</div>
+  <p class="note">Harga pakan ilustrasi Rp7.500/kg.</p>
+</section>
+
+<section class="slide" id="s7">
+  <h1>Harga telur adalah keputusan komersial</h1>
+  <div class="compare grow">
+    <div class="card soft"><span class="label">Rp1.500/butir</span><span class="big">Rp135 juta</span><span class="sub">revenue per hari</span></div>
+    <div class="card warm"><span class="label">Rp1.300/butir</span><span class="big">Rp117 juta</span><span class="sub">revenue per hari</span></div>
+  </div>
+  <div class="punch">Selisih Rp200/butir = Rp18 juta per hari</div>
+  <p class="note">Produksi sama: 90.000 telur. Dipengaruhi customer mix dan grading.</p>
+</section>
+
+<section class="slide" id="s8">
+  <h1>Satu KPI tidak cukup</h1>
+  <div class="grow">
+    <table>
+      <thead><tr><th>KPI</th><th>Farm A</th><th>Farm B</th></tr></thead>
+      <tbody>
+        <tr><td>HD%</td><td class="win">92%</td><td>88%</td></tr>
+        <tr><td>Berat telur</td><td>60 g</td><td class="win">64 g</td></tr>
+        <tr><td>Egg mass</td><td>5.520 kg</td><td class="win">5.632 kg</td></tr>
+        <tr><td>FCR</td><td>2,05</td><td class="win">1,90</td></tr>
+        <tr><td>Mortalitas</td><td>0,10%</td><td class="win">0,06%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Populasi 100.000 dan harga sama. Profit tetap perlu data biaya.</p>
+</section>
+
+<section class="slide" id="s9">
+  <h1>Persamaan profit</h1>
+  <div class="equation"><span>Biological</span><em>×</em><span>Commercial</span><em>−</em><span>Cost</span></div>
+  <div class="cols three grow">
+    <div class="card soft"><b>Biological</b><p>Populasi, HD%, berat telur, egg mass, FCR</p></div>
+    <div class="card soft"><b>Commercial</b><p>Harga, customer mix, grading, distribusi</p></div>
+    <div class="card warm"><b>Cost</b><p>Pakan, pullet, tenaga kerja, energi, logistik</p></div>
+  </div>
+</section>
+
+<section class="slide closing" id="s10">
+  <h1>Bukan telur terbanyak.</h1>
+  <p class="lead">Profit per unit keputusan.</p>
+  <div class="chips"><span>per ekor</span><span>per kg pakan</span><span>per kg telur</span><span>per rupiah modal</span></div>
+</section>
+
+</body>
+</html>

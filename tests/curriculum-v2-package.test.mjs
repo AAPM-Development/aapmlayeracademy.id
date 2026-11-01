@@ -3,7 +3,7 @@
 // balanced keys, trusted English or Indonesian videos). Static, reads the package file.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const PACKAGE = join("scripts", "curriculum", "data", "2026-10-31-kurikulum-v2.json");
@@ -17,6 +17,22 @@ test("v2 package: 23 modules in 14 chapters, every module names its chapter", ()
   for (const module of pack.modules) {
     assert.ok(pack.chapters[String(module.levelNumber)], `module ${module.moduleNumber} has a chapter name`);
   }
+});
+
+test("v2 package: module 1 shows its rebuilt deck and no module keeps a lost-image placeholder", () => {
+  const deck = pack.modules[0].editorialBlocks.filter((block) => block.type === "slides");
+  assert.equal(deck.length, 1);
+  assert.equal(deck[0].slides.length, 10);
+  for (const slide of deck[0].slides) {
+    assert.match(slide.src, /^\/assets\/curriculum\/modul-01\/slide-\d{2}\.png$/);
+    assert.ok(existsSync(join("public", slide.src)), slide.src);
+    assert.ok(slide.alt.length > 0 && slide.alt.length <= 280, slide.id);
+  }
+  assert.doesNotMatch(JSON.stringify(pack.modules), /\/ Slide \d/);
+});
+
+test("slide viewer: an image-only slide fills the row instead of leaving an empty copy column", () => {
+  assert.match(readFileSync(join("src", "components", "academy", "EditorialContent.jsx"), "utf8"), /image && hasCopy && "lg:grid-cols/);
 });
 
 test("v2 package: each module carries ten questions with four options and a valid key", () => {
