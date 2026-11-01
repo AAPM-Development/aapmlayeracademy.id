@@ -20,12 +20,16 @@ function readTokenFromUrl() {
   } catch { return fromUrl; }
 }
 
+// Survives a remount within this page load: after success the app refreshes auth, the boot gate
+// unmounts the route, and the remounted page has no token left to read.
+let verifiedThisLoad = false;
+
 function forgetToken() {
   try { window.sessionStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ }
 }
 
 export default function VerifyEmail() {
-  const [status, setStatus] = useState("verifying");
+  const [status, setStatus] = useState(verifiedThisLoad ? "success" : "verifying");
   const [message, setMessage] = useState("");
   const token = useRef("");
   const attempted = useRef(false);
@@ -47,6 +51,7 @@ export default function VerifyEmail() {
     nativeApi.auth
       .verifyEmail(token.current)
       .then(async () => {
+        verifiedThisLoad = true;
         forgetToken();
         setStatus("success");
         await checkUserAuth();
@@ -64,7 +69,7 @@ export default function VerifyEmail() {
   };
 
   useEffect(() => {
-    if (attempted.current) return;
+    if (verifiedThisLoad || attempted.current) return;
     attempted.current = true;
     token.current = readTokenFromUrl();
     window.history.replaceState(null, "", window.location.pathname);
