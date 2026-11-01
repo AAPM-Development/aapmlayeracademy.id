@@ -152,8 +152,10 @@ function PathModule({ module, x, size, coach }) {
 function LevelSection({ level, index, steps, completedSet, ownedTiers }) {
   const done = level.total && level.completed === level.total;
   const titleId = `${level.anchor || `level-${level.number}`}-title`;
-  const coach = level.modules.some((module) => module.state === "current")
-    ? (level.modules.find((module) => module.state === "current")?.progress ? "Lanjutkan di sini!" : "Mulai di sini!")
+  const currentModule = level.modules.find((module) => module.state === "current");
+  // "Mulai" only for a learner who has finished nothing anywhere on the path.
+  const coach = currentModule
+    ? (currentModule.progress || completedSet.size > 0 ? "Lanjutkan di sini!" : "Mulai di sini!")
     : null;
   const items = [];
   level.modules.forEach((module) => {

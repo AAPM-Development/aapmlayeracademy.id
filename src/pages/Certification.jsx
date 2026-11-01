@@ -30,7 +30,8 @@ function verificationPath(certificate) {
 }
 
 const percentOf = (tier) => (tier.totalRequiredModules ? Math.round((tier.completedRequiredModules / tier.totalRequiredModules) * 100) : 0);
-const isColoured = (tier) => tier.status !== "locked";
+/** Only a tier the learner holds or can claim is drawn in colour; running, locked and revoked tiers stay grey. */
+const isColoured = (tier) => tier.status === "issued" || tier.status === "eligible";
 
 /** The tier the learner is closest to: claimable first, then fewest missing modules. */
 function focusTier(tiers) {
