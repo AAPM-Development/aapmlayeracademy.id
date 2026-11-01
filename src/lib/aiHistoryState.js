@@ -102,6 +102,9 @@ export function removeConversationFromPages(data, conversationId) {
   return { ...data, pages };
 }
 
+/** True only until the answer is saved, so the saved answer does not carry it. */
+export const UNSAVED_STEP = "Riwayat belum tersimpan";
+
 /** How an answer ended, in the shape the save route takes, so saving it by hand loses nothing. */
 export function answerDetails(message) {
   return {
@@ -112,6 +115,6 @@ export function answerDetails(message) {
     interrupted: message.interrupted,
     truncated: message.truncated,
     sources: message.sources,
-    steps: message.processSteps,
+    steps: message.processSteps?.filter((step) => step.label !== UNSAVED_STEP),
   };
 }

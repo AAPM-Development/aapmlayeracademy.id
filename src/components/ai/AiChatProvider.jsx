@@ -12,6 +12,7 @@ import { nativeApi } from "@/api/nativeClient";
 import { useFarmData } from "@/lib/useCourseData";
 import { useAuth } from "@/lib/AuthContext";
 import {
+  UNSAVED_STEP,
   answerDetails,
   flattenConversationPages,
   removeConversationFromPages,
@@ -683,7 +684,7 @@ export function AiChatProvider({ children }) {
                   "Jawaban belum tersimpan ke riwayat akun.",
                 persisted: false,
               });
-              reportStep({ label: "Riwayat belum tersimpan", step: "Riwayat belum tersimpan", detail: "Jawaban tampil, tapi belum masuk riwayat akun." });
+              reportStep({ label: UNSAVED_STEP, step: UNSAVED_STEP, detail: "Jawaban tampil, tapi belum masuk riwayat akun." });
               setHistorySyncState("attention");
             }
             if (event === "persisted") {

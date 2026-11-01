@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { makeSite, seedCurriculum, seedAccount, startSite, signIn, rows, sql, cleanup, fixtures } from './helpers/site.mjs';
-import { answerDetails } from '../src/lib/aiHistoryState.js';
+import { UNSAVED_STEP, answerDetails } from '../src/lib/aiHistoryState.js';
 import { settledMarkdown } from '../src/lib/streamingMarkdown.js';
 
 test.after(cleanup);
@@ -219,6 +219,13 @@ test('what a browser sends back to the save link is input: only real fields of t
     assert.equal(plain.status, 200, plain.text);
     assert.deepEqual((await answer()).sources, []);
   } finally { appi.close(); }
+});
+
+test('an answer saved by hand does not keep the note that it was unsaved', () => {
+  const chat = read('src/components/ai/AiChatProvider.jsx');
+  assert.match(chat.slice(chat.indexOf('if (event === "persistence_error") {')), /reportStep\(\{ label: UNSAVED_STEP, step: UNSAVED_STEP,/);
+  const written = { label: 'Mulai menulis', detail: 'Setelah berpikir sekitar 1 detik.' };
+  assert.deepEqual(answerDetails({ processSteps: [written, { label: UNSAVED_STEP, detail: 'Jawaban tampil, tapi belum masuk riwayat akun.' }] }).steps, [written]);
 });
 
 test('the save link sends how the answer ended, and the stream tells the browser first', () => {
