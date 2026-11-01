@@ -356,7 +356,7 @@ function SlidesBlock({ block }) {
     <section className={cn("max-w-none", blockAlignment[block.align] || blockAlignment.left)}>
       {block.title && <h3 className="mb-3 text-sm font-semibold text-foreground">{block.title}</h3>}
       <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle shadow-sm">
-        <div className={cn("grid min-w-0", image && "lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]")}>
+        <div className={cn("grid min-w-0", image && hasCopy && "lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]")}>
           {image && <div className="aspect-video min-w-0 bg-muted"><img src={image} alt={slide.decorative ? "" : slide.alt || ""} loading="lazy" decoding="async" className="h-full w-full object-cover" /></div>}
           {(hasCopy || !image) && <div className="flex min-h-48 min-w-0 flex-col p-5 sm:p-6">
             <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-brand-orange">Slide {safeIndex + 1} dari {visibleSlides.length}</div>

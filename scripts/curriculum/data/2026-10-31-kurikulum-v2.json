@@ -49,8 +49,8 @@
           "Tuliskan dua faktor utama yang paling memengaruhi perubahan profit minggu ini."
         ],
         "practicalAssignment": "Tugas Pilih satu kandang dan ambil data 7 hari dari catatan produksi kandang: populasi, jumlah telur, berat telur rata-rata, pakan habis, harga pakan, dan harga jual. Hitung egg mass, revenue telur, FCR, dan biaya pakan per kg telur, lalu tentukan dua profit driver yang paling perlu diperbaiki.\nHasil dikumpulkan Lembar perhitungan satu halaman (tabel harian dan ringkasan mingguan) serta satu paragraf rekomendasi berisi dua driver prioritas dan tindakan awalnya.\nKriteria penilaian Rumus egg mass, FCR, dan biaya pakan per kg telur dipakai dengan benar beserta satuannya. / Data berasal dari kandang dan periode yang sama, dan sumbernya disebutkan. / Driver prioritas didukung angka dan dikaitkan dengan dampak rupiah. / Tindakan awal realistis dan dapat dijalankan oleh tim kandang.",
-        "videoScript": "Bisnis ayam petelur bukan sekadar memproduksi telur sebanyak mungkin. Di modul ini kita menelusuri bagaimana modal berubah menjadi ayam produktif, telur, revenue, dan akhirnya profit. Kita juga belajar membaca lima profit driver agar setiap keputusan di kandang terhubung dengan hasil bisnis.\n00:00–01:00: Pembuka: farm sebagai bisnis aset biologis. Rekaman udara farm dan animasi alur modal → farm → layer → telur → revenue → profit (slide 1–2).\n01:00–02:30: Tiga sumber revenue: rekam gudang telur, penimbangan ayam afkir saat panen, dan pengangkutan manure ke pengepul atau unit kompos (slide 3).\n02:30–04:30: Rantai egg mass: demonstrasi menghitung telur satu baris kandang dan menimbang satu tray di gudang; hitung 100.000 × 90% × 62 g di papan; tunjukkan revenue tinggi ≠ profit tinggi (slide 4–5).\n04:30–06:30: Lima profit driver: penimbangan pakan dan simulasi FCR 2,0 → 2,1; wawancara singkat tim pemasaran tentang grading, customer mix, dan selisih harga Rp200/butir; tabel Farm A vs B (slide 6–10).\n06:30–08:00: Business Model Canvas dan pertanyaan per level jabatan (wawancara singkat operator, supervisor, dan farm manager); penutup: profit per unit keputusan — per ekor, per kg pakan, per kg telur, per rupiah modal (slide 11–13).",
-        "content": "## Model bisnis layer: dari modal menjadi profit\n\n/ Slide 1 | / Slide 2 | / Slide 3\n\nBisnis ayam petelur adalah bisnis produksi protein berbasis aset biologis. Modal (pullet, pakan, kandang, peralatan, tenaga kerja, kesehatan) ditanam ke farm. Farm mengelola aset, sistem, dan keputusan harian. Populasi ayam produktif menghasilkan telur yang dijual menjadi revenue. Revenue yang tersisa setelah semua biaya menjadi profit, arus kas, dan dana reinvestasi.\n\nModal → Farm → Layer → Produksi telur → Revenue → Profit\n\nFarm memiliki tiga sumber revenue:\n\n- Telur — revenue utama; produksi, egg mass, grading, dan harga bertemu di sini.\n- Ayam afkir — nilai sisa setelah periode produksi berakhir.\n- Manure — peluang sirkular: kotoran → pengepul → kompos/pupuk → pelanggan pertanian. Nilainya muncul bila ada pengelolaan, saluran jual, dan pembeli.\n\nPendapatan afkir = Jumlah ekor terjual × Bobot rata-rata (kg) × Harga (Rp/kg)\n\n## Egg mass: jembatan dari kandang ke revenue\n\nUrutan logikanya: populasi produktif → HD% → jumlah telur → berat telur → kg egg mass → harga. Perubahan kecil di setiap mata rantai terakumulasi ke revenue harian.\n\nJumlah telur/hari = Populasi × HD% / Egg mass (kg/hari) = Jumlah telur × Berat telur (g) ÷ 1.000 / Revenue telur = Egg mass (kg) × Harga (Rp/kg), atau Jumlah telur × Harga (Rp/butir)\n\nCONTOH ILUSTRASI SLIDE (MEKANISME, BUKAN HARGA PASAR) / 100.000 layer × 90% = 90.000 telur/hari / 90.000 × 62 g ÷ 1.000 = 5.580 kg egg mass/hari / 5.580 kg × Rp27.000/kg = Rp150,66 juta/hari\n\nRevenue tinggi belum tentu profit tinggi. Pada ilustrasi slide, revenue Rp150 juta/hari dikurangi total biaya Rp137 juta/hari (pakan sebagai komponen terbesar, disusul penyusutan pullet, tenaga kerja, listrik, kesehatan, perawatan, kemasan, dan logistik) hanya menyisakan operating contribution sekitar Rp13 juta/hari.\n\n## Lima profit driver dan persamaan profit\n\n- Population — ayam hidup yang produktif, bukan sekadar jumlah ayam terdaftar.\n- Productivity — HD%, egg mass, berat telur, persistensi, dan mortalitas.\n- Feed efficiency — FCR menghubungkan pakan dengan kg egg mass.\n- Egg price — harga jual mengubah output yang sama menjadi profit yang berbeda.\n- Cost control — pakan, pullet, tenaga kerja, energi, kesehatan, perawatan, kemasan, logistik, dan overhead; ukur dampaknya per kg egg mass.\n\nBiaya pakan per kg telur = Harga pakan (Rp/kg) × FCR / PROFIT = Biological performance × Commercial performance − Cost\n\nFCR 2,0 → 2,1 DAN SELISIH HARGA TELUR / Harga pakan ilustrasi Rp7.500/kg: FCR 2,0 → Rp15.000/kg telur; FCR 2,1 → Rp15.750/kg telur / Kenaikan Rp750/kg × 5.580 kg egg mass = Rp4.185.000 per hari / Produksi sama 90.000 telur: Rp1.500 × 90.000 = Rp135 juta; Rp1.300 × 90.000 = Rp117 juta / Selisih Rp200/butir = Rp18 juta per hari — dipengaruhi customer mix, grading, distribusi, dan termin pembayaran\n\nSatu KPI tidak cukup. Pada slide, Farm A unggul HD% (92% vs 88%), sedangkan Farm B unggul berat telur (64 g vs 60 g), FCR (1,90 vs 2,05), dan mortalitas (0,06% vs 0,10%). Pemenang tidak bisa dipilih dari HD% saja; gabungkan egg mass, FCR, harga, dan biaya per kg telur. Biological performance mencakup populasi, HD%, berat telur, egg mass, FCR, dan mortalitas; commercial performance mencakup harga, customer mix, grading, distribusi, brand premium, dan termin pembayaran.\n\n## Business Model Canvas dan pertanyaan per level\n\nLayer Farm Business Model Canvas\n\nElemen | Pertanyaan | Isi pada farm layer\n\nNaik level berarti mengubah pertanyaan operasional menjadi pertanyaan return\n\nLevel | Pertanyaan khas\n\nCATATAN / Bukan telur terbanyak, tetapi profit per unit keputusan: per ekor, per kg pakan, per kg telur, dan per rupiah modal."
+        "videoScript": "Bisnis ayam petelur bukan sekadar memproduksi telur sebanyak mungkin. Di modul ini kita menelusuri bagaimana modal berubah menjadi ayam produktif, telur, revenue, dan akhirnya profit. Kita juga belajar membaca lima profit driver agar setiap keputusan di kandang terhubung dengan hasil bisnis.\n00:00–01:00: Pembuka: farm sebagai bisnis aset biologis. Rekaman udara farm dan animasi alur modal → farm → layer → telur → revenue → profit (slide 1).\n01:00–02:30: Tiga sumber revenue: rekam gudang telur, penimbangan ayam afkir saat panen, dan pengangkutan manure ke pengepul atau unit kompos (slide 2).\n02:30–04:30: Rantai egg mass: demonstrasi menghitung telur satu baris kandang dan menimbang satu tray di gudang; hitung 100.000 × 90% × 62 g di papan; tunjukkan revenue tinggi ≠ profit tinggi (slide 3–4).\n04:30–06:30: Lima profit driver: penimbangan pakan dan simulasi FCR 2,0 → 2,1; wawancara singkat tim pemasaran tentang grading, customer mix, dan selisih harga Rp200/butir; tabel Farm A vs B (slide 5–9).\n06:30–08:00: Business Model Canvas dan pertanyaan per level jabatan (wawancara singkat operator, supervisor, dan farm manager); penutup: profit per unit keputusan — per ekor, per kg pakan, per kg telur, per rupiah modal (slide 10).",
+        "content": "## Model bisnis layer: dari modal menjadi profit\n\nBisnis ayam petelur adalah bisnis produksi protein berbasis aset biologis. Modal (pullet, pakan, kandang, peralatan, tenaga kerja, kesehatan) ditanam ke farm. Farm mengelola aset, sistem, dan keputusan harian. Populasi ayam produktif menghasilkan telur yang dijual menjadi revenue. Revenue yang tersisa setelah semua biaya menjadi profit, arus kas, dan dana reinvestasi.\n\nModal → Farm → Layer → Produksi telur → Revenue → Profit\n\nFarm memiliki tiga sumber revenue:\n\n- Telur — revenue utama; produksi, egg mass, grading, dan harga bertemu di sini.\n- Ayam afkir — nilai sisa setelah periode produksi berakhir.\n- Manure — peluang sirkular: kotoran → pengepul → kompos/pupuk → pelanggan pertanian. Nilainya muncul bila ada pengelolaan, saluran jual, dan pembeli.\n\nPendapatan afkir = Jumlah ekor terjual × Bobot rata-rata (kg) × Harga (Rp/kg)\n\n## Egg mass: jembatan dari kandang ke revenue\n\nUrutan logikanya: populasi produktif → HD% → jumlah telur → berat telur → kg egg mass → harga. Perubahan kecil di setiap mata rantai terakumulasi ke revenue harian.\n\nJumlah telur/hari = Populasi × HD% / Egg mass (kg/hari) = Jumlah telur × Berat telur (g) ÷ 1.000 / Revenue telur = Egg mass (kg) × Harga (Rp/kg), atau Jumlah telur × Harga (Rp/butir)\n\nCONTOH ILUSTRASI SLIDE (MEKANISME, BUKAN HARGA PASAR) / 100.000 layer × 90% = 90.000 telur/hari / 90.000 × 62 g ÷ 1.000 = 5.580 kg egg mass/hari / 5.580 kg × Rp27.000/kg = Rp150,66 juta/hari\n\nRevenue tinggi belum tentu profit tinggi. Pada ilustrasi slide, revenue Rp150 juta/hari dikurangi total biaya Rp137 juta/hari (pakan sebagai komponen terbesar, disusul penyusutan pullet, tenaga kerja, listrik, kesehatan, perawatan, kemasan, dan logistik) hanya menyisakan operating contribution sekitar Rp13 juta/hari.\n\n## Lima profit driver dan persamaan profit\n\n- Population — ayam hidup yang produktif, bukan sekadar jumlah ayam terdaftar.\n- Productivity — HD%, egg mass, berat telur, persistensi, dan mortalitas.\n- Feed efficiency — FCR menghubungkan pakan dengan kg egg mass.\n- Egg price — harga jual mengubah output yang sama menjadi profit yang berbeda.\n- Cost control — pakan, pullet, tenaga kerja, energi, kesehatan, perawatan, kemasan, logistik, dan overhead; ukur dampaknya per kg egg mass.\n\nBiaya pakan per kg telur = Harga pakan (Rp/kg) × FCR / PROFIT = Biological performance × Commercial performance − Cost\n\nFCR 2,0 → 2,1 DAN SELISIH HARGA TELUR / Harga pakan ilustrasi Rp7.500/kg: FCR 2,0 → Rp15.000/kg telur; FCR 2,1 → Rp15.750/kg telur / Kenaikan Rp750/kg × 5.580 kg egg mass = Rp4.185.000 per hari / Produksi sama 90.000 telur: Rp1.500 × 90.000 = Rp135 juta; Rp1.300 × 90.000 = Rp117 juta / Selisih Rp200/butir = Rp18 juta per hari — dipengaruhi customer mix, grading, distribusi, dan termin pembayaran\n\nSatu KPI tidak cukup. Pada slide, Farm A unggul HD% (92% vs 88%), sedangkan Farm B unggul berat telur (64 g vs 60 g), FCR (1,90 vs 2,05), dan mortalitas (0,06% vs 0,10%). Pemenang tidak bisa dipilih dari HD% saja; gabungkan egg mass, FCR, harga, dan biaya per kg telur. Biological performance mencakup populasi, HD%, berat telur, egg mass, FCR, dan mortalitas; commercial performance mencakup harga, customer mix, grading, distribusi, brand premium, dan termin pembayaran.\n\n## Business Model Canvas dan pertanyaan per level\n\nLayer Farm Business Model Canvas\n\nElemen | Pertanyaan | Isi pada farm layer\n\nNaik level berarti mengubah pertanyaan operasional menjadi pertanyaan return\n\nLevel | Pertanyaan khas\n\nCATATAN / Bukan telur terbanyak, tetapi profit per unit keputusan: per ekor, per kg pakan, per kg telur, dan per rupiah modal."
       },
       "editorialBlocks": [
         {
@@ -61,35 +61,92 @@
           "id": "aud26-m1-1"
         },
         {
-          "type": "table",
-          "title": "",
-          "columns": [
-            "/ Slide 1",
-            "/ Slide 2",
-            "/ Slide 3"
+          "type": "slides",
+          "title": "Ringkasan visual modul",
+          "source": "manual",
+          "slides": [
+            {
+              "id": "m1-slide-1",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-01.png",
+              "alt": "Alur bisnis layer: modal, farm, layer, produksi telur, revenue, profit. Profit adalah revenue yang tersisa setelah semua biaya.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-2",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-02.png",
+              "alt": "Tiga sumber revenue: telur sebagai revenue utama, ayam afkir sebagai nilai sisa, dan manure sebagai peluang sirkular.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-3",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-03.png",
+              "alt": "Perhitungan egg mass: 100.000 layer × 90% = 90.000 telur/hari; 90.000 × 62 g ÷ 1.000 = 5.580 kg/hari; 5.580 kg × Rp27.000/kg = Rp150,66 juta/hari.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-4",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-04.png",
+              "alt": "Ilustrasi per hari: revenue Rp150 juta, total biaya Rp137 juta, operating contribution Rp13 juta. Pakan adalah komponen biaya terbesar.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-5",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-05.png",
+              "alt": "Lima profit driver: population, productivity, feed efficiency, egg price, dan cost control.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-6",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-06.png",
+              "alt": "FCR 2,0 berarti biaya pakan Rp15.000 per kg telur, FCR 2,1 berarti Rp15.750. Kenaikan Rp750/kg × 5.580 kg = Rp4.185.000 per hari, pada harga pakan ilustrasi Rp7.500/kg.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-7",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-07.png",
+              "alt": "Produksi 90.000 telur: harga Rp1.500/butir menghasilkan Rp135 juta, Rp1.300/butir menghasilkan Rp117 juta. Selisih Rp200/butir sama dengan Rp18 juta per hari.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-8",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-08.png",
+              "alt": "Farm A vs Farm B: HD 92% vs 88%, berat telur 60 g vs 64 g, egg mass 5.520 kg vs 5.632 kg, FCR 2,05 vs 1,90, mortalitas 0,10% vs 0,06%. Profit tetap perlu data biaya.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-9",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-09.png",
+              "alt": "Persamaan profit: biological performance × commercial performance − cost.",
+              "decorative": false
+            },
+            {
+              "id": "m1-slide-10",
+              "title": "",
+              "content": "",
+              "src": "/assets/curriculum/modul-01/slide-10.png",
+              "alt": "Bukan telur terbanyak, tetapi profit per unit keputusan: per ekor, per kg pakan, per kg telur, per rupiah modal.",
+              "decorative": false
+            }
           ],
-          "rows": [
-            [
-              "/ Slide 4",
-              "/ Slide 5",
-              "/ Slide 6"
-            ],
-            [
-              "/ Slide 7",
-              "/ Slide 8",
-              "/ Slide 9"
-            ],
-            [
-              "/ Slide 10",
-              "/ Slide 11",
-              "/ Slide 12"
-            ],
-            [
-              "/ Slide 13",
-              "",
-              ""
-            ]
-          ],
+          "align": "left",
           "id": "aud26-m1-2"
         },
         {
