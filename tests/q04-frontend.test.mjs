@@ -63,6 +63,17 @@ test("learner certification page requests claims with a client key and never sen
   assert.match(page, /if \(error\?\.status\) delete keys\.current\[tierNumber\]/);
 });
 
+test("only issued or claimable tiers are drawn in colour; a running tier stays grey", () => {
+  const page = read("src/pages/Certification.jsx");
+  assert.match(page, /const isColoured = \(tier\) => tier\.status === "issued" \|\| tier\.status === "eligible";/);
+  assert.doesNotMatch(page, /isColoured = \(tier\) => tier\.status !== "locked"/);
+});
+
+test("the path coach says continue, not start, once the learner has finished any module", () => {
+  const path = read("src/components/academy/CourseElements.jsx");
+  assert.match(path, /currentModule\.progress \|\| completedSet\.size > 0 \? "Lanjutkan di sini!" : "Mulai di sini!"/);
+});
+
 test("the claim hook re-reads server state on every outcome", () => {
   const hooks = read("src/lib/useCourseData.js");
   assert.match(hooks, /useClaimCertificate[\s\S]*onSettled[\s\S]*certificationEligibility/);
