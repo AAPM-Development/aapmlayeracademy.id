@@ -1615,6 +1615,9 @@ function aapm_cur_normalise_policy_input(array $input): array
         if (!is_array($tier) || !is_int($tier['tierNumber'] ?? null)) {
             error_response('Definisi tingkat sertifikat tidak valid.', 422, 'validation_error');
         }
+        if ($tier['tierNumber'] < 1 || $tier['tierNumber'] > 6) {
+            error_response('Nomor tingkat sertifikat harus 1 sampai 6.', 422, 'validation_error');
+        }
         $tiers[] = [
             'tierNumber' => (int) $tier['tierNumber'],
             'tierName' => profile_text((string) ($tier['tierName'] ?? ''), 120),
@@ -1622,11 +1625,18 @@ function aapm_cur_normalise_policy_input(array $input): array
             'requiresFinal' => (bool) ($tier['requiresFinal'] ?? false),
         ];
     }
+    $modulePassPercent = (int) ($input['modulePassPercent'] ?? AAPM_MODULE_PASS_PERCENT);
+    $finalPassPercent = (int) ($input['finalPassPercent'] ?? AAPM_FINAL_PASS_PERCENT);
+    foreach ([$modulePassPercent, $finalPassPercent] as $percent) {
+        if ($percent < 50 || $percent > 100) {
+            error_response('Ambang kelulusan harus antara 50 dan 100.', 422, 'validation_error');
+        }
+    }
     return [
         'modules' => $modules,
         'tiers' => $tiers,
-        'modulePassPercent' => (int) ($input['modulePassPercent'] ?? AAPM_MODULE_PASS_PERCENT),
-        'finalPassPercent' => (int) ($input['finalPassPercent'] ?? AAPM_FINAL_PASS_PERCENT),
+        'modulePassPercent' => $modulePassPercent,
+        'finalPassPercent' => $finalPassPercent,
     ];
 }
 
