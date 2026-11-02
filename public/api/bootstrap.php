@@ -1339,6 +1339,16 @@ function normalize_email($email): string
     return strtolower(trim((string) $email));
 }
 
+// users.email is VARCHAR(190) on MySQL; FILTER_VALIDATE_EMAIL accepts up to 254 characters.
+const AAPM_EMAIL_MAX_LENGTH = 190;
+
+function require_email_length(string $email): void
+{
+    if (strlen($email) > AAPM_EMAIL_MAX_LENGTH) {
+        error_response('Alamat email terlalu panjang. Gunakan paling banyak 190 karakter.', 422, 'validation_error');
+    }
+}
+
 function password_algorithm()
 {
     if (defined('PASSWORD_ARGON2ID') && in_array('argon2id', password_algos(), true)) {
@@ -1581,6 +1591,16 @@ function nullable_number(array $data, string $key)
         return null;
     }
     return is_numeric($data[$key]) ? (float) $data[$key] : null;
+}
+
+/** A nullable number that fits a MySQL DECIMAL(precision, scale) column after rounding. */
+function decimal_number(array $data, string $key, string $label, int $precision, int $scale)
+{
+    $value = nullable_number($data, $key);
+    if ($value !== null && abs(round($value, $scale)) >= 10 ** ($precision - $scale)) {
+        error_response('Angka ' . $label . ' di luar batas. Periksa kembali isiannya.', 422, 'validation_error');
+    }
+    return $value;
 }
 
 function bool_value($value): int
@@ -2242,7 +2262,7 @@ function profile_text($value, int $limit): string
 {
     $text = trim((string) $value);
     $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text) ?? '';
-    return substr($text, 0, $limit);
+    return function_exists('mb_substr') ? mb_substr($text, 0, $limit, 'UTF-8') : substr($text, 0, $limit);
 }
 
 function profile_avatar_data($value): string
@@ -2570,6 +2590,7 @@ function admin_create_user(array $actor, array $input): array
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         error_response('Masukkan email pengguna yang valid.', 422, 'validation_error');
     }
+    require_email_length($email);
     if ($fullName === '') {
         error_response('Nama pengguna wajib diisi.', 422, 'validation_error');
     }
@@ -3346,6 +3367,9 @@ function admin_module_input(array $input, ?array $existing = null, bool $require
     if ($levelNumber < 1 || $levelNumber > 20 || $moduleNumber < 1 || $moduleNumber > 999) {
         error_response('Level dan nomor modul tidak valid.', 422, 'validation_error');
     }
+    if ($sortOrder > 65535) {
+        error_response('Urutan roadmap terlalu besar.', 422, 'validation_error');
+    }
     if ($levelName === '' || $title === '') {
         error_response('Chapter dan judul modul wajib diisi.', 422, 'validation_error');
     }
@@ -3580,14 +3604,15 @@ function present_ai_activity(array $row): array
 function aapm_provision_google_account(PDO $pdo, array $profile): int
 {
     $email = normalize_email($profile['email'] ?? '');
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($profile['email_verified'])) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > AAPM_EMAIL_MAX_LENGTH || empty($profile['email_verified'])) {
         throw new InvalidArgumentException('Verified Google email required');
     }
     $find = $pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
     $find->execute([$email]);
     $existing = $find->fetch();
     if ($existing) return (int) $existing['id'];
-    $name = trim(substr(preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? '')), 0, 160));
+    $name = preg_replace('/[\x00-\x1F\x7F]/', '', (string) ($profile['name'] ?? ''));
+    $name = trim(function_exists('mb_substr') ? mb_substr($name, 0, 160, 'UTF-8') : substr($name, 0, 160));
     if ($name === '') $name = ucfirst((string) strtok($email, '@'));
     aapm_tx_begin($pdo);
     try {
