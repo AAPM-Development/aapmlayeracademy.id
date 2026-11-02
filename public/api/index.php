@@ -131,7 +131,7 @@ try {
         if (!$user || !password_verify($password, $user['password_hash'])) {
             rate_limit_failure('login-ip', '', 60, 900, 900);
             rate_limit_failure('login-user', $email, 8, 900, 900);
-            aapm_audit('auth.login_failure', 'invalid_credentials', null, $user ? (int) $user['id'] : null, ['identity' => aapm_identity_digest($email)]);
+            aapm_audit('auth.login_failure', 'rejected', null, $user ? (int) $user['id'] : null, ['identity' => aapm_identity_digest($email)]);
             error_response('Email atau kata sandi tidak sesuai.', 401, 'invalid_credentials');
         }
 
