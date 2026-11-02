@@ -13,7 +13,7 @@ Akun untuk pengunjung Expo, dengan nama dan kelompok yang sama seperti akun demo
 | --- | --- |
 | Lokal (SQLite) | Dibuat dan diperiksa: `--verify` 15 PASS, masuk lewat app untuk `baru01` dan `data03` |
 | Uji MySQL lokal (MariaDB 10.4) | Alur lengkap lulus. Satu temuan lama di luar skrip: login dengan kata sandi salah memberi 500, lihat bagian "Temuan" |
-| Produksi | **Belum.** Menunggu skrip masuk ke `main` dan owner menjalankan perintah di cPanel (agen tidak boleh mengetik di cPanel Terminal) |
+| Produksi | **Dibuat 2 November 2026** dari repo `main` di `445ff327`, setelah backup `~/backups/20261102T115633Z-pre-expo-demo.sql.gz`. `--apply`: 15 akun dibuat, 36 modul, 131 aktivitas belajar, 36 minggu Farm KPI, 0 sertifikat. `--verify`: 15 PASS. Masuk lewat situs produksi belum dicoba agen; owner mencoba satu akun per kelompok |
 
 ## Kelompok 1: akun baru, belum setup
 
@@ -63,11 +63,11 @@ Skrip operator: [`scripts/maintenance/expo-accounts.php`](../../scripts/maintena
 - Menjalankan ulang tidak menggandakan apa pun. Kata sandi, status verifikasi dan bio dikembalikan ke rencana. Aktivitas belajar tidak pernah dihapus, kecuali lewat `--remove`.
 - Kata sandi dibaca dari variabel `AAPM_EXPO_DEMO_PASSWORD` dan tidak pernah dicetak.
 
-Perintah di cPanel Terminal, setelah commit skrip ada di cabang yang dipakai situs itu. Untuk produksi, cherry-pick dua commit skrip ke `main`; jangan merge `develop`, karena isinya berbeda dari `main`. Perubahan di `scripts/` dan `docs/` tidak mengubah artefak `dist/`.
+Perintah di cPanel Terminal. Skrip sudah ada di `main` dan `develop`. Repo produksi di server adalah `/home/aapp8359/repositories/main` (cabang `main`), dan repo staging adalah `/home/aapp8359/repositories/stagging`.
 
 ```bash
 # 1. Backup database lebih dulu (cPanel Backup atau mysqldump).
-cd /home/aapp8359/repositories/aapmlayeracademy-production
+cd /home/aapp8359/repositories/main
 export AAPLAYERACADEMY_CONFIG=/home/aapp8359/aapmlayeracademy-production-config.php
 read -rs AAPM_EXPO_DEMO_PASSWORD && export AAPM_EXPO_DEMO_PASSWORD
 php scripts/maintenance/expo-accounts.php --expect-environment=production --dry-run
@@ -76,7 +76,7 @@ php scripts/maintenance/expo-accounts.php --expect-environment=production --veri
 unset AAPM_EXPO_DEMO_PASSWORD
 ```
 
-`read -rs` meminta kata sandi tanpa menampilkannya dan tanpa menyimpannya di riwayat. Untuk staging, ganti folder ke `aapmlayeracademy-staging`, file konfigurasi ke `aapmlayeracademy-staging-config.php`, `--expect-environment=staging`, dan hilangkan `--confirm-production`.
+`read -rs` meminta kata sandi tanpa menampilkannya dan tanpa menyimpannya di riwayat. cPanel Terminal bisa terputus kalau dibiarkan menunggu terlalu lama, dan variabelnya ikut hilang. Karena itu, ketik kata sandi tepat sebelum `--apply`, atau gabungkan `read -rs` dengan perintah berikutnya dalam satu baris. Untuk staging, ganti folder ke `/home/aapp8359/repositories/stagging`, file konfigurasi ke `aapmlayeracademy-staging-config.php`, `--expect-environment=staging`, dan hilangkan `--confirm-production`.
 
 **Setelah Expo**, backup lagi, lalu jalankan:
 
