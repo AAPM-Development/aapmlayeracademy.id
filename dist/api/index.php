@@ -89,6 +89,9 @@ try {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($profile['email_verified'])) {
             redirect_response($baseUrl . '/login?oauth=unverified');
         }
+        if (strlen($email) > AAPM_EMAIL_MAX_LENGTH) {
+            redirect_response($baseUrl . '/login?oauth=email_too_long');
+        }
 
         $userId = aapm_provision_google_account(db(), $profile);
 
@@ -156,6 +159,7 @@ try {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             error_response('Masukkan alamat email yang valid.', 422, 'validation_error');
         }
+        require_email_length($email);
         $passwordError = password_validation_error($password);
         if ($passwordError !== '') {
             error_response($passwordError, 422, 'validation_error');
@@ -163,7 +167,8 @@ try {
         if ($fullName === '') {
             $fullName = ucfirst((string) strtok($email, '@'));
         }
-        $fullName = substr(preg_replace('/[\x00-\x1F\x7F]/', '', $fullName), 0, 160);
+        $fullName = preg_replace('/[\x00-\x1F\x7F]/', '', $fullName);
+        $fullName = function_exists('mb_substr') ? mb_substr($fullName, 0, 160, 'UTF-8') : substr($fullName, 0, 160);
 
         // Existing and new addresses get the same acknowledgment. Only a new
         // address creates a pending account; it can sign in, and verifies later.
@@ -937,18 +942,21 @@ try {
         if ($week < 1) {
             error_response('Umur ayam (minggu) wajib diisi.', 422, 'validation_error');
         }
+        if ($week > 65535) {
+            error_response('Umur ayam (minggu) terlalu besar.', 422, 'validation_error');
+        }
         $values = [
             'week' => $week,
-            'hen_day_production' => nullable_number($input, 'henDayProduction'),
-            'feed_intake' => nullable_number($input, 'feedIntake'),
-            'egg_weight' => nullable_number($input, 'eggWeight'),
-            'mortality' => nullable_number($input, 'mortality'),
-            'water_intake' => nullable_number($input, 'waterIntake'),
-            'temperature' => nullable_number($input, 'temperature'),
-            'humidity' => nullable_number($input, 'humidity'),
-            'revenue' => nullable_number($input, 'revenue'),
-            'cost' => nullable_number($input, 'cost'),
-            'fcr' => nullable_number($input, 'fcr'),
+            'hen_day_production' => decimal_number($input, 'henDayProduction', 'HDP', 8, 3),
+            'feed_intake' => decimal_number($input, 'feedIntake', 'Asupan pakan', 10, 3),
+            'egg_weight' => decimal_number($input, 'eggWeight', 'Berat telur', 10, 3),
+            'mortality' => decimal_number($input, 'mortality', 'Mortalitas', 8, 3),
+            'water_intake' => decimal_number($input, 'waterIntake', 'Air minum', 10, 3),
+            'temperature' => decimal_number($input, 'temperature', 'Suhu', 8, 3),
+            'humidity' => decimal_number($input, 'humidity', 'Kelembapan', 8, 3),
+            'revenue' => decimal_number($input, 'revenue', 'Pendapatan', 18, 2),
+            'cost' => decimal_number($input, 'cost', 'Biaya', 18, 2),
+            'fcr' => decimal_number($input, 'fcr', 'FCR', 8, 3),
             'notes' => trim((string) ($input['notes'] ?? '')),
         ];
         $id = isset($input['id']) ? (int) $input['id'] : 0;
