@@ -31,6 +31,78 @@
 
 ---
 
+<!-- AAPM_STACK_AUDIT_20261105_START -->
+## Detailed technology stack — verified implementation
+
+> **Source snapshot: 5 November 2026.** These are current **declared dependency constraints and architecture from the repository**. A caret version (e.g. `^18.2.0`) is a compatibility range, **not** proof of the exact locked or deployed package version. PHP 8.4 for staging/production is documented in this repository's existing deployment instructions.
+
+### Runtime, UI, APIs and data
+
+| Layer | Technology | Version / role | Evidence |
+|---|---|---|---|
+| **Frontend application** | React / React DOM | **^18.2.0**; interactive course and learner experience | [`package.json`](package.json) |
+| **Frontend development / bundle** | Vite + React plugin | Vite **^6.4.5**, plugin **^4.3.4** | Package manifest |
+| **Language / checking** | TypeScript toolchain | TypeScript **^5.8.2**; `tsc -p ./jsconfig.json` | Package manifest |
+| **Styling** | Tailwind CSS | **^3.4.17**, PostCSS/autoprefixer | Package manifest |
+| **UI primitives** | Radix UI, Lucide React, Iconify | Accessible overlay/control primitives; Lucide **^0.475.0** | Package manifest |
+| **Client navigation** | React Router DOM | **^7.18.4** declared | Package manifest |
+| **Forms / validation** | React Hook Form, Zod, resolvers | RHF **^7.54.2**; Zod **^4.6.7** | Package manifest |
+| **Server-state** | TanStack React Query | **^5.84.1** | Package manifest |
+| **Editorial / course authoring** | Tiptap editor | **^3.30.5** editor package family | Package manifest |
+| **Presentation** | Recharts, Framer Motion, React Leaflet | Charts, motion, maps; feature usage must be checked in actual pages | Package manifest |
+| **Document / content tools** | pptx viewer, jsPDF, pdfjs-dist, JSZip | View/import/export content; deployment bundle inclusion depends on app build | Package manifest |
+| **Frontend payment SDK** | Stripe JS + React Stripe | Declared libraries, **not proof of production payment activation** | Package manifest |
+| **Server-side API** | Native PHP REST API | Source in `public/api/`; designed for PHP >=7.4; current cPanel site runtime documented as **PHP 8.4** | Existing README |
+| **Local persistence** | SQLite | `pdo_sqlite`; development-only local data | Existing README |
+| **Hosted persistence** | MySQL / MariaDB | Private cPanel config; separate staging and production environment controls | Existing README |
+| **Server authentication** | PHP sessions + password_hash/password_verify | Secure session cookies, CSRF, policy and rate-limit guards | Existing README |
+| **AI / assistance** | PHP API assistant endpoints with rule-based fallback | Provider registry and fallback; don't imply a cloud model is always online | Existing README |
+| **Release packaging** | Manifested `dist/` artifact | Channel-specific builds, fingerprint and PHP artifact checks | Scripts + existing README |
+
+### Application topology (current repository pattern)
+
+```mermaid
+flowchart TB
+  U["Learners / Instructors / Admins"] --> FE["React 18 + Vite 6<br/>Browser UI"]
+  FE -->|"/api/*"| API["PHP REST API<br/>public/api/"]
+  API --> D1[("SQLite<br/>local only")]
+  API --> D2[("MySQL / MariaDB<br/>cPanel staging / production")]
+  API --> AI["Assistant / provider adapters<br/>rule-based fallback"]
+  B["Build artifact + manifest<br/>dist/"] -.-> FE
+```
+
+The database choices shown above are **environment alternatives**, not a claim that SQLite and MySQL both serve the same production request.
+
+### Delivery and quality tooling
+
+| Task | Command / mechanism | Contract |
+|---|---|---|
+| Frontend local | `npm run dev` | Vite proxies `/api` to local PHP server per existing README |
+| Source lint | `npm run lint` | ESLint checks source |
+| Types | `npm run typecheck` | Project TS configuration |
+| Automated tests | `npm test` | Node tests for curriculum, assessment, certification, admin, mail, AI and UI flows |
+| Design tokens | `npm run tokens` / `npm run tokens:check` | Generated token parity |
+| Staging build | `npm run build:staging` | Manifested staging artifact |
+| Production build | `npm run build:production` | Manifested production artifact |
+| Bundle parity | `npm run verify:dist` / `npm run verify:artifact-php` | Detect stale or incomplete artifacts |
+| PHP validation | `npm run lint:php` | PHP syntax checks via repository script |
+| Hosting | cPanel Git Version Control | Existing README documents `develop` → staging, `main` → production |
+| DB changes | Explicit environment-checked PHP migration commands | Database migration must be approved and independently verified |
+
+### Critical business/security boundary
+
+- Courses, lessons, quizzes, progress, certificates, verification, and role-scoped admin APIs are owned by this product; **do not replace them with Laravel routing from ERP modernization**.
+- PHP session and CSRF checks are authoritative. Frontend visibility is not an authorization boundary.
+- A server-side **environment marker** separates local SQLite, staging and production MySQL; mismatch must fail closed.
+- `dist/` is an **immutable/reproducible release artifact** tied to branch/channel; protected uploads must survive releases.
+- React/Radix/Tiptap/Stripe/AI dependencies describe source capability only; **activation and runtime success require integration evidence**.
+- Existing setup instructions, migration/rollback commands and historical verification below are preserved without modification.
+
+**Canonical details:** [Current README deployment and API sections](#native-api) · [Application manifest](package.json) · `public/api/` · `scripts/release/`
+<!-- AAPM_STACK_AUDIT_20261105_END -->
+
+---
+
 Native local/cPanel version of the Layer Farm Academy application. The
 existing React/Vite screens and UI structure are preserved; persistence and
 authentication now run through a PHP API with SQLite locally and MySQL on
