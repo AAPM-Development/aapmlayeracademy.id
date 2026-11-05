@@ -12,7 +12,7 @@
     <img src="docs/readme-assets/vite.svg" width="31" height="31" alt="Vite 6" title="Vite 6"/>
     <img src="docs/readme-assets/php.svg" width="31" height="31" alt="PHP API" title="PHP API"/>
     <img src="docs/readme-assets/sqlite.svg" width="31" height="31" alt="SQLite local" title="SQLite local"/>
-    <img src="docs/readme-assets/mysql.svg" width="31" height="31" alt="MySQL on cPanel" title="MySQL on cPanel"/>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="31" height="31" alt="MySQL on cPanel" title="MySQL on cPanel"/></picture>
   </p>
 </div>
 
@@ -22,7 +22,7 @@
 | <img src="docs/readme-assets/vite.svg" width="24" height="24" alt="Vite 6"/> | **Vite 6** |
 | <img src="docs/readme-assets/php.svg" width="24" height="24" alt="PHP API"/> | **PHP API** |
 | <img src="docs/readme-assets/sqlite.svg" width="24" height="24" alt="SQLite local"/> | **SQLite local** |
-| <img src="docs/readme-assets/mysql.svg" width="24" height="24" alt="MySQL on cPanel"/> | **MySQL on cPanel** |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="24" height="24" alt="MySQL on cPanel"/></picture> | **MySQL on cPanel** |
 
 > [!NOTE]
 > The repository documents React 18, Vite, PHP API, local SQLite and cPanel MySQL; current site runtime is documented as PHP 8.4. The technology logos above are genuine SVG images; the AAPM logo has light/dark variants. These icons document this repository, **not a shared Laravel migration**.
@@ -38,7 +38,7 @@
 
 ### Runtime, UI, APIs and data
 
-<p><img src="docs/readme-assets/react.svg" width="34" alt="React"/> <img src="docs/readme-assets/vite.svg" width="34" alt="Vite"/> <img src="docs/readme-assets/typescript.svg" width="34" alt="TypeScript"/> <img src="docs/readme-assets/tailwind.svg" width="34" alt="Tailwind"/> <img src="docs/readme-assets/radix.svg" width="34" alt="Radix UI"/> <img src="docs/readme-assets/tanstack.svg" width="34" alt="TanStack"/> <img src="docs/readme-assets/php.svg" width="34" alt="PHP"/> <img src="docs/readme-assets/sqlite.svg" width="34" alt="SQLite"/> <img src="docs/readme-assets/mysql.svg" width="34" alt="MySQL"/> <img src="docs/readme-assets/cpanel.svg" width="34" alt="cPanel"/></p>
+<p><img src="docs/readme-assets/react.svg" width="34" alt="React"/> <img src="docs/readme-assets/vite.svg" width="34" alt="Vite"/> <img src="docs/readme-assets/typescript.svg" width="34" alt="TypeScript"/> <img src="docs/readme-assets/tailwind.svg" width="34" alt="Tailwind"/> <img src="docs/readme-assets/radix.svg" width="34" alt="Radix UI"/> <img src="docs/readme-assets/tanstack.svg" width="34" alt="TanStack"/> <img src="docs/readme-assets/php.svg" width="34" alt="PHP"/> <img src="docs/readme-assets/sqlite.svg" width="34" alt="SQLite"/> <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="34" alt="MySQL"/></picture> <img src="docs/readme-assets/cpanel.svg" width="34" alt="cPanel"/></p>
 
 | Layer | Technology | Version / role | Evidence |
 |---|---|---|---|
@@ -47,7 +47,7 @@
 | <img src="docs/readme-assets/typescript.svg" width="22" height="22" alt="typescript"/> **Language / checking** | TypeScript toolchain | TypeScript **^5.8.2**; `tsc -p ./jsconfig.json` | Package manifest |
 | <img src="docs/readme-assets/tailwind.svg" width="22" height="22" alt="tailwind"/> **Styling** | Tailwind CSS | **^3.4.17**, PostCSS/autoprefixer | Package manifest |
 | <img src="docs/readme-assets/radix.svg" width="22" height="22" alt="radix"/> **UI primitives** | Radix UI, Lucide React, Iconify | Accessible overlay/control primitives; Lucide **^0.475.0** | Package manifest |
-| <img src="docs/readme-assets/reactrouter.svg" width="22" height="22" alt="reactrouter"/> **Client navigation** | React Router DOM | **^7.18.4** declared | Package manifest |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/reactrouter-dark.svg"/><img src="docs/readme-assets/reactrouter.svg" width="22" height="22" alt="reactrouter"/></picture> **Client navigation** | React Router DOM | **^7.18.4** declared | Package manifest |
 | <img src="docs/readme-assets/zod.svg" width="22" height="22" alt="zod"/> **Forms / validation** | React Hook Form, Zod, resolvers | RHF **^7.54.2**; Zod **^4.6.7** | Package manifest |
 | <img src="docs/readme-assets/tanstack.svg" width="22" height="22" alt="tanstack"/> **Server-state** | TanStack React Query | **^5.84.1** | Package manifest |
 | **Editorial / course authoring** | Tiptap editor | **^3.30.5** editor package family | Package manifest |
@@ -56,7 +56,7 @@
 | **Frontend payment SDK** | Stripe JS + React Stripe | Declared libraries, **not proof of production payment activation** | Package manifest |
 | <img src="docs/readme-assets/php.svg" width="22" height="22" alt="php"/> **Server-side API** | Native PHP REST API | Source in `public/api/`; designed for PHP >=7.4; current cPanel site runtime documented as **PHP 8.4** | Existing README |
 | <img src="docs/readme-assets/sqlite.svg" width="22" height="22" alt="sqlite"/> **Local persistence** | SQLite | `pdo_sqlite`; development-only local data | Existing README |
-| <img src="docs/readme-assets/mysql.svg" width="22" height="22" alt="mysql"/> **Hosted persistence** | MySQL / MariaDB | Private cPanel config; separate staging and production environment controls | Existing README |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="22" height="22" alt="mysql"/></picture> **Hosted persistence** | MySQL / MariaDB | Private cPanel config; separate staging and production environment controls | Existing README |
 | <img src="docs/readme-assets/php.svg" width="22" height="22" alt="php"/> **Server authentication** | PHP sessions + password_hash/password_verify | Secure session cookies, CSRF, policy and rate-limit guards | Existing README |
 | **AI / assistance** | PHP API assistant endpoints with rule-based fallback | Provider registry and fallback; don't imply a cloud model is always online | Existing README |
 | <img src="docs/readme-assets/vite.svg" width="22" height="22" alt="vite"/> **Release packaging** | Manifested `dist/` artifact | Channel-specific builds, fingerprint and PHP artifact checks | Scripts + existing README |
