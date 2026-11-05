@@ -38,26 +38,28 @@
 
 ### Runtime, UI, APIs and data
 
+<p><img src="docs/readme-assets/react.svg" width="34" alt="React"/> <img src="docs/readme-assets/vite.svg" width="34" alt="Vite"/> <img src="docs/readme-assets/typescript.svg" width="34" alt="TypeScript"/> <img src="docs/readme-assets/tailwind.svg" width="34" alt="Tailwind"/> <img src="docs/readme-assets/radix.svg" width="34" alt="Radix UI"/> <img src="docs/readme-assets/tanstack.svg" width="34" alt="TanStack"/> <img src="docs/readme-assets/php.svg" width="34" alt="PHP"/> <img src="docs/readme-assets/sqlite.svg" width="34" alt="SQLite"/> <img src="docs/readme-assets/mysql.svg" width="34" alt="MySQL"/> <img src="docs/readme-assets/cpanel.svg" width="34" alt="cPanel"/></p>
+
 | Layer | Technology | Version / role | Evidence |
 |---|---|---|---|
-| **Frontend application** | React / React DOM | **^18.2.0**; interactive course and learner experience | [`package.json`](package.json) |
-| **Frontend development / bundle** | Vite + React plugin | Vite **^6.4.5**, plugin **^4.3.4** | Package manifest |
-| **Language / checking** | TypeScript toolchain | TypeScript **^5.8.2**; `tsc -p ./jsconfig.json` | Package manifest |
-| **Styling** | Tailwind CSS | **^3.4.17**, PostCSS/autoprefixer | Package manifest |
-| **UI primitives** | Radix UI, Lucide React, Iconify | Accessible overlay/control primitives; Lucide **^0.475.0** | Package manifest |
-| **Client navigation** | React Router DOM | **^7.18.4** declared | Package manifest |
-| **Forms / validation** | React Hook Form, Zod, resolvers | RHF **^7.54.2**; Zod **^4.6.7** | Package manifest |
-| **Server-state** | TanStack React Query | **^5.84.1** | Package manifest |
+| <img src="docs/readme-assets/react.svg" width="22" height="22" alt="react"/> **Frontend application** | React / React DOM | **^18.2.0**; interactive course and learner experience | [`package.json`](package.json) |
+| <img src="docs/readme-assets/vite.svg" width="22" height="22" alt="vite"/> **Frontend development / bundle** | Vite + React plugin | Vite **^6.4.5**, plugin **^4.3.4** | Package manifest |
+| <img src="docs/readme-assets/typescript.svg" width="22" height="22" alt="typescript"/> **Language / checking** | TypeScript toolchain | TypeScript **^5.8.2**; `tsc -p ./jsconfig.json` | Package manifest |
+| <img src="docs/readme-assets/tailwind.svg" width="22" height="22" alt="tailwind"/> **Styling** | Tailwind CSS | **^3.4.17**, PostCSS/autoprefixer | Package manifest |
+| <img src="docs/readme-assets/radix.svg" width="22" height="22" alt="radix"/> **UI primitives** | Radix UI, Lucide React, Iconify | Accessible overlay/control primitives; Lucide **^0.475.0** | Package manifest |
+| <img src="docs/readme-assets/reactrouter.svg" width="22" height="22" alt="reactrouter"/> **Client navigation** | React Router DOM | **^7.18.4** declared | Package manifest |
+| <img src="docs/readme-assets/zod.svg" width="22" height="22" alt="zod"/> **Forms / validation** | React Hook Form, Zod, resolvers | RHF **^7.54.2**; Zod **^4.6.7** | Package manifest |
+| <img src="docs/readme-assets/tanstack.svg" width="22" height="22" alt="tanstack"/> **Server-state** | TanStack React Query | **^5.84.1** | Package manifest |
 | **Editorial / course authoring** | Tiptap editor | **^3.30.5** editor package family | Package manifest |
 | **Presentation** | Recharts, Framer Motion, React Leaflet | Charts, motion, maps; feature usage must be checked in actual pages | Package manifest |
 | **Document / content tools** | pptx viewer, jsPDF, pdfjs-dist, JSZip | View/import/export content; deployment bundle inclusion depends on app build | Package manifest |
 | **Frontend payment SDK** | Stripe JS + React Stripe | Declared libraries, **not proof of production payment activation** | Package manifest |
-| **Server-side API** | Native PHP REST API | Source in `public/api/`; designed for PHP >=7.4; current cPanel site runtime documented as **PHP 8.4** | Existing README |
-| **Local persistence** | SQLite | `pdo_sqlite`; development-only local data | Existing README |
-| **Hosted persistence** | MySQL / MariaDB | Private cPanel config; separate staging and production environment controls | Existing README |
-| **Server authentication** | PHP sessions + password_hash/password_verify | Secure session cookies, CSRF, policy and rate-limit guards | Existing README |
+| <img src="docs/readme-assets/php.svg" width="22" height="22" alt="php"/> **Server-side API** | Native PHP REST API | Source in `public/api/`; designed for PHP >=7.4; current cPanel site runtime documented as **PHP 8.4** | Existing README |
+| <img src="docs/readme-assets/sqlite.svg" width="22" height="22" alt="sqlite"/> **Local persistence** | SQLite | `pdo_sqlite`; development-only local data | Existing README |
+| <img src="docs/readme-assets/mysql.svg" width="22" height="22" alt="mysql"/> **Hosted persistence** | MySQL / MariaDB | Private cPanel config; separate staging and production environment controls | Existing README |
+| <img src="docs/readme-assets/php.svg" width="22" height="22" alt="php"/> **Server authentication** | PHP sessions + password_hash/password_verify | Secure session cookies, CSRF, policy and rate-limit guards | Existing README |
 | **AI / assistance** | PHP API assistant endpoints with rule-based fallback | Provider registry and fallback; don't imply a cloud model is always online | Existing README |
-| **Release packaging** | Manifested `dist/` artifact | Channel-specific builds, fingerprint and PHP artifact checks | Scripts + existing README |
+| <img src="docs/readme-assets/vite.svg" width="22" height="22" alt="vite"/> **Release packaging** | Manifested `dist/` artifact | Channel-specific builds, fingerprint and PHP artifact checks | Scripts + existing README |
 
 ### Application topology (current repository pattern)
 
