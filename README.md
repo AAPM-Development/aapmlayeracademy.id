@@ -1,4 +1,3 @@
-<!-- AAPM unified README presentation. Application source and legacy documentation unchanged. -->
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/aapm-dark.svg"/>
@@ -16,7 +15,7 @@
   </p>
 </div>
 
-| Current project technologies | Verified from repository |
+| Teknologi | Stack |
 |:---:|---|
 | <img src="docs/readme-assets/react.svg" width="24" height="24" alt="React 18"/> | **React 18** |
 | <img src="docs/readme-assets/vite.svg" width="24" height="24" alt="Vite 6"/> | **Vite 6** |
@@ -25,16 +24,17 @@
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="24" height="24" alt="MySQL on cPanel"/></picture> | **MySQL on cPanel** |
 
 > [!NOTE]
-> The repository documents React 18, Vite, PHP API, local SQLite and cPanel MySQL; current site runtime is documented as PHP 8.4. The technology logos above are genuine SVG images; the AAPM logo has light/dark variants. These icons document this repository, **not a shared Laravel migration**.
 
 <sub>SVG artwork: AAPM internal brand assets and [Devicon (MIT)](https://github.com/devicons/devicon/blob/master/LICENSE). Trademarks belong to their respective owners.</sub>
 
 ---
 
-<!-- AAPM_STACK_AUDIT_20261105_START -->
+<details>
+<summary><strong>Detail teknis: stack, arsitektur, testing, dan deployment</strong></summary>
+
 ## Detailed technology stack — verified implementation
 
-> **Source snapshot: 5 November 2026.** These are current **declared dependency constraints and architecture from the repository**. A caret version (e.g. `^18.2.0`) is a compatibility range, **not** proof of the exact locked or deployed package version. PHP 8.4 for staging/production is documented in this repository's existing deployment instructions.
+> **Versi:** `^` pada dependensi berarti rentang versi. Hosting staging dan production menggunakan PHP 8.4 menurut panduan deployment.
 
 ### Runtime, UI, APIs and data
 
@@ -98,10 +98,9 @@ The database choices shown above are **environment alternatives**, not a claim t
 - A server-side **environment marker** separates local SQLite, staging and production MySQL; mismatch must fail closed.
 - `dist/` is an **immutable/reproducible release artifact** tied to branch/channel; protected uploads must survive releases.
 - React/Radix/Tiptap/Stripe/AI dependencies describe source capability only; **activation and runtime success require integration evidence**.
-- Existing setup instructions, migration/rollback commands and historical verification below are preserved without modification.
 
 **Canonical details:** [Current README deployment and API sections](#native-api) · [Application manifest](package.json) · `public/api/` · `scripts/release/`
-<!-- AAPM_STACK_AUDIT_20261105_END -->
+</details>
 
 ---
 
