@@ -69,6 +69,7 @@ flowchart TB
 
 | Komponen | Implementasi & referensi |
 |---|---|
+| <img src="docs/readme-assets/react.svg" width="22" height="22" alt="react"/> **Frontend application** | **React / React DOM** · `^18.2.0` · course / learner UI · `package.json` |
 | <img src="docs/readme-assets/vite.svg" width="22" height="22" alt="vite"/> **Frontend development / bundle** | **Vite + React plugin** · Vite **^6.4.5**, plugin **^4.3.4** · Package manifest |
 | <img src="docs/readme-assets/typescript.svg" width="22" height="22" alt="typescript"/> **Language / checking** | **TypeScript toolchain** · TypeScript **^5.8.2**; `tsc -p ./jsconfig.json` · Package manifest |
 | <img src="docs/readme-assets/tailwind.svg" width="22" height="22" alt="tailwind"/> **Styling** | **Tailwind CSS** · **^3.4.17**, PostCSS/autoprefixer · Package manifest |
