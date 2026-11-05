@@ -1,4 +1,35 @@
-# AAPM Layer Academy
+<!-- AAPM unified README presentation. Application source and legacy documentation unchanged. -->
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/aapm-dark.svg"/>
+    <img src="docs/readme-assets/aapm-light.svg" width="290" alt="Official AAPM corporate logo"/>
+  </picture>
+  <h1>AAPM Layer Academy</h1>
+  <p><strong>Learning, assessments, certificates and farm learning experience</strong></p>
+  <p>Existing React/Vite application with PHP API; staging and production configuration described below</p>
+  <p>
+    <img src="docs/readme-assets/react.svg" width="31" height="31" alt="React 18" title="React 18"/>
+    <img src="docs/readme-assets/vite.svg" width="31" height="31" alt="Vite 6" title="Vite 6"/>
+    <img src="docs/readme-assets/php.svg" width="31" height="31" alt="PHP API" title="PHP API"/>
+    <img src="docs/readme-assets/sqlite.svg" width="31" height="31" alt="SQLite local" title="SQLite local"/>
+    <img src="docs/readme-assets/mysql.svg" width="31" height="31" alt="MySQL on cPanel" title="MySQL on cPanel"/>
+  </p>
+</div>
+
+| Current project technologies | Verified from repository |
+|:---:|---|
+| <img src="docs/readme-assets/react.svg" width="24" height="24" alt="React 18"/> | **React 18** |
+| <img src="docs/readme-assets/vite.svg" width="24" height="24" alt="Vite 6"/> | **Vite 6** |
+| <img src="docs/readme-assets/php.svg" width="24" height="24" alt="PHP API"/> | **PHP API** |
+| <img src="docs/readme-assets/sqlite.svg" width="24" height="24" alt="SQLite local"/> | **SQLite local** |
+| <img src="docs/readme-assets/mysql.svg" width="24" height="24" alt="MySQL on cPanel"/> | **MySQL on cPanel** |
+
+> [!NOTE]
+> The repository documents React 18, Vite, PHP API, local SQLite and cPanel MySQL; current site runtime is documented as PHP 8.4. The technology logos above are genuine SVG images; the AAPM logo has light/dark variants. These icons document this repository, **not a shared Laravel migration**.
+
+<sub>SVG artwork: AAPM internal brand assets and [Devicon (MIT)](https://github.com/devicons/devicon/blob/master/LICENSE). Trademarks belong to their respective owners.</sub>
+
+---
 
 Native local/cPanel version of the Layer Farm Academy application. The
 existing React/Vite screens and UI structure are preserved; persistence and
