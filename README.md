@@ -1,33 +1,63 @@
 <div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/aapm-dark.svg"/>
-    <img src="docs/readme-assets/aapm-light.svg" width="290" alt="Official AAPM corporate logo"/>
-  </picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/aapm-dark.svg"/><img src="docs/readme-assets/aapm-light.svg" width="270" alt="Logo AAPM"/></picture>
   <h1>AAPM Layer Academy</h1>
-  <p><strong>Learning, assessments, certificates and farm learning experience</strong></p>
-  <p>Existing React/Vite application with PHP API; staging and production configuration described below</p>
-  <p>
-    <img src="docs/readme-assets/react.svg" width="31" height="31" alt="React 18" title="React 18"/>
-    <img src="docs/readme-assets/vite.svg" width="31" height="31" alt="Vite 6" title="Vite 6"/>
-    <img src="docs/readme-assets/php.svg" width="31" height="31" alt="PHP API" title="PHP API"/>
-    <img src="docs/readme-assets/sqlite.svg" width="31" height="31" alt="SQLite local" title="SQLite local"/>
-    <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="31" height="31" alt="MySQL on cPanel" title="MySQL on cPanel"/></picture>
-  </p>
+  <p>Pembelajaran, asesmen, sertifikasi, dan layanan edukasi layer farm</p>
+  <p><img src="docs/readme-assets/react.svg" width="29" height="29" alt="react"/> <img src="docs/readme-assets/vite.svg" width="29" height="29" alt="vite"/> <img src="docs/readme-assets/tailwind.svg" width="29" height="29" alt="tailwind"/> <img src="docs/readme-assets/zod.svg" width="29" height="29" alt="zod"/> <img src="docs/readme-assets/tanstack.svg" width="29" height="29" alt="tanstack"/> <img src="docs/readme-assets/php.svg" width="29" height="29" alt="php"/></p>
+  <p>[Development](#local-development) · [Native API](#native-api) · [Deployment](#environments-artifacts-and-deployment)</p>
 </div>
-
-| Teknologi | Stack |
-|:---:|---|
-| <img src="docs/readme-assets/react.svg" width="24" height="24" alt="React 18"/> | **React 18** |
-| <img src="docs/readme-assets/vite.svg" width="24" height="24" alt="Vite 6"/> | **Vite 6** |
-| <img src="docs/readme-assets/php.svg" width="24" height="24" alt="PHP API"/> | **PHP API** |
-| <img src="docs/readme-assets/sqlite.svg" width="24" height="24" alt="SQLite local"/> | **SQLite local** |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="24" height="24" alt="MySQL on cPanel"/></picture> | **MySQL on cPanel** |
-
 
 ---
 
+## Tech Stack
+
+| Layer | Teknologi |
+|---|---|
+| <img src="docs/readme-assets/react.svg" width="23" height="23" alt="react"/> **Frontend** | React `^18.2.0` · React Router `^7.18.4` |
+| <img src="docs/readme-assets/vite.svg" width="23" height="23" alt="vite"/> **Build** | Vite `^6.4.5` · TypeScript `^5.8.2` |
+| <img src="docs/readme-assets/tailwind.svg" width="23" height="23" alt="tailwind"/> **UI** | Tailwind CSS `^3.4.17` · Radix UI |
+| <img src="docs/readme-assets/zod.svg" width="23" height="23" alt="zod"/> **Forms** | React Hook Form `^7.54.2` · Zod `^4.6.7` |
+| <img src="docs/readme-assets/tanstack.svg" width="23" height="23" alt="tanstack"/> **Data** | TanStack React Query `^5.84.1` |
+| <img src="docs/readme-assets/php.svg" width="23" height="23" alt="php"/> **Backend** | Native PHP REST API (`public/api/`) |
+| <img src="docs/readme-assets/sqlite.svg" width="23" height="23" alt="sqlite"/> **Local DB** | SQLite (pengembangan) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="23" height="23" alt="mysql"/></picture> **Hosted DB** | MySQL / MariaDB via cPanel · PHP 8.4 (documented) |
+
+**Versi bertanda `^` adalah constraint package**, bukan kepastian versi runtime deploy. Paket dan scripts berasal dari [package.json](package.json).
+
+## Arsitektur
+
+```mermaid
+flowchart TB
+  Client["Student / Instructor"] --> UI["React 18 + Vite 6"]
+  UI --> API["PHP REST API"]
+  API --> DB1[("SQLite · local")]
+  API --> DB2[("MySQL / MariaDB · hosting")]
+```
+
+### Komponen utama
+
+| Komponen | Tanggung jawab |
+|---|---|
+| **UI** | React / Vite · courses · quizzes · certificates |
+| **API** | PHP · auth sessions · business rules |
+| **Local** | SQLite during development |
+| **Hosting** | PHP + MySQL / MariaDB on cPanel |
+
 <details>
-<summary><strong>Detail teknis: stack, arsitektur, testing, dan deployment</strong></summary>
+<summary><strong>Rincian frontend, PHP API, release, dan keamanan</strong></summary>
+
+| Area | Komponen / referensi |
+|---|---|
+| <img src="docs/readme-assets/react.svg" width="20" height="20" alt="react"/> Frontend | React `^18.2.0` · React Router `^7.18.4` |
+| <img src="docs/readme-assets/vite.svg" width="20" height="20" alt="vite"/> Build | Vite `^6.4.5` · TypeScript `^5.8.2` |
+| <img src="docs/readme-assets/tailwind.svg" width="20" height="20" alt="tailwind"/> UI | Tailwind CSS `^3.4.17` · Radix UI |
+| <img src="docs/readme-assets/zod.svg" width="20" height="20" alt="zod"/> Forms | React Hook Form `^7.54.2` · Zod `^4.6.7` |
+| <img src="docs/readme-assets/tanstack.svg" width="20" height="20" alt="tanstack"/> Data | TanStack React Query `^5.84.1` |
+| <img src="docs/readme-assets/php.svg" width="20" height="20" alt="php"/> Backend | Native PHP REST API (`public/api/`) |
+| <img src="docs/readme-assets/sqlite.svg" width="20" height="20" alt="sqlite"/> Local DB | SQLite (pengembangan) |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="20" height="20" alt="mysql"/></picture> Hosted DB | MySQL / MariaDB via cPanel · PHP 8.4 (documented) |
+
+<details>
+<summary>Spesifikasi dependensi dan kontrol implementasi lengkap</summary>
 
 ## Detailed technology stack — verified implementation
 
@@ -97,9 +127,13 @@ The database choices shown above are **environment alternatives**, not a claim t
 - React/Radix/Tiptap/Stripe/AI dependencies describe source capability only; **activation and runtime success require integration evidence**.
 
 **Canonical details:** [Current README deployment and API sections](#native-api) · [Application manifest](package.json) · `public/api/` · `scripts/release/`
+
 </details>
 
----
+</details>
+
+<details>
+<summary><strong>Panduan instalasi, deployment, dan pengelolaan konten</strong></summary>
 
 Native local/cPanel version of the Layer Farm Academy application. The
 existing React/Vite screens and UI structure are preserved; persistence and
@@ -391,6 +425,8 @@ not from the administrator's laptop. Use `localhost` only when the model runs
 on the same server; use an HTTPS endpoint or explicitly enabled private-network
 endpoint when the model runs on another machine. Public HTTP endpoints remain
 blocked to reduce SSRF risk.
+
+</details>
 
 <details>
 <summary>Logo attribution</summary>
