@@ -23,9 +23,6 @@
 | <img src="docs/readme-assets/sqlite.svg" width="24" height="24" alt="SQLite local"/> | **SQLite local** |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-assets/mysql-dark.svg"/><img src="docs/readme-assets/mysql.svg" width="24" height="24" alt="MySQL on cPanel"/></picture> | **MySQL on cPanel** |
 
-> [!NOTE]
-
-<sub>SVG artwork: AAPM internal brand assets and [Devicon (MIT)](https://github.com/devicons/devicon/blob/master/LICENSE). Trademarks belong to their respective owners.</sub>
 
 ---
 
@@ -394,3 +391,10 @@ not from the administrator's laptop. Use `localhost` only when the model runs
 on the same server; use an HTTPS endpoint or explicitly enabled private-network
 endpoint when the model runs on another machine. Public HTTP endpoints remain
 blocked to reduce SSRF risk.
+
+<details>
+<summary>Logo attribution</summary>
+
+<sub>SVG artwork: AAPM internal brand assets and [Devicon (MIT)](https://github.com/devicons/devicon/blob/master/LICENSE). Trademarks belong to their respective owners.</sub>
+
+</details>
