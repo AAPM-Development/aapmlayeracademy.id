@@ -3,7 +3,7 @@
   <h1>AAPM Layer Academy</h1>
   <p>Pembelajaran, asesmen, sertifikasi, dan layanan edukasi layer farm</p>
   <p><img src="docs/readme-assets/react.svg" width="29" height="29" alt="react"/> <img src="docs/readme-assets/vite.svg" width="29" height="29" alt="vite"/> <img src="docs/readme-assets/tailwind.svg" width="29" height="29" alt="tailwind"/> <img src="docs/readme-assets/zod.svg" width="29" height="29" alt="zod"/> <img src="docs/readme-assets/tanstack.svg" width="29" height="29" alt="tanstack"/> <img src="docs/readme-assets/php.svg" width="29" height="29" alt="php"/></p>
-  <p>[Development](#local-development) · [Native API](#native-api) · [Deployment](#environments-artifacts-and-deployment)</p>
+  <p><a href="#local-development">Development</a> · <a href="#native-api">Native API</a> · <a href="#environments-artifacts-and-deployment">Deployment</a></p>
 </div>
 
 ---
