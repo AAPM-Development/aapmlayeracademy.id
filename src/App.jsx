@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { nativeApi } from '@/api/nativeClient'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Outlet, Route, Routes } from 'react-router-dom';
@@ -60,7 +61,15 @@ function BootScreen({ label }) {
 }
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, checkAppState } = useAuth();
+  const { user, logout, isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, checkAppState } = useAuth();
+  const [academyClosed, setAcademyClosed] = useState(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => nativeApi.academy.status().then((status) => { if (active) setAcademyClosed(status.closed); }).catch(() => { if (active) setAcademyClosed(null); });
+    void refresh();
+    const timer = window.setInterval(refresh, 30000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
@@ -91,6 +100,10 @@ const AuthenticatedApp = () => {
         actions={<button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => void checkAppState()}><Ic name="refresh" />Coba lagi</button>}
       />
     );
+  }
+
+  if (academyClosed && !user?.canAccessAdmin && window.location.pathname !== "/login") {
+    return <StatusPage title="Academy ditutup sementara" text="Academy sedang ditutup sementara. Silakan kembali lagi nanti." actions={isAuthenticated ? <button type="button" className="btn btn-secondary" onClick={() => void logout()}>Keluar untuk masuk sebagai admin</button> : <a className="btn btn-secondary" href="/login">Masuk sebagai admin</a>} />;
   }
 
   return (

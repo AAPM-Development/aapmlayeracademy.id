@@ -30,7 +30,37 @@ apply_security_headers();
 start_app_session();
 
 try {
-    if ($path === 'auth/csrf' && $method === 'GET') {
+    // The status is public so visitors can see the closure before signing in.
+    if ($path === 'academy/status' && $method === 'GET') {
+        json_response(['closed' => app_setting_get('academy_closed', '0') === '1']);
+    }
+    if ($path === 'admin/academy-access') {
+        $actor = require_admin();
+        if ($method === 'GET') {
+            json_response(['closed' => app_setting_get('academy_closed', '0') === '1']);
+        }
+        if ($method === 'POST') {
+            require_csrf();
+            $input = request_json();
+            if (!isset($input['closed']) || !is_bool($input['closed'])) {
+                error_response('Status akses tidak valid.', 422, 'validation_error');
+            }
+            app_setting_set('academy_closed', $input['closed'] ? '1' : '0');
+            aapm_audit('academy.access_changed', 'ok', (int) $actor['id'], null, ['closed' => $input['closed']]);
+            json_response(['closed' => $input['closed']]);
+        }
+        error_response('Metode tidak tersedia.', 405, 'method_not_allowed');
+    }
+    // Authentication stays available for administrators and existing sessions.
+    $accessPaths = ['auth/csrf', 'auth/providers', 'auth/login', 'auth/logout', 'auth/me', 'auth/google', 'auth/google/callback'];
+    if (app_setting_get('academy_closed', '0') === '1' && !in_array($path, $accessPaths, true)) {
+        $accessUser = current_user();
+        if (!$accessUser || !in_array($accessUser['role'] ?? '', ['admin', 'super_admin'], true)) {
+            error_response('Academy sedang ditutup sementara. Silakan kembali lagi nanti.', 503, 'academy_closed');
+        }
+    }
+
+    if ($path === 'auth/csrf'  && $method === 'GET') {
         json_response(['csrfToken' => csrf_token()]);
     }
 

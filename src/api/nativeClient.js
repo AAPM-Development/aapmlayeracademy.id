@@ -299,6 +299,11 @@ export function newRequestKey() {
 }
 
 export const nativeApi = {
+  academy: {
+    status: () => request("/academy/status"),
+    access: () => request("/admin/academy-access"),
+    setAccess: (closed) => request("/admin/academy-access", json({ closed })),
+  },
   auth: {
     async csrf() {
       return request("/auth/csrf");

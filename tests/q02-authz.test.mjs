@@ -659,3 +659,28 @@ test("a Google callback without a valid state never creates a session", async ()
     assert.equal((await api.get("/api/auth/me")).status, 401);
   });
 });
+
+
+test("admin can close and reopen Academy while learner sessions and direct API requests are blocked", async () => {
+  const site = makeSite("academy-access");
+  seedAccount(site, { email: "admin-access@example.test", role: "admin", verified: true });
+  seedAccount(site, { email: "learner-access@example.test", verified: true });
+  await withSite(site, async (admin, server) => {
+    const learner = new Api(server.port);
+    const visitor = new Api(server.port);
+    await login(admin, "admin-access@example.test", PASSWORD);
+    await login(learner, "learner-access@example.test", PASSWORD);
+    assert.equal((await learner.mutate("POST", "/api/admin/academy-access", { closed: true })).status, 403);
+    assert.equal((await admin.raw("POST", "/api/admin/academy-access", { closed: true })).status, 419);
+    assert.equal((await admin.mutate("POST", "/api/admin/academy-access", { closed: true })).status, 200);
+    assert.equal((await visitor.get("/api/academy/status")).json.data.closed, true);
+    assert.equal((await learner.get("/api/modules")).status, 503);
+    assert.equal((await visitor.get("/api/modules")).status, 503);
+    assert.equal((await admin.get("/api/admin/academy-access")).status, 200);
+    const returningAdmin = new Api(server.port);
+    assert.equal((await login(returningAdmin, "admin-access@example.test", PASSWORD)).status, 200);
+    assert.equal((await returningAdmin.get("/api/admin/academy-access")).status, 200);
+    assert.equal((await admin.mutate("POST", "/api/admin/academy-access", { closed: false })).status, 200);
+    assert.equal((await learner.get("/api/modules")).status, 200);
+  });
+});

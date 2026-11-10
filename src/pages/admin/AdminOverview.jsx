@@ -1,5 +1,6 @@
 // @ts-nocheck
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { nativeApi } from "@/api/nativeClient";
 import { Link } from "react-router-dom";
 import { DataTable, StateView } from "@/components/primitives";
 import { useAdminCertificates, useAdminCourses, useAdminOverview } from "@/lib/useAdminData";
@@ -29,6 +30,28 @@ function Metric({ hue, ic, label, value, unit, note, bar }) {
   );
 }
 
+function AcademyAccess() {
+  const [closed, setClosed] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = () => nativeApi.academy.access().then((result) => setClosed(result.closed)).catch((err) => setError(err.message));
+  useEffect(() => { void load(); }, []);
+  async function toggle() {
+    const next = !closed;
+    if (!window.confirm(next ? "Tutup akses Academy untuk peserta sementara? Admin tetap dapat masuk dan membuka kembali." : "Buka kembali akses Academy untuk peserta?")) return;
+    setBusy(true); setError("");
+    try { setClosed((await nativeApi.academy.setAccess(next)).closed); }
+    catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+  return <section className="card card-pad" aria-labelledby="academy-access-title">
+    <h2 className="card-title" id="academy-access-title">Akses Academy</h2>
+    <p className="card-desc">{closed === null ? "Memuat status�" : closed ? "Academy ditutup sementara untuk peserta. Admin tetap dapat masuk." : "Academy terbuka untuk peserta."}</p>
+    {error && <p role="alert">{error} <button className="btn btn-ghost btn-sm" onClick={() => { setError(""); void load(); }}>Coba lagi</button></p>}
+    <button className="btn btn-secondary" disabled={closed === null || busy} onClick={toggle}>{busy ? "Menyimpan�" : closed ? "Buka kembali Academy" : "Tutup sementara Academy"}</button>
+  </section>;
+}
+
 export default function AdminOverview() {
   const { data, isLoading, error, refetch } = useAdminOverview();
   const coursesQuery = useAdminCourses();
@@ -43,7 +66,7 @@ export default function AdminOverview() {
   return (
     <AdminPageFrame
       title="Ringkasan"
-      description="Pantau pembelajaran dari data native. Halaman ini hanya membaca dan tidak mengubah data produksi."
+      description="Pantau pembelajaran dan kelola akses Academy."
       actions={(
         <>
           <Link className="btn btn-secondary" to="/admin/learners"><Ic name="grad" />Lihat peserta</Link>
@@ -52,6 +75,7 @@ export default function AdminOverview() {
       )}
     >
       <PwaInstallNotice />
+      <AcademyAccess />
       {isLoading ? (
         <AdminLoading />
       ) : error ? (
